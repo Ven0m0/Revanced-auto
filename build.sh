@@ -2,7 +2,7 @@
 
 set -euo pipefail
 shopt -s nullglob
-export LC_ALL=C LANG=C
+export LC_ALL=C LANG=C HOME="/home/${SUDO_USER:-$USER}"
 WORKDIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-}")" && pwd)"
 cd $WORKDIR
 
