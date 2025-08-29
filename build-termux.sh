@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+export LC_ALL=C LANG=C
 set -e
 
 pr() { echo -e "\033[0;32m[+] ${1}\033[0m"; }
