@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
-shopt -s nullglob
-export LC_ALL=C LANG=C HOME="/home/${SUDO_USER:-$USER}"
-WORKDIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-}")" && pwd)"
-cd $WORKDIR
+export LC_ALL=C LANG=C
 trap "rm -rf temp/*tmp.* temp/*/*tmp.* temp/*-temporary-files; exit 130" INT
 
 if [ "${1-}" = "clean" ]; then
