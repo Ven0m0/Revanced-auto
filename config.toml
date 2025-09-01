@@ -24,8 +24,8 @@ arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube-music"
 uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
-version = "auto"
-#version = "beta"
+#version = "auto"
+version = "beta"
 riplib = true
 
 [GooglePhotos]
