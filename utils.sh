@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-MODULE_TEMPLATE_DIR="revanced-magisk"
 CWD=$(pwd)
 TEMP_DIR="temp"
 BIN_DIR="bin"
@@ -121,7 +120,6 @@ get_rv_prebuilts() {
 	done
 	echo
 }
-
 set_prebuilts() {
 	APKSIGNER="${BIN_DIR}/apksigner.jar"
 	local arch
@@ -513,15 +511,9 @@ build_rv() {
 		epr "empty version, not building ${table}."
 		return 0
 	fi
-
-	if [ "$mode_arg" = module ]; then
-		build_mode_arr=(module)
-	elif [ "$mode_arg" = apk ]; then
+	if [ "$mode_arg" = apk ]; then
 		build_mode_arr=(apk)
-	elif [ "$mode_arg" = both ]; then
-		build_mode_arr=(apk module)
 	fi
-
 	pr "Choosing version '${version}' for ${table}"
 	local version_f=${version// /}
 	version_f=${version_f#v}
@@ -569,28 +561,14 @@ build_rv() {
 			patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
 		fi
 		if [ -n "$microg_patch" ]; then
-			if [ "$build_mode" = apk ]; then
-				patcher_args+=("-e \"${microg_patch}\"")
-			elif [ "$build_mode" = module ]; then
-				patcher_args+=("-d \"${microg_patch}\"")
-			fi
-		fi
-		if [ -n "$spoof_client_patch" ] && [[ ! ${p_patcher_args[*]} =~ $spoof_client_patch ]] && [ "$build_mode" = module ]; then
-			patcher_args+=("-d \"${spoof_client_patch}\"")
-		fi
-		if [ -n "$spoof_video_patch" ] && [[ ! ${p_patcher_args[*]} =~ $spoof_video_patch ]] && [ "$build_mode" = module ]; then
-			patcher_args+=("-d \"${spoof_video_patch}\"")
+		  patcher_args+=("-e \"${microg_patch}\"")
 		fi
 		if [ "${args[riplib]}" = true ]; then
 			patcher_args+=("--rip-lib x86_64 --rip-lib x86")
-			if [ "$build_mode" = module ]; then
-				patcher_args+=("--rip-lib arm64-v8a --rip-lib armeabi-v7a --unsigned")
-			else
-				if [ "$arch" = "arm64-v8a" ]; then
-					patcher_args+=("--rip-lib armeabi-v7a")
-				elif [ "$arch" = "arm-v7a" ]; then
-					patcher_args+=("--rip-lib arm64-v8a")
-				fi
+			if [ "$arch" = "arm64-v8a" ]; then
+			  patcher_args+=("--rip-lib armeabi-v7a")
+			elif [ "$arch" = "arm-v7a" ]; then
+			  patcher_args+=("--rip-lib arm64-v8a")
 			fi
 		fi
 		if [ "${NORB:-}" != true ] || [ ! -f "$patched_apk" ]; then
@@ -607,52 +585,10 @@ build_rv() {
 		fi
 		local base_template
 		base_template=$(mktemp -d -p "$TEMP_DIR")
-		cp -a $MODULE_TEMPLATE_DIR/. "$base_template"
 		local upj="${table,,}-update.json"
-
-		module_config "$base_template" "$pkg_name" "$version" "$arch"
-
 		local rv_patches_ver="${rv_patches_jar##*-}"
-		module_prop \
-			"${args[module_prop_name]}" \
-			"${app_name} ${args[rv_brand]}" \
-			"${version} (patches ${rv_patches_ver%%.rvp})" \
-			"${app_name} ${args[rv_brand]} Magisk module" \
-			"https://raw.githubusercontent.com/${GITHUB_REPOSITORY-}/update/${upj}" \
-			"$base_template"
-
-		local module_output="${app_name_l}-${rv_brand_f}-magisk-v${version_f}-${arch_f}.zip"
-		pr "Packing module ${table}"
-		cp -f "$patched_apk" "${base_template}/base.apk"
-		if [ "${args[include_stock]}" = true ]; then cp -f "$stock_apk" "${base_template}/${pkg_name}.apk"; fi
-		pushd >/dev/null "$base_template" || abort "Module template dir not found"
-		zip -"$COMPRESSION_LEVEL" -FSqr "${CWD}/${BUILD_DIR}/${module_output}" .
-		popd >/dev/null || :
-		pr "Built ${table} (root): '${BUILD_DIR}/${module_output}'"
 	done
 }
 
 list_args() { tr -d '\t\r' <<<"$1" | tr -s ' ' | sed 's/" "/"\n"/g' | sed 's/\([^"]\)"\([^"]\)/\1'\''\2/g' | grep -v '^$' || :; }
 join_args() { list_args "$1" | sed "s/^/${2} /" | paste -sd " " - || :; }
-
-module_config() {
-	local ma=""
-	if [ "$4" = "arm64-v8a" ]; then
-		ma="arm64"
-	elif [ "$4" = "arm-v7a" ]; then
-		ma="arm"
-	fi
-	echo "PKG_NAME=$2
-PKG_VER=$3
-MODULE_ARCH=$ma" >"$1/config"
-}
-module_prop() {
-	echo "id=${1}
-name=${2}
-version=${3}
-versionCode=${NEXT_VER_CODE}
-author=peternmuller
-description=${4}" >"${6}/module.prop"
-
-	if [ "$ENABLE_MAGISK_UPDATE" = true ]; then echo "updateJson=${5}" >>"${6}/module.prop"; fi
-}
