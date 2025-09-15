@@ -1,6 +1,6 @@
 enable-magisk-update = false # set this to false if you do not want to receive updates for the module in magisk app
 parallel-jobs = 4
-rebuild-all-on-update = true
+#rebuild-all-on-update = true
 remove-rv-integrations-checks = true
 compression-level = 9
 
