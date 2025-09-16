@@ -10,7 +10,7 @@ compression-level = 9
 build-mode = "apk"
 excluded-patches = ""
 included-patches = ""
-version = "beta"
+version= "20.21.37"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube"
 uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
@@ -51,7 +51,8 @@ build-mode = "apk"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube"
 riplib = true
-version = "beta"
+#version = "beta"
+version= "20.21.37"
 
 [Spotify]
 uptodown-dlurl = "https://spotify.en.uptodown.com/android"
