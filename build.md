@@ -3,8 +3,8 @@ Music: 8.31.51
 
 Install [Microg](https://github.com/ReVanced/GmsCore/releases) for non-root YouTube and YT Music APKs  
 CLI: j-hc/revanced-cli-5.0.0-all.jar  
-Patches: ReVanced/patches-5.42.1.rvp  
-[Changelog](https://github.com/ReVanced/revanced-patches/releases/tag/v5.42.1)  
+Patches: ReVanced/patches-5.43.0.rvp  
+[Changelog](https://github.com/ReVanced/revanced-patches/releases/tag/v5.43.0)  
 
 Skipped:  
-Patches: anddea/patches-3.14.0.rvp    
+Patches: anddea/patches-3.14.0.rvp      
