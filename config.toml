@@ -1,14 +1,17 @@
-enable-magisk-update = false # set this to false if you do not want to receive updates for the module in magisk app
-parallel-jobs = 4
-#rebuild-all-on-update = true
+# https://j-hc.github.io/rvmm-config-gen/
+enable-magisk-update = false
+parallel-jobs = 1
 remove-rv-integrations-checks = true
 compression-level = 9
-
-# https://j-hc.github.io/rvmm-config-gen/
+riplib = true
+arch = "arm64-v8a"
+build-mode = "apk"
+patches-version = "dev"
+cli-version = "dev"
 
 [YouTube]
 build-mode = "apk"
-excluded-patches = ""
+excluded-patches = "'Enable debug logging'"
 included-patches = ""
 version= "20.21.37"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube"
@@ -16,6 +19,8 @@ uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
 arch = "arm64-v8a"
 riplib = true
+patches-source = "anddea/revanced-patches"
+cli-source = "inotia00/revanced-cli"
 
 [Music]
 build-mode = "apk"
@@ -23,7 +28,8 @@ arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube-music"
 uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
-version = "beta"
+excluded-patches = "'Enable debug logging'"
+version = "8.30.54"
 riplib = true
 
 # https://github.com/j-hc/revanced-magisk-module/issues/554
@@ -32,26 +38,30 @@ enabled = true
 app-name = "Music"
 patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
-rv-brand = "ReVanced Extended"
+rv-brand = "RVX"
 #patcher-args = "--legacy-options=options.json"
+excluded-patches = "'Enable debug logging'"
 build-mode = "apk"
 arch = "arm64-v8a"
-riplib = true
+version = "8.30.54"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube-music"
-version = "beta"
+uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
 
 [YouTube-Extended]
 enabled = true
 app-name = "YouTube"
 patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
-rv-brand = "ReVanced Extended"
+rv-brand = "RVX"
 #patcher-args = "--legacy-options=options.json"
+excluded-patches = "'Enable debug logging'"
 build-mode = "apk"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube"
+uptodown-dlurl = "https://youtube.en.uptodown.com/android"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
 riplib = true
-#version = "beta"
 version= "20.21.37"
 
 [Spotify]
