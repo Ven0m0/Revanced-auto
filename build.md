@@ -8,4 +8,4 @@ Patches: ReVanced/patches-5.46.0-dev.10.rvp
 CLI: j-hc/revanced-cli-5.0.0-all.jar    
 
 Skipped:  
-Patches: anddea/patches-3.15.0-dev.1.rvp              
+Patches: anddea/patches-3.15.0-dev.1.rvp                
