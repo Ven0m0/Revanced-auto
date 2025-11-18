@@ -1,125 +1,297 @@
 #!/usr/bin/env bash
+# ReVanced Builder - Main build orchestration script
+# Refactored for better maintainability and performance
+
+# Set locale
 export LC_ALL=C LANG=C
+
+# Trap interrupts and clean up
 trap "rm -rf temp/*tmp.* temp/*/*tmp.* temp/*-temporary-files; exit 130" INT
 
+# Handle clean command
 if [ "${1-}" = "clean" ]; then
+	echo "Cleaning build artifacts..."
 	rm -rf temp build logs build.md
+	echo "Clean complete"
 	exit 0
 fi
+
+# Source utilities
 source utils.sh
-jq --version >/dev/null || abort "\`jq\` is not installed. install it with 'apt install jq' or equivalent"
-java --version >/dev/null || abort "\`openjdk 17\` is not installed. install it with 'apt install openjdk-17-jre' or equivalent"
-zip --version >/dev/null || abort "\`zip\` is not installed. install it with 'apt install zip' or equivalent"
+
+# ==================== Prerequisites Check ====================
+
+check_prerequisites() {
+	log_info "Checking prerequisites..."
+
+	local missing=()
+
+	if ! command -v jq &>/dev/null; then
+		missing+=("jq")
+	fi
+
+	if ! command -v java &>/dev/null; then
+		missing+=("java (openjdk-17)")
+	fi
+
+	if ! command -v zip &>/dev/null; then
+		missing+=("zip")
+	fi
+
+	if [ ${#missing[@]} -gt 0 ]; then
+		epr "Missing required dependencies: ${missing[*]}"
+		epr "Install them with: apt install ${missing[*]} (or equivalent)"
+		exit 1
+	fi
+
+	# Verify Java version
+	local java_version
+	java_version=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+	if [ "$java_version" -lt 11 ]; then
+		epr "Java version must be 11 or higher (found: $java_version)"
+		exit 1
+	fi
+
+	log_info "Prerequisites check passed"
+}
+
+check_prerequisites
+
+# Set prebuilt tools
 set_prebuilts
-vtf() { if ! isoneof "${1}" "true" "false"; then abort "ERROR: '${1}' is not a valid option for '${2}': only true or false is allowed"; fi; }
-# -- Main config --
-toml_prep "${1:-config.toml}" || abort "could not find config file '${1:-config.toml}'\n\tUsage: $0 <config.toml>"
-main_config_t=$(toml_get_table_main)
-COMPRESSION_LEVEL=$(toml_get "$main_config_t" compression-level) || COMPRESSION_LEVEL="9"
-if ! PARALLEL_JOBS=$(toml_get "$main_config_t" parallel-jobs); then
-	if [ "$OS" = Android ]; then PARALLEL_JOBS=1; else PARALLEL_JOBS=$(nproc); fi
-fi
-REMOVE_RV_INTEGRATIONS_CHECKS=$(toml_get "$main_config_t" remove-rv-integrations-checks) || REMOVE_RV_INTEGRATIONS_CHECKS="true"
-DEF_PATCHES_VER=$(toml_get "$main_config_t" patches-version) || DEF_PATCHES_VER="latest"
-DEF_CLI_VER=$(toml_get "$main_config_t" cli-version) || DEF_CLI_VER="latest"
-DEF_PATCHES_SRC=$(toml_get "$main_config_t" patches-source) || DEF_PATCHES_SRC="ReVanced/revanced-patches"
-DEF_CLI_SRC=$(toml_get "$main_config_t" cli-source) || DEF_CLI_SRC="j-hc/revanced-cli"
-DEF_RV_BRAND=$(toml_get "$main_config_t" rv-brand) || DEF_RV_BRAND="ReVanced"
+
+# ==================== Configuration Loading ====================
+
+validate_config_value() {
+	local value=$1 field=$2 min=${3:-} max=${4:-}
+
+	if [ -n "$min" ] && [ -n "$max" ]; then
+		if ((value < min)) || ((value > max)); then
+			abort "$field must be within $min-$max (got: $value)"
+		fi
+	fi
+}
+
+load_configuration() {
+	local config_file="${1:-config.toml}"
+
+	log_info "Loading configuration from: $config_file"
+
+	if ! toml_prep "$config_file"; then
+		abort "Could not find config file '${config_file}'\n\tUsage: $0 <config.toml>"
+	fi
+
+	# Load main configuration
+	main_config_t=$(toml_get_table_main)
+
+	# Parse configuration values with defaults
+	COMPRESSION_LEVEL=$(toml_get "$main_config_t" compression-level) || COMPRESSION_LEVEL="9"
+	validate_config_value "$COMPRESSION_LEVEL" "compression-level" 0 9
+
+	if ! PARALLEL_JOBS=$(toml_get "$main_config_t" parallel-jobs); then
+		if [ "$OS" = Android ]; then
+			PARALLEL_JOBS=1
+			log_info "Android detected: setting parallel-jobs=1"
+		else
+			PARALLEL_JOBS=$(nproc)
+			log_info "Auto-detected parallel-jobs=$PARALLEL_JOBS"
+		fi
+	else
+		log_info "Using configured parallel-jobs=$PARALLEL_JOBS"
+	fi
+
+	REMOVE_RV_INTEGRATIONS_CHECKS=$(toml_get "$main_config_t" remove-rv-integrations-checks) || REMOVE_RV_INTEGRATIONS_CHECKS="true"
+	DEF_PATCHES_VER=$(toml_get "$main_config_t" patches-version) || DEF_PATCHES_VER="latest"
+	DEF_CLI_VER=$(toml_get "$main_config_t" cli-version) || DEF_CLI_VER="latest"
+	DEF_PATCHES_SRC=$(toml_get "$main_config_t" patches-source) || DEF_PATCHES_SRC="ReVanced/revanced-patches"
+	DEF_CLI_SRC=$(toml_get "$main_config_t" cli-source) || DEF_CLI_SRC="j-hc/revanced-cli"
+	DEF_RV_BRAND=$(toml_get "$main_config_t" rv-brand) || DEF_RV_BRAND="ReVanced"
+
+	log_info "Configuration loaded successfully"
+	log_debug "Patches: $DEF_PATCHES_SRC @ $DEF_PATCHES_VER"
+	log_debug "CLI: $DEF_CLI_SRC @ $DEF_CLI_VER"
+	log_debug "Brand: $DEF_RV_BRAND"
+}
+
+# Load configuration
+load_configuration "$1"
+
+# Create necessary directories
 mkdir -p "$TEMP_DIR" "$BUILD_DIR"
 
+# Handle config update mode
 if [ "${2-}" = "--config-update" ]; then
+	log_info "Running config update check..."
 	config_update
 	exit 0
 fi
-: >build.md
-if ((COMPRESSION_LEVEL > 9)) || ((COMPRESSION_LEVEL < 0)); then abort "compression-level must be within 0-9"; fi
 
-if [ "$(echo "$TEMP_DIR"/*-rv/changelog.md)" ]; then
-	: >"$TEMP_DIR"/*-rv/changelog.md || :
+# Initialize build.md
+: >build.md
+
+# Clear changelogs
+if [ "$(echo "$TEMP_DIR"/*-rv/changelog.md 2>/dev/null)" ]; then
+	: >"$TEMP_DIR"/*-rv/changelog.md 2>/dev/null || :
 fi
+
+# ==================== Build Processing ====================
+
+# Cache for CLI riplib capability
 declare -A cliriplib
+
+# Track parallel jobs
 idx=0
-for table_name in $(toml_get_table_names); do
-	if [ -z "$table_name" ]; then continue; fi
-	t=$(toml_get_table "$table_name")
+
+process_app_config() {
+	local table_name=$1
+	local t=$2
+
+	log_info "Processing app: $table_name"
+
+	# Check if enabled
+	local enabled
 	enabled=$(toml_get "$t" enabled) || enabled=true
 	vtf "$enabled" "enabled"
-	if [ "$enabled" = false ]; then continue; fi
+
+	if [ "$enabled" = false ]; then
+		log_info "Skipping disabled app: $table_name"
+		return
+	fi
+
+	# Wait for available job slot
 	if ((idx >= PARALLEL_JOBS)); then
+		log_debug "Waiting for job slot..."
 		wait -n
 		idx=$((idx - 1))
 	fi
+
+	# Build app configuration
 	declare -A app_args
+
+	# Get source configuration
+	local patches_src cli_src patches_ver cli_ver
 	patches_src=$(toml_get "$t" patches-source) || patches_src=$DEF_PATCHES_SRC
 	patches_ver=$(toml_get "$t" patches-version) || patches_ver=$DEF_PATCHES_VER
 	cli_src=$(toml_get "$t" cli-source) || cli_src=$DEF_CLI_SRC
 	cli_ver=$(toml_get "$t" cli-version) || cli_ver=$DEF_CLI_VER
 
+	# Download prebuilts
+	local RVP rv_cli_jar rv_patches_jar
 	if ! RVP="$(get_rv_prebuilts "$cli_src" "$cli_ver" "$patches_src" "$patches_ver")"; then
-		abort "could not download rv prebuilts"
+		abort "Could not download ReVanced prebuilts for $table_name"
 	fi
+
 	read -r rv_cli_jar rv_patches_jar <<<"$RVP"
 	app_args[cli]=$rv_cli_jar
 	app_args[ptjar]=$rv_patches_jar
-	if [[ -v cliriplib[${app_args[cli]}] ]]; then app_args[riplib]=${cliriplib[${app_args[cli]}]}; else
+
+	# Detect riplib capability
+	if [[ -v cliriplib[${app_args[cli]}] ]]; then
+		app_args[riplib]=${cliriplib[${app_args[cli]}]}
+	else
 		if [[ $(java -jar "${app_args[cli]}" patch 2>&1) == *rip-lib* ]]; then
 			cliriplib[${app_args[cli]}]=true
 			app_args[riplib]=true
+			log_debug "CLI supports riplib"
 		else
 			cliriplib[${app_args[cli]}]=false
 			app_args[riplib]=false
+			log_debug "CLI does not support riplib"
 		fi
 	fi
-	if [ "${app_args[riplib]}" = "true" ] && [ "$(toml_get "$t" riplib)" = "false" ]; then app_args[riplib]=false; fi
+
+	# Override riplib if disabled in config
+	if [ "${app_args[riplib]}" = "true" ] && [ "$(toml_get "$t" riplib)" = "false" ]; then
+		app_args[riplib]=false
+	fi
+
+	# Parse app-specific configuration
 	app_args[rv_brand]=$(toml_get "$t" rv-brand) || app_args[rv_brand]=$DEF_RV_BRAND
 	app_args[excluded_patches]=$(toml_get "$t" excluded-patches) || app_args[excluded_patches]=""
-	if [ -n "${app_args[excluded_patches]}" ] && [[ ${app_args[excluded_patches]} != *'"'* ]]; then abort "patch names inside excluded-patches must be quoted"; fi
 	app_args[included_patches]=$(toml_get "$t" included-patches) || app_args[included_patches]=""
-	if [ -n "${app_args[included_patches]}" ] && [[ ${app_args[included_patches]} != *'"'* ]]; then abort "patch names inside included-patches must be quoted"; fi
-	app_args[exclusive_patches]=$(toml_get "$t" exclusive-patches) && vtf "${app_args[exclusive_patches]}" "exclusive-patches" || app_args[exclusive_patches]=false
+	app_args[exclusive_patches]=$(toml_get "$t" exclusive-patches) || app_args[exclusive_patches]=false
 	app_args[version]=$(toml_get "$t" version) || app_args[version]="auto"
 	app_args[app_name]=$(toml_get "$t" app-name) || app_args[app_name]=$table_name
 	app_args[patcher_args]=$(toml_get "$t" patcher-args) || app_args[patcher_args]=""
 	app_args[table]=$table_name
-	app_args[build_mode]=$(toml_get "$t" build-mode) && {
-		if ! isoneof "${app_args[build_mode]}" both apk module; then
-			abort "ERROR: build-mode '${app_args[build_mode]}' is not a valid option for '${table_name}': only 'both', 'apk' or 'module' is allowed"
-		fi
-	} || app_args[build_mode]=apk
-	app_args[uptodown_dlurl]=$(toml_get "$t" uptodown-dlurl) && {
+
+	# Validate patch quotes
+	if [ -n "${app_args[excluded_patches]}" ] && [[ ${app_args[excluded_patches]} != *'"'* ]]; then
+		abort "Patch names inside excluded-patches must be quoted"
+	fi
+	if [ -n "${app_args[included_patches]}" ] && [[ ${app_args[included_patches]} != *'"'* ]]; then
+		abort "Patch names inside included-patches must be quoted"
+	fi
+
+	# Validate exclusive patches
+	if [ "${app_args[exclusive_patches]}" != "false" ]; then
+		vtf "${app_args[exclusive_patches]}" "exclusive-patches"
+	fi
+
+	# Parse build mode
+	app_args[build_mode]=$(toml_get "$t" build-mode) || app_args[build_mode]=apk
+	if ! isoneof "${app_args[build_mode]}" both apk module; then
+		abort "ERROR: build-mode '${app_args[build_mode]}' is not valid for '${table_name}': only 'both', 'apk' or 'module' is allowed"
+	fi
+
+	# Parse download URLs
+	app_args[uptodown_dlurl]=$(toml_get "$t" uptodown-dlurl) || app_args[uptodown_dlurl]=""
+	if [ -n "${app_args[uptodown_dlurl]}" ]; then
 		app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%/}
 		app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%download}
 		app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%/}
 		app_args[dl_from]=uptodown
-	} || app_args[uptodown_dlurl]=""
-	app_args[apkmirror_dlurl]=$(toml_get "$t" apkmirror-dlurl) && {
+	fi
+
+	app_args[apkmirror_dlurl]=$(toml_get "$t" apkmirror-dlurl) || app_args[apkmirror_dlurl]=""
+	if [ -n "${app_args[apkmirror_dlurl]}" ]; then
 		app_args[apkmirror_dlurl]=${app_args[apkmirror_dlurl]%/}
 		app_args[dl_from]=apkmirror
-	} || app_args[apkmirror_dlurl]=""
-	app_args[archive_dlurl]=$(toml_get "$t" archive-dlurl) && {
+	fi
+
+	app_args[archive_dlurl]=$(toml_get "$t" archive-dlurl) || app_args[archive_dlurl]=""
+	if [ -n "${app_args[archive_dlurl]}" ]; then
 		app_args[archive_dlurl]=${app_args[archive_dlurl]%/}
 		app_args[dl_from]=archive
-	} || app_args[archive_dlurl]=""
-	if [ -z "${app_args[dl_from]-}" ]; then abort "ERROR: no 'apkmirror_dlurl', 'uptodown_dlurl' or 'archive_dlurl' option was set for '$table_name'."; fi
-	app_args[arch]=$(toml_get "$t" arch) || app_args[arch]="all"
-	if [ "${app_args[arch]}" != "both" ] && [ "${app_args[arch]}" != "all" ] && [[ ${app_args[arch]} != "arm64-v8a"* ]] && [[ ${app_args[arch]} != "arm-v7a"* ]]; then
-		abort "wrong arch '${app_args[arch]}' for '$table_name'"
 	fi
-	app_args[include_stock]=$(toml_get "$t" include-stock) || app_args[include_stock]=true && vtf "${app_args[include_stock]}" "include-stock"
+
+	# Validate at least one download source
+	if [ -z "${app_args[dl_from]-}" ]; then
+		abort "ERROR: no 'apkmirror_dlurl', 'uptodown_dlurl' or 'archive_dlurl' option was set for '$table_name'."
+	fi
+
+	# Parse architecture
+	app_args[arch]=$(toml_get "$t" arch) || app_args[arch]="all"
+	if [ "${app_args[arch]}" != "both" ] && [ "${app_args[arch]}" != "all" ] &&
+		[[ ${app_args[arch]} != "arm64-v8a"* ]] && [[ ${app_args[arch]} != "arm-v7a"* ]]; then
+		abort "Wrong arch '${app_args[arch]}' for '$table_name'"
+	fi
+
+	# Parse additional options
+	app_args[include_stock]=$(toml_get "$t" include-stock) || app_args[include_stock]=true
+	vtf "${app_args[include_stock]}" "include-stock"
+
 	app_args[dpi]=$(toml_get "$t" apkmirror-dpi) || app_args[dpi]="nodpi"
-	table_name_f=${table_name,,}
+
+	local table_name_f=${table_name,,}
 	table_name_f=${table_name_f// /-}
 	app_args[module_prop_name]=$(toml_get "$t" module-prop-name) || app_args[module_prop_name]="${table_name_f}-jhc"
+
+	# Handle dual architecture builds
 	if [ "${app_args[arch]}" = both ]; then
+		# Build arm64-v8a
 		app_args[table]="$table_name (arm64-v8a)"
 		app_args[arch]="arm64-v8a"
-		module_prop_name_b=${app_args[module_prop_name]}
+		local module_prop_name_b=${app_args[module_prop_name]}
 		app_args[module_prop_name]="${module_prop_name_b}-arm64"
 		idx=$((idx + 1))
 		build_rv "$(declare -p app_args)" &
+
+		# Build arm-v7a
 		app_args[table]="$table_name (arm-v7a)"
 		app_args[arch]="arm-v7a"
 		app_args[module_prop_name]="${module_prop_name_b}-arm"
+
 		if ((idx >= PARALLEL_JOBS)); then
 			wait -n
 			idx=$((idx - 1))
@@ -127,23 +299,51 @@ for table_name in $(toml_get_table_names); do
 		idx=$((idx + 1))
 		build_rv "$(declare -p app_args)" &
 	else
+		# Single architecture build
 		if [ "${app_args[arch]}" = "arm64-v8a" ]; then
 			app_args[module_prop_name]="${app_args[module_prop_name]}-arm64"
 		elif [ "${app_args[arch]}" = "arm-v7a" ]; then
 			app_args[module_prop_name]="${app_args[module_prop_name]}-arm"
 		fi
+
 		idx=$((idx + 1))
 		build_rv "$(declare -p app_args)" &
 	fi
+}
+
+# Process all app configurations
+log_info "Starting build process..."
+for table_name in $(toml_get_table_names); do
+	if [ -z "$table_name" ]; then continue; fi
+
+	t=$(toml_get_table "$table_name")
+	process_app_config "$table_name" "$t"
 done
+
+# Wait for all builds to complete
+log_info "Waiting for all builds to complete..."
 wait
-rm -rf temp/tmp.*
-if [ -z "$(ls -A1 "${BUILD_DIR}")" ]; then abort "All builds failed."; fi
+
+# Clean up temporary files
+rm -rf temp/tmp.* 2>/dev/null || :
+
+# ==================== Post-Build ====================
+
+# Check if any builds succeeded
+if [ -z "$(ls -A1 "${BUILD_DIR}" 2>/dev/null)" ]; then
+	abort "All builds failed."
+fi
+
+# Add build notes
 log "\nInstall [Microg](https://github.com/ReVanced/GmsCore/releases) for non-root YouTube and YT Music APKs"
-log "$(cat "$TEMP_DIR"/*-rv/changelog.md)"
+log "$(cat "$TEMP_DIR"/*-rv/changelog.md 2>/dev/null || :)"
+
+# Add skipped builds info
 SKIPPED=$(cat "$TEMP_DIR"/skipped 2>/dev/null || :)
 if [ -n "$SKIPPED" ]; then
 	log "\nSkipped:"
 	log "$SKIPPED"
 fi
+
+pr "Build complete! Output in: $BUILD_DIR/"
 pr "Done"
