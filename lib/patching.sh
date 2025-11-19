@@ -385,7 +385,30 @@ build_rv() {
 			continue
 		fi
 
-		# TODO: Module building logic would go here
-		# Kept minimal as original code was truncated
+		# Module building logic
+		local base_template
+		base_template=$(mktemp -d -p "$TEMP_DIR")
+		cp -a $MODULE_TEMPLATE_DIR/. "$base_template"
+		local upj="${table,,}-update.json"
+
+		module_config "$base_template" "$pkg_name" "$version" "$arch"
+
+		local rv_patches_ver="${rv_patches_jar##*-}"
+		module_prop \
+			"${args[module_prop_name]}" \
+			"${app_name} ${args[rv_brand]}" \
+			"${version} (patches ${rv_patches_ver%%.rvp})" \
+			"${app_name} ${args[rv_brand]} Magisk module" \
+			"https://raw.githubusercontent.com/${GITHUB_REPOSITORY-}/update/${upj}" \
+			"$base_template"
+
+		local module_output="${app_name_l}-${rv_brand_f}-magisk-v${version_f}-${arch_f}.zip"
+		pr "Packing module ${table}"
+		cp -f "$patched_apk" "${base_template}/base.apk"
+		if [ "${args[include_stock]}" = true ]; then cp -f "$stock_apk" "${base_template}/${pkg_name}.apk"; fi
+		pushd >/dev/null "$base_template" || abort "Module template dir not found"
+		zip -"$COMPRESSION_LEVEL" -FSqr "${CWD}/${BUILD_DIR}/${module_output}" .
+		popd >/dev/null || :
+		pr "Built ${table} (root): '${BUILD_DIR}/${module_output}'"
 	done
 }

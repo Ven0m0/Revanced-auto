@@ -106,6 +106,12 @@ load_configuration() {
 	DEF_PATCHES_SRC=$(toml_get "$main_config_t" patches-source) || DEF_PATCHES_SRC="ReVanced/revanced-patches"
 	DEF_CLI_SRC=$(toml_get "$main_config_t" cli-source) || DEF_CLI_SRC="j-hc/revanced-cli"
 	DEF_RV_BRAND=$(toml_get "$main_config_t" rv-brand) || DEF_RV_BRAND="ReVanced"
+	ENABLE_MAGISK_UPDATE=$(toml_get "$main_config_t" enable-magisk-update) || ENABLE_MAGISK_UPDATE=true
+	if [ "$ENABLE_MAGISK_UPDATE" = true ] && [ -z "${GITHUB_REPOSITORY-}" ]; then
+		ENABLE_MAGISK_UPDATE=false
+		log_info "Disabling Magisk update (no GITHUB_REPOSITORY)"
+	fi
+	MODULE_TEMPLATE_DIR="revanced-magisk"
 
 	log_info "Configuration loaded successfully"
 	log_debug "Patches: $DEF_PATCHES_SRC @ $DEF_PATCHES_VER"
