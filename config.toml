@@ -1,6 +1,6 @@
 # https://j-hc.github.io/rvmm-config-gen/
 enable-magisk-update = false
-parallel-jobs = 1
+#parallel-jobs = 1
 remove-rv-integrations-checks = true
 compression-level = 9
 riplib = true
