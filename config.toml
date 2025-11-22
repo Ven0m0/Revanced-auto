@@ -9,32 +9,6 @@ build-mode = "apk"
 patches-version = "dev"
 cli-version = "dev"
 
-[YouTube]
-enabled = false
-build-mode = "apk"
-excluded-patches = "'Enable debug logging'"
-included-patches = ""
-patcher-args = "-e 'Custom branding icon for YouTube' -OappIcon='mnt' -OdarkThemeBackgroundColor=@android:color/black -OlightThemeBackgroundColor=@android:color/white -e 'Visual preferences icons for YouTube' -OsettingsMenuIcon=revanced"
-version= "20.21.37"
-apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube"
-uptodown-dlurl = "https://youtube.en.uptodown.com/android"
-archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
-arch = "arm64-v8a"
-riplib = true
-patches-source = "anddea/revanced-patches"
-cli-source = "inotia00/revanced-cli"
-
-[Music]
-enabled = false
-build-mode = "apk"
-arch = "arm64-v8a"
-apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube-music"
-uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
-archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
-excluded-patches = "'Enable debug logging'"
-version = "8.30.54"
-riplib = true
-
 # https://github.com/j-hc/revanced-magisk-module/issues/554
 [Music-Extended]
 enabled = true
@@ -75,5 +49,5 @@ uptodown-dlurl = "https://spotify.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.spotify.music"
 riplib = true
 arch = "arm64-v8a"
-version = "beta"
+version = "auto"
 build-mode = "apk"
