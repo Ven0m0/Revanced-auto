@@ -3,7 +3,7 @@
 # Refactored for better maintainability and performance
 
 # Set locale
-export LC_ALL=C LANG=C
+export LC_ALL=C
 
 # Trap interrupts and clean up
 trap "rm -rf temp/*tmp.* temp/*/*tmp.* temp/*-temporary-files; exit 130" INT
