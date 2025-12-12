@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Main utilities loader - sources all modular components
 # Refactored for better maintainability and organization
-
+LC_ALL=C
 # Global constants
 CWD=$(pwd)
 TEMP_DIR="temp"
