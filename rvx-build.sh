@@ -11,10 +11,12 @@ BUILD_DIR="build"
 OS=$(uname -o 2>/dev/null || uname -s)
 GH_HEADER=""
 [[ -n "${GITHUB_TOKEN-}" ]] && GH_HEADER="Authorization: token ${GITHUB_TOKEN}"
+LIB_DIR="${CWD}/lib"
 
-pr(){ printf '\033[0;32m[+] %s\033[0m\n' "$1"; }
-epr(){ printf '\033[0;31m[-] %s\033[0m\n' "$1" >&2; [ -n "${GITHUB_REPOSITORY-}" ] && printf '::error::rvx-build [-] %s\n' "$1"; }
-abort(){ epr "ABORT: ${1-}"; exit 1; }
+source "${LIB_DIR}/logger.sh"
+source "${LIB_DIR}/network.sh"
+source "${LIB_DIR}/helpers.sh"
+
 install_pkg(){
   local cmd=$1 pkg=${2:-$1}
   has "$cmd" && return 0
@@ -28,26 +30,6 @@ install_pkg(){
   else abort "Cannot auto-install $pkg. Please install it manually."
   fi
   has "$cmd" || abort "Failed to install $pkg"
-}
-_req(){
-  local ip=$1 op=$2; shift 2
-  if [ "$op" = "-" ]; then
-    curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" --connect-timeout 5 --retry 0 --fail -sS "$@" "$ip" || { epr "Request failed: $ip"; return 1; }
-  else
-    [ -f "$op" ] && return 0
-    local dlp; dlp="$(dirname "$op")/tmp.$(basename "$op")"
-    if [ -f "$dlp" ]; then while [ -f "$dlp" ]; do sleep 1; done; return 0; fi
-    curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" --connect-timeout 5 --retry 0 --fail -sS "$@" "$ip" -o "$dlp" || { epr "Request failed: $ip"; return 1; }
-    mv -f "$dlp" "$op"
-  fi
-}
-req(){ _req "$1" "$2" -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0"; }
-gh_req(){ _req "$1" "$2" -H "$GH_HEADER"; }
-gh_dl(){
-  if [ ! -f "$1" ]; then
-    pr "Getting '$1' from '$2'"
-    _req "$2" "$1" -H "$GH_HEADER" -H "Accept: application/octet-stream"
-  fi
 }
 toml_prep(){
   [ -f "$1" ] || return 1
@@ -67,21 +49,6 @@ toml_get(){
     printf '%s\n' "$op"
   else return 1; fi
 }
-set_prebuilts(){
-  APKSIGNER="${BIN_DIR}/apksigner.jar"
-  local arch; arch=$(uname -m)
-  case "$arch" in
-    aarch64) arch=arm64;;
-    armv7*)  arch=arm;;
-  esac
-  HTMLQ="${BIN_DIR}/htmlq/htmlq-${arch}"
-  AAPT2="${BIN_DIR}/aapt2/aapt2-${arch}"
-  TOML="${BIN_DIR}/toml/tq-${arch}"
-}
-log(){ printf '%s  \n' "$1" >>"build.md"; }
-isoneof(){ local i=$1; shift; for v in "$@"; do [ "$v" = "$i" ] && return 0; done; return 1; }
-semver_validate(){ local a="${1%-*}"; a="${a#v}"; local ac="${a//[.0-9]/}"; [ ${#ac} = 0 ]; }
-get_highest_ver(){ local vers; vers=$(tee); local m; m=$(head -1 <<<"$vers"); if ! semver_validate "$m"; then echo "$m"; else sort -rV <<<"$vers" | head -1; fi; }
 get_rv_prebuilts(){
   local cli_src=$1 cli_ver=$2 patches_src=$3 patches_ver=$4
   pr "Getting prebuilts (${patches_src%/*})" >&2
