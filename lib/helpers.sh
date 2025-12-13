@@ -68,10 +68,14 @@ join_args() {
 #   $3: Included patches selection
 #   $4: Excluded patches selection
 #   $5: Exclusive flag
+#   $6: CLI jar path (optional, uses $rv_cli_jar if not provided)
+#   $7: Patches jar path (optional, uses $rv_patches_jar if not provided)
 # Returns:
 #   Highest supported version
 get_patch_last_supported_ver() {
 	local list_patches=$1 pkg_name=$2 inc_sel=$3 _exc_sel=$4 _exclusive=$5
+	local cli_jar=${6:-$rv_cli_jar}
+	local patches_jar=${7:-$rv_patches_jar}
 	local op
 
 	if [ "$inc_sel" ]; then
@@ -94,7 +98,7 @@ get_patch_last_supported_ver() {
 		fi
 	fi
 
-	if ! op=$(java -jar "$rv_cli_jar" list-versions "$rv_patches_jar" -f "$pkg_name" 2>&1 | tail -n +3 | awk '{$1=$1}1'); then
+	if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3 | awk '{$1=$1}1'); then
 		epr "list-versions: '$op'"
 		return 1
 	fi

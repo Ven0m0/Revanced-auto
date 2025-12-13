@@ -119,7 +119,7 @@ _determine_version() {
 	if [ "$version_mode" = auto ]; then
 		log_info "Auto-detecting compatible version"
 		if ! version=$(get_patch_last_supported_ver "$list_patches" "$pkg_name" \
-			"$inc_patches" "$exc_patches" "$exclusive"); then
+			"$inc_patches" "$exc_patches" "$exclusive" "${args[cli]}" "${args[ptjar]}"); then
 			return 1
 		fi
 
@@ -299,7 +299,7 @@ build_rv() {
 
 	# Get patch information
 	local list_patches
-	list_patches=$(java -jar "$rv_cli_jar" list-patches "$rv_patches_jar" -f "$pkg_name" -v -p 2>&1)
+	list_patches=$(java -jar "${args[cli]}" list-patches "${args[ptjar]}" -f "$pkg_name" -v -p 2>&1)
 
 	# Determine version to build
 	version=$(_determine_version "$version_mode" "$pkg_name" "$dl_from" "$list_patches" \
@@ -393,7 +393,7 @@ build_rv() {
 
 		module_config "$base_template" "$pkg_name" "$version" "$arch"
 
-		local rv_patches_ver="${rv_patches_jar##*-}"
+		local rv_patches_ver="${args[ptjar]##*-}"
 		module_prop \
 			"${args[module_prop_name]}" \
 			"${app_name} ${args[rv_brand]}" \

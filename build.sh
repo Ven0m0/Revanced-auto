@@ -183,6 +183,13 @@ process_app_config() {
 
 	# Download prebuilts
 	local RVP rv_cli_jar rv_patches_jar
+
+	# Override patches version for dev builds
+	if [ "${BUILD_MODE:-}" = "dev" ]; then
+		patches_ver="dev"
+		log_info "BUILD_MODE=dev: using dev patches version"
+	fi
+
 	if ! RVP="$(get_rv_prebuilts "$cli_src" "$cli_ver" "$patches_src" "$patches_ver")"; then
 		abort "Could not download ReVanced prebuilts for $table_name"
 	fi
@@ -190,6 +197,9 @@ process_app_config() {
 	read -r rv_cli_jar rv_patches_jar <<<"$RVP"
 	app_args[cli]=$rv_cli_jar
 	app_args[ptjar]=$rv_patches_jar
+
+	# Export for use in patching functions
+	export rv_cli_jar rv_patches_jar
 
 	# Detect riplib capability
 	if [[ -v cliriplib[${app_args[cli]}] ]]; then
@@ -236,6 +246,14 @@ process_app_config() {
 
 	# Parse build mode
 	app_args[build_mode]=$(toml_get "$t" build-mode) || app_args[build_mode]=apk
+
+	# Override with BUILD_MODE environment variable if set
+	if [ "${BUILD_MODE:-}" = "dev" ] || [ "${BUILD_MODE:-}" = "stable" ]; then
+		# For dev/stable builds, force apk mode only
+		app_args[build_mode]=apk
+		log_info "BUILD_MODE=$BUILD_MODE: forcing build-mode=apk for $table_name"
+	fi
+
 	if ! isoneof "${app_args[build_mode]}" both apk module; then
 		abort "ERROR: build-mode '${app_args[build_mode]}' is not valid for '${table_name}': only 'both', 'apk' or 'module' is allowed"
 	fi
