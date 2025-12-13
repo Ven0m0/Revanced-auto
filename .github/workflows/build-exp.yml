@@ -45,14 +45,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: $GITHUB_REPOSITORY
       - name: Upload APKs as artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: apks-${{ matrix.id }}
           path: ./build/*.apk
           if-no-files-found: warn
           retention-days: 1
       - name: Upload build log as artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: build-log-${{ matrix.id }}
           path: build.md
