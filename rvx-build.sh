@@ -1,4 +1,19 @@
 #!/usr/bin/env bash
+# DEPRECATED: This script is deprecated. Please use build.sh instead.
+# This wrapper is kept for backward compatibility.
+
+echo "⚠️  WARNING: rvx-build.sh is deprecated and will be removed in a future version."
+echo "⚠️  Please use build.sh instead: ./build.sh $*"
+echo ""
+
+# Forward all arguments to the new build.sh
+exec "$(dirname "$0")/build.sh" "$@"
+
+# ========== OLD CODE BELOW (DEPRECATED) ==========
+# The code below is kept for reference but is no longer executed
+exit 0
+
+#!/usr/bin/env bash
 # shellcheck enable=all shell=bash source-path=SCRIPTDIR external-sources=true
 set -euo pipefail; shopt -s nullglob globstar
 export LC_ALL=C; IFS=$'\n\t'
