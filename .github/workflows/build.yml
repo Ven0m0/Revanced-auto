@@ -1,4 +1,4 @@
-name: Build Modules
+name: Build
 on:
   workflow_call:
     inputs:
@@ -6,17 +6,40 @@ on:
         type: boolean
         required: false
         default: true
+      build_mode:
+        type: string
+        required: false
+        default: modules
   workflow_dispatch:
+    inputs:
+      from_ci:
+        description: "Run from CI"
+        required: false
+        default: false
+        type: boolean
+      build_mode:
+        description: "Build target"
+        required: true
+        default: modules
+        type: choice
+        options:
+          - modules
+          - stable
+          - dev
 jobs:
-  run:
+  modules:
+    if: ${{ inputs.build_mode == 'modules' }}
     permissions: write-all
     runs-on: ubuntu-latest
     steps:
-      - name: Setup
-        uses: ./.github/actions/setup-build-env
+      - name: Setup Java
+        uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "21"
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
           fetch-depth: 0
           submodules: true
       - name: Update config
@@ -80,3 +103,114 @@ jobs:
           skip_checkout: true
           file_pattern: build.md *-update.json
           commit_message: Bump version ${{ steps.next_ver_code.outputs.NEXT_VER_CODE }}
+  apk_matrix:
+    if: ${{ inputs.build_mode != 'modules' }}
+    runs-on: ubuntu-latest
+    permissions: write-all
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: "YouTube"
+          - id: "Music"
+          - id: "Reddit"
+          - id: "Spotify"
+          - id: "X"
+    steps:
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "21"
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+      - name: Generate ${{ matrix.id }} config
+        run: |
+          ./extras.sh separate-config config.toml ${{ matrix.id }} sep_config.toml
+          cat sep_config.toml
+      - name: Build APKs
+        run: ./build.sh sep_config.toml
+        env:
+          BUILD_MODE: ${{ inputs.build_mode }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: $GITHUB_REPOSITORY
+      - name: Upload APKs as artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: apks-${{ matrix.id }}
+          path: ./build/*.apk
+          if-no-files-found: warn
+          retention-days: 1
+      - name: Upload build log as artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: build-log-${{ matrix.id }}
+          path: build.md
+          if-no-files-found: warn
+          retention-days: 1
+  release:
+    needs: apk_matrix
+    if: ${{ inputs.build_mode != 'modules' && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check if any artifacts exist
+        id: check_artifacts
+        continue-on-error: true
+        run: |
+          if gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[] | select(.name | startswith("apks-")) | .name' | grep -q .; then
+            echo "has_artifacts=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_artifacts=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare version
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        id: version
+        run: |
+          VER=$(date +%y.%m.%d)
+          if [ "${{ inputs.build_mode }}" == "dev" ]; then
+            VER="${VER}-pre"
+          fi
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+      - name: Download all APKs
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        uses: actions/download-artifact@v6
+        with:
+          pattern: apks-*
+          path: all-apks
+          merge-multiple: true
+      - name: Download all build logs
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        uses: actions/download-artifact@v6
+        with:
+          pattern: build-log-*
+          path: build-logs
+      - name: Combine build logs
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        id: get_output
+        run: |
+          DELIM="$(openssl rand -hex 8)"
+          echo "BUILD_LOG<<${DELIM}" >> "$GITHUB_OUTPUT"
+          ./extras.sh combine-logs build-logs >> "$GITHUB_OUTPUT"
+          echo "${DELIM}" >> "$GITHUB_OUTPUT"
+      - name: Upload APKs to release
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          body: ${{ steps.get_output.outputs.BUILD_LOG }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: all-apks/*.apk
+          release_name: ${{ steps.version.outputs.version }}
+          tag: ${{ steps.version.outputs.version }}
+          prerelease: ${{ inputs.build_mode == 'dev' }}
+          file_glob: true
+          overwrite: true
