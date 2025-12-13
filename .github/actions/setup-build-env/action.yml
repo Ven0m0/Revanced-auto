@@ -1,0 +1,30 @@
+name: Setup build environment
+description: Checkout repository and install Java toolchain
+inputs:
+  java-version:
+    description: Java version to install
+    required: false
+    default: "21"
+  distribution:
+    description: Java distribution
+    required: false
+    default: temurin
+  fetch-depth:
+    description: Depth for checkout
+    required: false
+    default: "0"
+  submodules:
+    description: Checkout submodules
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+        submodules: ${{ inputs.submodules }}
+    - uses: actions/setup-java@v5
+      with:
+        distribution: ${{ inputs.distribution }}
+        java-version: ${{ inputs.java-version }}
