@@ -8,7 +8,7 @@ inputs:
   distribution:
     description: Java distribution
     required: false
-    default: temurin
+    default: "temurin"
   fetch-depth:
     description: Depth for checkout
     required: false
@@ -16,7 +16,7 @@ inputs:
   submodules:
     description: Checkout submodules
     required: false
-    default: "true"
+    default: true
 runs:
   using: composite
   steps:
