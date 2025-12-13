@@ -28,7 +28,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup-build-env
         with:
-          distribution: temurin
+          distribution: "temurin"
           java-version: "21"
           fetch-depth: 0
           submodules: true
