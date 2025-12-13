@@ -16,7 +16,7 @@ inputs:
   submodules:
     description: Checkout submodules
     required: false
-    default: true
+    default: "true"
 runs:
   using: composite
   steps:
