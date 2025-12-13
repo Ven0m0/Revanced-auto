@@ -32,16 +32,16 @@ jobs:
     permissions: write-all
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: "temurin"
-          java-version: "21"
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: true
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "21"
       - name: Update config
         if: ${{ inputs.from_ci }}
         run: |
@@ -117,16 +117,16 @@ jobs:
           - id: "Spotify"
           - id: "X"
     steps:
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: "temurin"
-          java-version: "21"
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: true
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "21"
       - name: Generate ${{ matrix.id }} config
         run: |
           ./extras.sh separate-config config.toml ${{ matrix.id }} sep_config.toml
