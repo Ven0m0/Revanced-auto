@@ -9,6 +9,7 @@ build-mode = "apk"
 patches-version = "dev"
 cli-version = "dev"
 version = "auto"
+enable-aapt2-optimize = true
 
 # https://github.com/j-hc/revanced-magisk-module/issues/554
 [Music-Extended]

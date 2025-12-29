@@ -45,6 +45,12 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "21"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK Build Tools
+        run: |
+          sdkmanager "build-tools;34.0.0"
+          echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
       - name: Update config
         if: ${{ inputs.from_ci }}
         run: |
@@ -130,6 +136,12 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "21"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK Build Tools
+        run: |
+          sdkmanager "build-tools;34.0.0"
+          echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
       - name: Generate ${{ matrix.id }} config
         run: |
           ./extras.sh separate-config config.toml ${{ matrix.id }} sep_config.toml
