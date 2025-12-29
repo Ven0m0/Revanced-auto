@@ -380,7 +380,26 @@ build_rv() {
 		# Handle output based on build mode
 		if [ "$build_mode" = apk ]; then
 			local apk_output="${BUILD_DIR}/${app_name_l}-${rv_brand_f}-v${version_f}-${arch_f}.apk"
-			mv -f "$patched_apk" "$apk_output"
+
+			# Apply aapt2 optimization if enabled and architecture is arm64-v8a
+			if [ "${ENABLE_AAPT2_OPTIMIZE:-false}" = "true" ] && [ "$arch" = "arm64-v8a" ]; then
+				log_info "Applying aapt2 optimization (en, xxhdpi, arm64-v8a only)"
+				local optimized_apk="${patched_apk%.apk}-optimized.apk"
+				if [ -f "scripts/aapt2-optimize.sh" ]; then
+					if ./scripts/aapt2-optimize.sh "$patched_apk" "$optimized_apk"; then
+						mv -f "$optimized_apk" "$apk_output"
+					else
+						log_info "aapt2 optimization failed, using unoptimized APK"
+						mv -f "$patched_apk" "$apk_output"
+					fi
+				else
+					log_info "aapt2-optimize.sh not found, skipping optimization"
+					mv -f "$patched_apk" "$apk_output"
+				fi
+			else
+				mv -f "$patched_apk" "$apk_output"
+			fi
+
 			pr "Built ${table} (non-root): '${apk_output}'"
 			continue
 		fi
