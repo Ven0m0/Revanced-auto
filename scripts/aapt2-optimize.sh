@@ -59,7 +59,11 @@ if aapt2 optimize \
 	ORIGINAL_SIZE=$(stat -f%z "$INPUT_APK" 2>/dev/null || stat -c%s "$INPUT_APK")
 	OPTIMIZED_SIZE=$(stat -f%z "$OUTPUT_APK" 2>/dev/null || stat -c%s "$OUTPUT_APK")
 	REDUCTION=$((ORIGINAL_SIZE - OPTIMIZED_SIZE))
-	PERCENT=$((REDUCTION * 100 / ORIGINAL_SIZE))
+	if [ "$ORIGINAL_SIZE" -gt 0 ]; then
+		PERCENT=$((REDUCTION * 100 / ORIGINAL_SIZE))
+	else
+		PERCENT=0
+	fi
 
 	echo "[INFO] Original size: $((ORIGINAL_SIZE / 1024 / 1024)) MB"
 	echo "[INFO] Optimized size: $((OPTIMIZED_SIZE / 1024 / 1024)) MB"
