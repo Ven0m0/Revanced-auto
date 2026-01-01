@@ -346,12 +346,10 @@ build_rv() {
 	pr "Building '${table}' in APK mode"
 
 	# Set output filename
-	if [ -n "$microg_patch" ]; then
-		patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}-apk.apk"
-		patcher_args+=("-e \"${microg_patch}\"")
-	else
-		patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
-	fi
+ patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
+ if [ -n "$microg_patch" ]; then
+  patcher_args+=("-e \"${microg_patch}\"")
+ fi
 
 	# Apply optimizations
 	_apply_riplib_optimization "$arch"
