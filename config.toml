@@ -14,11 +14,6 @@
 # GLOBAL BUILD SETTINGS
 # =============================================================================
 
-# Magisk Module Update
-# Enable automatic updates for Magisk modules via update JSON (requires GitHub repo)
-# Default: false
-enable-magisk-update = false
-
 # Parallel Build Jobs
 # Number of apps to build simultaneously
 # - Set to 1 for Android/Termux environments (limited resources)
@@ -34,7 +29,7 @@ parallel-jobs = 1
 remove-rv-integrations-checks = true
 
 # Compression Level
-# ZIP compression level for Magisk modules (0-9)
+# ZIP compression level for APK files (0-9)
 # - 0 = No compression (fastest, largest)
 # - 9 = Maximum compression (slowest, smallest)
 # - Recommended: 9 for release builds, 1-6 for faster testing
@@ -59,10 +54,8 @@ riplib = true
 arch = "arm64-v8a"
 
 # Build Mode
-# Output format: "apk", "module", or "both"
+# Output format: "apk" only (Magisk module support removed)
 # - apk: Standalone non-root APK (requires MicroG for YouTube/Music)
-# - module: Magisk module for root users
-# - both: Build both APK and Magisk module
 # Default: "apk"
 build-mode = "apk"
 
