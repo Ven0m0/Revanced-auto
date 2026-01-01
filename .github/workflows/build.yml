@@ -120,8 +120,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: "YouTube"
-          - id: "Music"
+          - id: "YouTube-Extended"
+          - id: "Music-Extended"
           - id: "Reddit"
           - id: "Spotify"
           - id: "X"

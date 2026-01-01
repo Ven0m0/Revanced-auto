@@ -137,10 +137,10 @@ fi
 # Initialize build.md
 : >build.md
 
-# Clear changelogs
-if [ "$(echo "$TEMP_DIR"/*-rv/changelog.md 2>/dev/null)" ]; then
-	: >"$TEMP_DIR"/*-rv/changelog.md 2>/dev/null || :
-fi
+# Clear changelogs (if any exist)
+for changelog in "$TEMP_DIR"/*-rv/changelog.md; do
+	[ -f "$changelog" ] && : >"$changelog"
+done 2>/dev/null || :
 
 # ==================== Build Processing ====================
 
