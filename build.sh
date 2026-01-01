@@ -25,7 +25,9 @@ check_prerequisites() {
 	log_info "Checking prerequisites..."
 
 	local missing=()
+	local warnings=()
 
+	# Check required commands
 	if ! command -v jq &>/dev/null; then
 		missing+=("jq")
 	fi
@@ -38,21 +40,55 @@ check_prerequisites() {
 		missing+=("zip")
 	fi
 
+	# Report missing dependencies
 	if [ ${#missing[@]} -gt 0 ]; then
 		epr "Missing required dependencies: ${missing[*]}"
-		epr "Install them with: apt install ${missing[*]} (or equivalent)"
+		epr "Install them with: apt install ${missing[*]} (or equivalent package manager)"
 		exit 1
 	fi
 
-	# Verify Java version
+	# Verify Java version (support both old and new version formats)
 	local java_version
-	java_version=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
-	if [ "$java_version" -lt 11 ]; then
-		epr "Java version must be 11 or higher (found: $java_version)"
-		exit 1
+	java_version=$(java -version 2>&1 | head -n 1)
+
+	# Extract version number (handles both "1.8" and "17" formats)
+	local java_major_version
+	if [[ $java_version =~ \"([0-9]+)\.([0-9]+) ]]; then
+		# Old format: 1.8.x -> version 8
+		if [ "${BASH_REMATCH[1]}" = "1" ]; then
+			java_major_version="${BASH_REMATCH[2]}"
+		else
+			java_major_version="${BASH_REMATCH[1]}"
+		fi
+	elif [[ $java_version =~ \"([0-9]+) ]]; then
+		# New format: 17.x -> version 17
+		java_major_version="${BASH_REMATCH[1]}"
+	else
+		log_warn "Could not parse Java version: $java_version"
+		java_major_version="0"
 	fi
 
-	log_info "Prerequisites check passed"
+	if [ "$java_major_version" -lt 11 ]; then
+		epr "Java version must be 11 or higher (found: Java $java_major_version)"
+		epr "Please install OpenJDK 17 or later"
+		exit 1
+	elif [ "$java_major_version" -ge 11 ] && [ "$java_major_version" -lt 17 ]; then
+		log_warn "Java $java_major_version detected. Java 17+ is recommended for better performance"
+	fi
+
+	# Check optional but useful tools
+	if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
+		warnings+=("neither curl nor wget found (may affect downloads)")
+	fi
+
+	# Report warnings
+	if [ ${#warnings[@]} -gt 0 ]; then
+		for warning in "${warnings[@]}"; do
+			log_warn "$warning"
+		done
+	fi
+
+	log_info "Prerequisites check passed (Java $java_major_version)"
 }
 
 check_prerequisites

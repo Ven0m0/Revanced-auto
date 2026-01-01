@@ -1,56 +1,122 @@
 #!/usr/bin/env bash
-# Configuration parsing functions for TOML and JSON
+# =============================================================================
+# Configuration Parsing Functions
+# =============================================================================
+# Provides TOML and JSON configuration parsing capabilities
+# Uses jq for JSON manipulation and toml-cli for TOML parsing
+# =============================================================================
 
-# Global variable to store parsed config
+# Global variable to store parsed config (converted to JSON)
 __TOML__=""
+__CONFIG_FILE__=""
 
 # Load and parse config file (TOML or JSON)
 # Args:
 #   $1: Path to config file
 # Returns:
 #   0 on success, 1 on failure
+# Note: Parsed config is stored in __TOML__ as JSON
 toml_prep() {
-	if [ ! -f "$1" ]; then
-		log_warn "Config file not found: $1"
+	local config_file="${1:-config.toml}"
+
+	# Validate file exists
+	if [[ ! -f "$config_file" ]]; then
+		log_warn "Config file not found: $config_file"
 		return 1
 	fi
 
-	local ext="${1##*.}"
-	log_debug "Loading config file: $1 (format: $ext)"
-
-	if [ "$ext" = "toml" ]; then
-		if ! __TOML__=$($TOML --output json --file "$1" .); then
-			epr "Failed to parse TOML config: $1"
-			return 1
-		fi
-	elif [ "$ext" = "json" ]; then
-		if ! __TOML__=$(cat "$1"); then
-			epr "Failed to read JSON config: $1"
-			return 1
-		fi
-	else
-		abort "Unsupported config extension: $ext (only .toml and .json supported)"
+	# Validate file is readable
+	if [[ ! -r "$config_file" ]]; then
+		epr "Config file not readable: $config_file"
+		return 1
 	fi
 
-	log_debug "Config loaded successfully"
+	local ext="${config_file##*.}"
+	log_debug "Loading config file: $config_file (format: $ext)"
+
+	# Parse based on file extension
+	case "$ext" in
+		toml)
+			# Check if TOML parser is available
+			if [[ ! -x "$TOML" ]]; then
+				abort "TOML parser not found or not executable: $TOML"
+			fi
+
+			# Parse TOML to JSON
+			if ! __TOML__=$("$TOML" --output json --file "$config_file" . 2>&1); then
+				epr "Failed to parse TOML config: $config_file"
+				epr "Parser output: $__TOML__"
+				return 1
+			fi
+			;;
+
+		json)
+			# Validate JSON syntax before loading
+			if ! __TOML__=$(jq -e . "$config_file" 2>&1); then
+				epr "Invalid JSON in config file: $config_file"
+				epr "JSON error: $__TOML__"
+				return 1
+			fi
+			;;
+
+		*)
+			abort "Unsupported config file extension: .$ext (only .toml and .json are supported)"
+			;;
+	esac
+
+	# Verify we got valid JSON output
+	if [[ -z "$__TOML__" ]] || ! jq -e . <<<"$__TOML__" &>/dev/null; then
+		epr "Config parsing produced invalid JSON"
+		return 1
+	fi
+
+	__CONFIG_FILE__="$config_file"
+	log_debug "Config loaded successfully ($(echo "$__TOML__" | jq -r 'keys | length') keys)"
 	return 0
 }
 
 # Get all table names from config
+# Returns: List of table names (one per line)
+# Note: Only returns top-level objects, not primitive values
 toml_get_table_names() {
-	jq -r -e 'to_entries[] | select(.value | type == "object") | .key' <<<"$__TOML__"
+	if [[ -z "$__TOML__" ]]; then
+		log_warn "Config not loaded - call toml_prep first"
+		return 1
+	fi
+	jq -r -e 'to_entries[] | select(.value | type == "object") | .key' <<<"$__TOML__" 2>/dev/null || true
 }
 
 # Get main config (non-object entries)
+# Returns: JSON object containing only primitive (non-table) values
 toml_get_table_main() {
-	jq -r -e 'to_entries | map(select(.value | type != "object")) | from_entries' <<<"$__TOML__"
+	if [[ -z "$__TOML__" ]]; then
+		log_warn "Config not loaded - call toml_prep first"
+		return 1
+	fi
+	jq -r -e 'to_entries | map(select(.value | type != "object")) | from_entries' <<<"$__TOML__" 2>/dev/null || echo "{}"
 }
 
 # Get a specific table from config
 # Args:
 #   $1: Table name
+# Returns: JSON object for the specified table
 toml_get_table() {
-	jq -r -e ".\"${1}\"" <<<"$__TOML__"
+	local table_name="${1:-}"
+
+	if [[ -z "$table_name" ]]; then
+		log_warn "toml_get_table: table name required"
+		return 1
+	fi
+
+	if [[ -z "$__TOML__" ]]; then
+		log_warn "Config not loaded - call toml_prep first"
+		return 1
+	fi
+
+	jq -r -e ".\"${table_name}\"" <<<"$__TOML__" 2>/dev/null || {
+		log_debug "Table not found: $table_name"
+		return 1
+	}
 }
 
 # Get a value from a table
@@ -58,20 +124,35 @@ toml_get_table() {
 #   $1: Table object (JSON)
 #   $2: Key name
 # Returns:
-#   Value or empty string if not found
+#   Value or empty string if not found (returns 1 on failure)
+# Note: Automatically trims whitespace and normalizes quotes
 toml_get() {
-	local op
-	op=$(jq -r ".\"${2}\" | values" <<<"$1" 2>/dev/null)
-	if [ -n "$op" ]; then
-		# Trim whitespace
-		op="${op#"${op%%[![:space:]]*}"}"
-		op="${op%"${op##*[![:space:]]}"}"
-		# Replace single quotes with double quotes
-		op=${op//"'"/'"'}
-		echo "$op"
-	else
+	local table_json="${1:-}"
+	local key="${2:-}"
+
+	if [[ -z "$table_json" ]] || [[ -z "$key" ]]; then
+		log_debug "toml_get: table and key required"
 		return 1
 	fi
+
+	local value
+	if ! value=$(jq -r ".\"${key}\" | values" <<<"$table_json" 2>/dev/null); then
+		return 1
+	fi
+
+	if [[ -z "$value" ]] || [[ "$value" == "null" ]]; then
+		return 1
+	fi
+
+	# Trim leading/trailing whitespace
+	value="${value#"${value%%[![:space:]]*}"}"
+	value="${value%"${value##*[![:space:]]}"}"
+
+	# Normalize quotes (single to double)
+	value="${value//"'"/'"'}"
+
+	echo "$value"
+	return 0
 }
 
 # Validate boolean value

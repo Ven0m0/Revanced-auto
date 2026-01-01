@@ -1,17 +1,117 @@
-# https://j-hc.github.io/rvmm-config-gen/
+# =============================================================================
+# ReVanced Auto-Build Configuration
+# =============================================================================
+# Configuration generator: https://j-hc.github.io/rvmm-config-gen/
+# This file controls the behavior of the ReVanced build system
+#
+# Documentation:
+# - Global settings apply to all apps unless overridden in app-specific sections
+# - App sections are defined using [AppName] brackets
+# - Use 'enabled = false' to skip building specific apps
+# =============================================================================
+
+# =============================================================================
+# GLOBAL BUILD SETTINGS
+# =============================================================================
+
+# Magisk Module Update
+# Enable automatic updates for Magisk modules via update JSON (requires GitHub repo)
+# Default: false
 enable-magisk-update = false
+
+# Parallel Build Jobs
+# Number of apps to build simultaneously
+# - Set to 1 for Android/Termux environments (limited resources)
+# - Set to number of CPU cores for maximum performance on desktop
+# - Auto-detected if not specified (defaults to nproc on Linux, 1 on Android)
+# Default: 1 (safe for all platforms)
 parallel-jobs = 1
+
+# ReVanced Integrations Checks
+# Remove version compatibility checks from ReVanced integrations
+# Recommended: true (allows patching newer app versions)
+# Default: true
 remove-rv-integrations-checks = true
+
+# Compression Level
+# ZIP compression level for Magisk modules (0-9)
+# - 0 = No compression (fastest, largest)
+# - 9 = Maximum compression (slowest, smallest)
+# - Recommended: 9 for release builds, 1-6 for faster testing
+# Default: 9
 compression-level = 9
+
+# Library Stripping (riplib)
+# Remove unnecessary native libraries to reduce APK size
+# - Strips x86/x86_64 libraries (most ARM devices don't need them)
+# - Can reduce APK size by 20-40%
+# - Safe to enable for ARM devices
+# Default: true
 riplib = true
+
+# Default Architecture
+# Target device architecture: "arm64-v8a", "arm-v7a", "both", or "all"
+# - arm64-v8a: Modern 64-bit ARM devices (most common)
+# - arm-v7a: Older 32-bit ARM devices
+# - both: Build separate APKs for both architectures
+# - all: Include all architectures in one APK (larger file)
+# Default: "arm64-v8a"
 arch = "arm64-v8a"
+
+# Build Mode
+# Output format: "apk", "module", or "both"
+# - apk: Standalone non-root APK (requires MicroG for YouTube/Music)
+# - module: Magisk module for root users
+# - both: Build both APK and Magisk module
+# Default: "apk"
 build-mode = "apk"
+
+# Default Patches Version
+# Which patches version to use: "latest", "dev", or specific version tag
+# - latest: Most recent stable release
+# - dev: Latest development version (may be unstable)
+# - Specific tag: e.g., "v4.16.0" for reproducible builds
+# Default: "dev"
 patches-version = "dev"
+
+# Default CLI Version
+# ReVanced CLI version: "latest", "dev", or specific version tag
+# Default: "dev"
 cli-version = "dev"
+
+# Default App Version
+# App version selection: "auto", "latest", "beta", or specific version
+# - auto: Automatically select version compatible with patches
+# - latest: Use newest stable version available
+# - beta: Use latest beta version
+# - Specific version: e.g., "18.48.39"
+# Default: "auto" (recommended)
 version = "auto"
+
+# AAPT2 Optimization
+# Enable Android Asset Packaging Tool optimization
+# - Reduces APK size by optimizing resources
+# - Keeps only: en language, xxhdpi density, arm64-v8a architecture
+# - Can reduce APK size by 10-30%
+# - Only applies to arm64-v8a APK builds
+# Default: true
 enable-aapt2-optimize = true
 
-# https://github.com/j-hc/revanced-magisk-module/issues/554
+# =============================================================================
+# APP CONFIGURATIONS
+# =============================================================================
+# Each app section can override global settings
+# Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, or archive-dlurl)
+# Optional fields: All global settings can be overridden per-app
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# YouTube Music Extended (RVX)
+# -----------------------------------------------------------------------------
+# Extended ReVanced patches with additional features and customization
+# Source: https://github.com/anddea/revanced-patches
+# CLI: https://github.com/inotia00/revanced-cli
+# Reference: https://github.com/j-hc/revanced-magisk-module/issues/554
 [Music-Extended]
 enabled = true
 app-name = "Music"
@@ -19,46 +119,106 @@ patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
 rv-brand = "RVX"
 version = "8.30.54"
+
+# Patcher Arguments:
+# - Excludes custom branding icons and visual preference icons
+# - Sets dark theme to pure black (#000000) for AMOLED displays
+# - Sets light theme to pure white for better contrast
 #patcher-args = "--legacy-options=options.json"
 patcher-args = "-e 'Custom branding icon for YouTube Music' -OappIcon='mnt' -e 'Visual preferences icons for YouTube Music' -OsettingsMenuIcon=revanced -OdarkThemeBackgroundColor=@android:color/black -OlightThemeBackgroundColor=@android:color/white"
+
+# Excluded patches (patch names must be quoted with single quotes inside double quotes)
 excluded-patches = "'Enable debug logging'"
+
+# Download Sources (multiple sources for redundancy)
 uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
 
+# -----------------------------------------------------------------------------
+# YouTube Extended (RVX)
+# -----------------------------------------------------------------------------
+# Extended ReVanced patches with additional features and customization
+# Source: https://github.com/anddea/revanced-patches
+# CLI: https://github.com/inotia00/revanced-cli
 [YouTube-Extended]
 enabled = true
 app-name = "YouTube"
 patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
 rv-brand = "RVX"
-version= "20.21.37"
+version = "20.21.37"
+
+# Patcher Arguments:
+# - Excludes custom branding icons and visual preference icons
+# - Sets dark theme to pure black for AMOLED displays
+# - Sets light theme to pure white for better contrast
 #patcher-args = "--legacy-options=options.json"
 patcher-args = "-e 'Custom branding icon for YouTube' -OappIcon='mnt' -OdarkThemeBackgroundColor=@android:color/black -OlightThemeBackgroundColor=@android:color/white -e 'Visual preferences icons for YouTube' -OsettingsMenuIcon=revanced"
+
+# Excluded patches (patch names must be quoted with single quotes inside double quotes)
 excluded-patches = "'Enable debug logging'"
+
+# Download Sources (multiple sources for redundancy)
 uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
 
+# -----------------------------------------------------------------------------
+# Spotify
+# -----------------------------------------------------------------------------
+# ReVanced patches for Spotify (ad-free, custom themes)
+# Note: Disabled by default - set enabled = true to build
 [Spotify]
 enabled = false
+
+# Download Sources
 uptodown-dlurl = "https://spotify.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.spotify.music"
+
+# Only include custom theme patch
 included-patches = "'Custom theme'"
+
+# Exclude custom branding name
 patcher-args = "-e 'Custom branding name for Spotify' -OappName='RVX Spotify'"
 
+# -----------------------------------------------------------------------------
+# Reddit
+# -----------------------------------------------------------------------------
+# ReVanced patches for Reddit (ad-free, premium features)
+# Note: Disabled by default - set enabled = true to build
 [Reddit]
 enabled = false
+
+# Download Sources
 uptodown-dlurl = "https://reddit-official-app.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
+
+# Exclude custom branding name
 patcher-args = "-e 'Custom branding name for Reddit' -OappName='RVX Reddit'"
+
+# DPI (screen density) requirement for APKMirror downloads
 dpi = "320-480dpi"
 
+# -----------------------------------------------------------------------------
+# X (Twitter)
+# -----------------------------------------------------------------------------
+# Piko patches for X/Twitter (enhanced features)
+# Source: https://github.com/crimera/piko
+# Note: Disabled by default - set enabled = true to build
 [X]
 enabled = false
+
+# Download Sources
 uptodown-dlurl = "https://twitter.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
+
+# Use Piko patches instead of standard ReVanced
 patches-source = "crimera/piko"
 rv-brand = "Piko"
+
+# Only include dynamic color patch
 included-patches = "'Dynamic color'"
+
+# DPI (screen density) requirement for APKMirror downloads
 dpi = "120-640dpi"
