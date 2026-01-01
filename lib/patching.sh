@@ -368,7 +368,7 @@ build_rv() {
 	log_info "Applying zipalign to patched APK"
 	local aligned_apk="${patched_apk%.apk}-aligned.apk"
 	if command -v zipalign &>/dev/null; then
-		if zipalign -f -p 4 "$patched_apk" "$aligned_apk" 2>&1; then
+  if zipalign -f -p 4 "$patched_apk" "$aligned_apk"; then
 			log_info "APK successfully zipaligned"
 			mv -f "$aligned_apk" "$patched_apk"
 		else
