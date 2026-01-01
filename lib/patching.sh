@@ -55,15 +55,9 @@ merge_splits() {
 		zip -0rq "${CWD}/${bundle}.zip" . || return 1
 	)
 
-	# Sign merged APK if building module
-	local ret
-	if isoneof "module" "${build_mode_arr[@]}"; then
-		patch_apk "${bundle}.zip" "${output}" "--exclusive" "${args[cli]}" "${args[ptjar]}"
-		ret=$?
-	else
-		cp "${bundle}.zip" "${output}"
-		ret=$?
-	fi
+	# Copy merged APK (signing is done during patching step)
+	cp "${bundle}.zip" "${output}"
+	local ret=$?
 
 	rm -r "${bundle}-zip" "${bundle}.zip" "${bundle}.mzip" 2>/dev/null || :
 	return $ret
@@ -343,10 +337,14 @@ build_rv() {
 	local microg_patch
 	microg_patch=$(_handle_microg_patch "$list_patches")
 
-	# Build for each mode (apk/module)
-	if [ "$mode_arg" = apk ]; then
-		build_mode_arr=(apk)
-	fi
+	# Build for each mode (apk/module/both)
+	local build_mode_arr
+	case "$mode_arg" in
+		apk) build_mode_arr=(apk) ;;
+		module) build_mode_arr=(module) ;;
+		both) build_mode_arr=(apk module) ;;
+		*) build_mode_arr=(apk) ;;
+	esac
 
 	local patcher_args patched_apk build_mode
 	local rv_brand_f=${args[rv_brand],,}

@@ -21,9 +21,6 @@ NEXT_VER_CODE=${NEXT_VER_CODE:-$(date +'%Y%m%d')}
 # Operating system detection
 OS=$(uname -o)
 
-# Build mode array (can be modified by functions)
-build_mode_arr=(apk module)
-
 # Source all library modules
 LIB_DIR="${CWD}/lib"
 
