@@ -337,93 +337,67 @@ build_rv() {
 	local microg_patch
 	microg_patch=$(_handle_microg_patch "$list_patches")
 
-	# Build for each mode (apk/module/both)
-	local build_mode_arr
-	case "$mode_arg" in
-		apk) build_mode_arr=(apk) ;;
-		module) build_mode_arr=(module) ;;
-		both) build_mode_arr=(apk module) ;;
-		*) build_mode_arr=(apk) ;;
-	esac
-
-	local patcher_args patched_apk build_mode
+	# Build APK (Magisk module support removed)
+	local patcher_args patched_apk
 	local rv_brand_f=${args[rv_brand],,}
 	rv_brand_f=${rv_brand_f// /-}
 
-	for build_mode in "${build_mode_arr[@]}"; do
-		patcher_args=("${p_patcher_args[@]}")
-		pr "Building '${table}' in '$build_mode' mode"
+	patcher_args=("${p_patcher_args[@]}")
+	pr "Building '${table}' in APK mode"
 
-		# Set output filename
-		if [ -n "$microg_patch" ]; then
-			patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}-${build_mode}.apk"
-			patcher_args+=("-e \"${microg_patch}\"")
-		else
-			patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
+	# Set output filename
+ patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
+ if [ -n "$microg_patch" ]; then
+  patcher_args+=("-e \"${microg_patch}\"")
+ fi
+
+	# Apply optimizations
+	_apply_riplib_optimization "$arch"
+
+	# Patch APK
+	if [ "${NORB:-}" != true ] || [ ! -f "$patched_apk" ]; then
+		if ! patch_apk "$stock_apk" "$patched_apk" "${patcher_args[*]}" "${args[cli]}" "${args[ptjar]}"; then
+			epr "Building '${table}' failed!"
+			return 0
 		fi
+	else
+		log_info "Using existing patched APK: $patched_apk"
+	fi
 
-		# Apply optimizations
-		_apply_riplib_optimization "$arch"
+	# Zipalign the patched APK for optimization
+	log_info "Applying zipalign to patched APK"
+	local aligned_apk="${patched_apk%.apk}-aligned.apk"
+	if command -v zipalign &>/dev/null; then
+  if zipalign -f -p 4 "$patched_apk" "$aligned_apk"; then
+			log_info "APK successfully zipaligned"
+			mv -f "$aligned_apk" "$patched_apk"
+		else
+			log_warn "zipalign failed, continuing with unaligned APK"
+			rm -f "$aligned_apk" 2>/dev/null || :
+		fi
+	else
+		log_warn "zipalign not found in PATH, skipping alignment"
+	fi
 
-		# Patch APK
-		if [ "${NORB:-}" != true ] || [ ! -f "$patched_apk" ]; then
-			if ! patch_apk "$stock_apk" "$patched_apk" "${patcher_args[*]}" "${args[cli]}" "${args[ptjar]}"; then
-				epr "Building '${table}' failed!"
-				return 0
+	# Prepare APK output
+	local apk_output="${BUILD_DIR}/${app_name_l}-${rv_brand_f}-v${version_f}-${arch_f}.apk"
+
+	# Apply aapt2 optimization if enabled and architecture is arm64-v8a
+	local apk_to_move="$patched_apk"
+	if [ "${ENABLE_AAPT2_OPTIMIZE:-false}" = "true" ] && [ "$arch" = "arm64-v8a" ]; then
+		log_info "Applying aapt2 optimization (en, xxhdpi, arm64-v8a only)"
+		local optimized_apk="${patched_apk%.apk}-optimized.apk"
+		if [ -f "scripts/aapt2-optimize.sh" ]; then
+			if ./scripts/aapt2-optimize.sh "$patched_apk" "$optimized_apk"; then
+				apk_to_move="$optimized_apk"
+			else
+				log_info "aapt2 optimization failed, using unoptimized APK"
 			fi
 		else
-			log_info "Using existing patched APK: $patched_apk"
+			log_info "aapt2-optimize.sh not found, skipping optimization"
 		fi
+	fi
 
-		# Handle output based on build mode
-		if [ "$build_mode" = apk ]; then
-			local apk_output="${BUILD_DIR}/${app_name_l}-${rv_brand_f}-v${version_f}-${arch_f}.apk"
-
-			# Apply aapt2 optimization if enabled and architecture is arm64-v8a
-			local apk_to_move="$patched_apk"
-			if [ "${ENABLE_AAPT2_OPTIMIZE:-false}" = "true" ] && [ "$arch" = "arm64-v8a" ]; then
-				log_info "Applying aapt2 optimization (en, xxhdpi, arm64-v8a only)"
-				local optimized_apk="${patched_apk%.apk}-optimized.apk"
-				if [ -f "scripts/aapt2-optimize.sh" ]; then
-					if ./scripts/aapt2-optimize.sh "$patched_apk" "$optimized_apk"; then
-						apk_to_move="$optimized_apk"
-					else
-						log_info "aapt2 optimization failed, using unoptimized APK"
-					fi
-				else
-					log_info "aapt2-optimize.sh not found, skipping optimization"
-				fi
-			fi
-			mv -f "$apk_to_move" "$apk_output"
-
-			pr "Built ${table} (non-root): '${apk_output}'"
-			continue
-		fi
-
-		# Module building logic
-		local base_template
-		base_template=$(mktemp -d -p "$TEMP_DIR")
-		cp -a $MODULE_TEMPLATE_DIR/. "$base_template"
-		local upj="${table,,}-update.json"
-
-		module_config "$base_template" "$pkg_name" "$version" "$arch"
-
-		local rv_patches_ver="${args[ptjar]##*-}"
-		module_prop \
-			"${args[module_prop_name]}" \
-			"${app_name} ${args[rv_brand]}" \
-			"${version} (patches ${rv_patches_ver%%.rvp})" \
-			"${app_name} ${args[rv_brand]} Magisk module" \
-			"https://raw.githubusercontent.com/${GITHUB_REPOSITORY-}/update/${upj}" \
-			"$base_template"
-
-		local module_output="${app_name_l}-${rv_brand_f}-magisk-v${version_f}-${arch_f}.zip"
-		pr "Packing module ${table}"
-		cp -f "$patched_apk" "${base_template}/base.apk"
-		if [ "${args[include_stock]}" = true ]; then cp -f "$stock_apk" "${base_template}/${pkg_name}.apk"; fi
-		pushd >/dev/null "$base_template" || abort "Module template dir not found"
-		zip -"$COMPRESSION_LEVEL" -FSqr "${CWD}/${BUILD_DIR}/${module_output}" .
-		popd >/dev/null || :
-		pr "Built ${table} (root): '${BUILD_DIR}/${module_output}'"
-	done
+	mv -f "$apk_to_move" "$apk_output"
+	pr "Built ${table}: '${apk_output}'"
 }

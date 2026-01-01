@@ -33,7 +33,7 @@ check_prerequisites() {
 	fi
 
 	if ! command -v java &>/dev/null; then
-		missing+=("java (openjdk-17)")
+		missing+=("java (openjdk-temurin-21)")
 	fi
 
 	if ! command -v zip &>/dev/null; then
@@ -68,12 +68,10 @@ check_prerequisites() {
 		java_major_version="0"
 	fi
 
-	if [ "$java_major_version" -lt 11 ]; then
-		epr "Java version must be 11 or higher (found: Java $java_major_version)"
-		epr "Please install OpenJDK 17 or later"
+	if [ "$java_major_version" -lt 21 ]; then
+		epr "Java version must be 21 or higher (found: Java $java_major_version)"
+		epr "Please install OpenJDK Temurin 21 or later"
 		exit 1
-	elif [ "$java_major_version" -ge 11 ] && [ "$java_major_version" -lt 17 ]; then
-		log_warn "Java $java_major_version detected. Java 17+ is recommended for better performance"
 	fi
 
 	# Check optional but useful tools
@@ -88,7 +86,7 @@ check_prerequisites() {
 		done
 	fi
 
-	log_info "Prerequisites check passed (Java $java_major_version)"
+	log_info "Prerequisites check passed (Java $java_major_version - Temurin 21 required)"
 }
 
 check_prerequisites
@@ -142,14 +140,8 @@ load_configuration() {
 	DEF_PATCHES_SRC=$(toml_get "$main_config_t" patches-source) || DEF_PATCHES_SRC="ReVanced/revanced-patches"
 	DEF_CLI_SRC=$(toml_get "$main_config_t" cli-source) || DEF_CLI_SRC="j-hc/revanced-cli"
 	DEF_RV_BRAND=$(toml_get "$main_config_t" rv-brand) || DEF_RV_BRAND="ReVanced"
-	ENABLE_MAGISK_UPDATE=$(toml_get "$main_config_t" enable-magisk-update) || ENABLE_MAGISK_UPDATE=true
 	ENABLE_AAPT2_OPTIMIZE=$(toml_get "$main_config_t" enable-aapt2-optimize) || ENABLE_AAPT2_OPTIMIZE=false
 	export ENABLE_AAPT2_OPTIMIZE
-	if [ "$ENABLE_MAGISK_UPDATE" = true ] && [ -z "${GITHUB_REPOSITORY-}" ]; then
-		ENABLE_MAGISK_UPDATE=false
-		log_info "Disabling Magisk update (no GITHUB_REPOSITORY)"
-	fi
-	MODULE_TEMPLATE_DIR="revanced-magisk"
 
 	log_info "Configuration loaded successfully"
 	log_debug "Patches: $DEF_PATCHES_SRC @ $DEF_PATCHES_VER"
@@ -282,7 +274,7 @@ process_app_config() {
 		vtf "${app_args[exclusive_patches]}" "exclusive-patches"
 	fi
 
-	# Parse build mode
+	# Parse build mode (only 'apk' supported, Magisk module support removed)
 	app_args[build_mode]=$(toml_get "$t" build-mode) || app_args[build_mode]=apk
 
 	# Override with BUILD_MODE environment variable if set
@@ -292,8 +284,8 @@ process_app_config() {
 		log_info "BUILD_MODE=$BUILD_MODE: forcing build-mode=apk for $table_name"
 	fi
 
-	if ! isoneof "${app_args[build_mode]}" both apk module; then
-		abort "ERROR: build-mode '${app_args[build_mode]}' is not valid for '${table_name}': only 'both', 'apk' or 'module' is allowed"
+	if [ "${app_args[build_mode]}" != "apk" ]; then
+		abort "ERROR: build-mode '${app_args[build_mode]}' is not valid for '${table_name}': only 'apk' is allowed (Magisk module support removed)"
 	fi
 
 	# Parse download URLs
@@ -335,24 +327,17 @@ process_app_config() {
 
 	app_args[dpi]=$(toml_get "$t" apkmirror-dpi) || app_args[dpi]="nodpi"
 
-	local table_name_f=${table_name,,}
-	table_name_f=${table_name_f// /-}
-	app_args[module_prop_name]=$(toml_get "$t" module-prop-name) || app_args[module_prop_name]="${table_name_f}-jhc"
-
 	# Handle dual architecture builds
 	if [ "${app_args[arch]}" = both ]; then
 		# Build arm64-v8a
 		app_args[table]="$table_name (arm64-v8a)"
 		app_args[arch]="arm64-v8a"
-		local module_prop_name_b=${app_args[module_prop_name]}
-		app_args[module_prop_name]="${module_prop_name_b}-arm64"
 		idx=$((idx + 1))
 		build_rv "$(declare -p app_args)" &
 
 		# Build arm-v7a
 		app_args[table]="$table_name (arm-v7a)"
 		app_args[arch]="arm-v7a"
-		app_args[module_prop_name]="${module_prop_name_b}-arm"
 
 		if ((idx >= PARALLEL_JOBS)); then
 			wait -n
@@ -362,12 +347,6 @@ process_app_config() {
 		build_rv "$(declare -p app_args)" &
 	else
 		# Single architecture build
-		if [ "${app_args[arch]}" = "arm64-v8a" ]; then
-			app_args[module_prop_name]="${app_args[module_prop_name]}-arm64"
-		elif [ "${app_args[arch]}" = "arm-v7a" ]; then
-			app_args[module_prop_name]="${app_args[module_prop_name]}-arm"
-		fi
-
 		idx=$((idx + 1))
 		build_rv "$(declare -p app_args)" &
 	fi
