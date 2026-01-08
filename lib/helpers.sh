@@ -165,7 +165,7 @@ trim_whitespace() {
 #   List of architectures to try in order of preference
 get_arch_preference() {
 	local arch="${1:-}"
-	local sep="${2:- }"  # Default to space separator
+	local sep="${2:-$'\n'}"  # Default to newline separator
 
 	if [ "$arch" = "all" ]; then
 		echo "universal${sep}noarch${sep}arm64-v8a + armeabi-v7a"
