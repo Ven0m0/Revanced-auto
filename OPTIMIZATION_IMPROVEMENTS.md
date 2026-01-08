@@ -36,9 +36,9 @@ The codebase has been refactored to eliminate code duplication, improve performa
 
 #### `get_arch_preference(arch, separator)`
 - **Purpose**: Generate architecture preference lists for downloads
-- **Eliminates**: Duplicated architecture array logic
-- **Locations**: Available for lib/download.sh APKMirror and Uptodown functions
-- **Benefit**: Centralized architecture preference logic
+- **Intended to eliminate**: Duplicated architecture array logic currently present in multiple download sources
+- **Planned usage**: lib/download.sh APKMirror and Uptodown functions (existing code still uses local architecture arrays)
+- **Benefit (once adopted)**: Centralized architecture preference logic and reduced duplication
 
 ### 2. APK Signature Verification Caching (lib/patching.sh)
 
