@@ -158,17 +158,9 @@ fi
 if [ -x "bin/toml/tq-${arch}" ]; then
     pass "bin/toml/tq-${arch} found and executable"
 else
-    # x86_64 has native binaries
-    if [ "$(uname -m)" = "x86_64" ] && [ ! -x "bin/toml/tq-x86_64" ]; then
-        fail "bin/toml/tq-x86_64 not found or not executable"
-        if [ -d "bin/toml" ]; then
-            info "Available toml binaries: $(ls bin/toml/ 2>/dev/null || echo 'none')"
-        fi
-    else
-        fail "bin/toml/tq-${arch} not found or not executable"
-        if [ -d "bin/toml" ]; then
-            info "Available toml binaries: $(ls bin/toml/ 2>/dev/null || echo 'none')"
-        fi
+    fail "bin/toml/tq-${arch} not found or not executable"
+    if [ -d "bin/toml" ]; then
+        info "Available toml binaries: $(ls bin/toml/ 2>/dev/null || echo 'none')"
     fi
 fi
 echo ""
