@@ -1,8 +1,30 @@
+# Build artifacts
 *.apk
+*.apkm
 *.zip
+*.xapk
 /temp
 /build
-test*
-/logs
 build.md
 cmpr
+
+# Logs and temporary files
+/logs
+*.log
+*.tmp
+
+# Test files
+test*
+test-results
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+.DS_Store

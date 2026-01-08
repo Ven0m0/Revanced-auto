@@ -167,6 +167,12 @@ set_prebuilts() {
 		arch=arm64
 	elif [ "${arch:0:5}" = "armv7" ]; then
 		arch=arm
+	elif [ "$arch" = x86_64 ]; then
+		# Note: Prebuilt x86_64 binaries not provided
+		# Users need to build or obtain x86_64 versions
+		# For now, try to use arm64 (may work via emulation)
+		log_warn "x86_64 architecture detected - using arm64 binaries (may require ARM emulation)"
+		arch=arm64
 	fi
 
 	HTMLQ="${BIN_DIR}/htmlq/htmlq-${arch}"
