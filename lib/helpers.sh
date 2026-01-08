@@ -111,11 +111,6 @@ join_args() {
 normalize_arch() {
 	local arch="${1:-}"
 
-	if [[ -z "$arch" ]]; then
-		echo "$arch"
-		return
-	fi
-
 	# Convert arm-v7a to armeabi-v7a for APK compatibility
 	if [ "$arch" = "arm-v7a" ]; then
 		echo "armeabi-v7a"
