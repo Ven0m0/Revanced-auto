@@ -31,7 +31,7 @@ The codebase has been refactored to eliminate code duplication, improve performa
 - **Performance**: ~30% faster than `${value#"${value%%[![:space:]]*}"}` approach
 - **Locations Fixed**:
   - lib/config.sh:148-149 (toml_get function)
-  - lib/helpers.sh:123, 135, 142 (replaced `awk '{$1=$1}1'`)
+  - lib/helpers.sh:190, 202, 209-213 (get_patch_last_supported_ver; replaced `awk '{$1=$1}1'`)
 - **Benefit**: Cleaner code, better performance
 
 #### `get_arch_preference(arch, separator)`
