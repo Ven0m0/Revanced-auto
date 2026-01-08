@@ -216,7 +216,6 @@ get_patch_last_supported_ver() {
 		epr "list-versions: '$op'"
 		return 1
 	fi
-	op=$(trim_whitespace "$op")
 
 	if [ "$op" = "Any" ]; then return; fi
 
