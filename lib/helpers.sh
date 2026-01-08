@@ -205,7 +205,7 @@ get_patch_last_supported_ver() {
 			vers=${ver}${NL}
 		done <<<"$(list_args "$inc_sel")"
 
-		vers=$(trim_whitespace "$vers")
+		vers=$(awk '{$1=$1}1' <<<"$vers")
 		if [ "$vers" ]; then
 			get_highest_ver <<<"$vers"
 			return
