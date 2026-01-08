@@ -153,8 +153,12 @@ trim_whitespace() {
 	# Remove leading whitespace
 	value="${value#"${value%%[![:space:]]*}"}"
 	# Remove trailing whitespace
+trim_whitespace() {
+	local value="$1"
+	# Trim leading whitespace
+	value="${value#"${value%%[![:space:]]*}"}"
+	# Trim trailing whitespace
 	value="${value%"${value##*[![:space:]]}"}"
-
 	echo "$value"
 }
 
