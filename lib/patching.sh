@@ -1,23 +1,40 @@
 #!/usr/bin/env bash
 # APK patching and building functions
 
+# Cache for signature verification (format: "pkg:version" -> signature)
+declare -A __SIG_CACHE__
+
 # Check APK signature against known signatures
 # Args:
 #   $1: APK file path
 #   $2: Package name
+#   $3: Version (optional, for caching)
 # Returns:
 #   0 if signature valid or not in sig.txt, 1 on mismatch
 check_sig() {
-    local file=$1 pkg_name=$2
+    local file=$1 pkg_name=$2 version=${3:-}
 
     if ! grep -q "$pkg_name" sig.txt; then
         log_debug "No signature check required for $pkg_name"
         return 0
     fi
 
-    log_info "Verifying APK signature for $pkg_name"
+    local cache_key="${pkg_name}:${version}"
     local sig
-    sig=$(java -jar "$APKSIGNER" verify --print-certs "$file" | grep ^Signer | grep SHA-256 | tail -1 | awk '{print $NF}')
+
+    # Check cache first
+    if [[ -n "$version" ]] && [[ -v __SIG_CACHE__[$cache_key] ]]; then
+        sig="${__SIG_CACHE__[$cache_key]}"
+        log_debug "Using cached signature for $cache_key"
+    else
+        log_info "Verifying APK signature for $pkg_name"
+        sig=$(java -jar "$APKSIGNER" verify --print-certs "$file" | grep ^Signer | grep SHA-256 | tail -1 | awk '{print $NF}')
+
+        # Cache the signature
+        if [[ -n "$version" ]]; then
+            __SIG_CACHE__[$cache_key]="$sig"
+        fi
+    fi
 
     if grep -qFx "$sig $pkg_name" sig.txt; then
         log_debug "Signature valid: $sig"
@@ -75,9 +92,16 @@ merge_splits() {
 patch_apk() {
     local stock_input=$1 patched_apk=$2 patcher_args=$3 rv_cli_jar=$4 rv_patches_jar=$5
 
+    # Use environment variables for keystore configuration (with defaults)
+    local keystore="${KEYSTORE_PATH:-ks.keystore}"
+    local keystore_pass="${KEYSTORE_PASSWORD}"
+    local keystore_entry_pass="${KEYSTORE_ENTRY_PASSWORD}"
+    local keystore_alias="${KEYSTORE_ALIAS:-jhc}"
+    local keystore_signer="${KEYSTORE_SIGNER:-jhc}"
+
     local cmd="env -u GITHUB_REPOSITORY java -jar $rv_cli_jar patch $stock_input --purge -o $patched_apk -p $rv_patches_jar"
-    cmd+=" --keystore=ks.keystore --keystore-entry-password=123456789"
-    cmd+=" --keystore-password=123456789 --signer=jhc --keystore-entry-alias=jhc"
+    cmd+=" --keystore=$keystore --keystore-entry-password=$keystore_entry_pass"
+    cmd+=" --keystore-password=$keystore_pass --signer=$keystore_signer --keystore-entry-alias=$keystore_alias"
     cmd+=" $patcher_args"
 
     if [ "$OS" = Android ]; then
@@ -320,8 +344,8 @@ build_rv() {
     pr "Choosing version '${version}' for ${table}"
 
     # Download stock APK
-    local version_f=${version// /}
-    version_f=${version_f#v}
+    local version_f
+    version_f=$(format_version "$version")
     local stock_apk="${TEMP_DIR}/${pkg_name}-${version_f}-${arch_f}.apk"
 
     if [ ! -f "$stock_apk" ]; then
@@ -333,8 +357,8 @@ build_rv() {
         log_info "Using cached stock APK: $stock_apk"
     fi
 
-    # Verify signature
-    if ! OP=$(check_sig "$stock_apk" "$pkg_name" 2>&1) &&
+    # Verify signature (with version for caching)
+    if ! OP=$(check_sig "$stock_apk" "$pkg_name" "$version_f" 2>&1) &&
         ! grep -qFx "ERROR: Missing META-INF/MANIFEST.MF" <<<"$OP"; then
         abort "APK signature mismatch '$stock_apk': $OP"
     fi
