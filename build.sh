@@ -10,10 +10,10 @@ trap "rm -rf temp/*tmp.* temp/*/*tmp.* temp/*-temporary-files; exit 130" INT
 
 # Handle clean command
 if [ "${1-}" = "clean" ]; then
-    echo "Cleaning build artifacts..."
-    rm -rf temp build logs build.md
-    echo "Clean complete"
-    exit 0
+	echo "Cleaning build artifacts..."
+	rm -rf temp build logs build.md
+	echo "Clean complete"
+	exit 0
 fi
 
 # Source utilities
