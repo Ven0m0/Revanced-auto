@@ -142,14 +142,20 @@ format_version() {
 	echo "$version"
 }
 
-# Trim whitespace from string (more efficient than bash parameter expansion)
+# Trim leading and trailing whitespace from string
 # Args:
 #   $1: String to trim
 # Returns:
 #   Trimmed string
 trim_whitespace() {
 	local value="${1:-}"
-	echo "$value" | xargs 2>/dev/null || echo "$value"
+
+	# Remove leading whitespace
+	value="${value#"${value%%[![:space:]]*}"}"
+	# Remove trailing whitespace
+	value="${value%"${value##*[![:space:]]}"}"
+
+	echo "$value"
 }
 
 # Get architecture preference list for APK downloads
