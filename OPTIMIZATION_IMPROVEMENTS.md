@@ -22,7 +22,7 @@ The codebase has been refactored to eliminate code duplication, improve performa
 - **Purpose**: Standardize version string formatting for filenames
 - **Eliminates**: Repeated `${version// /}; ${version#v}` pattern
 - **Locations Fixed**:
-  - lib/patching.sh:323-324
+  - lib/patching.sh:347-348
 - **Benefit**: Consistent version formatting across codebase
 
 #### `trim_whitespace(value)`
