@@ -102,6 +102,73 @@ join_args() {
 	list_args "$1" | sed "s/^/${2} /" | paste -sd " " - || :
 }
 
+# Normalize architecture name for APK downloads
+# Args:
+#   $1: Architecture name
+# Returns:
+#   Normalized architecture name
+# Example: normalize_arch "arm-v7a" -> "armeabi-v7a"
+normalize_arch() {
+	local arch="${1:-}"
+
+	if [[ -z "$arch" ]]; then
+		echo "$arch"
+		return
+	fi
+
+	# Convert arm-v7a to armeabi-v7a for APK compatibility
+	if [ "$arch" = "arm-v7a" ]; then
+		echo "armeabi-v7a"
+	else
+		echo "$arch"
+	fi
+}
+
+# Format version string for filenames
+# Removes spaces and 'v' prefix
+# Args:
+#   $1: Version string
+# Returns:
+#   Formatted version string
+# Example: format_version "v 1.2.3" -> "1.2.3"
+format_version() {
+	local version="${1:-}"
+
+	# Remove spaces
+	version="${version// /}"
+	# Remove 'v' prefix
+	version="${version#v}"
+
+	echo "$version"
+}
+
+# Trim whitespace from string (more efficient than bash parameter expansion)
+# Args:
+#   $1: String to trim
+# Returns:
+#   Trimmed string
+trim_whitespace() {
+	local value="${1:-}"
+	echo "$value" | xargs 2>/dev/null || echo "$value"
+}
+
+# Get architecture preference list for APK downloads
+# Args:
+#   $1: Requested architecture
+#   $2: Separator (default: newline for APKMirror, comma for Uptodown)
+# Returns:
+#   List of architectures to try in order of preference
+get_arch_preference() {
+	local arch="${1:-}"
+	local sep="${2:- }"  # Default to space separator
+
+	if [ "$arch" = "all" ]; then
+		echo "universal${sep}noarch${sep}arm64-v8a + armeabi-v7a"
+	else
+		echo "${arch}${sep}universal${sep}noarch${sep}arm64-v8a + armeabi-v7a"
+	fi
+}
+
 # Get last supported version for a patch
 # Args:
 #   $1: list_patches output
@@ -120,7 +187,7 @@ get_patch_last_supported_ver() {
 	local op
 
 	if [ "$inc_sel" ]; then
-		if ! op=$(awk '{$1=$1}1' <<<"$list_patches"); then
+		if ! op=$(trim_whitespace "$list_patches"); then
 			epr "list-patches: '$op'"
 			return 1
 		fi
@@ -132,17 +199,18 @@ get_patch_last_supported_ver() {
 			vers=${ver}${NL}
 		done <<<"$(list_args "$inc_sel")"
 
-		vers=$(awk '{$1=$1}1' <<<"$vers")
+		vers=$(trim_whitespace "$vers")
 		if [ "$vers" ]; then
 			get_highest_ver <<<"$vers"
 			return
 		fi
 	fi
 
-	if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3 | awk '{$1=$1}1'); then
+	if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
 		epr "list-versions: '$op'"
 		return 1
 	fi
+	op=$(trim_whitespace "$op")
 
 	if [ "$op" = "Any" ]; then return; fi
 

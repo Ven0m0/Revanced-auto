@@ -93,7 +93,8 @@ dl_apkmirror() {
     if [ -f "${output}.apkm" ]; then
         is_bundle=true
     else
-        if [ "$arch" = "arm-v7a" ]; then arch="armeabi-v7a"; fi
+        # Normalize architecture name
+        arch=$(normalize_arch "$arch")
 
         local resp node apkmname dlurl=""
         apkmname=$($HTMLQ "h1.marginZero" --text <<<"$__APKMIRROR_RESP__")
@@ -164,7 +165,8 @@ dl_uptodown() {
     local uptodown_dlurl=$1 version=$2 output=$3 arch=$4 _dpi=$5
     local apparch
 
-    if [ "$arch" = "arm-v7a" ]; then arch="armeabi-v7a"; fi
+    # Normalize architecture name
+    arch=$(normalize_arch "$arch")
 
     if [ "$arch" = all ]; then
         apparch=('arm64-v8a, armeabi-v7a, x86, x86_64' 'arm64-v8a, armeabi-v7a')

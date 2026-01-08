@@ -144,9 +144,8 @@ toml_get() {
         return 1
     fi
 
-    # Trim leading/trailing whitespace
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
+    # Trim leading/trailing whitespace (more efficient than bash parameter expansion)
+    value=$(trim_whitespace "$value")
 
     # Normalize quotes (single to double)
     value="${value//"'"/'"'}"
