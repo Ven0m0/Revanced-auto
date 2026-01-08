@@ -144,7 +144,7 @@ toml_get() {
         return 1
     fi
 
-    # Trim leading/trailing whitespace (more efficient than bash parameter expansion)
+    # Trim leading/trailing whitespace using helper function
     value=$(trim_whitespace "$value")
 
     # Normalize quotes (single to double)
