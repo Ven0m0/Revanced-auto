@@ -94,8 +94,8 @@ patch_apk() {
 
     # Use environment variables for keystore configuration (with defaults)
     local keystore="${KEYSTORE_PATH:-ks.keystore}"
-    local keystore_pass="${KEYSTORE_PASSWORD:-123456789}"
-    local keystore_entry_pass="${KEYSTORE_ENTRY_PASSWORD:-123456789}"
+    local keystore_pass="${KEYSTORE_PASSWORD}"
+    local keystore_entry_pass="${KEYSTORE_ENTRY_PASSWORD}"
     local keystore_alias="${KEYSTORE_ALIAS:-jhc}"
     local keystore_signer="${KEYSTORE_SIGNER:-jhc}"
 
