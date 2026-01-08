@@ -193,7 +193,7 @@ get_patch_last_supported_ver() {
 	local op
 
 	if [ "$inc_sel" ]; then
-		if ! op=$(trim_whitespace "$list_patches"); then
+		if ! op=$(awk '{$1=$1}1' <<<"$list_patches"); then
 			epr "list-patches: '$op'"
 			return 1
 		fi
