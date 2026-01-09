@@ -67,11 +67,11 @@ apk_mirror_search() {
 		node=$("$HTMLQ" "div.table-row.headerFont:nth-last-child($n)" -r "span:nth-child(n+3)" <<<"$resp")
 		if [ "$node" = "" ]; then break; fi
 
-		app_table=$("$HTMLQ" --text --ignore-whitespace <<<"$node")
+		app_table=$(scrape_text --ignore-whitespace <<<"$node")
 		if [ "$(sed -n 3p <<<"$app_table")" = "$apk_bundle" ] &&
 			[ "$(sed -n 6p <<<"$app_table")" = "$dpi" ] &&
 			isoneof "$(sed -n 4p <<<"$app_table")" "${apparch[@]}"; then
-			dlurl=$("$HTMLQ" --base https://www.apkmirror.com --attribute href "div:nth-child(1) > a:nth-child(1)" <<<"$node")
+			dlurl=$(scrape_attr "div:nth-child(1) > a:nth-child(1)" href --base https://www.apkmirror.com <<<"$node")
 			echo "$dlurl"
 			return 0
 		fi
@@ -97,7 +97,7 @@ dl_apkmirror() {
 		arch=$(normalize_arch "$arch")
 
 		local resp node apkmname dlurl=""
-		apkmname=$("$HTMLQ" "h1.marginZero" --text <<<"$__APKMIRROR_RESP__")
+		apkmname=$(scrape_text "h1.marginZero" <<<"$__APKMIRROR_RESP__")
 		apkmname="${apkmname,,}"
 		apkmname="${apkmname// /-}"
 		apkmname="${apkmname//[^a-z0-9-]/}"
@@ -119,8 +119,8 @@ dl_apkmirror() {
 			resp=$(req "$dlurl" -)
 		fi
 
-		url=$(echo "$resp" | "$HTMLQ" --base https://www.apkmirror.com --attribute href "a.btn") || return 1
-		url=$(req "$url" - | "$HTMLQ" --base https://www.apkmirror.com --attribute href "span > a[rel = nofollow]") || return 1
+		url=$(echo "$resp" | scrape_attr "a.btn" href --base https://www.apkmirror.com) || return 1
+		url=$(req "$url" - | scrape_attr "span > a[rel = nofollow]" href --base https://www.apkmirror.com) || return 1
 	fi
 
 	if [ "$is_bundle" = true ]; then
@@ -146,12 +146,12 @@ get_uptodown_resp() {
 
 # Get package name from Uptodown
 get_uptodown_pkg_name() {
-	"$HTMLQ" --text "tr.full:nth-child(1) > td:nth-child(3)" <<<"$__UPTODOWN_RESP_PKG__"
+	scrape_text "tr.full:nth-child(1) > td:nth-child(3)" <<<"$__UPTODOWN_RESP_PKG__"
 }
 
 # Get available versions from Uptodown
 get_uptodown_vers() {
-	"$HTMLQ" --text ".version" <<<"$__UPTODOWN_RESP__"
+	scrape_text ".version" <<<"$__UPTODOWN_RESP__"
 }
 
 # Download APK from Uptodown
@@ -175,7 +175,7 @@ dl_uptodown() {
 	fi
 
 	local op resp data_code
-	data_code=$("$HTMLQ" "#detail-app-name" --attribute data-code <<<"$__UPTODOWN_RESP__")
+	data_code=$(scrape_attr "#detail-app-name" data-code <<<"$__UPTODOWN_RESP__")
 	local versionURL="" is_bundle=false
 
 	log_info "Searching Uptodown for version: $version"
@@ -204,24 +204,25 @@ dl_uptodown() {
 	resp=$(req "$versionURL" -) || return 1
 
 	local data_version files node_arch data_file_id
-	data_version=$("$HTMLQ" '.button.variants' --attribute data-version <<<"$resp") || return 1
+	data_version=$(scrape_attr '.button.variants' data-version <<<"$resp") || return 1
 
 	if [ "$data_version" ]; then
 		files=$(req "${uptodown_dlurl%/*}/app/${data_code}/version/${data_version}/files" - | jq -e -r .content) || return 1
 
 		for ((n = 1; n < 12; n += 2)); do
-			node_arch=$("$HTMLQ" ".content > p:nth-child($n)" --text <<<"$files" | xargs) || return 1
+			node_arch=$(scrape_text ".content > p:nth-child($n)" <<<"$files" | xargs) || return 1
 			if [ "$node_arch" = "" ]; then return 1; fi
 			if ! isoneof "$node_arch" "${apparch[@]}"; then continue; fi
 
-			data_file_id=$("$HTMLQ" "div.variant:nth-child($((n + 1))) > .v-report" --attribute data-file-id <<<"$files") || return 1
+			data_file_id=$(scrape_attr "div.variant:nth-child($((n + 1))) > .v-report" data-file-id <<<"$files") || return 1
 			resp=$(req "${uptodown_dlurl}/download/${data_file_id}-x" -)
 			break
 		done
 	fi
 
 	local data_url
-	data_url=$("$HTMLQ" "#detail-download-button" --attribute data-url <<<"$resp") || return 1
+	data_url=$(scrape_attr "#detail-download-button" data-url <<<"$resp") || return 1
+
 
 	if [ "$is_bundle" = true ]; then
 		log_info "Downloading APK bundle from Uptodown"

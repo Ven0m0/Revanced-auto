@@ -29,18 +29,29 @@ on:
           - stable
           - dev
 jobs:
+  setup_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Generate Matrix
+        id: set-matrix
+        run: |
+          chmod +x scripts/generate_matrix.sh
+          export TOML="./bin/toml/tq-x86_64"
+          chmod +x $TOML
+          MATRIX=$(./scripts/generate_matrix.sh)
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
   apk_matrix:
+    needs: setup_matrix
     runs-on: ubuntu-latest
     permissions: write-all
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - id: "YouTube-Extended"
-          - id: "Music-Extended"
-          - id: "Reddit"
-          - id: "Spotify"
-          - id: "X"
+      matrix: ${{ fromJson(needs.setup_matrix.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6

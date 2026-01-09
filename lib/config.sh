@@ -154,6 +154,21 @@ toml_get() {
 	return 0
 }
 
+# Parse a table into a Bash associative array definition
+# Args:
+#   $1: Table object (JSON)
+# Returns:
+#   String to be eval'd: ([key]="value" ...)
+toml_parse_table_to_array() {
+	local table_json="${1:-}"
+	if [[ -z "$table_json" ]]; then
+		echo "()"
+		return
+	fi
+	# Use @sh to safely quote values for eval
+	jq -r 'to_entries | map("[\(.key)]=\(.value | @sh)") | join(" ")' <<<"$table_json" 2>/dev/null || echo "()"
+}
+
 # Validate boolean value
 # Args:
 #   $1: Value to validate
@@ -177,7 +192,7 @@ config_update() {
 	local upped=()
 	local prcfg=false
 
-	for table_name in "$(toml_get_table_names)"; do
+	while read -r table_name; do
 		if [ "$table_name" = "" ]; then continue; fi
 
 		t=$(toml_get_table "$table_name")
@@ -217,7 +232,7 @@ config_update() {
 				fi
 			fi
 		fi
-	done
+	done < <(toml_get_table_names)
 
 	if [ "$prcfg" = true ]; then
 		local query=""

@@ -11,10 +11,10 @@ set -euo pipefail
 
 # Script configuration
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
-readonly SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+readonly SCRIPT_DIR
 readonly INPUT_APK="${1:-}"
 readonly OUTPUT_APK="${2:-}"
-readonly RESOURCES_CFG="${SCRIPT_DIR}/aapt2-resources.cfg"
 
 # Color output
 readonly RED='\033[0;31m'
@@ -92,12 +92,12 @@ find_aapt2() {
 	return 1
 }
 
-AAPT2_CMD=$(find_aapt2) || {
+if ! AAPT2_CMD=$(find_aapt2); then
 	log_warn "aapt2 not found in PATH or ANDROID_HOME"
 	log_warn "Skipping optimization - copying original APK"
 	cp "$INPUT_APK" "$OUTPUT_APK"
 	exit 0
-}
+fi
 
 log_info "Using aapt2: $AAPT2_CMD"
 

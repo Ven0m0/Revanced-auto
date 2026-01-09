@@ -19,7 +19,8 @@ fi
 export NEXT_VER_CODE=${NEXT_VER_CODE:-$(date +'%Y%m%d')}
 
 # Operating system detection
-export OS=$(uname -o)
+OS=$(uname -o)
+export OS
 
 # Source all library modules
 LIB_DIR="${CWD}/lib"

@@ -248,3 +248,31 @@ set_prebuilts() {
 
 	log_debug "Set prebuilts for architecture: $arch"
 }
+
+# Scrape text content from HTML using a CSS selector
+# Args:
+#   $1: Selector
+#   $@: Additional arguments for htmlq
+#   stdin: HTML content
+# Returns:
+#   Extracted text
+scrape_text() {
+	local selector=$1
+	shift
+	"$HTMLQ" --text "$selector" "$@"
+}
+
+# Scrape attribute value from HTML using a CSS selector
+# Args:
+#   $1: Selector
+#   $2: Attribute name
+#   $@: Additional arguments for htmlq
+#   stdin: HTML content
+# Returns:
+#   Extracted attribute value
+scrape_attr() {
+	local selector=$1
+	local attr=$2
+	shift 2
+	"$HTMLQ" --attribute "$attr" "$selector" "$@"
+}

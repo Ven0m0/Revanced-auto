@@ -134,7 +134,8 @@ load_configuration() {
 		log_info "Using configured parallel-jobs=$PARALLEL_JOBS"
 	fi
 
-	export REMOVE_RV_INTEGRATIONS_CHECKS=$(toml_get "$main_config_t" remove-rv-integrations-checks) || export REMOVE_RV_INTEGRATIONS_CHECKS="true"
+	export REMOVE_RV_INTEGRATIONS_CHECKS
+	REMOVE_RV_INTEGRATIONS_CHECKS=$(toml_get "$main_config_t" remove-rv-integrations-checks) || REMOVE_RV_INTEGRATIONS_CHECKS="true"
 	DEF_PATCHES_VER=$(toml_get "$main_config_t" patches-version) || DEF_PATCHES_VER="latest"
 	DEF_CLI_VER=$(toml_get "$main_config_t" cli-version) || DEF_CLI_VER="latest"
 	DEF_PATCHES_SRC=$(toml_get "$main_config_t" patches-source) || DEF_PATCHES_SRC="ReVanced/revanced-patches"
@@ -186,9 +187,22 @@ process_app_config() {
 
 	log_info "Processing app: $table_name"
 
+	# Load table into associative array
+	eval "declare -A t_cfg=$(toml_parse_table_to_array "$t")"
+
+	# Helper to get value with default
+	t_get() {
+		local key=$1 default=$2
+		if [[ -v t_cfg[$key] ]] && [ "${t_cfg[$key]}" != "null" ]; then
+			echo "${t_cfg[$key]}"
+		else
+			echo "$default"
+		fi
+	}
+
 	# Check if enabled
 	local enabled
-	enabled=$(toml_get "$t" enabled) || enabled=true
+	enabled=$(t_get "enabled" "true")
 	vtf "$enabled" "enabled"
 
 	if [ "$enabled" = false ]; then
@@ -208,10 +222,10 @@ process_app_config() {
 
 	# Get source configuration
 	local patches_src cli_src patches_ver cli_ver
-	patches_src=$(toml_get "$t" patches-source) || patches_src=$DEF_PATCHES_SRC
-	patches_ver=$(toml_get "$t" patches-version) || patches_ver=$DEF_PATCHES_VER
-	cli_src=$(toml_get "$t" cli-source) || cli_src=$DEF_CLI_SRC
-	cli_ver=$(toml_get "$t" cli-version) || cli_ver=$DEF_CLI_VER
+	patches_src=$(t_get "patches-source" "$DEF_PATCHES_SRC")
+	patches_ver=$(t_get "patches-version" "$DEF_PATCHES_VER")
+	cli_src=$(t_get "cli-source" "$DEF_CLI_SRC")
+	cli_ver=$(t_get "cli-version" "$DEF_CLI_VER")
 
 	# Download prebuilts
 	local RVP rv_cli_jar rv_patches_jar
@@ -250,7 +264,7 @@ process_app_config() {
 
 	# Override riplib based on config (app-specific takes precedence over global)
 	local app_riplib
-	app_riplib=$(toml_get "$t" riplib) || app_riplib=$DEF_RIPLIB
+	app_riplib=$(t_get "riplib" "$DEF_RIPLIB")
 
 	if [ "$app_riplib" = "false" ]; then
 		app_args[riplib]=false
@@ -260,13 +274,13 @@ process_app_config() {
 	fi
 
 	# Parse app-specific configuration
-	app_args[rv_brand]=$(toml_get "$t" rv-brand) || app_args[rv_brand]=$DEF_RV_BRAND
-	app_args[excluded_patches]=$(toml_get "$t" excluded-patches) || app_args[excluded_patches]=""
-	app_args[included_patches]=$(toml_get "$t" included-patches) || app_args[included_patches]=""
-	app_args[exclusive_patches]=$(toml_get "$t" exclusive-patches) || app_args[exclusive_patches]=false
-	app_args[version]=$(toml_get "$t" version) || app_args[version]="auto"
-	app_args[app_name]=$(toml_get "$t" app-name) || app_args[app_name]=$table_name
-	app_args[patcher_args]=$(toml_get "$t" patcher-args) || app_args[patcher_args]=""
+	app_args[rv_brand]=$(t_get "rv-brand" "$DEF_RV_BRAND")
+	app_args[excluded_patches]=$(t_get "excluded-patches" "")
+	app_args[included_patches]=$(t_get "included-patches" "")
+	app_args[exclusive_patches]=$(t_get "exclusive-patches" "false")
+	app_args[version]=$(t_get "version" "auto")
+	app_args[app_name]=$(t_get "app-name" "$table_name")
+	app_args[patcher_args]=$(t_get "patcher-args" "")
 	app_args[table]=$table_name
 
 	# Validate patch quotes
@@ -283,7 +297,7 @@ process_app_config() {
 	fi
 
 	# Parse build mode (only 'apk' supported, Magisk module support removed)
-	app_args[build_mode]=$(toml_get "$t" build-mode) || app_args[build_mode]=apk
+	app_args[build_mode]=$(t_get "build-mode" "apk")
 
 	# Override with BUILD_MODE environment variable if set
 	if [ "${BUILD_MODE:-}" = "dev" ] || [ "${BUILD_MODE:-}" = "stable" ]; then
@@ -297,7 +311,7 @@ process_app_config() {
 	fi
 
 	# Parse download URLs
-	app_args[uptodown_dlurl]=$(toml_get "$t" uptodown-dlurl) || app_args[uptodown_dlurl]=""
+	app_args[uptodown_dlurl]=$(t_get "uptodown-dlurl" "")
 	if [ "${app_args[uptodown_dlurl]}" != "" ]; then
 		app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%/}
 		app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%download}
@@ -305,13 +319,13 @@ process_app_config() {
 		app_args[dl_from]=uptodown
 	fi
 
-	app_args[apkmirror_dlurl]=$(toml_get "$t" apkmirror-dlurl) || app_args[apkmirror_dlurl]=""
+	app_args[apkmirror_dlurl]=$(t_get "apkmirror-dlurl" "")
 	if [ "${app_args[apkmirror_dlurl]}" != "" ]; then
 		app_args[apkmirror_dlurl]=${app_args[apkmirror_dlurl]%/}
 		app_args[dl_from]=apkmirror
 	fi
 
-	app_args[archive_dlurl]=$(toml_get "$t" archive-dlurl) || app_args[archive_dlurl]=""
+	app_args[archive_dlurl]=$(t_get "archive-dlurl" "")
 	if [ "${app_args[archive_dlurl]}" != "" ]; then
 		app_args[archive_dlurl]=${app_args[archive_dlurl]%/}
 		app_args[dl_from]=archive
@@ -323,17 +337,17 @@ process_app_config() {
 	fi
 
 	# Parse architecture
-	app_args[arch]=$(toml_get "$t" arch) || app_args[arch]=$DEF_ARCH
+	app_args[arch]=$(t_get "arch" "$DEF_ARCH")
 	if [ "${app_args[arch]}" != "both" ] && [ "${app_args[arch]}" != "all" ] &&
 		[[ ${app_args[arch]} != "arm64-v8a"* ]] && [[ ${app_args[arch]} != "arm-v7a"* ]]; then
 		abort "Wrong arch '${app_args[arch]}' for '$table_name'"
 	fi
 
 	# Parse additional options
-	app_args[include_stock]=$(toml_get "$t" include-stock) || app_args[include_stock]=true
+	app_args[include_stock]=$(t_get "include-stock" "true")
 	vtf "${app_args[include_stock]}" "include-stock"
 
-	app_args[dpi]=$(toml_get "$t" apkmirror-dpi) || app_args[dpi]="nodpi"
+	app_args[dpi]=$(t_get "apkmirror-dpi" "nodpi")
 
 	# Handle dual architecture builds
 	if [ "${app_args[arch]}" = both ]; then
@@ -362,12 +376,12 @@ process_app_config() {
 
 # Process all app configurations
 log_info "Starting build process..."
-for table_name in "$(toml_get_table_names)"; do
+while read -r table_name; do
 	if [ "$table_name" = "" ]; then continue; fi
 
 	t=$(toml_get_table "$table_name")
 	process_app_config "$table_name" "$t"
-done
+done < <(toml_get_table_names)
 
 # Wait for all builds to complete
 log_info "Waiting for all builds to complete..."
