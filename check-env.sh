@@ -186,7 +186,7 @@ if [ -f "config.toml" ]; then
     pass "config.toml found"
     # Check if we can parse it (needs toml binary)
     if [ -x "bin/toml/tq-${arch}" ]; then
-        if bin/toml/tq-${arch} --output json --file config.toml . &>/dev/null; then
+        if bin/toml/tq-"$arch" --output json --file config.toml . &>/dev/null; then
             pass "config.toml - valid TOML"
         else
             fail "config.toml - invalid TOML syntax"
@@ -228,7 +228,7 @@ echo -e "${YELLOW}Warnings:${NC} $WARN"
 echo -e "${RED}Failed:${NC} $FAIL"
 echo ""
 
-if [ $FAIL -eq 0 ]; then
+if [ "$FAIL" -eq 0 ]; then
     echo -e "${GREEN}All required checks passed!${NC}"
     echo "You can run ./build.sh to start building."
     exit 0

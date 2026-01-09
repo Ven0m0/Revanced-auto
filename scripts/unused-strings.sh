@@ -13,21 +13,21 @@ fi
 
 # Check if strings.xml exists
 STRINGS_FILE=$(find res/values* -name 'strings.xml' -type f | head -n 1)
-if [ -z "$STRINGS_FILE" ]; then
+if [ "$STRINGS_FILE" = "" ]; then
 	echo "[WARNING] strings.xml not found, skipping unused strings cleanup"
 	exit 0
 fi
 
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
-USED="${TMP_DIR}"/used
-UNUSED="${TMP_DIR}"/unused
-FILTERED="${TMP_DIR}"/filtered
-ALL_STRINGS="${TMP_DIR}"/all
+USED="$TMP_DIR"/used
+UNUSED="$TMP_DIR"/unused
+FILTERED="$TMP_DIR"/filtered
+ALL_STRINGS="$TMP_DIR"/all
 
 # First we find what files to search and what strings are defined
 echo "[INFO] Finding XML and smali files..."
-find . -type f \( -iname '*.xml' -a -not -iname '*strings.xml' \) -o -iname '*.smali' -print0 | grep -z -v drawable >"${TMP_DIR}"/files
+find . -type f \( -iname '*.xml' -a -not -iname '*strings.xml' \) -o -iname '*.smali' -print0 | grep -z -v drawable >"$TMP_DIR"/files
 
 # Get all defined strings
 echo "[INFO] Extracting defined strings..."
@@ -43,7 +43,7 @@ while IFS= read -r -d '' file; do
 	grep -o 'string/[a-zA-Z0-9_]*' "$file" 2>/dev/null >>"$USED"
 	# For XML files, look for @string/ references
 	grep -o '@string/[a-zA-Z0-9_]*' "$file" 2>/dev/null >>"$USED"
-done <"${TMP_DIR}"/files
+done <"$TMP_DIR"/files
 set -e
 
 # Filter out "@string/" and "string/" prefixes to get the raw names

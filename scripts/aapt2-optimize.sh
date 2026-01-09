@@ -10,7 +10,8 @@
 set -euo pipefail
 
 # Script configuration
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+readonly SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
 readonly INPUT_APK="${1:-}"
 readonly OUTPUT_APK="${2:-}"
 readonly RESOURCES_CFG="${SCRIPT_DIR}/aapt2-resources.cfg"

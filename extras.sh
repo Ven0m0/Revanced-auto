@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-CWD=$(pwd)
+CWD=$PWD
 TEMP_DIR="temp"
 BIN_DIR="bin"
 
@@ -77,7 +77,7 @@ combine_logs() {
     local log_files
     log_files=$(find "$logs_dir" -name "build.md" -type f 2>/dev/null | sort)
 
-    if [ -z "$log_files" ]; then
+    if [ "$log_files" = "" ]; then
         log_warn "No build.md files found in $logs_dir"
         echo "No builds completed"
         return 0

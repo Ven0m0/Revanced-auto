@@ -20,7 +20,8 @@ get_rv_prebuilts() {
 	local files=()
 
 	for src_ver in "$cli_src CLI $cli_ver revanced-cli" "$patches_src Patches $patches_ver patches"; do
-		set -- $src_ver
+		# shellcheck disable=SC2086
+		set -- "$src_ver"
 		local src=$1 tag=$2 ver=${3-} fprefix=$4
 		local ext grab_cl
 
@@ -61,7 +62,7 @@ get_rv_prebuilts() {
 		local url file tag_name name
 		file=$(find "$dir" -name "${fprefix}-${name_ver#v}.${ext}" -type f 2>/dev/null)
 
-		if [ -z "$file" ]; then
+		if [ "$file" = "" ]; then
 			log_info "Downloading $tag from GitHub"
 			local resp asset
 			resp=$(gh_req "$rv_rel" -) || return 1
@@ -81,7 +82,7 @@ get_rv_prebuilts() {
 				file=$(grep "/[^/]*${ver#v}[^/]*\$" <<<"$file" | head -1)
 			fi
 
-			if [ -z "$file" ]; then
+			if [ "$file" = "" ]; then
 				abort "filter fail: '$for_err' with '$ver'"
 			fi
 
@@ -93,7 +94,8 @@ get_rv_prebuilts() {
 
 		# Handle patches-specific processing
 		if [ "$tag" = "Patches" ]; then
-			if [ $grab_cl = true ]; then
+			# shellcheck disable=SC2086
+			if [ "$grab_cl" = true ]; then
 				echo -e "[Changelog](https://github.com/${src}/releases/tag/${tag_name})\n" >>"${cl_dir}/changelog.md"
 			fi
 
@@ -122,18 +124,18 @@ _remove_integrations_checks() {
 
 	(
 		mkdir -p "${file}-zip" || return 1
-		unzip -qo "${file}" -d "${file}-zip" || return 1
+		unzip -qo "$file" -d "${file}-zip" || return 1
 		java -cp "${BIN_DIR}/paccer.jar:${BIN_DIR}/dexlib2.jar" com.jhc.Main \
 			"${file}-zip/extensions/shared.rve" \
 			"${file}-zip/extensions/shared-patched.rve" || return 1
 		mv -f "${file}-zip/extensions/shared-patched.rve" \
 			"${file}-zip/extensions/shared.rve" || return 1
-		rm "${file}" || return 1
+		rm "$file" || return 1
 		cd "${file}-zip" || return 1
 		zip -0rq "${CWD}/${file}" . || return 1
 	) >&2
 
 	local ret=$?
 	rm -rf "${file}-zip" 2>/dev/null || :
-	return $ret
+	return "$ret"
 }

@@ -40,11 +40,11 @@ _req() {
 	fi
 
 	# Retry loop with exponential backoff
-	while [ $retry_count -le $MAX_RETRIES ]; do
+	while [ "$retry_count" -le "$MAX_RETRIES" ]; do
 		if [ "$op" = "-" ]; then
 			# Output to stdout
 			if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
-				--connect-timeout $CONNECTION_TIMEOUT --max-time 300 \
+				--connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
 				--fail -s -S "$@" "$ip"; then
 				success=true
 				break
@@ -52,7 +52,7 @@ _req() {
 		else
 			# Output to file
 			if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
-				--connect-timeout $CONNECTION_TIMEOUT --max-time 300 \
+				--connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
 				--fail -s -S "$@" "$ip" -o "$dlp"; then
 				mv -f "$dlp" "$op"
 				success=true
@@ -61,9 +61,9 @@ _req() {
 		fi
 
 		retry_count=$((retry_count + 1))
-		if [ $retry_count -le $MAX_RETRIES ]; then
+		if [ "$retry_count" -le "$MAX_RETRIES" ]; then
 			log_warn "Request failed (attempt $retry_count/$MAX_RETRIES): $ip - Retrying in ${delay}s..."
-			sleep $delay
+			sleep "$delay"
 			delay=$((delay * 2))
 		fi
 	done

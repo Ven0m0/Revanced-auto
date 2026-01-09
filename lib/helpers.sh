@@ -148,11 +148,6 @@ trim_whitespace() {
 	# Remove leading whitespace
 	value="${value#"${value%%[![:space:]]*}"}"
 	# Remove trailing whitespace
-trim_whitespace() {
-	local value="$1"
-	# Trim leading whitespace
-	value="${value#"${value%%[![:space:]]*}"}"
-	# Trim trailing whitespace
 	value="${value%"${value##*[![:space:]]}"}"
 	echo "$value"
 }
@@ -165,7 +160,7 @@ trim_whitespace() {
 #   List of architectures to try in order of preference
 get_arch_preference() {
 	local arch="${1:-}"
-	local sep="${2:-$'\n'}"  # Default to newline separator
+	local sep="${2:-$'\n'}" # Default to newline separator
 
 	if [ "$arch" = "all" ]; then
 		echo "universal${sep}noarch${sep}arm64-v8a + armeabi-v7a"
@@ -222,7 +217,7 @@ get_patch_last_supported_ver() {
 	pcount=${pcount#*(}
 	pcount=${pcount% *}
 
-	if [ -z "$pcount" ]; then
+	if [ "$pcount" = "" ]; then
 		abort "unreachable: '$pcount'"
 	fi
 
@@ -231,7 +226,7 @@ get_patch_last_supported_ver() {
 
 # Set prebuilt binary paths based on architecture
 set_prebuilts() {
-	APKSIGNER="${BIN_DIR}/apksigner.jar"
+	export APKSIGNER="${BIN_DIR}/apksigner.jar"
 	local arch
 	arch=$(uname -m)
 
@@ -247,9 +242,9 @@ set_prebuilts() {
 		arch=arm64
 	fi
 
-	HTMLQ="${BIN_DIR}/htmlq/htmlq-${arch}"
-	AAPT2="${BIN_DIR}/aapt2/aapt2-${arch}"
-	TOML="${BIN_DIR}/toml/tq-${arch}"
+	export HTMLQ="${BIN_DIR}/htmlq/htmlq-${arch}"
+	export AAPT2="${BIN_DIR}/aapt2/aapt2-${arch}"
+	export TOML="${BIN_DIR}/toml/tq-${arch}"
 
 	log_debug "Set prebuilts for architecture: $arch"
 }
