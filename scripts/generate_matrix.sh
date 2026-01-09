@@ -8,7 +8,7 @@ source lib/helpers.sh
 source lib/config.sh
 
 # Mock toml parser path if needed or rely on environment
-if [ -z "$TOML" ]; then
+if [ "$TOML" = "" ]; then
     TOML="bin/toml/tq-$(uname -m)"
     if [ ! -f "$TOML" ]; then
         # Fallback for CI environments where tq might be elsewhere or we rely on toml-cli
