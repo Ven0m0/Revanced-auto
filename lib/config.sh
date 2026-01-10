@@ -3,7 +3,7 @@
 # Configuration Parsing Functions
 # =============================================================================
 # Provides TOML and JSON configuration parsing capabilities
-# Uses jq for JSON manipulation and toml-cli for TOML parsing
+# Uses jq for JSON manipulation and Python (tomllib) for TOML parsing
 # =============================================================================
 
 # Global variable to store parsed config (converted to JSON)
@@ -37,13 +37,8 @@ toml_prep() {
 	# Parse based on file extension
 	case "$ext" in
 	toml)
-		# Check if TOML parser is available
-		if [[ ! -x "$TOML" ]]; then
-			abort "TOML parser not found or not executable: $TOML"
-		fi
-
-		# Parse TOML to JSON
-		if ! __TOML__=$("$TOML" --output json --file "$config_file" . 2>&1); then
+		# Parse TOML to JSON using Python
+		if ! __TOML__=$(python3 scripts/toml_get.py --file "$config_file" 2>&1); then
 			epr "Failed to parse TOML config: $config_file"
 			epr "Parser output: $__TOML__"
 			return 1

@@ -244,7 +244,6 @@ set_prebuilts() {
 
 	export HTMLQ="${BIN_DIR}/htmlq/htmlq-${arch}"
 	export AAPT2="${BIN_DIR}/aapt2/aapt2-${arch}"
-	export TOML="${BIN_DIR}/toml/tq-${arch}"
 
 	log_debug "Set prebuilts for architecture: $arch"
 }
