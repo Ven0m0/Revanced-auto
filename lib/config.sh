@@ -149,11 +149,12 @@ toml_get() {
 	return 0
 }
 
-# Parse a table into a Bash associative array definition
+# Parse a table into a Bash associative array definition (DEPRECATED - DO NOT USE)
 # Args:
 #   $1: Table object (JSON)
 # Returns:
 #   String to be eval'd: ([key]="value" ...)
+# WARNING: This function is deprecated and unsafe. Use toml_load_table_safe instead.
 toml_parse_table_to_array() {
 	local table_json="${1:-}"
 	if [[ -z "$table_json" ]]; then
@@ -162,6 +163,63 @@ toml_parse_table_to_array() {
 	fi
 	# Use @sh to safely quote values for eval
 	jq -r 'to_entries | map("[\(.key)]=\(.value | @sh)") | join(" ")' <<<"$table_json" 2>/dev/null || echo "()"
+}
+
+# Safely load a table into a named associative array (no eval)
+# Args:
+#   $1: Variable name to store the associative array
+#   $2: Table object (JSON)
+# Side effects:
+#   Populates the named array with table key-value pairs
+# Note: Arrays in JSON are converted to space-separated strings for simple use
+toml_load_table_safe() {
+	local var_name="$1"
+	local table_json="$2"
+
+	if [[ -z "$table_json" ]] || [[ "$table_json" == "null" ]]; then
+		return
+	fi
+
+	# Read key-value pairs line by line (NUL-separated for safety)
+	while IFS= read -r -d '' key && IFS= read -r -d '' value; do
+		# Handle arrays: convert to newline-separated string for Bash
+		if [[ "$value" == "["* ]]; then
+			# Parse JSON array into Bash-friendly format
+			value=$(jq -r '.[]' <<<"$value" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+		fi
+		eval "${var_name}[${key}]=\"\${value}\""
+	done < <(jq -j 'to_entries[] | .key, "\u0000", (.value | tostring), "\u0000"' <<<"$table_json" 2>/dev/null)
+}
+
+# Get array from table as a Bash array
+# Args:
+#   $1: Variable name to store the array
+#   $2: Table object (JSON)
+#   $3: Key name
+# Side effects:
+#   Populates the named array with values
+toml_get_array() {
+	local var_name="$1"
+	local table_json="$2"
+	local key="$3"
+
+	local json_array
+	if ! json_array=$(jq -e ".\"${key}\"" <<<"$table_json" 2>/dev/null); then
+		return 1
+	fi
+
+	if [[ "$json_array" == "null" ]]; then
+		return 1
+	fi
+
+	# Read array elements line by line
+	local -a elements=()
+	while IFS= read -r element; do
+		elements+=("$element")
+	done < <(jq -r '.[]' <<<"$json_array" 2>/dev/null)
+
+	# Use nameref to populate caller's array
+	eval "${var_name}=(\"\${elements[@]}\")"
 }
 
 # Validate boolean value

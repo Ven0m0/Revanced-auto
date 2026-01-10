@@ -187,8 +187,9 @@ process_app_config() {
 
 	log_info "Processing app: $table_name"
 
-	# Load table into associative array
-	eval "declare -A t_cfg=$(toml_parse_table_to_array "$t")"
+	# Load table into associative array (safe - no eval of user input)
+	declare -A t_cfg
+	toml_load_table_safe "t_cfg" "$t"
 
 	# Helper to get value with default
 	t_get() {
@@ -280,7 +281,17 @@ process_app_config() {
 	app_args[exclusive_patches]=$(t_get "exclusive-patches" "false")
 	app_args[version]=$(t_get "version" "auto")
 	app_args[app_name]=$(t_get "app-name" "$table_name")
-	app_args[patcher_args]=$(t_get "patcher-args" "")
+
+	# Load patcher-args as an array if present
+	local -a patcher_args_array=()
+	if toml_get_array "patcher_args_array" "$t" "patcher-args" 2>/dev/null; then
+		# Convert array to space-separated string for passing to build_rv
+		# The actual array will be reconstructed in patching.sh
+		app_args[patcher_args]="${patcher_args_array[*]}"
+	else
+		app_args[patcher_args]=""
+	fi
+
 	app_args[table]=$table_name
 
 	# Validate patch quotes

@@ -36,11 +36,11 @@ build-mode = "apk"   # 'both', 'apk' or 'module'. default: apk
 version = "auto"     # 'auto', 'latest', 'beta' or a version number (e.g. '17.40.41'). default: auto
 
 # optional args to be passed to cli. can be used to set patch options
-# multiline strings in the config is supported
-patcher-args = """\
-  -OdarkThemeBackgroundColor=#FF0F0F0F \
-  -Oanother-option=value \
-  """
+# must be a TOML array of strings
+patcher-args = [
+  "-OdarkThemeBackgroundColor=#FF0F0F0F",
+  "-Oanother-option=value"
+]
 
 excluded-patches = """\
   'Some Patch' \

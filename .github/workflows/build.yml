@@ -77,6 +77,8 @@ jobs:
           BUILD_MODE: ${{ inputs.build_mode }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: $GITHUB_REPOSITORY
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
       - name: Upload APKs as artifact
         uses: actions/upload-artifact@v7
         with:
@@ -93,7 +95,8 @@ jobs:
           retention-days: 1
   release:
     needs: apk_matrix
-    if: ${{ needs.apk_matrix.result == 'success' && !cancelled() }}
+    # Only run on trusted repository and non-PR events to prevent forks from publishing releases
+    if: ${{ needs.apk_matrix.result == 'success' && !cancelled() && github.event_name != 'pull_request' && (github.repository_owner == 'anomalyco' || github.repository == github.event.repository.full_name) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -90,7 +90,7 @@ cli-source = "inotia00/revanced-cli"
 rv-brand = "RVX"
 
 excluded-patches = "'Enable debug logging'"
-patcher-args = "-e 'Custom branding icon for YouTube' -OappIcon='mnt'"
+patcher-args = ["-e", "Custom branding icon for YouTube", "-OappIcon=mnt"]
 
 # Download sources (at least one required)
 uptodown-dlurl = "https://youtube.en.uptodown.com/android"
@@ -181,12 +181,22 @@ Solution: The app version may not be compatible with current patches. Try settin
 
 ## Environment Variables
 
+### Runtime Configuration
 - `LOG_LEVEL` - Set to 0 for debug output (default: 1)
 - `MAX_RETRIES` - Maximum retry attempts for network requests (default: 4)
 - `INITIAL_RETRY_DELAY` - Initial retry delay in seconds (default: 2)
 - `CONNECTION_TIMEOUT` - Connection timeout in seconds (default: 10)
 - `GITHUB_TOKEN` - GitHub API token for authenticated requests (optional)
 - `BUILD_MODE` - Set to "dev" or "stable" to force dev/stable patches
+
+### Signing Configuration (Required)
+- `KEYSTORE_PASSWORD` - Keystore password (required for building)
+- `KEYSTORE_ENTRY_PASSWORD` - Key entry password (required for building)
+- `KEYSTORE_PATH` - Path to keystore file (default: ks.keystore)
+- `KEYSTORE_ALIAS` - Key alias (default: jhc)
+- `KEYSTORE_SIGNER` - Signer name (default: jhc)
+
+**Note**: For CI/CD workflows, set `KEYSTORE_PASSWORD` and `KEYSTORE_ENTRY_PASSWORD` as repository secrets.
 
 ## Scripts
 
@@ -227,6 +237,16 @@ riplib = true
 Removes unnecessary native libraries:
 - Strips x86 and x86_64 (ARM devices don't need them)
 - Reduces APK size by 20-40%
+
+## Security
+
+### APK Signature Scheme Enforcement
+All built APKs are signed with **APK Signature Scheme v1 and v2 only**. Higher signature schemes (v3, v4) are explicitly disabled to ensure maximum compatibility and predictable security characteristics. This is enforced via post-patch re-signing using `apksigner.jar`.
+
+### CI/CD Security
+- Release artifacts are only published from the trusted repository (not from forks)
+- Pull requests can build but cannot publish releases
+- Keystore credentials must be configured as GitHub repository secrets
 
 ## Contributing
 

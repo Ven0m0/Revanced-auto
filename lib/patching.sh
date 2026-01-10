@@ -84,7 +84,7 @@ merge_splits() {
 # Args:
 #   $1: Stock APK path
 #   $2: Patched APK output path
-#   $3: Patcher arguments
+#   $3: Patcher arguments (space-separated string)
 #   $4: ReVanced CLI JAR path
 #   $5: Patches JAR path
 # Returns:
@@ -92,34 +92,114 @@ merge_splits() {
 patch_apk() {
 	local stock_input=$1 patched_apk=$2 patcher_args=$3 rv_cli_jar=$4 rv_patches_jar=$5
 
-	# Use environment variables for keystore configuration (with defaults)
+	# Validate keystore configuration (fail fast for public CI)
 	local keystore="${KEYSTORE_PATH:-ks.keystore}"
+
+	if [[ -z "${KEYSTORE_PASSWORD:-}" ]]; then
+		abort "KEYSTORE_PASSWORD environment variable is required but not set"
+	fi
+
+	if [[ -z "${KEYSTORE_ENTRY_PASSWORD:-}" ]]; then
+		abort "KEYSTORE_ENTRY_PASSWORD environment variable is required but not set"
+	fi
+
+	if [[ ! -f "$keystore" ]]; then
+		abort "Keystore not found: $keystore"
+	fi
+
 	local keystore_pass="$KEYSTORE_PASSWORD"
 	local keystore_entry_pass="$KEYSTORE_ENTRY_PASSWORD"
 	local keystore_alias="${KEYSTORE_ALIAS:-jhc}"
 	local keystore_signer="${KEYSTORE_SIGNER:-jhc}"
 
-	local cmd="env -u GITHUB_REPOSITORY java -jar $rv_cli_jar patch $stock_input --purge -o $patched_apk -p $rv_patches_jar"
-	cmd+=" --keystore=$keystore --keystore-entry-password=$keystore_entry_pass"
-	cmd+=" --keystore-password=$keystore_pass --signer=$keystore_signer --keystore-entry-alias=$keystore_alias"
-	cmd+=" $patcher_args"
+	# Build command as array (no eval, no injection)
+	local -a cmd=(
+		env
+		-u GITHUB_REPOSITORY
+		java
+		-jar "$rv_cli_jar"
+		patch
+		"$stock_input"
+		--purge
+		-o "$patched_apk"
+		-p "$rv_patches_jar"
+		"--keystore=$keystore"
+		"--keystore-entry-password=$keystore_entry_pass"
+		"--keystore-password=$keystore_pass"
+		"--signer=$keystore_signer"
+		"--keystore-entry-alias=$keystore_alias"
+	)
 
-	if [ "$OS" = Android ]; then
-		cmd+=" --custom-aapt2-binary=${AAPT2}"
+	# Add patcher args (split space-separated string into array elements)
+	if [[ -n "$patcher_args" ]]; then
+		local arg
+		while IFS= read -r arg; do
+			[[ -n "$arg" ]] && cmd+=("$arg")
+		done < <(xargs -n1 <<<"$patcher_args")
 	fi
 
-	pr "$cmd"
+	# Add Android-specific AAPT2 if needed
+	if [[ "$OS" = "Android" ]]; then
+		cmd+=("--custom-aapt2-binary=${AAPT2}")
+	fi
 
-	if eval "$cmd"; then
-		if [ -f "$patched_apk" ]; then
-			return 0
-		else
-			epr "Patching succeeded but output APK not found: $patched_apk"
-			return 1
+	# Log command with secrets redacted
+	local -a redacted_cmd=("${cmd[@]}")
+	for i in "${!redacted_cmd[@]}"; do
+		if [[ "${redacted_cmd[$i]}" == --keystore-*password=* ]]; then
+			redacted_cmd[$i]="${redacted_cmd[$i]%%=*}=***"
 		fi
-	else
+	done
+	pr "Executing: ${redacted_cmd[*]}"
+
+	# Execute command (no eval - direct array expansion)
+	if ! "${cmd[@]}"; then
 		rm -f "$patched_apk" 2>/dev/null
 		epr "Patching failed for APK"
+		return 1
+	fi
+
+	if [[ ! -f "$patched_apk" ]]; then
+		epr "Patching succeeded but output APK not found: $patched_apk"
+		return 1
+	fi
+
+	# Re-sign with apksigner to enforce v1+v2 signature scheme (never higher)
+	log_info "Re-signing APK with v1+v2 signature scheme enforcement"
+	local temp_signed="${patched_apk}.tmp-signed.apk"
+
+	local -a sign_cmd=(
+		java
+		-jar "$APKSIGNER"
+		sign
+		--ks "$keystore"
+		--ks-pass "pass:$keystore_pass"
+		--ks-key-alias "$keystore_alias"
+		--key-pass "pass:$keystore_entry_pass"
+		--v1-signing-enabled true
+		--v2-signing-enabled true
+		--v3-signing-enabled false
+		--v4-signing-enabled false
+		--out "$temp_signed"
+		"$patched_apk"
+	)
+
+	# Redact passwords for logging
+	local -a redacted_sign_cmd=("${sign_cmd[@]}")
+	for i in "${!redacted_sign_cmd[@]}"; do
+		if [[ "${redacted_sign_cmd[$i]}" == *pass:* ]]; then
+			redacted_sign_cmd[$i]="${redacted_sign_cmd[$i]%%:*}:***"
+		fi
+	done
+	log_debug "Re-signing: ${redacted_sign_cmd[*]}"
+
+	if "${sign_cmd[@]}"; then
+		mv -f "$temp_signed" "$patched_apk"
+		log_info "APK re-signed successfully with v1+v2 only"
+		return 0
+	else
+		rm -f "$temp_signed" 2>/dev/null
+		epr "Re-signing with apksigner failed"
 		return 1
 	fi
 }
@@ -199,8 +279,13 @@ _build_patcher_args() {
 		log_debug "Exclusive patches mode enabled"
 	fi
 
+	# Parse patcher_args from space-separated string back to array
 	if [ "${args[patcher_args]}" ]; then
-		p_patcher_args+=("${args[patcher_args]}")
+		# Split on spaces while preserving quoted arguments
+		local arg
+		while IFS= read -r arg; do
+			[ "$arg" != "" ] && p_patcher_args+=("$arg")
+		done < <(xargs -n1 <<<"${args[patcher_args]}")
 	fi
 }
 
