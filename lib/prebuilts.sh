@@ -113,6 +113,56 @@ get_rv_prebuilts() {
 	echo "${files[@]}"
 }
 
+# Get ReVanced CLI and patches from multiple sources
+# Args:
+#   $1: CLI source (e.g., "j-hc/revanced-cli")
+#   $2: CLI version
+#   $3+: Patches sources (e.g., "ReVanced/revanced-patches" "anddea/revanced-patches")
+# Environment:
+#   PATCHES_VER: Patches version (used for all sources)
+# Returns:
+#   Newline-separated paths: CLI JAR on first line, then patches files
+# Note:
+#   Output format:
+#     /path/to/cli.jar
+#     /path/to/patches1.rvp
+#     /path/to/patches2.rvp
+get_rv_prebuilts_multi() {
+	local cli_src=$1 cli_ver=$2
+	shift 2
+	local -a patches_srcs=("$@")
+
+	if [[ ${#patches_srcs[@]} -eq 0 ]]; then
+		abort "get_rv_prebuilts_multi: no patch sources provided"
+	fi
+
+	log_debug "Downloading prebuilts for ${#patches_srcs[@]} patch source(s)"
+
+	# Download CLI once (shared across all patch sources)
+	local cli_jar
+	local prebuilts
+	# Use first patch source to determine cache directory for CLI
+	prebuilts=$(get_rv_prebuilts "$cli_src" "$cli_ver" "${patches_srcs[0]}" "$PATCHES_VER")
+	read -r cli_jar _ <<<"$prebuilts"
+	echo "$cli_jar"
+
+	# Download patches from each source
+	local idx=1
+	for patches_src in "${patches_srcs[@]}"; do
+		log_info "Downloading patches from ${patches_src} (${idx}/${#patches_srcs[@]})"
+
+		# Get patches jar for this source
+		local patches_prebuilts patches_jar
+		patches_prebuilts=$(get_rv_prebuilts "$cli_src" "$cli_ver" "$patches_src" "$PATCHES_VER")
+		read -r _ patches_jar <<<"$patches_prebuilts"
+
+		echo "$patches_jar"
+		idx=$((idx + 1))
+	done
+
+	log_debug "Downloaded CLI and ${#patches_srcs[@]} patch bundle(s)"
+}
+
 # Remove integrations checks from patches
 # Args:
 #   $1: Patches file path

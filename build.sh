@@ -222,14 +222,20 @@ process_app_config() {
 	declare -A app_args
 
 	# Get source configuration
-	local patches_src cli_src patches_ver cli_ver
-	patches_src=$(t_get "patches-source" "$DEF_PATCHES_SRC")
+	local -a patches_srcs
+	local cli_src patches_ver cli_ver
+
+	# Get patches-source as array (supports both string and array formats for backwards compatibility)
+	toml_get_array_or_string patches_srcs "$t" "patches-source" "$DEF_PATCHES_SRC"
 	patches_ver=$(t_get "patches-version" "$DEF_PATCHES_VER")
 	cli_src=$(t_get "cli-source" "$DEF_CLI_SRC")
 	cli_ver=$(t_get "cli-version" "$DEF_CLI_VER")
 
+	log_debug "Patches sources (${#patches_srcs[@]}): ${patches_srcs[*]}"
+
 	# Download prebuilts
-	local RVP rv_cli_jar rv_patches_jar
+	local -a rv_prebuilts rv_patches_jars
+	local rv_cli_jar
 
 	# Override patches version for dev builds
 	if [ "${BUILD_MODE:-}" = "dev" ]; then
@@ -237,16 +243,28 @@ process_app_config() {
 		log_info "BUILD_MODE=dev: using dev patches version"
 	fi
 
-	if ! RVP="$(get_rv_prebuilts "$cli_src" "$cli_ver" "$patches_src" "$patches_ver")"; then
+	# Export patches_ver for get_rv_prebuilts_multi
+	export PATCHES_VER="$patches_ver"
+
+	# Download CLI and all patch sources
+	mapfile -t rv_prebuilts < <(get_rv_prebuilts_multi "$cli_src" "$cli_ver" "${patches_srcs[@]}")
+	if [[ ${#rv_prebuilts[@]} -eq 0 ]]; then
 		abort "Could not download ReVanced prebuilts for $table_name"
 	fi
 
-	read -r rv_cli_jar rv_patches_jar <<<"$RVP"
+	# First element is CLI jar, rest are patches jars
+	rv_cli_jar="${rv_prebuilts[0]}"
+	rv_patches_jars=("${rv_prebuilts[@]:1}")
+
 	app_args[cli]=$rv_cli_jar
-	app_args[ptjar]=$rv_patches_jar
+	# Store patches jars as array (will be used in patching)
+	app_args[ptjars]="${rv_patches_jars[*]}"
+
+	log_debug "CLI: $rv_cli_jar"
+	log_debug "Patches jars (${#rv_patches_jars[@]}): ${rv_patches_jars[*]}"
 
 	# Export for use in patching functions
-	export rv_cli_jar rv_patches_jar
+	export rv_cli_jar
 
 	# Detect riplib capability
 	if [[ -v cliriplib[${app_args[cli]}] ]]; then

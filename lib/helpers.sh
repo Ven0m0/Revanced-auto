@@ -177,13 +177,20 @@ get_arch_preference() {
 #   $4: Excluded patches selection
 #   $5: Exclusive flag
 #   $6: CLI jar path (optional, uses $rv_cli_jar if not provided)
-#   $7: Patches jar path (optional, uses $rv_patches_jar if not provided)
+#   $7+: Patches jar path(s) - supports multiple jars for multi-source
 # Returns:
-#   Highest supported version
+#   Highest supported version (union across all patch sources)
 get_patch_last_supported_ver() {
 	local list_patches=$1 pkg_name=$2 inc_sel=$3 _exc_sel=$4 _exclusive=$5
 	local cli_jar=${6:-$rv_cli_jar}
-	local patches_jar=${7:-$rv_patches_jar}
+	shift 6
+	local -a patches_jars=("$@")
+
+	# If no patches jars provided, use default
+	if [[ ${#patches_jars[@]} -eq 0 ]]; then
+		patches_jars=("${rv_patches_jar:-}")
+	fi
+
 	local op
 
 	if [ "$inc_sel" ]; then
@@ -206,22 +213,56 @@ get_patch_last_supported_ver() {
 		fi
 	fi
 
-	if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
-		epr "list-versions: '$op'"
+	# Collect versions from all patch sources (union approach)
+	local all_versions="" source_idx=1
+	for patches_jar in "${patches_jars[@]}"; do
+		log_debug "Checking compatible versions from patch source ${source_idx}/${#patches_jars[@]}"
+
+		if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
+			log_warn "Failed to get versions from patch source ${source_idx}: $op"
+			source_idx=$((source_idx + 1))
+			continue
+		fi
+
+		if [ "$op" = "Any" ]; then
+			# This source supports any version - skip to next
+			source_idx=$((source_idx + 1))
+			continue
+		fi
+
+		local pcount
+		pcount=$(head -1 <<<"$op")
+		pcount=${pcount#*(}
+		pcount=${pcount% *}
+
+		if [ "$pcount" = "" ]; then
+			log_warn "Could not determine patch count for source ${source_idx}"
+			source_idx=$((source_idx + 1))
+			continue
+		fi
+
+		# Extract versions supported by this source
+		local source_versions
+		source_versions=$(grep -F "($pcount patch" <<<"$op" | sed 's/ (.* patch.*//')
+
+		if [ "$source_versions" ]; then
+			all_versions+="$source_versions"$'\n'
+			log_debug "Source ${source_idx} supports $(echo "$source_versions" | wc -l) version(s)"
+		fi
+
+		source_idx=$((source_idx + 1))
+	done
+
+	if [ -z "$all_versions" ]; then
+		log_warn "No compatible versions found across ${#patches_jars[@]} patch source(s)"
 		return 1
 	fi
 
-	if [ "$op" = "Any" ]; then return; fi
-
-	pcount=$(head -1 <<<"$op")
-	pcount=${pcount#*(}
-	pcount=${pcount% *}
-
-	if [ "$pcount" = "" ]; then
-		abort "unreachable: '$pcount'"
-	fi
-
-	grep -F "($pcount patch" <<<"$op" | sed 's/ (.* patch.*//' | get_highest_ver || return 1
+	# Union: remove duplicates and get highest version
+	local highest_version
+	highest_version=$(echo "$all_versions" | sort -u -V | tail -1)
+	log_debug "Highest compatible version (union): $highest_version"
+	echo "$highest_version"
 }
 
 # Set prebuilt binary paths based on architecture

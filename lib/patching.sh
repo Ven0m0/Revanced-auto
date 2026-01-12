@@ -86,11 +86,19 @@ merge_splits() {
 #   $2: Patched APK output path
 #   $3: Patcher arguments (space-separated string)
 #   $4: ReVanced CLI JAR path
-#   $5: Patches JAR path
+#   $5+: Patches JAR path(s) - supports multiple for multi-source patching
 # Returns:
 #   0 on success, 1 on failure
 patch_apk() {
-	local stock_input=$1 patched_apk=$2 patcher_args=$3 rv_cli_jar=$4 rv_patches_jar=$5
+	local stock_input=$1 patched_apk=$2 patcher_args=$3 rv_cli_jar=$4
+	shift 4
+	local -a rv_patches_jars=("$@")
+
+	if [[ ${#rv_patches_jars[@]} -eq 0 ]]; then
+		abort "patch_apk: at least one patches JAR required"
+	fi
+
+	log_debug "Patching with ${#rv_patches_jars[@]} patch bundle(s)"
 
 	# Validate keystore configuration (fail fast for public CI)
 	local keystore="${KEYSTORE_PATH:-ks.keystore}"
@@ -122,7 +130,15 @@ patch_apk() {
 		"$stock_input"
 		--purge
 		-o "$patched_apk"
-		-p "$rv_patches_jar"
+	)
+
+	# Add -p flag for each patches jar (order matters - last wins on conflicts)
+	for patches_jar in "${rv_patches_jars[@]}"; do
+		cmd+=("-p" "$patches_jar")
+	done
+
+	# Add keystore configuration
+	cmd+=(
 		"--keystore=$keystore"
 		"--keystore-entry-password=$keystore_entry_pass"
 		"--keystore-password=$keystore_pass"
@@ -222,8 +238,11 @@ _determine_version() {
 
 	if [ "$version_mode" = auto ]; then
 		log_info "Auto-detecting compatible version"
+		# Convert space-separated string to array for version detection
+		local -a patches_jars_array
+		read -ra patches_jars_array <<<"${args[ptjars]}"
 		if ! version=$(get_patch_last_supported_ver "$list_patches" "$pkg_name" \
-			"$inc_patches" "$exc_patches" "$exclusive" "${args[cli]}" "${args[ptjar]}"); then
+			"$inc_patches" "$exc_patches" "$exclusive" "${args[cli]}" "${patches_jars_array[@]}"); then
 			return 1
 		fi
 
@@ -408,9 +427,19 @@ build_rv() {
 
 	log_info "Package name: $pkg_name"
 
-	# Get patch information
-	local list_patches
-	list_patches=$(java -jar "${args[cli]}" list-patches "${args[ptjar]}" -f "$pkg_name" -v -p 2>&1)
+	# Get patch information from all patch sources
+	local list_patches="" source_idx=1
+	local -a patches_jars_array
+	read -ra patches_jars_array <<<"${args[ptjars]}"
+
+	log_debug "Listing patches from ${#patches_jars_array[@]} source(s)"
+	for patches_jar in "${patches_jars_array[@]}"; do
+		log_debug "Listing patches from source ${source_idx}/${#patches_jars_array[@]}: $patches_jar"
+		local source_patches
+		source_patches=$(java -jar "${args[cli]}" list-patches "$patches_jar" -f "$pkg_name" -v -p 2>&1)
+		list_patches+="$source_patches"$'\n'
+		source_idx=$((source_idx + 1))
+	done
 
 	# Determine version to build
 	version=$(_determine_version "$version_mode" "$pkg_name" "$dl_from" "$list_patches" \
@@ -474,7 +503,10 @@ build_rv() {
 
 	# Patch APK
 	if [ "${NORB:-}" != true ] || [ ! -f "$patched_apk" ]; then
-		if ! patch_apk "$stock_apk" "$patched_apk" "${patcher_args[*]}" "${args[cli]}" "${args[ptjar]}"; then
+		# Convert space-separated patches jars to array for patch_apk
+		local -a patches_jars_array
+		read -ra patches_jars_array <<<"${args[ptjars]}"
+		if ! patch_apk "$stock_apk" "$patched_apk" "${patcher_args[*]}" "${args[cli]}" "${patches_jars_array[@]}"; then
 			epr "Building '${table}' failed!"
 			return 0
 		fi

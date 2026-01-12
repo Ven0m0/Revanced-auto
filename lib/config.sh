@@ -222,6 +222,69 @@ toml_get_array() {
 	eval "${var_name}=(\"\${elements[@]}\")"
 }
 
+# Get value or array from table, normalized to array format
+# Args:
+#   $1: Variable name to store the array
+#   $2: Table object (JSON)
+#   $3: Key name
+#   $4: Default value (optional, string or array)
+# Side effects:
+#   Populates the named array with values
+# Note:
+#   If the value is a string, it's converted to a single-element array
+#   If the value is an array, it's returned as-is
+#   This enables backwards compatibility: string → [string]
+toml_get_array_or_string() {
+	local var_name="$1"
+	local table_json="$2"
+	local key="$3"
+	local default="${4:-}"
+
+	local json_value
+	if ! json_value=$(jq -e ".\"${key}\"" <<<"$table_json" 2>/dev/null); then
+		# Key not found - use default if provided
+		if [[ -n "$default" ]]; then
+			eval "${var_name}=(\"${default}\")"
+			return 0
+		fi
+		return 1
+	fi
+
+	if [[ "$json_value" == "null" ]]; then
+		# Null value - use default if provided
+		if [[ -n "$default" ]]; then
+			eval "${var_name}=(\"${default}\")"
+			return 0
+		fi
+		return 1
+	fi
+
+	# Check if value is array or string
+	local value_type
+	value_type=$(jq -r 'type' <<<"$json_value" 2>/dev/null)
+
+	local -a elements=()
+	case "$value_type" in
+	array)
+		# Already an array - extract elements
+		while IFS= read -r element; do
+			elements+=("$element")
+		done < <(jq -r '.[]' <<<"$json_value" 2>/dev/null)
+		;;
+	string)
+		# Single string - convert to array with one element
+		elements=("$(jq -r '.' <<<"$json_value" 2>/dev/null)")
+		;;
+	*)
+		# Unexpected type - treat as string
+		elements=("$(jq -r 'tostring' <<<"$json_value" 2>/dev/null)")
+		;;
+	esac
+
+	# Use nameref to populate caller's array
+	eval "${var_name}=(\"\${elements[@]}\")"
+}
+
 # Validate boolean value
 # Args:
 #   $1: Value to validate
