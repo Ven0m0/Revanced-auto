@@ -270,6 +270,11 @@ toml_get_array_or_string() {
 		while IFS= read -r element; do
 			elements+=("$element")
 		done < <(jq -r '.[]' <<<"$json_value" 2>/dev/null)
+
+		# Handle empty array - use default if provided
+		if [[ ${#elements[@]} -eq 0 ]] && [[ -n "$default" ]]; then
+			elements=("$default")
+		fi
 		;;
 	string)
 		# Single string - convert to array with one element
