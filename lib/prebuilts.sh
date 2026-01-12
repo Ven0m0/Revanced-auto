@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # ReVanced prebuilts management
 
 # Get ReVanced CLI and patches
@@ -25,10 +26,10 @@ get_rv_prebuilts() {
 		local src=$1 tag=$2 ver=${3-} fprefix=$4
 		local ext grab_cl
 
-		if [ "$tag" = "CLI" ]; then
+		if [[ "$tag" = "CLI" ]]; then
 			ext="jar"
 			grab_cl=false
-		elif [ "$tag" = "Patches" ]; then
+		elif [[ "$tag" = "Patches" ]]; then
 			ext="rvp"
 			grab_cl=true
 		else
@@ -42,7 +43,7 @@ get_rv_prebuilts() {
 		local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
 
 		# Handle version selection
-		if [ "$ver" = "dev" ]; then
+		if [[ "$ver" = "dev" ]]; then
 			log_info "Fetching dev version for $tag"
 			local resp
 			resp=$(gh_req "$rv_rel" -) || return 1
@@ -50,7 +51,7 @@ get_rv_prebuilts() {
 			log_debug "Selected dev version: $ver"
 		fi
 
-		if [ "$ver" = "latest" ]; then
+		if [[ "$ver" = "latest" ]]; then
 			rv_rel+="/latest"
 			name_ver="*"
 		else
@@ -62,7 +63,7 @@ get_rv_prebuilts() {
 		local url file tag_name name
 		file=$(find "$dir" -name "${fprefix}-${name_ver#v}.${ext}" -type f 2>/dev/null)
 
-		if [ "$file" = "" ]; then
+		if [[ "$file" = "" ]]; then
 			log_info "Downloading $tag from GitHub"
 			local resp asset
 			resp=$(gh_req "$rv_rel" -) || return 1
@@ -76,13 +77,13 @@ get_rv_prebuilts() {
 		else
 			grab_cl=false
 			local for_err=$file
-			if [ "$ver" = "latest" ]; then
+			if [[ "$ver" = "latest" ]]; then
 				file=$(grep -v '/[^/]*dev[^/]*$' <<<"$file" | head -1)
 			else
 				file=$(grep "/[^/]*${ver#v}[^/]*\$" <<<"$file" | head -1)
 			fi
 
-			if [ "$file" = "" ]; then
+			if [[ "$file" = "" ]]; then
 				abort "filter fail: '$for_err' with '$ver'"
 			fi
 
@@ -93,14 +94,14 @@ get_rv_prebuilts() {
 		fi
 
 		# Handle patches-specific processing
-		if [ "$tag" = "Patches" ]; then
+		if [[ "$tag" = "Patches" ]]; then
 			# shellcheck disable=SC2086
-			if [ "$grab_cl" = true ]; then
+			if [[ "$grab_cl" = true ]]; then
 				echo -e "[Changelog](https://github.com/${src}/releases/tag/${tag_name})\n" >>"${cl_dir}/changelog.md"
 			fi
 
 			# Remove integrations checks if requested
-			if [ "$REMOVE_RV_INTEGRATIONS_CHECKS" = true ]; then
+			if [[ "$REMOVE_RV_INTEGRATIONS_CHECKS" = true ]]; then
 				if ! _remove_integrations_checks "$file"; then
 					log_warn "Patching revanced-integrations failed"
 				fi

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 # ReVanced Builder - Main build orchestration script
 # Refactored for better maintainability and performance
 
@@ -9,7 +11,7 @@ export LC_ALL=C
 trap "rm -rf temp/*tmp.* temp/*/*tmp.* temp/*-temporary-files; exit 130" INT
 
 # Handle clean command
-if [ "${1-}" = "clean" ]; then
+if [[ "${1-}" = "clean" ]]; then
 	echo "Cleaning build artifacts..."
 	rm -rf temp build logs build.md
 	echo "Clean complete"
@@ -41,7 +43,7 @@ check_prerequisites() {
 	fi
 
 	# Report missing dependencies
-	if [ ${#missing[@]} -gt 0 ]; then
+	if [[ ${#missing[@]} -gt 0 ]]; then
 		epr "Missing required dependencies: ${missing[*]}"
 		epr "Install them with: apt install ${missing[*]} (or equivalent package manager)"
 		exit 1
@@ -55,7 +57,7 @@ check_prerequisites() {
 	local java_major_version
 	if [[ $java_version =~ \"([0-9]+)\.([0-9]+) ]]; then
 		# Old format: 1.8.x -> version 8
-		if [ "${BASH_REMATCH[1]}" = "1" ]; then
+		if [[ "${BASH_REMATCH[1]}" = "1" ]]; then
 			java_major_version="${BASH_REMATCH[2]}"
 		else
 			java_major_version="${BASH_REMATCH[1]}"
@@ -68,7 +70,7 @@ check_prerequisites() {
 		java_major_version="0"
 	fi
 
-	if [ "$java_major_version" -lt 21 ]; then
+	if [[ "$java_major_version" -lt 21 ]]; then
 		epr "Java version must be 21 or higher (found: Java $java_major_version)"
 		epr "Please install OpenJDK Temurin 21 or later"
 		exit 1
@@ -80,7 +82,7 @@ check_prerequisites() {
 	fi
 
 	# Report warnings
-	if [ ${#warnings[@]} -gt 0 ]; then
+	if [[ ${#warnings[@]} -gt 0 ]]; then
 		for warning in "${warnings[@]}"; do
 			log_warn "$warning"
 		done
@@ -99,7 +101,7 @@ set_prebuilts
 validate_config_value() {
 	local value=$1 field=$2 min=${3:-} max=${4:-}
 
-	if [ "$min" != "" ] && [ "$max" != "" ]; then
+	if [[ "$min" != "" && "$max" != "" ]]; then
 		if ((value < min)) || ((value > max)); then
 			abort "$field must be within $min-$max (got: $value)"
 		fi
@@ -123,7 +125,7 @@ load_configuration() {
 	validate_config_value "$COMPRESSION_LEVEL" "compression-level" 0 9
 
 	if ! PARALLEL_JOBS=$(toml_get "$main_config_t" parallel-jobs); then
-		if [ "$OS" = Android ]; then
+		if [[ "$OS" = Android ]]; then
 			PARALLEL_JOBS=1
 			log_info "Android detected: setting parallel-jobs=1"
 		else
@@ -159,7 +161,7 @@ load_configuration "$1"
 mkdir -p "$TEMP_DIR" "$BUILD_DIR"
 
 # Handle config update mode
-if [ "${2-}" = "--config-update" ]; then
+if [[ "${2-}" = "--config-update" ]]; then
 	log_info "Running config update check..."
 	config_update
 	exit 0
@@ -194,7 +196,7 @@ process_app_config() {
 	# Helper to get value with default
 	t_get() {
 		local key=$1 default=$2
-		if [[ -v t_cfg[$key] ]] && [ "${t_cfg[$key]}" != "null" ]; then
+		if [[ -v t_cfg[$key] && "${t_cfg[$key]}" != "null" ]]; then
 			echo "${t_cfg[$key]}"
 		else
 			echo "$default"
@@ -206,7 +208,7 @@ process_app_config() {
 	enabled=$(t_get "enabled" "true")
 	vtf "$enabled" "enabled"
 
-	if [ "$enabled" = false ]; then
+	if [[ "$enabled" = false ]]; then
 		log_info "Skipping disabled app: $table_name"
 		return
 	fi
@@ -238,7 +240,7 @@ process_app_config() {
 	local rv_cli_jar
 
 	# Override patches version for dev builds
-	if [ "${BUILD_MODE:-}" = "dev" ]; then
+	if [[ "${BUILD_MODE:-}" = "dev" ]]; then
 		patches_ver="dev"
 		log_info "BUILD_MODE=dev: using dev patches version"
 	fi
@@ -285,10 +287,10 @@ process_app_config() {
 	local app_riplib
 	app_riplib=$(t_get "riplib" "$DEF_RIPLIB")
 
-	if [ "$app_riplib" = "false" ]; then
+	if [[ "$app_riplib" = "false" ]]; then
 		app_args[riplib]=false
 		log_debug "Riplib disabled by config"
-	elif [ "$app_riplib" = "true" ] && [ "${app_args[riplib]}" = "false" ]; then
+	elif [[ "$app_riplib" = "true" && "${app_args[riplib]}" = "false" ]]; then
 		log_warn "Config enables riplib but CLI doesn't support it"
 	fi
 
@@ -313,15 +315,15 @@ process_app_config() {
 	app_args[table]=$table_name
 
 	# Validate patch quotes
-	if [ "${app_args[excluded_patches]}" != "" ] && [[ ${app_args[excluded_patches]} != *'"'* ]]; then
+	if [[ "${app_args[excluded_patches]}" != "" && ${app_args[excluded_patches]} != *'"'* ]]; then
 		abort "Patch names inside excluded-patches must be quoted"
 	fi
-	if [ "${app_args[included_patches]}" != "" ] && [[ ${app_args[included_patches]} != *'"'* ]]; then
+	if [[ "${app_args[included_patches]}" != "" && ${app_args[included_patches]} != *'"'* ]]; then
 		abort "Patch names inside included-patches must be quoted"
 	fi
 
 	# Validate exclusive patches
-	if [ "${app_args[exclusive_patches]}" != "false" ]; then
+	if [[ "${app_args[exclusive_patches]}" != "false" ]]; then
 		vtf "${app_args[exclusive_patches]}" "exclusive-patches"
 	fi
 
@@ -329,19 +331,19 @@ process_app_config() {
 	app_args[build_mode]=$(t_get "build-mode" "apk")
 
 	# Override with BUILD_MODE environment variable if set
-	if [ "${BUILD_MODE:-}" = "dev" ] || [ "${BUILD_MODE:-}" = "stable" ]; then
+	if [[ "${BUILD_MODE:-}" = "dev" || "${BUILD_MODE:-}" = "stable" ]]; then
 		# For dev/stable builds, force apk mode only
 		app_args[build_mode]=apk
 		log_info "BUILD_MODE=$BUILD_MODE: forcing build-mode=apk for $table_name"
 	fi
 
-	if [ "${app_args[build_mode]}" != "apk" ]; then
+	if [[ "${app_args[build_mode]}" != "apk" ]]; then
 		abort "ERROR: build-mode '${app_args[build_mode]}' is not valid for '${table_name}': only 'apk' is allowed (Magisk module support removed)"
 	fi
 
 	# Parse download URLs
 	app_args[uptodown_dlurl]=$(t_get "uptodown-dlurl" "")
-	if [ "${app_args[uptodown_dlurl]}" != "" ]; then
+	if [[ "${app_args[uptodown_dlurl]}" != "" ]]; then
 		app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%/}
 		app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%download}
 		app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%/}
@@ -349,26 +351,26 @@ process_app_config() {
 	fi
 
 	app_args[apkmirror_dlurl]=$(t_get "apkmirror-dlurl" "")
-	if [ "${app_args[apkmirror_dlurl]}" != "" ]; then
+	if [[ "${app_args[apkmirror_dlurl]}" != "" ]]; then
 		app_args[apkmirror_dlurl]=${app_args[apkmirror_dlurl]%/}
 		app_args[dl_from]=apkmirror
 	fi
 
 	app_args[archive_dlurl]=$(t_get "archive-dlurl" "")
-	if [ "${app_args[archive_dlurl]}" != "" ]; then
+	if [[ "${app_args[archive_dlurl]}" != "" ]]; then
 		app_args[archive_dlurl]=${app_args[archive_dlurl]%/}
 		app_args[dl_from]=archive
 	fi
 
 	# Validate at least one download source
-	if [ "${app_args[dl_from]-}" = "" ]; then
+	if [[ "${app_args[dl_from]-}" = "" ]]; then
 		abort "ERROR: no 'apkmirror_dlurl', 'uptodown_dlurl' or 'archive_dlurl' option was set for '$table_name'."
 	fi
 
 	# Parse architecture
 	app_args[arch]=$(t_get "arch" "$DEF_ARCH")
-	if [ "${app_args[arch]}" != "both" ] && [ "${app_args[arch]}" != "all" ] &&
-		[[ ${app_args[arch]} != "arm64-v8a"* ]] && [[ ${app_args[arch]} != "arm-v7a"* ]]; then
+	if [[ "${app_args[arch]}" != "both" && "${app_args[arch]}" != "all" &&
+		${app_args[arch]} != "arm64-v8a"* && ${app_args[arch]} != "arm-v7a"* ]]; then
 		abort "Wrong arch '${app_args[arch]}' for '$table_name'"
 	fi
 
@@ -379,12 +381,19 @@ process_app_config() {
 	app_args[dpi]=$(t_get "apkmirror-dpi" "nodpi")
 
 	# Handle dual architecture builds
-	if [ "${app_args[arch]}" = both ]; then
+	if [[ "${app_args[arch]}" = both ]]; then
 		# Build arm64-v8a
 		app_args[table]="$table_name (arm64-v8a)"
 		app_args[arch]="arm64-v8a"
 		idx=$((idx + 1))
-		build_rv "$(declare -p app_args)" &
+
+		# Serialize args to temp file
+		local args_file
+		args_file=$(mktemp)
+		for key in "${!app_args[@]}"; do
+			printf '%s=%s\n' "$key" "${app_args[$key]}" >> "$args_file"
+		done
+		build_rv "$args_file" &
 
 		# Build arm-v7a
 		app_args[table]="$table_name (arm-v7a)"
@@ -395,26 +404,49 @@ process_app_config() {
 			idx=$((idx - 1))
 		fi
 		idx=$((idx + 1))
-		build_rv "$(declare -p app_args)" &
+
+		# Serialize args to temp file
+		args_file=$(mktemp)
+		for key in "${!app_args[@]}"; do
+			printf '%s=%s\n' "$key" "${app_args[$key]}" >> "$args_file"
+		done
+		build_rv "$args_file" &
 	else
 		# Single architecture build
 		idx=$((idx + 1))
-		build_rv "$(declare -p app_args)" &
+
+		# Serialize args to temp file
+		local args_file
+		args_file=$(mktemp)
+		for key in "${!app_args[@]}"; do
+			printf '%s=%s\n' "$key" "${app_args[$key]}" >> "$args_file"
+		done
+		build_rv "$args_file" &
 	fi
 }
 
 # Process all app configurations
 log_info "Starting build process..."
 while read -r table_name; do
-	if [ "$table_name" = "" ]; then continue; fi
+	if [[ "$table_name" = "" ]]; then continue; fi
 
 	t=$(toml_get_table "$table_name")
 	process_app_config "$table_name" "$t"
 done < <(toml_get_table_names)
 
-# Wait for all builds to complete
+# Wait for all builds to complete and track failures
 log_info "Waiting for all builds to complete..."
-wait
+declare -a failed_jobs=()
+for pid in $(jobs -p); do
+	if ! wait "$pid"; then
+		failed_jobs+=("$pid")
+	fi
+done
+
+# Report on failed jobs
+if [[ ${#failed_jobs[@]} -gt 0 ]]; then
+	log_warn "${#failed_jobs[@]} build job(s) failed (PIDs: ${failed_jobs[*]})"
+fi
 
 # Clean up temporary files
 rm -rf temp/tmp.* 2>/dev/null || :
@@ -422,7 +454,7 @@ rm -rf temp/tmp.* 2>/dev/null || :
 # ==================== Post-Build ====================
 
 # Check if any builds succeeded
-if [ "$(ls -A1 "$BUILD_DIR" 2>/dev/null)" = "" ]; then
+if [[ "$(ls -A1 "$BUILD_DIR" 2>/dev/null)" = "" ]]; then
 	abort "All builds failed."
 fi
 
@@ -432,7 +464,7 @@ log "$(cat "$TEMP_DIR"/*-rv/changelog.md 2>/dev/null || :)"
 
 # Add skipped builds info
 SKIPPED=$(cat "$TEMP_DIR"/skipped 2>/dev/null || :)
-if [ "$SKIPPED" != "" ]; then
+if [[ "$SKIPPED" != "" ]]; then
 	log "\nSkipped:"
 	log "$SKIPPED"
 fi

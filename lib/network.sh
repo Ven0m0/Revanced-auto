@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Network request functions with retry logic and exponential backoff
 
 # Configuration
@@ -22,26 +23,38 @@ _req() {
 	local success=false
 
 	# If output file exists, skip download
-	if [ "$op" != "-" ] && [ -f "$op" ]; then
+	if [[ "$op" != "-" && -f "$op" ]]; then
 		log_debug "File already exists, skipping download: $op"
 		return 0
 	fi
 
-	# Handle temporary file for downloads
-	local dlp=""
-	if [ "$op" != "-" ]; then
+	# Handle temporary file for downloads with proper locking
+	local dlp="" lock_fd
+	if [[ "$op" != "-" ]]; then
 		dlp="$(dirname "$op")/tmp.$(basename "$op")"
-		# Wait if another process is downloading
-		if [ -f "$dlp" ]; then
+		local lock_file="${dlp}.lock"
+
+		# Try to acquire exclusive lock (create lock file atomically)
+		exec {lock_fd}>"$lock_file" || {
+			epr "Failed to create lock file: $lock_file"
+			return 1
+		}
+
+		if ! flock -n "$lock_fd"; then
+			# Another process is downloading - wait for lock
 			log_info "Waiting for concurrent download: $dlp"
-			while [ -f "$dlp" ]; do sleep 1; done
+			flock "$lock_fd"  # Block until lock is available
+			exec {lock_fd}>&-  # Close lock file descriptor
+			rm -f "$lock_file"
+			# File was downloaded by other process
 			return 0
 		fi
+		# Lock acquired - we will download
 	fi
 
 	# Retry loop with exponential backoff
-	while [ "$retry_count" -le "$MAX_RETRIES" ]; do
-		if [ "$op" = "-" ]; then
+	while [[ "$retry_count" -le "$MAX_RETRIES" ]]; do
+		if [[ "$op" = "-" ]]; then
 			# Output to stdout
 			if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
 				--connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
@@ -61,18 +74,28 @@ _req() {
 		fi
 
 		retry_count=$((retry_count + 1))
-		if [ "$retry_count" -le "$MAX_RETRIES" ]; then
+		if [[ "$retry_count" -le "$MAX_RETRIES" ]]; then
 			log_warn "Request failed (attempt $retry_count/$MAX_RETRIES): $ip - Retrying in ${delay}s..."
 			sleep "$delay"
 			delay=$((delay * 2))
 		fi
 	done
 
-	# Clean up temporary file on failure
-	if [ "$success" = false ]; then
+	# Clean up temporary file and lock on failure
+	if [[ "$success" = false ]]; then
 		rm -f "$dlp" 2>/dev/null
+		if [[ -n "${lock_fd:-}" ]]; then
+			exec {lock_fd}>&-  # Close lock file descriptor
+			rm -f "${lock_file:-}"
+		fi
 		epr "Request failed after $MAX_RETRIES retries: $ip"
 		return 1
+	fi
+
+	# Release lock on success
+	if [[ -n "${lock_fd:-}" ]]; then
+		exec {lock_fd}>&-  # Close lock file descriptor
+		rm -f "${lock_file:-}"
 	fi
 
 	log_debug "Request successful: $ip"
@@ -100,7 +123,7 @@ gh_req() {
 #   $1: Output file path
 #   $2: Asset URL
 gh_dl() {
-	if [ ! -f "$1" ]; then
+	if [[ ! -f "$1" ]]; then
 		pr "Getting '$1' from '$2'"
 		_req "$2" "$1" -H "$GH_HEADER" -H "Accept: application/octet-stream"
 	else

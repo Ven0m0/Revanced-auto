@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Logging and messaging functions
 
 # Log levels
@@ -17,21 +18,21 @@ pr() {
 
 # Print info message
 log_info() {
-	if [ "$LOG_LEVEL" -le "$LOG_LEVEL_INFO" ]; then
+	if [[ "$LOG_LEVEL" -le "$LOG_LEVEL_INFO" ]]; then
 		echo -e "\033[0;36m[INFO] ${1}\033[0m" >&2
 	fi
 }
 
 # Print debug message
 log_debug() {
-	if [ "$LOG_LEVEL" -le "$LOG_LEVEL_DEBUG" ]; then
+	if [[ "$LOG_LEVEL" -le "$LOG_LEVEL_DEBUG" ]]; then
 		echo -e "\033[0;37m[DEBUG] ${1}\033[0m" >&2
 	fi
 }
 
 # Print warning message in yellow
 log_warn() {
-	if [ "$LOG_LEVEL" -le "$LOG_LEVEL_WARN" ]; then
+	if [[ "$LOG_LEVEL" -le "$LOG_LEVEL_WARN" ]]; then
 		echo -e "\033[0;33m[WARN] ${1}\033[0m" >&2
 	fi
 }
@@ -39,7 +40,7 @@ log_warn() {
 # Print error message in red
 epr() {
 	echo >&2 -e "\033[0;31m[-] ${1}\033[0m"
-	if [ "${GITHUB_REPOSITORY-}" ]; then
+	if [[ "${GITHUB_REPOSITORY-}" ]]; then
 		echo -e "::error::${1}\n"
 	fi
 }

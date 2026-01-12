@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 # Main utilities loader - sources all modular components
 # Refactored for better maintainability and organization
 LC_ALL=C
@@ -9,7 +11,7 @@ export BIN_DIR="bin"
 export BUILD_DIR="build"
 
 # GitHub authentication header
-if [ "${GITHUB_TOKEN-}" ]; then
+if [[ "${GITHUB_TOKEN-}" ]]; then
 	export GH_HEADER="Authorization: token ${GITHUB_TOKEN}"
 else
 	export GH_HEADER=
@@ -26,7 +28,7 @@ export OS
 LIB_DIR="${CWD}/lib"
 
 # Check if lib directory exists
-if [ ! -d "$LIB_DIR" ]; then
+if [[ ! -d "$LIB_DIR" ]]; then
 	echo "ERROR: Library directory not found: $LIB_DIR"
 	exit 1
 fi

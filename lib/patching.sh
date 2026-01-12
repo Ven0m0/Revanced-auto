@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # APK patching and building functions
 
 # Cache for signature verification (format: "pkg:version" -> signature)
@@ -137,11 +138,15 @@ patch_apk() {
 		cmd+=("-p" "$patches_jar")
 	done
 
-	# Add keystore configuration
+	# Add keystore configuration (use env vars for passwords)
+	# Export passwords to environment for safer passing
+	export RV_KEYSTORE_PASSWORD="$keystore_pass"
+	export RV_KEYSTORE_ENTRY_PASSWORD="$keystore_entry_pass"
+
 	cmd+=(
 		"--keystore=$keystore"
-		"--keystore-entry-password=$keystore_entry_pass"
-		"--keystore-password=$keystore_pass"
+		"--keystore-entry-password=env:RV_KEYSTORE_ENTRY_PASSWORD"
+		"--keystore-password=env:RV_KEYSTORE_PASSWORD"
 		"--signer=$keystore_signer"
 		"--keystore-entry-alias=$keystore_alias"
 	)
@@ -184,14 +189,15 @@ patch_apk() {
 	log_info "Re-signing APK with v1+v2 signature scheme enforcement"
 	local temp_signed="${patched_apk}.tmp-signed.apk"
 
+	# Use environment variables for passwords (already exported above)
 	local -a sign_cmd=(
 		java
 		-jar "$APKSIGNER"
 		sign
 		--ks "$keystore"
-		--ks-pass "pass:$keystore_pass"
+		--ks-pass "env:RV_KEYSTORE_PASSWORD"
 		--ks-key-alias "$keystore_alias"
-		--key-pass "pass:$keystore_entry_pass"
+		--key-pass "env:RV_KEYSTORE_ENTRY_PASSWORD"
 		--v1-signing-enabled true
 		--v2-signing-enabled true
 		--v3-signing-enabled false
@@ -200,14 +206,8 @@ patch_apk() {
 		"$patched_apk"
 	)
 
-	# Redact passwords for logging
-	local -a redacted_sign_cmd=("${sign_cmd[@]}")
-	for i in "${!redacted_sign_cmd[@]}"; do
-		if [[ "${redacted_sign_cmd[$i]}" == *pass:* ]]; then
-			redacted_sign_cmd[$i]="${redacted_sign_cmd[$i]%%:*}:***"
-		fi
-	done
-	log_debug "Re-signing: ${redacted_sign_cmd[*]}"
+	# No need to redact - passwords are now in env vars, not command line
+	log_debug "Re-signing: ${sign_cmd[*]}"
 
 	if "${sign_cmd[@]}"; then
 		mv -f "$temp_signed" "$patched_apk"
@@ -236,7 +236,7 @@ _determine_version() {
 	local list_patches=$4 inc_patches=$5 exc_patches=$6 exclusive=$7
 	local version=""
 
-	if [ "$version_mode" = auto ]; then
+	if [[ "$version_mode" = auto ]]; then
 		log_info "Auto-detecting compatible version"
 		# Convert space-separated string to array for version detection
 		local -a patches_jars_array
@@ -246,18 +246,18 @@ _determine_version() {
 			return 1
 		fi
 
-		if [ "$version" = "" ]; then
+		if [[ "$version" = "" ]]; then
 			log_debug "No specific version required, using latest"
 			version_mode="latest"
 		fi
 	fi
 
-	if [ "$version_mode" = "auto" ] && [ "$version" = "" ]; then
+	if [[ "$version_mode" = "auto" && "$version" = "" ]]; then
 		version_mode="latest"
 	fi
 
 	if isoneof "$version_mode" latest beta; then
-		if [ "$version_mode" = beta ]; then
+		if [[ "$version_mode" = beta ]]; then
 			__AAV__="true"
 			log_info "Fetching latest beta version"
 		else
@@ -268,7 +268,7 @@ _determine_version() {
 		local pkgvers
 		pkgvers=$(get_"${dl_from}"_vers)
 		version=$(get_highest_ver <<<"$pkgvers") || version=$(head -1 <<<"$pkgvers")
-	elif [ "$version_mode" != "auto" ]; then
+	elif [[ "$version_mode" != "auto" ]]; then
 		version=$version_mode
 	fi
 
@@ -283,23 +283,23 @@ _determine_version() {
 _build_patcher_args() {
 	p_patcher_args=()
 
-	if [ "${args[excluded_patches]}" ]; then
+	if [[ "${args[excluded_patches]}" ]]; then
 		p_patcher_args+=("$(join_args "${args[excluded_patches]}" -d)")
 		log_debug "Excluded patches: ${args[excluded_patches]}"
 	fi
 
-	if [ "${args[included_patches]}" ]; then
+	if [[ "${args[included_patches]}" ]]; then
 		p_patcher_args+=("$(join_args "${args[included_patches]}" -e)")
 		log_debug "Included patches: ${args[included_patches]}"
 	fi
 
-	if [ "${args[exclusive_patches]}" = true ]; then
+	if [[ "${args[exclusive_patches]}" = true ]]; then
 		p_patcher_args+=("--exclusive")
 		log_debug "Exclusive patches mode enabled"
 	fi
 
 	# Parse patcher_args from space-separated string back to array
-	if [ "${args[patcher_args]}" ]; then
+	if [[ "${args[patcher_args]}" ]]; then
 		# Split on spaces while preserving quoted arguments
 		local arg
 		while IFS= read -r arg; do
@@ -321,7 +321,7 @@ _download_stock_apk() {
 	local table=${args[table]}
 
 	for dl_p in archive apkmirror uptodown; do
-		if [ "${args[${dl_p}_dlurl]}" = "" ]; then continue; fi
+		if [[ "${args[${dl_p}_dlurl]}" = "" ]]; then continue; fi
 
 		pr "Downloading '${table}' from ${dl_p}"
 
@@ -353,7 +353,7 @@ _handle_microg_patch() {
 	microg_patch=$(grep "^Name: " <<<"$list_patches" | grep -i "gmscore\|microg" || :)
 	microg_patch=${microg_patch#*: }
 
-	if [ "$microg_patch" != "" ] && [[ ${p_patcher_args[*]} =~ $microg_patch ]]; then
+	if [[[ "$microg_patch" != "" && ${p_patcher_args[*]} =~ $microg_patch ]]; then
 		epr "You can't include/exclude microg patch as that's done by rvmm builder automatically."
 		p_patcher_args=("${p_patcher_args[@]//-[ei] ${microg_patch}/}")
 	fi
@@ -369,25 +369,34 @@ _handle_microg_patch() {
 _apply_riplib_optimization() {
 	local arch=$1
 
-	if [ "${args[riplib]}" != true ]; then
+	if [[ "${args[riplib]}" != true ]]; then
 		return
 	fi
 
 	log_info "Applying library stripping optimization"
 	patcher_args+=("--rip-lib x86_64 --rip-lib x86")
 
-	if [ "$arch" = "arm64-v8a" ]; then
+	if [[ "$arch" = "arm64-v8a" ]]; then
 		patcher_args+=("--rip-lib armeabi-v7a")
-	elif [ "$arch" = "arm-v7a" ]; then
+	elif [[ "$arch" = "arm-v7a" ]]; then
 		patcher_args+=("--rip-lib arm64-v8a")
 	fi
 }
 
 # Main build function for ReVanced APK/Module
 # Args:
-#   $1: Associative array declaration string with build args
+#   $1: Path to temporary file containing serialized array
 build_rv() {
-	eval "declare -A args=${1#*=}"
+	local args_file=$1
+	declare -A args
+
+	# Safely load args from file
+	while IFS='=' read -r key value; do
+		[[ -n "$key" && "$key" != \#* ]] && args[$key]=$value
+	done < "$args_file"
+
+	# Clean up temp file
+	rm -f "$args_file"
 
 	local version="" pkg_name=""
 	local version_mode=${args[version]}
@@ -407,7 +416,7 @@ build_rv() {
 	# Determine package name from download sources
 	local tried_dl=()
 	for dl_p in archive apkmirror uptodown; do
-		if [ "${args[${dl_p}_dlurl]}" = "" ]; then continue; fi
+		if [[ "${args[${dl_p}_dlurl]}" = "" ]]; then continue; fi
 
 		if ! get_"${dl_p}"_resp "${args[${dl_p}_dlurl]}" || ! pkg_name=$(get_"${dl_p}"_pkg_name); then
 			args[${dl_p}_dlurl]=""
@@ -420,32 +429,50 @@ build_rv() {
 		break
 	done
 
-	if [ "$pkg_name" = "" ]; then
+	if [[ "$pkg_name" = "" ]]; then
 		epr "Empty package name, not building ${table}."
 		return 0
 	fi
 
 	log_info "Package name: $pkg_name"
 
-	# Get patch information from all patch sources
+	# Get patch information from all patch sources (run in parallel for performance)
 	local list_patches="" source_idx=1
 	local -a patches_jars_array
 	read -ra patches_jars_array <<<"${args[ptjars]}"
 
 	log_debug "Listing patches from ${#patches_jars_array[@]} source(s)"
+
+	# Run list-patches commands in parallel to save time
+	local -a temp_files=() pids=()
 	for patches_jar in "${patches_jars_array[@]}"; do
 		log_debug "Listing patches from source ${source_idx}/${#patches_jars_array[@]}: $patches_jar"
-		local source_patches
-		source_patches=$(java -jar "${args[cli]}" list-patches "$patches_jar" -f "$pkg_name" -v -p 2>&1)
-		list_patches+="$source_patches"$'\n'
+		local temp_file
+		temp_file=$(mktemp)
+		temp_files+=("$temp_file")
+
+		# Run in background
+		(java -jar "${args[cli]}" list-patches "$patches_jar" -f "$pkg_name" -v -p > "$temp_file" 2>&1) &
+		pids+=($!)
 		source_idx=$((source_idx + 1))
+	done
+
+	# Wait for all background jobs and collect results
+	for pid in "${pids[@]}"; do
+		wait "$pid"
+	done
+
+	# Combine results from temp files
+	for temp_file in "${temp_files[@]}"; do
+		list_patches+="$(cat "$temp_file")"$'\n'
+		rm -f "$temp_file"
 	done
 
 	# Determine version to build
 	version=$(_determine_version "$version_mode" "$pkg_name" "$dl_from" "$list_patches" \
 		"${args[included_patches]}" "${args[excluded_patches]}" "${args[exclusive_patches]}")
 
-	if [ "$version" = "" ]; then
+	if [[ "$version" = "" ]]; then
 		epr "Empty version, not building ${table}."
 		return 0
 	fi
@@ -462,7 +489,7 @@ build_rv() {
 	version_f=$(format_version "$version")
 	local stock_apk="${TEMP_DIR}/${pkg_name}-${version_f}-${arch_f}.apk"
 
-	if [ ! -f "$stock_apk" ]; then
+	if [[ ! -f "$stock_apk" ]]; then
 		if ! _download_stock_apk "$stock_apk" "$version" "$arch" "${args[dpi]}"; then
 			epr "Failed to download stock APK"
 			return 0
@@ -494,7 +521,7 @@ build_rv() {
 	# Set output filename
 	patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
 
-	if [ "$microg_patch" != "" ]; then
+	if [[ "$microg_patch" != "" ]]; then
 		patcher_args+=("-e \"${microg_patch}\"")
 	fi
 
@@ -502,7 +529,7 @@ build_rv() {
 	_apply_riplib_optimization "$arch"
 
 	# Patch APK
-	if [ "${NORB:-}" != true ] || [ ! -f "$patched_apk" ]; then
+	if [[ "${NORB:-}" != true || ! -f "$patched_apk" ]]; then
 		# Convert space-separated patches jars to array for patch_apk
 		local -a patches_jars_array
 		read -ra patches_jars_array <<<"${args[ptjars]}"
@@ -534,10 +561,10 @@ build_rv() {
 
 	# Apply aapt2 optimization if enabled and architecture is arm64-v8a
 	local apk_to_move="$patched_apk"
-	if [ "${ENABLE_AAPT2_OPTIMIZE:-false}" = "true" ] && [ "$arch" = "arm64-v8a" ]; then
+	if [[ "${ENABLE_AAPT2_OPTIMIZE:-false}" = "true" && "$arch" = "arm64-v8a" ]]; then
 		log_info "Applying aapt2 optimization (en, xxhdpi, arm64-v8a only)"
 		local optimized_apk="${patched_apk%.apk}-optimized.apk"
-		if [ -f "scripts/aapt2-optimize.sh" ]; then
+		if [[ -f "scripts/aapt2-optimize.sh" ]]; then
 			if ./scripts/aapt2-optimize.sh "$patched_apk" "$optimized_apk"; then
 				apk_to_move="$optimized_apk"
 			else

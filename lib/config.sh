@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # =============================================================================
 # Configuration Parsing Functions
 # =============================================================================
@@ -181,13 +182,23 @@ toml_load_table_safe() {
 	fi
 
 	# Read key-value pairs line by line (NUL-separated for safety)
+	# Use nameref for safe assignment without eval
+	declare -n _target_array="$var_name"
 	while IFS= read -r -d '' key && IFS= read -r -d '' value; do
+		# Validate key contains only safe characters
+		if [[ ! "$key" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+			epr "Invalid config key: $key"
+			continue
+		fi
+
 		# Handle arrays: convert to newline-separated string for Bash
 		if [[ "$value" == "["* ]]; then
 			# Parse JSON array into Bash-friendly format
 			value=$(jq -r '.[]' <<<"$value" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
 		fi
-		eval "${var_name}[${key}]=\"\${value}\""
+
+		# Safe assignment using nameref (no eval needed)
+		_target_array[$key]=$value
 	done < <(jq -j 'to_entries[] | .key, "\u0000", (.value | tostring), "\u0000"' <<<"$table_json" 2>/dev/null)
 }
 
@@ -218,8 +229,9 @@ toml_get_array() {
 		elements+=("$element")
 	done < <(jq -r '.[]' <<<"$json_array" 2>/dev/null)
 
-	# Use nameref to populate caller's array
-	eval "${var_name}=(\"\${elements[@]}\")"
+	# Use nameref to populate caller's array safely
+	declare -n _target_array="$var_name"
+	_target_array=("${elements[@]}")
 }
 
 # Get value or array from table, normalized to array format
@@ -241,10 +253,11 @@ toml_get_array_or_string() {
 	local default="${4:-}"
 
 	local json_value
+	declare -n _target_array="$var_name"
 	if ! json_value=$(jq -e ".\"${key}\"" <<<"$table_json" 2>/dev/null); then
 		# Key not found - use default if provided
 		if [[ -n "$default" ]]; then
-			eval "${var_name}=(\"${default}\")"
+			_target_array=("$default")
 			return 0
 		fi
 		return 1
@@ -253,7 +266,7 @@ toml_get_array_or_string() {
 	if [[ "$json_value" == "null" ]]; then
 		# Null value - use default if provided
 		if [[ -n "$default" ]]; then
-			eval "${var_name}=(\"${default}\")"
+			_target_array=("$default")
 			return 0
 		fi
 		return 1
@@ -286,8 +299,8 @@ toml_get_array_or_string() {
 		;;
 	esac
 
-	# Use nameref to populate caller's array
-	eval "${var_name}=(\"\${elements[@]}\")"
+	# Use nameref to populate caller's array safely
+	_target_array=("${elements[@]}")
 }
 
 # Validate boolean value
@@ -304,7 +317,7 @@ vtf() {
 # Returns:
 #   Updated config JSON if patches changed
 config_update() {
-	if [ ! -f build.md ]; then
+	if [[ ! -f build.md ]]; then
 		abort "build.md not available"
 	fi
 
@@ -314,26 +327,26 @@ config_update() {
 	local prcfg=false
 
 	while read -r table_name; do
-		if [ "$table_name" = "" ]; then continue; fi
+		if [[ "$table_name" = "" ]]; then continue; fi
 
 		t=$(toml_get_table "$table_name")
 		enabled=$(toml_get "$t" enabled) || enabled=true
-		if [ "$enabled" = false ]; then continue; fi
+		if [[ "$enabled" = false ]]; then continue; fi
 
 		PATCHES_SRC=$(toml_get "$t" patches-source) || PATCHES_SRC=$DEF_PATCHES_SRC
 		PATCHES_VER=$(toml_get "$t" patches-version) || PATCHES_VER=$DEF_PATCHES_VER
 
 		if [[ -v sources["$PATCHES_SRC/$PATCHES_VER"] ]]; then
-			if [ "${sources["$PATCHES_SRC/$PATCHES_VER"]}" = 1 ]; then
+			if [[ "${sources["$PATCHES_SRC/$PATCHES_VER"]}" = 1 ]]; then
 				upped+=("$table_name")
 			fi
 		else
 			sources["$PATCHES_SRC/$PATCHES_VER"]=0
 			local rv_rel="https://api.github.com/repos/${PATCHES_SRC}/releases"
 
-			if [ "$PATCHES_VER" = "dev" ]; then
+			if [[ "$PATCHES_VER" = "dev" ]]; then
 				last_patches=$(gh_req "$rv_rel" - | jq -e -r '.[0]')
-			elif [ "$PATCHES_VER" = "latest" ]; then
+			elif [[ "$PATCHES_VER" = "latest" ]]; then
 				last_patches=$(gh_req "$rv_rel/latest" -)
 			else
 				last_patches=$(gh_req "$rv_rel/tags/${PATCHES_VER}" -)
@@ -343,7 +356,7 @@ config_update() {
 				abort "Failed to get patches version"
 			fi
 
-			if [ "$last_patches" ]; then
+			if [[ "$last_patches" ]]; then
 				if ! OP=$(grep "^Patches: ${PATCHES_SRC%%/*}/" build.md | grep "$last_patches"); then
 					sources["$PATCHES_SRC/$PATCHES_VER"]=1
 					prcfg=true
@@ -355,10 +368,10 @@ config_update() {
 		fi
 	done < <(toml_get_table_names)
 
-	if [ "$prcfg" = true ]; then
+	if [[ "$prcfg" = true ]]; then
 		local query=""
 		for table in "${upped[@]}"; do
-			if [ "$query" != "" ]; then query+=" or "; fi
+			if [[ "$query" != "" ]]; then query+=" or "; fi
 			query+=".key == \"$table\""
 		done
 		jq "to_entries | map(select(${query} or (.value | type != \"object\"))) | from_entries" <<<"$__TOML__"

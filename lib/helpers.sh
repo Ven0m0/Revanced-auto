@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # =============================================================================
 # Helper Utility Functions
 # =============================================================================
@@ -112,7 +113,7 @@ normalize_arch() {
 	local arch="${1:-}"
 
 	# Convert arm-v7a to armeabi-v7a for APK compatibility
-	if [ "$arch" = "arm-v7a" ]; then
+	if [[ "$arch" = "arm-v7a" ]]; then
 		echo "armeabi-v7a"
 	else
 		echo "$arch"
@@ -162,7 +163,7 @@ get_arch_preference() {
 	local arch="${1:-}"
 	local sep="${2:-$'\n'}" # Default to newline separator
 
-	if [ "$arch" = "all" ]; then
+	if [[ "$arch" = "all" ]]; then
 		echo "universal${sep}noarch${sep}arm64-v8a + armeabi-v7a"
 	else
 		echo "${arch}${sep}universal${sep}noarch${sep}arm64-v8a + armeabi-v7a"
@@ -193,21 +194,43 @@ get_patch_last_supported_ver() {
 
 	local op
 
-	if [ "$inc_sel" ]; then
+	if [[ "$inc_sel" ]]; then
 		if ! op=$(awk '{$1=$1}1' <<<"$list_patches"); then
 			epr "list-patches: '$op'"
 			return 1
 		fi
 
-		local ver vers="" NL=$'\n'
-		while IFS= read -r line; do
-			line="${line:1:${#line}-2}"
-			ver=$(sed -n "/^Name: $line\$/,/^\$/p" <<<"$op" | sed -n "/^Compatible versions:\$/,/^\$/p" | tail -n +2)
-			vers=${ver}${NL}
-		done <<<"$(list_args "$inc_sel")"
+		# Use single awk invocation instead of multiple sed calls in a loop
+		local vers
+		vers=$(awk -v patches="$(list_args "$inc_sel")" '
+			BEGIN {
+				# Build array of patch names
+				split(patches, p_arr, "\n")
+				for (i in p_arr) {
+					# Remove quotes from patch names
+					gsub(/^"|"$/, "", p_arr[i])
+					patches_map[p_arr[i]] = 1
+				}
+				in_vers = 0
+			}
+			/^Name:/ {
+				current_name = $2
+				in_vers = 0
+			}
+			/^Compatible versions:/ && (current_name in patches_map) {
+				in_vers = 1
+				next
+			}
+			in_vers && /^$/ {
+				in_vers = 0
+			}
+			in_vers {
+				print
+			}
+		' <<<"$op")
 
 		vers=$(awk '{$1=$1}1' <<<"$vers")
-		if [ "$vers" ]; then
+		if [[ "$vers" ]]; then
 			get_highest_ver <<<"$vers"
 			return
 		fi
@@ -224,7 +247,7 @@ get_patch_last_supported_ver() {
 			continue
 		fi
 
-		if [ "$op" = "Any" ]; then
+		if [[ "$op" = "Any" ]]; then
 			# This source supports any version - skip to next
 			source_idx=$((source_idx + 1))
 			continue
@@ -235,7 +258,7 @@ get_patch_last_supported_ver() {
 		pcount=${pcount#*(}
 		pcount=${pcount% *}
 
-		if [ "$pcount" = "" ]; then
+		if [[ "$pcount" = "" ]]; then
 			log_warn "Could not determine patch count for source ${source_idx}"
 			source_idx=$((source_idx + 1))
 			continue
@@ -245,7 +268,7 @@ get_patch_last_supported_ver() {
 		local source_versions
 		source_versions=$(grep -F "($pcount patch" <<<"$op" | sed 's/ (.* patch.*//')
 
-		if [ "$source_versions" ]; then
+		if [[ "$source_versions" ]]; then
 			all_versions+="$source_versions"$'\n'
 			log_debug "Source ${source_idx} supports $(echo "$source_versions" | wc -l) version(s)"
 		fi
@@ -253,7 +276,7 @@ get_patch_last_supported_ver() {
 		source_idx=$((source_idx + 1))
 	done
 
-	if [ -z "$all_versions" ]; then
+	if [[ -z "$all_versions" ]]; then
 		log_warn "No compatible versions found across ${#patches_jars[@]} patch source(s)"
 		return 1
 	fi
@@ -271,11 +294,11 @@ set_prebuilts() {
 	local arch
 	arch=$(uname -m)
 
-	if [ "$arch" = aarch64 ]; then
+	if [[ "$arch" = aarch64 ]]; then
 		arch=arm64
-	elif [ "${arch:0:5}" = "armv7" ]; then
+	elif [[ "${arch:0:5}" = "armv7" ]]; then
 		arch=arm
-	elif [ "$arch" = x86_64 ]; then
+	elif [[ "$arch" = x86_64 ]]; then
 		# Note: Prebuilt x86_64 binaries not provided
 		# Users need to build or obtain x86_64 versions
 		# For now, try to use arm64 (may work via emulation)

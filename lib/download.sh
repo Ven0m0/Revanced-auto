@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # APK download functions for multiple sources
 
 # Global variables for caching responses
@@ -32,7 +33,7 @@ get_apkmirror_vers() {
 	apkm_resp=$(req "https://www.apkmirror.com/uploads/?appcategory=${__APKMIRROR_CAT__}" -)
 	vers=$(sed -n 's;.*Version:</span><span class="infoSlide-value">\(.*\) </span>.*;\1;p' <<<"$apkm_resp" | awk '{$1=$1}1')
 
-	if [ "$__AAV__" = false ]; then
+	if [[ "$__AAV__" = false ]]; then
 		local IFS=$'\n'
 		vers=$(grep -iv "\(beta\|alpha\)" <<<"$vers")
 		local v r_vers=()
@@ -57,25 +58,30 @@ apk_mirror_search() {
 	local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
 	local apparch dlurl node app_table
 
-	if [ "$arch" = all ]; then
+	if [[ "$arch" = all ]]; then
 		apparch=(universal noarch 'arm64-v8a + armeabi-v7a')
 	else
 		apparch=("$arch" universal noarch 'arm64-v8a + armeabi-v7a')
 	fi
 
-	for ((n = 1; n < 40; n++)); do
-		node=$("$HTMLQ" "div.table-row.headerFont:nth-last-child($n)" -r "span:nth-child(n+3)" <<<"$resp")
-		if [ "$node" = "" ]; then break; fi
+	# Extract all rows at once instead of one-by-one to avoid repeated htmlq calls
+	local all_nodes
+	all_nodes=$("$HTMLQ" "div.table-row.headerFont" -r "span:nth-child(n+3)" <<<"$resp")
+
+	# Process rows one by one from the extracted content
+	local node
+	while IFS= read -r node; do
+		[[ -z "$node" ]] && continue
 
 		app_table=$(scrape_text --ignore-whitespace <<<"$node")
-		if [ "$(sed -n 3p <<<"$app_table")" = "$apk_bundle" ] &&
-			[ "$(sed -n 6p <<<"$app_table")" = "$dpi" ] &&
+		if [[ "$(sed -n 3p <<<"$app_table")" = "$apk_bundle" ]] &&
+			[[ "$(sed -n 6p <<<"$app_table")" = "$dpi" ]] &&
 			isoneof "$(sed -n 4p <<<"$app_table")" "${apparch[@]}"; then
 			dlurl=$(scrape_attr "div:nth-child(1) > a:nth-child(1)" href --base https://www.apkmirror.com <<<"$node")
 			echo "$dlurl"
 			return 0
 		fi
-	done
+	done <<<"$all_nodes"
 
 	return 1
 }
@@ -90,7 +96,7 @@ apk_mirror_search() {
 dl_apkmirror() {
 	local url=$1 version=${2// /-} output=$3 arch=$4 dpi=$5 is_bundle=false
 
-	if [ -f "${output}.apkm" ]; then
+	if [[ -f "${output}.apkm" ]]; then
 		is_bundle=true
 	else
 		# Normalize architecture name
@@ -107,7 +113,7 @@ dl_apkmirror() {
 		resp=$(req "$url" -) || return 1
 		node=$("$HTMLQ" "div.table-row.headerFont:nth-last-child(1)" -r "span:nth-child(n+3)" <<<"$resp")
 
-		if [ "$node" ]; then
+		if [[ "$node" ]]; then
 			if ! dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "APK"); then
 				if ! dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "BUNDLE"); then
 					return 1
@@ -123,7 +129,7 @@ dl_apkmirror() {
 		url=$(req "$url" - | scrape_attr "span > a[rel = nofollow]" href --base https://www.apkmirror.com) || return 1
 	fi
 
-	if [ "$is_bundle" = true ]; then
+	if [[ "$is_bundle" = true ]]; then
 		log_info "Downloading APK bundle from APKMirror"
 		req "$url" "${output}.apkm" || return 1
 		merge_splits "${output}.apkm" "$output"
@@ -168,7 +174,7 @@ dl_uptodown() {
 	# Normalize architecture name
 	arch=$(normalize_arch "$arch")
 
-	if [ "$arch" = all ]; then
+	if [[ "$arch" = all ]]; then
 		apparch=('arm64-v8a, armeabi-v7a, x86, x86_64' 'arm64-v8a, armeabi-v7a')
 	else
 		apparch=("$arch" 'arm64-v8a, armeabi-v7a, x86, x86_64' 'arm64-v8a, armeabi-v7a')
@@ -185,7 +191,7 @@ dl_uptodown() {
 			continue
 		fi
 
-		if [ "$(jq -e -r ".kindFile" <<<"$op")" = "xapk" ]; then
+		if [[ "$(jq -e -r ".kindFile" <<<"$op")" = "xapk" ]]; then
 			is_bundle=true
 		fi
 
@@ -196,7 +202,7 @@ dl_uptodown() {
 		fi
 	done
 
-	if [ "$versionURL" = "" ]; then
+	if [[ "$versionURL" = "" ]]; then
 		log_warn "Version not found on Uptodown: $version"
 		return 1
 	fi
@@ -206,12 +212,12 @@ dl_uptodown() {
 	local data_version files node_arch data_file_id
 	data_version=$(scrape_attr '.button.variants' data-version <<<"$resp") || return 1
 
-	if [ "$data_version" ]; then
+	if [[ "$data_version" ]]; then
 		files=$(req "${uptodown_dlurl%/*}/app/${data_code}/version/${data_version}/files" - | jq -e -r .content) || return 1
 
 		for ((n = 1; n < 12; n += 2)); do
 			node_arch=$(scrape_text ".content > p:nth-child($n)" <<<"$files" | xargs) || return 1
-			if [ "$node_arch" = "" ]; then return 1; fi
+			if [[ "$node_arch" = "" ]]; then return 1; fi
 			if ! isoneof "$node_arch" "${apparch[@]}"; then continue; fi
 
 			data_file_id=$(scrape_attr "div.variant:nth-child($((n + 1))) > .v-report" data-file-id <<<"$files") || return 1
@@ -224,7 +230,7 @@ dl_uptodown() {
 	data_url=$(scrape_attr "#detail-download-button" data-url <<<"$resp") || return 1
 
 
-	if [ "$is_bundle" = true ]; then
+	if [[ "$is_bundle" = true ]]; then
 		log_info "Downloading APK bundle from Uptodown"
 		req "https://dw.uptodown.com/dwn/${data_url}" "$output.apkm" || return 1
 		merge_splits "${output}.apkm" "$output"
@@ -244,7 +250,7 @@ get_archive_resp() {
 	local r
 	r=$(req "$1" -)
 
-	if [ "$r" = "" ]; then
+	if [[ "$r" = "" ]]; then
 		return 1
 	else
 		__ARCHIVE_RESP__=$(sed -n 's;^<a href="\(.*\)"[^"]*;\1;p' <<<"$r")
@@ -275,6 +281,18 @@ dl_archive() {
 
 	log_info "Searching Archive.org for version: $version_f"
 	path=$(grep "${version_f#v}-${arch}" <<<"$__ARCHIVE_RESP__") || return 1
+
+	# Validate path to prevent path traversal attacks
+	if [[ ! "$path" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+		epr "Invalid path from Archive.org (contains unsafe characters): $path"
+		return 1
+	fi
+
+	# Ensure path doesn't contain directory traversal sequences
+	if [[ "$path" == *".."* ]]; then
+		epr "Invalid path from Archive.org (contains ..): $path"
+		return 1
+	fi
 
 	log_info "Downloading APK from Archive.org"
 	req "${url}/${path}" "$output"

@@ -32,3 +32,6 @@ Thumbs.db
 .pair-programming-session.md
 *.pyc
 __pycache__/
+
+.plugin-config/
+.claude-dev-helper/
