@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ReVanced Builder: Automated APK patching and building system for ReVanced and RVX (ReVanced Extended) applications. This is a Bash-based system that downloads stock APKs and patches them using ReVanced CLI and patches.
+ReVanced Builder: Automated APK patching and building system for ReVanced and RVX (ReVanced Extended) applications. This is a Bash-based
+system that downloads stock APKs and patches them using ReVanced CLI and patches.
 
 ## Essential Commands
 
@@ -51,7 +52,7 @@ bash -n build.sh && bash -c "source utils.sh && check_prerequisites"
 
 The codebase uses a **modular library architecture** where `utils.sh` acts as a loader that sources all modules from `lib/`:
 
-```
+```text
 utils.sh (loader)
   ↓
 lib/
@@ -68,7 +69,7 @@ lib/
 
 ### Build Pipeline Flow
 
-```
+```text
 Prerequisites Check (Java 21+, jq, zip)
   ↓
 Load config.toml (via lib/config.sh → tq binary)
@@ -96,13 +97,14 @@ Output to build/ directory
 The `version = "auto"` setting in config.toml triggers automatic version detection:
 
 1. Parse patches bundle to find supported versions per patch
-2. **Multi-Source Support**: Calculate union of compatible versions across all patch sources
-3. Download highest compatible version from configured sources
-4. Fallback order: APKMirror → Uptodown → Archive.org
+1. **Multi-Source Support**: Calculate union of compatible versions across all patch sources
+1. Download highest compatible version from configured sources
+1. Fallback order: APKMirror → Uptodown → Archive.org
 
 This is handled in `lib/patching.sh:_determine_version()` using `lib/helpers.sh:get_patch_last_supported_ver()`.
 
 **Union Strategy** (for multiple patch sources):
+
 - Collect compatible versions from each patch source
 - Select highest version supported by at least one source
 - Patches from sources that don't support the selected version are skipped with warnings
@@ -113,6 +115,7 @@ This is handled in `lib/patching.sh:_determine_version()` using `lib/helpers.sh:
 The system supports applying patches from multiple GitHub repositories to a single APK:
 
 **Configuration (Backwards Compatible):**
+
 ```toml
 # Array syntax (multiple sources)
 patches-source = [
@@ -125,23 +128,27 @@ patches-source = "anddea/revanced-patches"
 ```
 
 **Implementation Details:**
+
 - `lib/config.sh:toml_get_array_or_string()`: Normalizes string/array to array format
 - `lib/prebuilts.sh:get_rv_prebuilts_multi()`: Downloads CLI + all patch sources
 - `lib/helpers.sh:get_patch_last_supported_ver()`: Union version detection across sources
 - `lib/patching.sh:patch_apk()`: Applies multiple patch bundles with `-p jar1 -p jar2 -p jar3`
 
 **Conflict Resolution:**
+
 - RevancedCLI's natural behavior: last patch wins (based on order of `-p` flags)
 - Order in config array defines precedence
 - No special conflict detection needed - CLI handles it automatically
 
 **Cache Structure:**
-```
+
+```text
 temp/
 ├── anddea-rv/patches-latest.rvp
 ├── jkennethcarino-rv/patches-v1.0.rvp
 └── inotia00-rv/revanced-cli-dev.jar
 ```
+
 Each organization gets its own cache directory.
 
 ### Download Source Fallback
@@ -149,10 +156,11 @@ Each organization gets its own cache directory.
 Each app can define multiple download sources. The system tries them in this priority order:
 
 1. **APKMirror** (`apkmirror-dlurl`) - Primary, best reliability
-2. **Uptodown** (`uptodown-dlurl`) - Secondary, includes XAPK support
-3. **Archive.org** (`archive-dlurl`) - Tertiary, historical versions
+1. **Uptodown** (`uptodown-dlurl`) - Secondary, includes XAPK support
+1. **Archive.org** (`archive-dlurl`) - Tertiary, historical versions
 
 All sources in `lib/download.sh` follow the pattern:
+
 - `get_<source>_resp()` - Fetch and cache HTML page
 - `get_<source>_vers()` - Extract available versions
 - `dl_<source>()` - Download and merge split APKs if needed
@@ -161,7 +169,7 @@ All sources in `lib/download.sh` follow the pattern:
 
 All network operations in `lib/network.sh` use retry logic:
 
-```
+```text
 Attempt 1: Immediate
 Attempt 2: Wait 2s  (INITIAL_RETRY_DELAY)
 Attempt 3: Wait 4s  (exponential backoff)
@@ -201,10 +209,10 @@ uptodown-dlurl = "..."
 ### Config Parsing Flow
 
 1. `build.sh` calls `toml_prep(config.toml)` from `lib/config.sh`
-2. Uses `tq` binary (TOML parser) in `bin/toml/<arch>/tq`
-3. Converts TOML → JSON, stores in `__TOML__` global variable
-4. Access via: `toml_get <table> <key>`
-5. Architecture-specific binaries selected via `set_prebuilts()` in `lib/helpers.sh`
+1. Uses `tq` binary (TOML parser) in `bin/toml/<arch>/tq`
+1. Converts TOML → JSON, stores in `__TOML__` global variable
+1. Access via: `toml_get <table> <key>`
+1. Architecture-specific binaries selected via `set_prebuilts()` in `lib/helpers.sh`
 
 ## Important Environment Variables
 
@@ -271,7 +279,8 @@ java -jar bin/apksigner.jar sign \
 
 ### Signature Verification
 
-Before patching, `lib/patching.sh:check_sig()` verifies the stock APK's signature against known good signatures in `sig.txt`. This prevents patching modified/malicious APKs.
+Before patching, `lib/patching.sh:check_sig()` verifies the stock APK's signature against known good signatures in `sig.txt`. This prevents
+patching modified/malicious APKs.
 
 ### CI/CD Security
 
@@ -325,17 +334,18 @@ When modifying Bash scripts, follow these standards:
    - `get_<source>_vers(resp)`
    - `dl_<source>(url, version, output, ...)`
 
-2. Update `_download_stock_apk()` in `lib/patching.sh` to add new source to fallback chain
+1. Update `_download_stock_apk()` in `lib/patching.sh` to add new source to fallback chain
 
 ### Adding a New Config Option
 
 1. Add to default values in `build.sh:validate_config_value()`
-2. Parse in `build_rv()` in `lib/patching.sh`
-3. Document in `CONFIG.md`
+1. Parse in `build_rv()` in `lib/patching.sh`
+1. Document in `CONFIG.md`
 
 ### Modifying Build Process
 
 The build logic is in `lib/patching.sh:build_rv()` which delegates to:
+
 - `_determine_version()` - Version detection
 - `_download_stock_apk()` - APK acquisition
 - `patch_apk()` - Core patching
@@ -352,6 +362,7 @@ export LOG_LEVEL=0
 ```
 
 This shows all `log_debug()` calls, including:
+
 - Config parsing details
 - Network request/retry details
 - Version detection logic
@@ -360,26 +371,30 @@ This shows all `log_debug()` calls, including:
 ### Common Build Failures
 
 **"Java version must be 21 or higher"**
+
 - Install OpenJDK Temurin 21+
 - Check: `java -version`
 
 **"Request failed after 4 retries"**
+
 - Network connectivity issue
 - Try different download source in config.toml
 - Check if source website is accessible
 
 **"Building 'App-Name' failed"**
+
 - Version incompatibility with patches
 - Set `version = "auto"` to auto-detect compatible version
 - Check patch changelog for supported versions
 
 **"Keystore password not set"**
+
 - Set `KEYSTORE_PASSWORD` and `KEYSTORE_ENTRY_PASSWORD` environment variables
 - For CI: Configure as repository secrets
 
 ## Output Artifacts
 
-```
+```text
 build/          - Final patched APKs
 temp/           - Cached downloads, temporary files
 logs/           - Build logs (CI mode)

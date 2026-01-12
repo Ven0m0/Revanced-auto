@@ -1,16 +1,22 @@
 # ReVanced Builder
 
-Automated APK patching and building system for ReVanced and RVX (ReVanced Extended) applications.
+Automated APK patching and building system for ReVanced and RVX (ReVanced
+Extended) applications.
 
 ## Features
 
 - **Multi-App Building**: Build multiple apps in parallel or sequentially
-- **Flexible Configuration**: TOML-based configuration with global and app-specific settings
-- **Multiple Download Sources**: APKMirror, Uptodown, and Archive.org with automatic fallback
-- **Version Control**: Support for specific versions, auto-detection, latest, and dev builds
-- **Optimization Options**: AAPT2 resource optimization, library stripping (riplib), and zipalign
+- **Flexible Configuration**: TOML-based configuration with global and
+  app-specific settings
+- **Multiple Download Sources**: APKMirror, Uptodown, and Archive.org with
+  automatic fallback
+- **Version Control**: Support for specific versions, auto-detection, latest,
+  and dev builds
+- **Optimization Options**: AAPT2 resource optimization, library stripping
+  (riplib), and zipalign
 - **Signature Verification**: Automatic APK signature validation
-- **Modular Architecture**: Clean separation of concerns with reusable library modules
+- **Modular Architecture**: Clean separation of concerns with reusable library
+  modules
 - **Retry Logic**: Exponential backoff for network requests
 
 ## Quick Start
@@ -23,12 +29,13 @@ Automated APK patching and building system for ReVanced and RVX (ReVanced Extend
 ### Installation
 
 1. Clone this repository:
+
 ```bash
 git clone <repository-url>
 cd <repository-directory>
 ```
 
-2. The project includes all necessary binaries in `bin/`:
+1. The project includes all necessary binaries in `bin/`:
    - `apksigner.jar` - APK signing tool
    - `dexlib2.jar` - DEX manipulation
    - `paccer.jar` - Patch integrity checker
@@ -36,7 +43,8 @@ cd <repository-directory>
    - `htmlq` - HTML parser for APKMirror (arch-specific)
    - `toml` (tq) - TOML parser (arch-specific)
 
-3. Ensure scripts are executable:
+1. Ensure scripts are executable:
+
 ```bash
 chmod +x build.sh utils.sh extras.sh scripts/*.sh
 ```
@@ -44,24 +52,28 @@ chmod +x build.sh utils.sh extras.sh scripts/*.sh
 ### Basic Usage
 
 Build all enabled apps from `config.toml`:
+
 ```bash
 ./build.sh config.toml
 ```
 
 Build a specific app:
+
 ```bash
 # Edit config.toml and set enabled = true for your desired app
 ./build.sh config.toml
 ```
 
 Clean build artifacts:
+
 ```bash
 ./build.sh clean
 ```
 
 ## Configuration
 
-The `config.toml` file controls all build settings. See [CONFIG.md](CONFIG.md) for detailed documentation.
+The `config.toml` file controls all build settings. See [CONFIG.md](CONFIG.md)
+for detailed documentation.
 
 ### Global Settings
 
@@ -102,7 +114,7 @@ archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.y
 
 The project is organized into modular components:
 
-```
+```text
 .
 ├── build.sh              # Main build orchestration script
 ├── utils.sh              # Utility loader (sources all lib modules)
@@ -133,20 +145,21 @@ The project is organized into modular components:
 ## Build Process
 
 1. **Prerequisites Check**: Verify Java, jq, and other required tools
-2. **Configuration Load**: Parse config.toml and set defaults
-3. **Download Prebuilts**: Fetch ReVanced CLI and patches from GitHub
-4. **Process Each App**:
+1. **Configuration Load**: Parse config.toml and set defaults
+1. **Download Prebuilts**: Fetch ReVanced CLI and patches from GitHub
+1. **Process Each App**:
    - Detect compatible version (if version = "auto")
    - Download stock APK from available sources
    - Verify APK signature
    - Apply ReVanced patches
    - Apply optimizations (zipalign, aapt2)
-5. **Output**: Patched APKs in `build/` directory
-6. **Generate**: build.md with build notes and changelogs
+1. **Output**: Patched APKs in `build/` directory
+1. **Generate**: build.md with build notes and changelogs
 
 ## Output
 
 Build artifacts are placed in:
+
 - `build/` - Final patched APKs
 - `temp/` - Temporary files and cached downloads
 - `build.md` - Build summary and changelogs
@@ -154,6 +167,7 @@ Build artifacts are placed in:
 ## Troubleshooting
 
 ### Enable Debug Logging
+
 ```bash
 export LOG_LEVEL=0
 ./build.sh config.toml
@@ -162,26 +176,34 @@ export LOG_LEVEL=0
 ### Common Issues
 
 **Java version error**:
-```
+
+```text
 Java version must be 21 or higher
 ```
+
 Solution: Install OpenJDK Temurin 21 or later
 
 **Download failures**:
-```
+
+```text
 Request failed after 4 retries
 ```
+
 Solution: Check internet connection, or try different download source
 
 **Patch failures**:
-```
+
+```text
 Building 'App-Name' failed
 ```
-Solution: The app version may not be compatible with current patches. Try setting `version = "auto"` or use a different version.
+
+Solution: The app version may not be compatible with current patches. Try
+setting `version = "auto"` or use a different version.
 
 ## Environment Variables
 
 ### Runtime Configuration
+
 - `LOG_LEVEL` - Set to 0 for debug output (default: 1)
 - `MAX_RETRIES` - Maximum retry attempts for network requests (default: 4)
 - `INITIAL_RETRY_DELAY` - Initial retry delay in seconds (default: 2)
@@ -190,25 +212,31 @@ Solution: The app version may not be compatible with current patches. Try settin
 - `BUILD_MODE` - Set to "dev" or "stable" to force dev/stable patches
 
 ### Signing Configuration (Required)
+
 - `KEYSTORE_PASSWORD` - Keystore password (required for building)
 - `KEYSTORE_ENTRY_PASSWORD` - Key entry password (required for building)
 - `KEYSTORE_PATH` - Path to keystore file (default: ks.keystore)
 - `KEYSTORE_ALIAS` - Key alias (default: jhc)
 - `KEYSTORE_SIGNER` - Signer name (default: jhc)
 
-**Note**: For CI/CD workflows, set `KEYSTORE_PASSWORD` and `KEYSTORE_ENTRY_PASSWORD` as repository secrets.
+**Note**: For CI/CD workflows, set `KEYSTORE_PASSWORD` and
+`KEYSTORE_ENTRY_PASSWORD` as repository secrets.
 
 ## Scripts
 
 ### build.sh
+
 Main build script. Usage:
+
 ```bash
 ./build.sh [config.toml] [--config-update]
 ./build.sh clean
 ```
 
 ### extras.sh
+
 Utility functions for CI/CD workflows:
+
 ```bash
 ./extras.sh separate-config <config.toml> <app_name> <output.toml>
 ./extras.sh combine-logs <logs_directory>
@@ -217,46 +245,59 @@ Utility functions for CI/CD workflows:
 ## Optimization
 
 ### AAPT2 Optimization
+
 Enable in `config.toml`:
+
 ```toml
 enable-aapt2-optimize = true
 arch = "arm64-v8a"
 ```
 
 Reduces APK size by keeping only:
+
 - English language
 - xxhdpi density
 - arm64-v8a architecture
 
 ### Library Stripping (riplib)
+
 Enable in `config.toml`:
+
 ```toml
 riplib = true
 ```
 
 Removes unnecessary native libraries:
+
 - Strips x86 and x86_64 (ARM devices don't need them)
 - Reduces APK size by 20-40%
 
 ## Security
 
 ### APK Signature Scheme Enforcement
-All built APKs are signed with **APK Signature Scheme v1 and v2 only**. Higher signature schemes (v3, v4) are explicitly disabled to ensure maximum compatibility and predictable security characteristics. This is enforced via post-patch re-signing using `apksigner.jar`.
+
+All built APKs are signed with **APK Signature Scheme v1 and v2 only**. Higher
+signature schemes (v3, v4) are explicitly disabled to ensure maximum
+compatibility and predictable security characteristics. This is enforced via
+post-patch re-signing using `apksigner.jar`.
 
 ### CI/CD Security
-- Release artifacts are only published from the trusted repository (not from forks)
+
+- Release artifacts are only published from the trusted repository (not from
+  forks)
 - Pull requests can build but cannot publish releases
 - Keystore credentials must be configured as GitHub repository secrets
 
 ## Contributing
 
 When contributing:
+
 1. Maintain the modular library structure
-2. Add appropriate logging at correct levels
-3. Handle errors gracefully
-4. Update documentation for new features
-5. Test with various configurations
-6. Maintain backward compatibility
+1. Add appropriate logging at correct levels
+1. Handle errors gracefully
+1. Update documentation for new features
+1. Test with various configurations
+1. Maintain backward compatibility
 
 ## License
 

@@ -1,16 +1,19 @@
 # Config
 
 Adding another revanced app is as easy as this:
+
 ```toml
 [Some-App]
 apkmirror-dlurl = "https://www.apkmirror.com/apk/inc/app"
 # or uptodown-dlurl = "https://app.en.uptodown.com/android"
 ```
 
-## More about other options:
+## More about other options
 
-There exists an example below with all defaults shown and all the keys explicitly set.  
-**All keys are optional** (except download urls) and are assigned to their default values if not set explicitly.  
+There exists an example below with all defaults shown and all the keys
+explicitly set.  
+**All keys are optional** (except download urls) and are assigned to their
+default values if not set explicitly.  
 
 ```toml
 parallel-jobs = 1                    # amount of cores to use for parallel patching, if not set $(nproc) is used
