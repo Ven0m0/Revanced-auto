@@ -12,6 +12,8 @@ cmpr
 /logs
 *.log
 *.tmp
+/docs/sessions
+/plans
 
 # Test files
 # test* -> Removed to allow 'tests/' directory
@@ -34,4 +36,7 @@ Thumbs.db
 __pycache__/
 
 .plugin-config/
+.plugin-config
 .claude-dev-helper/
+conductor/
+.pair-programming-session.md
