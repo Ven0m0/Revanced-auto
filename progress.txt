@@ -3,4 +3,104 @@
 ## Learnings
 (Patterns discovered during implementation)
 
+### US-001: aapt2 Auto-Detection
+**Completed:** ✅
+**Commit:** cea57bc4149d
+
+**Pattern:** Tool detection with graceful fallback chain
+1. Check system PATH first (`command -v aapt2`)
+2. Verify executable (`-x` test)
+3. Fall back to architecture-specific bundled binary
+4. Special handling for architectures without bundled binaries (x86_64)
+5. Provide clear warnings with actionable guidance
+6. Allow graceful degradation (empty AAPT2 variable disables optimization)
+
+**Key Insight:** Using `command -v` with `|| true` prevents errexit failure, allowing clean fallback logic. Always log the decision path for debugging.
+
+**Testing Note:** Should test on: arm64 (with/without system aapt2), x86_64 (with/without system aapt2), with missing bundled binaries.
+
+### US-002: Remove Temporary and Build Artifacts
+**Completed:** ✅
+**Status:** Already clean
+
+**Findings:**
+- temp/ and build/ directories don't currently exist (created during builds)
+- Both directories properly listed in .gitignore (lines 6-7)
+- No temporary files (*.tmp, *.cache, *.bak, *~) found in repository
+- No cache directories (__pycache__, .cache, etc.) present
+- Git status clean - no temporary files committed
+
+**Pattern:** Repository hygiene verification
+1. Check if target directories exist
+2. Verify .gitignore coverage
+3. Search for common temporary file patterns
+4. Scan for cache directories
+5. Confirm git status is clean
+
+**Key Insight:** Preventative .gitignore entries are sufficient. Temporary directories created at runtime are automatically excluded.
+
+### US-003: Remove Unused Scripts and Configurations
+**Completed:** ✅
+**Commit:** 7b6354ad887b
+
+**Audit Results:**
+- Removed: test_checks.sh (development test, not referenced)
+- Kept all scripts in scripts/ (all documented and intentional):
+  - aapt2-optimize.sh: Build pipeline integration (scripts/README.md)
+  - changelog-generator.sh: Release automation (FEATURES.md)
+  - dependency-checker.sh: CI workflow (dependency-check.yml)
+  - generate_matrix.sh: CI workflow (build.yml)
+  - optimize-assets.sh: Manual utility (scripts/README.md)
+  - release-manager.sh: Release automation (WORKFLOWS.md)
+  - unused-strings.sh: Manual utility (scripts/README.md)
+- All test configs in tests/ are actively used
+
+**Pattern:** Script audit methodology
+1. List all scripts in root and scripts/
+2. Check references in build.sh, utils.sh, extras.sh
+3. Scan CI workflows for usage (.github/workflows/)
+4. Verify documentation coverage (docs/, scripts/README.md)
+5. Remove only truly orphaned files
+
+**Key Insight:** Documentation coverage is a strong signal. If a script is documented, it's intentional even if not in CI. Development test scripts without documentation or references are safe to remove.
+
+### US-004: Clean Up Deprecated Documentation
+**Completed:** ✅
+**Commits:** 73746f1fb4de, 6721bdb2a360
+
+**Removed:**
+- docs/sessions/20260113-051922-session.md: Temporary session log
+- plans/cleanup_and_maintenance.md: Superseded by PRD.md and conductor tracks
+- Added /docs/sessions and /plans to .gitignore
+
+**Kept:**
+- README.md and docs/README.md serve different purposes (not duplicates)
+- docs/FEATURES.md: Current feature documentation
+- docs/config-generator/: Active web tool
+- All conductor/ docs: Active planning system
+- All .github/ docs: CI/CD documentation
+
+**Pattern:** Documentation audit methodology
+1. List all documentation files recursively
+2. Identify temporary/session files (timestamps, "session" in name)
+3. Check for superseded planning documents (compare with current PRD/tracks)
+4. Verify no duplicate content between files
+5. Add common temporary patterns to .gitignore
+
+**Key Insight:** Session logs and superseded planning documents accumulate over time. Proactively add their directories to .gitignore after removal. Distinguish between different-purpose READMEs (project vs directory index).
+
+---
+
+## Phase 3 Complete! ✅
+
+All Phase 3 user stories (US-001 to US-004) implemented and committed.
+
+**Summary:**
+- US-001: Smart aapt2 auto-detection
+- US-002: Repository already clean
+- US-003: Removed unused test script
+- US-004: Cleaned deprecated docs
+
+**Next:** Phase 4 - Python Migration & Script Consolidation
+
 ---
