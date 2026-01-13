@@ -15,7 +15,7 @@ declare -A __SIG_CACHE__
 check_sig() {
 	local file=$1 pkg_name=$2 version=${3:-}
 
-	if ! grep -q "$pkg_name" sig.txt; then
+	if ! grep -q "$pkg_name" assets/sig.txt; then
 		log_debug "No signature check required for $pkg_name"
 		return 0
 	fi
@@ -37,7 +37,7 @@ check_sig() {
 		fi
 	fi
 
-	if grep -qFx "$sig $pkg_name" sig.txt; then
+	if grep -qFx "$sig $pkg_name" assets/sig.txt; then
 		log_debug "Signature valid: $sig"
 		return 0
 	else
@@ -102,7 +102,7 @@ patch_apk() {
 	log_debug "Patching with ${#rv_patches_jars[@]} patch bundle(s)"
 
 	# Validate keystore configuration (fail fast for public CI)
-	local keystore="${KEYSTORE_PATH:-ks.keystore}"
+	local keystore="${KEYSTORE_PATH:-assets/ks.keystore}"
 
 	if [[ -z "${KEYSTORE_PASSWORD:-}" ]]; then
 		abort "KEYSTORE_PASSWORD environment variable is required but not set"
