@@ -25,7 +25,7 @@ OS=$(uname -o)
 export OS
 
 # Source all library modules
-LIB_DIR="${CWD}/lib"
+LIB_DIR="${CWD}/scripts/lib"
 
 # Check if lib directory exists
 if [[ ! -d "$LIB_DIR" ]]; then

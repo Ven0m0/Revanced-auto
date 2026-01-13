@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ReVanced Builder - Environment Check
-# Wrapper around lib/checks.sh
+# Wrapper around scripts/lib/checks.sh
 
 # Source utilities (which sources logger.sh and checks.sh)
 source utils.sh

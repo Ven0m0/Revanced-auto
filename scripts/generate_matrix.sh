@@ -3,9 +3,11 @@
 set -e
 
 # Source config parsing
-source lib/logger.sh
-source lib/helpers.sh
-source lib/config.sh
+# Get project root (parent of scripts/)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${PROJECT_ROOT}/scripts/lib/logger.sh"
+source "${PROJECT_ROOT}/scripts/lib/helpers.sh"
+source "${PROJECT_ROOT}/scripts/lib/config.sh"
 
 # Load config
 toml_prep "config.toml" >/dev/null

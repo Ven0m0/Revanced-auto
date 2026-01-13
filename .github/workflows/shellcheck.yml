@@ -60,7 +60,7 @@ jobs:
       - name: Check for Critical Issues
         run: |
           # Fail only on error-level issues, allow warnings
-          if shellcheck --severity=error lib/*.sh build.sh extras.sh utils.sh check-env.sh scripts/*.sh 2>&1 | tee critical-issues.txt | grep -q .; then
+          if shellcheck --severity=error scripts/lib/*.sh build.sh extras.sh utils.sh check-env.sh scripts/*.sh 2>&1 | tee critical-issues.txt | grep -q .; then
             echo "❌ Critical ShellCheck errors found:"
             cat critical-issues.txt
             exit 1

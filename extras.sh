@@ -8,9 +8,9 @@ TEMP_DIR="temp"
 BIN_DIR="bin"
 
 # Source required libraries
-source "${CWD}/lib/logger.sh"
-source "${CWD}/lib/helpers.sh"
-source "${CWD}/lib/config.sh"
+source "${CWD}/scripts/lib/logger.sh"
+source "${CWD}/scripts/lib/helpers.sh"
+source "${CWD}/scripts/lib/config.sh"
 
 # Set prebuilt tools
 set_prebuilts
