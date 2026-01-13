@@ -1,7 +1,7 @@
 # Plan: Refactor Codebase & Clean Up Repo
 
 ## Phase 1: Structural Reorganization
-- [ ] Task: Create 'assets' and 'tests' directories and move relevant files
+- [x] Task: Create 'assets' and 'tests' directories and move relevant files [d04b50e]
 - [ ] Task: Update .gitignore to reflect new asset locations
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Structural Reorganization' (Protocol in workflow.md)
 
