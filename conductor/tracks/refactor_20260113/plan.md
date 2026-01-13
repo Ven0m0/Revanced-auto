@@ -14,7 +14,7 @@
 
 ## Phase 3: Code Cleanup & Dependency Fixes
 - [x] Task: Remove deprecated toml_parse_table_to_array from lib/config.sh [6c3c8d1]
-- [ ] Task: Update lib/patching.sh to reference new asset paths
+- [x] Task: Update lib/patching.sh to reference new asset paths [c79a075]
 - [ ] Task: Improve aapt2 detection logic in lib/helpers.sh (Support system binary)
 - [ ] Task: Replace htmlq with Python script for HTML parsing
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Code Cleanup & Dependency Fixes' (Protocol in workflow.md)
