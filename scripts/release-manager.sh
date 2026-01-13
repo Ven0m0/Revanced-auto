@@ -138,6 +138,7 @@ upload_apks() {
 # Generate release notes from build logs
 generate_release_notes() {
     local build_logs_dir=${1:-"build-logs"}
+    local use_enhanced_changelog=${2:-true}
     local build_date=$(date +"%Y-%m-%d")
 
     cat << EOF
@@ -172,6 +173,37 @@ EOF
 3. Install the downloaded APK
 
 4. Enjoy!
+
+EOF
+
+    # Include enhanced changelog if available
+    if [[ "$use_enhanced_changelog" == "true" && -x "scripts/changelog-generator.sh" ]]; then
+        log_info "Generating enhanced changelog..."
+
+        # Get commits since last release
+        local last_release_tag
+        last_release_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+        if [[ -n "$last_release_tag" ]]; then
+            log_info "Generating changelog from $last_release_tag to HEAD"
+            echo "## 📝 Changes Since Last Release"
+            echo ""
+            scripts/changelog-generator.sh --from "$last_release_tag" --to HEAD 2>/dev/null || {
+                log_warn "Failed to generate enhanced changelog, skipping"
+            }
+            echo ""
+        else
+            log_info "Generating changelog for all commits"
+            echo "## 📝 Recent Changes"
+            echo ""
+            scripts/changelog-generator.sh 2>/dev/null || {
+                log_warn "Failed to generate enhanced changelog, skipping"
+            }
+            echo ""
+        fi
+    fi
+
+    cat << EOF
 
 ## ⚙️ Build Information
 
@@ -213,7 +245,7 @@ manage_release() {
     # Generate release notes
     log_info "Generating release notes..."
     local notes
-    notes=$(generate_release_notes "$build_logs_dir")
+    notes=$(generate_release_notes "$build_logs_dir" true)
     echo ""
 
     # Create new release

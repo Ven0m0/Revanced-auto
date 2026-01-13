@@ -454,7 +454,7 @@
             updatePreview();
         }
 
-        function removeApp(id) {
+        function _removeApp(id) {
             document.getElementById(`app-${id}`).remove();
             updatePreview();
         }
@@ -584,7 +584,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             document.getElementById('preview').textContent = toml;
         }
 
-        function downloadConfig() {
+        function _downloadConfig() {
             const toml = generateTOML();
             const blob = new Blob([toml], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
@@ -595,16 +595,16 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             URL.revokeObjectURL(url);
         }
 
-        function copyConfig() {
+        function _copyConfig() {
             const toml = generateTOML();
             navigator.clipboard.writeText(toml).then(() => {
                 alert('✓ Configuration copied to clipboard!');
-            }).catch(err => {
+            }).catch(_err => {
                 alert('Failed to copy. Please use the download button instead.');
             });
         }
 
-        function loadExample() {
+        function _loadExample() {
             // Clear existing apps
             document.getElementById('apps-container').innerHTML = '';
             appCounter = 0;

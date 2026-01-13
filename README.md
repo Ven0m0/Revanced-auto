@@ -9,6 +9,8 @@ Extended) applications.
 
 ## Features
 
+### Core Building
+
 - **Multi-App Building**: Build multiple apps in parallel or sequentially
 - **Flexible Configuration**: TOML-based configuration with global and
   app-specific settings
@@ -22,6 +24,17 @@ Extended) applications.
 - **Modular Architecture**: Clean separation of concerns with reusable library
   modules
 - **Retry Logic**: Exponential backoff for network requests
+
+### Advanced Features
+
+- **Changelog Automation**: Generate comprehensive changelogs from git commits and
+  ReVanced patches updates with multiple output formats
+- **Build Cache System**: Intelligent caching with TTL, integrity validation, and
+  automatic cleanup for faster builds
+- **Dependency Update Checker**: Automated monitoring of CLI and patches versions
+  with GitHub Actions integration
+
+See [FEATURES.md](docs/FEATURES.md) for detailed documentation.
 
 ## Quick Start
 
