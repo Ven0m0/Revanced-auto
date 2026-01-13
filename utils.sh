@@ -66,5 +66,9 @@ source "${LIB_DIR}/patching.sh" || {
 	echo "Failed to load patching.sh"
 	exit 1
 }
+source "${LIB_DIR}/checks.sh" || {
+	echo "Failed to load checks.sh"
+	exit 1
+}
 
 log_debug "All utility modules loaded successfully"
