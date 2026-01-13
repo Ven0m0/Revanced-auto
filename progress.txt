@@ -104,3 +104,48 @@ All Phase 3 user stories (US-001 to US-004) implemented and committed.
 **Next:** Phase 4 - Python Migration & Script Consolidation
 
 ---
+
+## Phase 4: Python Migration & Script Consolidation
+
+### US-005: Create Python HTML Parser using lxml
+**Completed:** ✅
+**Commit:** 7c49e7e343b1
+
+**Implementation:**
+- Created scripts/html_parser.py with lxml + cssselect
+- Supports --text and --attribute modes
+- Reads from stdin, outputs one result per line
+- Comprehensive docstrings (module, function, parameter types)
+- Graceful error handling with helpful messages
+- Import check with installation instructions
+
+**Pattern:** Binary replacement with Python
+1. Identify binary's core functionality (CSS selectors, text/attr extraction)
+2. Find Python library equivalent (lxml for HTML, cssselect for CSS)
+3. Match CLI interface (stdin input, same arguments, same output format)
+4. Add better error handling than original binary
+5. Include usage examples in docstring
+
+**Key Insight:** When replacing binaries with Python, match the exact CLI interface (stdin/stdout, argument names) for drop-in compatibility. lxml requires separate cssselect package for CSS selector support.
+
+**Dependencies:** pip install lxml cssselect
+
+### US-006: Update download.sh to use Python HTML parser
+**Completed:** ✅
+**Commit:** 5006c9820cb6
+
+**Changes:**
+- Updated scrape_text() to call python3 scripts/html_parser.py --text
+- Updated scrape_attr() to call python3 scripts/html_parser.py --attribute
+- Removed HTMLQ export from set_prebuilts()
+- No changes needed in lib/download.sh (functions maintain same interface)
+
+**Pattern:** Drop-in replacement strategy
+1. Keep function signatures identical (same args, same stdin/stdout)
+2. Change only the implementation (binary → Python script)
+3. Verify dependent code doesn't need changes
+4. Remove binary-related setup (HTMLQ export)
+
+**Key Insight:** When replacing a binary with a script, maintain the exact function interface so callers don't need updates. The ${CWD} variable ensures the script path is absolute regardless of working directory.
+
+---
