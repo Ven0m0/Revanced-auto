@@ -8,7 +8,7 @@
 ## Phase 2: Logic Centralization (Environment Checks)
 - [x] Task: Create lib/checks.sh and implement check_prerequisites [9d7b603]
 - [x] Task: Refactor build.sh to use lib/checks.sh [9d7b603]
-- [ ] Task: Refactor check-env.sh to use lib/checks.sh
+- [x] Task: Refactor check-env.sh to use lib/checks.sh [85a5b0b]
 - [ ] Task: Verify environment checks still pass
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Logic Centralization' (Protocol in workflow.md)
 
