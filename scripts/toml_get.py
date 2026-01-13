@@ -1,7 +1,25 @@
 #!/usr/bin/env python3
 """
 TOML/JSON to JSON converter for ReVanced Builder
-Converts TOML files to JSON using Python's stdlib tomllib (requires Python >= 3.11)
+
+Converts TOML files to JSON using Python's stdlib tomllib (requires Python >= 3.11).
+Also validates and reformats JSON files.
+
+Usage:
+    # Convert TOML to JSON
+    python3 toml_get.py --file config.toml
+
+    # Convert with pretty printing
+    python3 toml_get.py --file config.toml --pretty
+
+    # Validate and reformat JSON
+    python3 toml_get.py --file config.json
+
+Requirements:
+    Python 3.11+ (for tomllib support)
+
+Author: ReVanced Builder
+License: Same as parent project
 """
 
 import sys
@@ -11,7 +29,11 @@ from pathlib import Path
 
 
 def check_python_version():
-    """Verify Python version is >= 3.11 (required for tomllib)"""
+    """
+    Verify Python version is >= 3.11 (required for tomllib).
+
+    Exits with code 2 if version is insufficient.
+    """
     if sys.version_info < (3, 11):
         print(
             f"Error: Python 3.11 or higher is required (found {sys.version_info.major}.{sys.version_info.minor})",
@@ -21,7 +43,18 @@ def check_python_version():
 
 
 def parse_toml(file_path: Path) -> dict:
-    """Parse TOML file to dict"""
+    """
+    Parse TOML file and return as dictionary.
+
+    Args:
+        file_path: Path to TOML file
+
+    Returns:
+        Dictionary representation of TOML data
+
+    Raises:
+        SystemExit: On parsing errors or file access issues
+    """
     try:
         import tomllib
     except ImportError:
@@ -40,7 +73,18 @@ def parse_toml(file_path: Path) -> dict:
 
 
 def parse_json(file_path: Path) -> dict:
-    """Parse and validate JSON file"""
+    """
+    Parse and validate JSON file.
+
+    Args:
+        file_path: Path to JSON file
+
+    Returns:
+        Dictionary representation of JSON data
+
+    Raises:
+        SystemExit: On parsing errors or file access issues
+    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -53,6 +97,11 @@ def parse_json(file_path: Path) -> dict:
 
 
 def main():
+    """
+    Main entry point for TOML/JSON converter CLI.
+
+    Parses command-line arguments, reads input file, and outputs JSON.
+    """
     check_python_version()
 
     parser = argparse.ArgumentParser(
