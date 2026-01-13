@@ -14,7 +14,7 @@ cmpr
 *.tmp
 
 # Test files
-test*
+# test* -> Removed to allow 'tests/' directory
 test-results
 
 # Editor and IDE files
