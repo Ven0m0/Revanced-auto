@@ -299,17 +299,47 @@ set_prebuilts() {
 	elif [[ "${arch:0:5}" = "armv7" ]]; then
 		arch=arm
 	elif [[ "$arch" = x86_64 ]]; then
-		# Note: Prebuilt x86_64 binaries not provided
-		# Users need to build or obtain x86_64 versions
-		# For now, try to use arm64 (may work via emulation)
-		log_warn "x86_64 architecture detected - using arm64 binaries (may require ARM emulation)"
-		arch=arm64
+		arch=x86_64
 	fi
 
 	export HTMLQ="${BIN_DIR}/htmlq/htmlq-${arch}"
-	export AAPT2="${BIN_DIR}/aapt2/aapt2-${arch}"
 
-	log_debug "Set prebuilts for architecture: $arch"
+	# Auto-detect aapt2: prefer system binary, fall back to bundled
+	local system_aapt2
+	system_aapt2=$(command -v aapt2 || true)
+
+	if [[ -n "$system_aapt2" ]] && [[ -x "$system_aapt2" ]]; then
+		# System aapt2 found and executable
+		export AAPT2="$system_aapt2"
+		log_debug "Using system aapt2: $system_aapt2"
+	else
+		# Fall back to bundled binary
+		local bundled_aapt2="${BIN_DIR}/aapt2/aapt2-${arch}"
+
+		if [[ -f "$bundled_aapt2" ]] && [[ -x "$bundled_aapt2" ]]; then
+			export AAPT2="$bundled_aapt2"
+			log_debug "Using bundled aapt2 for architecture: $arch"
+		elif [[ "$arch" = "x86_64" ]]; then
+			# x86_64 bundled binary not available
+			log_warn "No bundled aapt2 for x86_64 architecture"
+			log_warn "Install system aapt2 or build from source: https://developer.android.com/tools/aapt2"
+
+			# Try arm64 with emulation as last resort
+			local arm64_aapt2="${BIN_DIR}/aapt2/aapt2-arm64"
+			if [[ -f "$arm64_aapt2" ]] && [[ -x "$arm64_aapt2" ]]; then
+				export AAPT2="$arm64_aapt2"
+				log_warn "Attempting to use arm64 aapt2 (requires ARM emulation)"
+			else
+				log_warn "No compatible aapt2 found - aapt2 optimization will be disabled"
+				export AAPT2=""
+			fi
+		else
+			log_warn "Bundled aapt2 not found or not executable: $bundled_aapt2"
+			export AAPT2=""
+		fi
+	fi
+
+	log_debug "Set prebuilts for architecture: $arch (AAPT2=${AAPT2:-none})"
 }
 
 # Scrape text content from HTML using a CSS selector
