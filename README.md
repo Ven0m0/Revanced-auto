@@ -40,7 +40,8 @@ See [FEATURES.md](docs/FEATURES.md) for detailed documentation.
 
 ### Prerequisites
 
-- **Required**: Bash 4.0+, Java 21+, jq, zip, curl or wget
+- **Required**: Bash 4.0+, Java 21+, jq, zip, curl or wget, Python 3.x
+- **Python Dependencies**: lxml, cssselect (install via `pip install lxml cssselect`)
 - **Recommended**: optipng (for asset optimization)
 
 ### Installation
@@ -57,7 +58,6 @@ cd <repository-directory>
    - `dexlib2.jar` - DEX manipulation
    - `paccer.jar` - Patch integrity checker
    - `aapt2` - Android Asset Packaging Tool (arch-specific)
-   - `htmlq` - HTML parser for APKMirror (arch-specific)
    - `toml` (tq) - TOML parser (arch-specific)
 
 1. Ensure scripts are executable:
@@ -136,29 +136,30 @@ The project is organized into modular components:
 ```text
 .
 ├── build.sh              # Main build orchestration script
-├── utils.sh              # Utility loader (sources all lib modules)
+├── utils.sh              # Utility loader (sources all scripts/lib modules)
 ├── config.toml           # Build configuration
 ├── bin/                 # Prebuilt binaries and tools
 │   ├── apksigner.jar
 │   ├── dexlib2.jar
 │   ├── paccer.jar
 │   ├── aapt2/           # Architecture-specific AAPT2
-│   ├── htmlq/           # HTML parser
 │   └── toml/            # TOML parser (tq)
-├── lib/                 # Modular library components
-│   ├── logger.sh         # Logging functions
-│   ├── helpers.sh        # General utilities
-│   ├── config.sh         # Configuration parsing
-│   ├── network.sh        # HTTP requests with retry
-│   ├── prebuilts.sh      # ReVanced CLI/patches management
-│   ├── download.sh       # APK downloads
-│   └── patching.sh      # APK patching and building
-├── scripts/             # Optional optimization scripts
-│   ├── aapt2-optimize.sh      # Resource optimization
-│   ├── optimize-assets.sh      # PNG optimization
-│   └── unused-strings.sh      # Remove unused resources
-├── ks.keystore          # Default keystore for signing
-└── sig.txt             # Known APK signatures
+├── scripts/
+│   ├── lib/             # Modular library components
+│   │   ├── logger.sh     # Logging functions
+│   │   ├── helpers.sh    # General utilities
+│   │   ├── config.sh     # Configuration parsing
+│   │   ├── network.sh    # HTTP requests with retry
+│   │   ├── prebuilts.sh  # ReVanced CLI/patches management
+│   │   ├── download.sh   # APK downloads
+│   │   └── patching.sh   # APK patching and building
+│   ├── html_parser.py    # Python HTML parser (replaces htmlq)
+│   ├── aapt2-optimize.sh # Resource optimization
+│   ├── optimize-assets.sh # PNG optimization
+│   └── unused-strings.sh # Remove unused resources
+├── assets/
+│   └── sig.txt          # Known APK signatures
+└── ks.keystore          # Default keystore for signing
 ```
 
 ## Build Process
