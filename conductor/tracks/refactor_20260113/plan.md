@@ -2,7 +2,7 @@
 
 ## Phase 1: Structural Reorganization
 - [x] Task: Create 'assets' and 'tests' directories and move relevant files [d04b50e]
-- [ ] Task: Update .gitignore to reflect new asset locations
+- [x] Task: Update .gitignore to reflect new asset locations [fd902cf]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Structural Reorganization' (Protocol in workflow.md)
 
 ## Phase 2: Logic Centralization (Environment Checks)
