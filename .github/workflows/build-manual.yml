@@ -1,0 +1,163 @@
+name: Manual Build
+permissions:
+  contents: write
+  actions: read
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "App to build (e.g., YouTube-Extended, Music-Extended)"
+        required: true
+        type: string
+      version:
+        description: "App version (auto, latest, or specific version like 18.48.39)"
+        required: false
+        default: "auto"
+        type: string
+      architecture:
+        description: "Target architecture"
+        required: false
+        default: "arm64-v8a"
+        type: choice
+        options:
+          - arm64-v8a
+          - armeabi-v7a
+          - both
+      build_mode:
+        description: "Build target (patches version)"
+        required: false
+        default: stable
+        type: choice
+        options:
+          - stable
+          - dev
+      publish_release:
+        description: "Publish to GitHub Releases"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Build Tools
+        run: |
+          sdkmanager "build-tools;34.0.0"
+          echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+
+      - name: Generate config for ${{ inputs.app_name }}
+        run: |
+          echo "Generating config for: ${{ inputs.app_name }}"
+          ./extras.sh separate-config config.toml "${{ inputs.app_name }}" sep_config.toml
+
+          # Override version if specified
+          if [[ "${{ inputs.version }}" != "auto" ]]; then
+            echo "Overriding version to: ${{ inputs.version }}"
+            # Use Python script to update TOML
+            python3 << 'EOF'
+          import sys
+          import json
+
+          with open('sep_config.toml', 'r') as f:
+              content = f.read()
+
+          # Simple TOML version replacement
+          lines = []
+          for line in content.split('\n'):
+              if line.strip().startswith('version ='):
+                  lines.append('version = "${{ inputs.version }}"')
+              else:
+                  lines.append(line)
+
+          with open('sep_config.toml', 'w') as f:
+              f.write('\n'.join(lines))
+          EOF
+          fi
+
+          # Override architecture if not "both"
+          if [[ "${{ inputs.architecture }}" != "both" ]]; then
+            echo "Setting architecture to: ${{ inputs.architecture }}"
+            python3 << 'EOF'
+          with open('sep_config.toml', 'r') as f:
+              content = f.read()
+
+          lines = []
+          for line in content.split('\n'):
+              if line.strip().startswith('arch ='):
+                  lines.append('arch = "${{ inputs.architecture }}"')
+              else:
+                  lines.append(line)
+
+          with open('sep_config.toml', 'w') as f:
+              f.write('\n'.join(lines))
+          EOF
+          fi
+
+          echo "Final config:"
+          cat sep_config.toml
+
+      - name: Build APK
+        run: ./build.sh sep_config.toml
+        env:
+          BUILD_MODE: ${{ inputs.build_mode }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.app_name }}-${{ inputs.architecture }}-manual
+          path: ./build/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload build log
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-log-${{ inputs.app_name }}-manual
+          path: build.md
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Publish to Release
+        if: inputs.publish_release && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Prepare version tag
+          VER=$(date +%y.%m.%d)
+          if [ "${{ inputs.build_mode }}" == "dev" ]; then
+            VER="${VER}-pre"
+          fi
+
+          # Upload to latest release (create if doesn't exist)
+          gh release view "latest" 2>/dev/null || gh release create "latest" --title "Latest Builds" --notes "Automated builds from ReVanced Builder"
+
+          # Upload APKs
+          for apk in build/*.apk; do
+            if [[ -f "$apk" ]]; then
+              echo "Uploading: $apk"
+              gh release upload "latest" "$apk" --clobber
+            fi
+          done
+
+          echo "✓ Published to release: latest"

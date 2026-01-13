@@ -353,7 +353,7 @@ _handle_microg_patch() {
 	microg_patch=$(grep "^Name: " <<<"$list_patches" | grep -i "gmscore\|microg" || :)
 	microg_patch=${microg_patch#*: }
 
-	if [[[ "$microg_patch" != "" && ${p_patcher_args[*]} =~ $microg_patch ]]; then
+	if [[[ "$microg_patch" != "" && "${p_patcher_args[@]}" =~ "$microg_patch" ]]; then
 		epr "You can't include/exclude microg patch as that's done by rvmm builder automatically."
 		p_patcher_args=("${p_patcher_args[@]//-[ei] ${microg_patch}/}")
 	fi

@@ -1,5 +1,9 @@
 # ReVanced Builder
 
+[![Daily Build](https://github.com/YOUR-USERNAME/Revanced-auto/actions/workflows/build-daily.yml/badge.svg)](https://github.com/YOUR-USERNAME/Revanced-auto/actions/workflows/build-daily.yml)
+[![PR Validation](https://github.com/YOUR-USERNAME/Revanced-auto/actions/workflows/build-pr.yml/badge.svg)](https://github.com/YOUR-USERNAME/Revanced-auto/actions/workflows/build-pr.yml)
+[![License](https://img.shields.io/github/license/YOUR-USERNAME/Revanced-auto)](./LICENSE)
+
 Automated APK patching and building system for ReVanced and RVX (ReVanced
 Extended) applications.
 
@@ -72,8 +76,10 @@ Clean build artifacts:
 
 ## Configuration
 
-The `config.toml` file controls all build settings. See [CONFIG.md](CONFIG.md)
-for detailed documentation.
+The `config.toml` file controls all build settings. You can create this file in two ways:
+
+1. **Configuration Generator** (Recommended): [Web-based tool](https://YOUR-USERNAME.github.io/Revanced-auto/config-generator/) for creating configurations without manual editing
+2. **Manual Editing**: See [CONFIG.md](CONFIG.md) for detailed documentation
 
 ### Global Settings
 
@@ -298,6 +304,22 @@ When contributing:
 1. Update documentation for new features
 1. Test with various configurations
 1. Maintain backward compatibility
+
+## CI/CD
+
+This repository includes automated workflows for building and releasing APKs:
+
+- **Daily Builds**: Automated builds at 06:00 UTC daily
+- **Manual Builds**: On-demand builds via GitHub Actions
+- **PR Validation**: Automatic testing on pull requests
+
+See [WORKFLOWS.md](.github/WORKFLOWS.md) for detailed workflow documentation.
+
+## Tools & Resources
+
+- **[Configuration Generator](https://YOUR-USERNAME.github.io/Revanced-auto/config-generator/)** - Create config.toml interactively
+- **[Workflow Documentation](.github/WORKFLOWS.md)** - CI/CD setup and usage
+- **[Security Policy](SECURITY.md)** - Security guidelines and reporting
 
 ## License
 

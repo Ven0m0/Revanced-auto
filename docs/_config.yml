@@ -1,0 +1,26 @@
+# GitHub Pages Configuration
+# This enables GitHub Pages with Jekyll
+
+theme: jekyll-theme-cayman
+title: ReVanced Builder
+description: Automated APK patching and building system for ReVanced applications
+show_downloads: false
+
+# GitHub metadata
+github:
+  is_project_page: true
+  repository_url: https://github.com/YOUR-USERNAME/Revanced-auto
+
+# Plugins
+plugins:
+  - jekyll-relative-links
+
+# Markdown settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Exclude files from site build
+exclude:
+  - README.md

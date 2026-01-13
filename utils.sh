@@ -50,6 +50,10 @@ source "${LIB_DIR}/network.sh" || {
 	echo "Failed to load network.sh"
 	exit 1
 }
+source "${LIB_DIR}/cache.sh" || {
+	echo "Failed to load cache.sh"
+	exit 1
+}
 source "${LIB_DIR}/prebuilts.sh" || {
 	echo "Failed to load prebuilts.sh"
 	exit 1

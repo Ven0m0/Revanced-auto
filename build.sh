@@ -10,6 +10,47 @@ export LC_ALL=C
 # Trap interrupts and clean up
 trap "rm -rf temp/*tmp.* temp/*/*tmp.* temp/*-temporary-files; exit 130" INT
 
+# Handle cache management commands
+if [[ ${1-} == "cache" ]]; then
+  # Source utilities to get cache functions
+  source utils.sh
+
+  cache_command=${2:-stats}
+
+  case "$cache_command" in
+    stats)
+      cache_stats
+      ;;
+    cleanup)
+      cache_cleanup "${3:-false}"
+      ;;
+    clean)
+      cache_clean_pattern "${3:-.*}"
+      ;;
+    init)
+      cache_init
+      echo "Cache initialized"
+      ;;
+    *)
+      echo "Usage: $0 cache {stats|cleanup|clean|init} [options]"
+      echo ""
+      echo "Commands:"
+      echo "  stats             - Show cache statistics"
+      echo "  cleanup [force]   - Remove expired cache entries (force: also remove orphaned entries)"
+      echo "  clean [pattern]   - Remove cache entries matching pattern (default: all)"
+      echo "  init              - Initialize cache system"
+      echo ""
+      echo "Examples:"
+      echo "  $0 cache stats"
+      echo "  $0 cache cleanup"
+      echo "  $0 cache cleanup force"
+      echo "  $0 cache clean '.*\\.apk'"
+      exit 1
+      ;;
+  esac
+  exit 0
+fi
+
 # Handle clean command
 if [[ ${1-} == "clean" ]]; then
   echo "Cleaning build artifacts..."

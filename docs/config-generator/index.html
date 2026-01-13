@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReVanced Builder - Configuration Generator</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #16a34a;
+            --warning: #ea580c;
+            --danger: #dc2626;
+            --bg: #ffffff;
+            --surface: #f8fafc;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--surface);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: var(--bg);
+            border-bottom: 2px solid var(--border);
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .app-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .app-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        #preview {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            white-space: pre;
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .sticky-preview {
+            position: sticky;
+            top: 2rem;
+        }
+
+        .help-text {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .section-divider {
+            border: 0;
+            border-top: 2px solid var(--border);
+            margin: 2rem 0;
+        }
+
+        @media (max-width: 1024px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            .sticky-preview {
+                position: static;
+            }
+        }
+
+        .url-group {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .url-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🛠️ ReVanced Builder Configuration Generator</h1>
+            <p class="subtitle">Create your config.toml with ease - no manual editing required</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="layout">
+            <!-- Left Column: Configuration Form -->
+            <div>
+                <!-- Global Settings -->
+                <div class="card">
+                    <h2 class="card-title">⚙️ Global Settings</h2>
+
+                    <div class="form-group">
+                        <label for="parallel-jobs">Parallel Jobs</label>
+                        <input type="number" id="parallel-jobs" value="1" min="1" max="10">
+                        <p class="help-text">Number of apps to build simultaneously (1 = sequential)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="compression-level">Compression Level</label>
+                        <input type="number" id="compression-level" value="9" min="0" max="9">
+                        <p class="help-text">ZIP compression (0 = none, 9 = maximum)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="patches-source">Default Patches Source</label>
+                        <input type="text" id="patches-source" value="anddea/revanced-patches">
+                        <p class="help-text">GitHub repo (owner/name) for patches</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cli-source">Default CLI Source</label>
+                        <input type="text" id="cli-source" value="inotia00/revanced-cli">
+                        <p class="help-text">GitHub repo for ReVanced CLI</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="patches-version">Patches Version</label>
+                        <select id="patches-version">
+                            <option value="dev">dev (latest development)</option>
+                            <option value="latest" selected>latest (stable)</option>
+                            <option value="specific">Specific version</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cli-version">CLI Version</label>
+                        <select id="cli-version">
+                            <option value="dev">dev (latest development)</option>
+                            <option value="latest" selected>latest (stable)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rv-brand">RV Brand</label>
+                        <input type="text" id="rv-brand" value="RVX">
+                        <p class="help-text">Brand name (RVX, ReVanced, etc.)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="arch">Default Architecture</label>
+                        <select id="arch">
+                            <option value="arm64-v8a" selected>arm64-v8a (64-bit, recommended)</option>
+                            <option value="armeabi-v7a">armeabi-v7a (32-bit)</option>
+                            <option value="both">both (build for both)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="riplib" checked>
+                            <span>Enable riplib (strip unnecessary libraries)</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="aapt2" checked>
+                            <span>Enable AAPT2 optimization</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="remove-checks" checked>
+                            <span>Remove ReVanced integrations checks</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Apps Section -->
+                <div class="card">
+                    <h2 class="card-title">📱 Applications</h2>
+                    <div id="apps-container"></div>
+                    <button class="btn-primary" onclick="addApp()">+ Add Application</button>
+                </div>
+            </div>
+
+            <!-- Right Column: Preview -->
+            <div>
+                <div class="sticky-preview">
+                    <div class="card">
+                        <h2 class="card-title">📄 Generated config.toml</h2>
+                        <pre id="preview"></pre>
+                        <div class="btn-group">
+                            <button class="btn-success" onclick="downloadConfig()">⬇️ Download</button>
+                            <button class="btn-primary" onclick="copyConfig()">📋 Copy</button>
+                            <button class="btn-secondary" onclick="loadExample()">📝 Load Example</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let appCounter = 0;
+
+        // Initialize with example apps
+        window.onload = () => {
+            updatePreview();
+        };
+
+        // Add event listeners to global settings
+        document.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('input', updatePreview);
+            el.addEventListener('change', updatePreview);
+        });
+
+        function addApp(appData = {}) {
+            const id = appCounter++;
+            const container = document.getElementById('apps-container');
+
+            const appCard = document.createElement('div');
+            appCard.className = 'app-card';
+            appCard.id = `app-${id}`;
+            appCard.innerHTML = `
+                <div class="app-header">
+                    <input type="text" class="app-name" placeholder="App-Name" value="${appData.name || ''}" onchange="updatePreview()">
+                    <button class="btn-danger" onclick="removeApp(${id})">✕ Remove</button>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="app-enabled" ${appData.enabled !== false ? 'checked' : ''} onchange="updatePreview()">
+                        <span>Enabled</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>App Display Name</label>
+                    <input type="text" class="app-display-name" placeholder="YouTube" value="${appData.displayName || ''}" onchange="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label>Version</label>
+                    <input type="text" class="app-version" placeholder="auto" value="${appData.version || 'auto'}" onchange="updatePreview()">
+                    <p class="help-text">auto, latest, or specific version (e.g., 18.48.39)</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Architecture (override)</label>
+                    <select class="app-arch" onchange="updatePreview()">
+                        <option value="">Use global default</option>
+                        <option value="arm64-v8a" ${appData.arch === 'arm64-v8a' ? 'selected' : ''}>arm64-v8a</option>
+                        <option value="armeabi-v7a" ${appData.arch === 'armeabi-v7a' ? 'selected' : ''}>armeabi-v7a</option>
+                        <option value="both" ${appData.arch === 'both' ? 'selected' : ''}>both</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Patches Source (override)</label>
+                    <input type="text" class="app-patches-source" placeholder="Use global default" value="${appData.patchesSource || ''}" onchange="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label>CLI Source (override)</label>
+                    <input type="text" class="app-cli-source" placeholder="Use global default" value="${appData.cliSource || ''}" onchange="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label>Download URLs</label>
+                    <div class="url-group">
+                        <span class="url-label">APKMirror:</span>
+                        <input type="text" class="app-apkmirror" placeholder="https://apkmirror.com/..." value="${appData.apkmirror || ''}" onchange="updatePreview()">
+                    </div>
+                    <div class="url-group" style="margin-top: 0.5rem;">
+                        <span class="url-label">Uptodown:</span>
+                        <input type="text" class="app-uptodown" placeholder="https://...uptodown.com/android" value="${appData.uptodown || ''}" onchange="updatePreview()">
+                    </div>
+                    <div class="url-group" style="margin-top: 0.5rem;">
+                        <span class="url-label">Archive.org:</span>
+                        <input type="text" class="app-archive" placeholder="https://archive.org/download/..." value="${appData.archive || ''}" onchange="updatePreview()">
+                    </div>
+                    <p class="help-text">At least one URL required</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Excluded Patches</label>
+                    <textarea class="app-excluded" rows="2" placeholder="'Patch name 1' 'Patch name 2'" onchange="updatePreview()">${appData.excluded || ''}</textarea>
+                    <p class="help-text">Space-separated, quoted patch names to exclude</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Included Patches (exclusive mode)</label>
+                    <textarea class="app-included" rows="2" placeholder="'Patch name 1' 'Patch name 2'" onchange="updatePreview()">${appData.included || ''}</textarea>
+                    <p class="help-text">Only include these patches (if specified)</p>
+                </div>
+            `;
+
+            container.appendChild(appCard);
+            updatePreview();
+        }
+
+        function removeApp(id) {
+            document.getElementById(`app-${id}`).remove();
+            updatePreview();
+        }
+
+        function generateTOML() {
+            let toml = `# =============================================================================
+# ReVanced Auto-Build Configuration
+# =============================================================================
+# Generated by: https://YOUR-REPO.github.io/Revanced-auto/config-generator/
+# Documentation: https://github.com/YOUR-REPO/Revanced-auto
+# =============================================================================
+
+# GLOBAL BUILD SETTINGS
+# =============================================================================
+
+# Parallel Build Jobs
+parallel-jobs = ${document.getElementById('parallel-jobs').value}
+
+# Compression Level
+compression-level = ${document.getElementById('compression-level').value}
+
+# ReVanced Integrations Checks
+remove-rv-integrations-checks = ${document.getElementById('remove-checks').checked}
+
+# Library Stripping (riplib)
+riplib = ${document.getElementById('riplib').checked}
+
+# AAPT2 Optimization
+enable-aapt2-optimize = ${document.getElementById('aapt2').checked}
+
+# Default Architecture
+arch = "${document.getElementById('arch').value}"
+
+# Build Mode
+build-mode = "apk"
+
+# Default Patches Version
+patches-version = "${document.getElementById('patches-version').value}"
+
+# Default CLI Version
+cli-version = "${document.getElementById('cli-version').value}"
+
+# Default App Version
+version = "auto"
+
+# Default Patches Source
+patches-source = "${document.getElementById('patches-source').value}"
+
+# Default CLI Source
+cli-source = "${document.getElementById('cli-source').value}"
+
+# RV Brand
+rv-brand = "${document.getElementById('rv-brand').value}"
+
+# =============================================================================
+# APP CONFIGURATIONS
+# =============================================================================
+`;
+
+            // Generate app configurations
+            const apps = document.querySelectorAll('.app-card');
+            apps.forEach(app => {
+                const name = app.querySelector('.app-name').value.trim();
+                if (!name) return;
+
+                const enabled = app.querySelector('.app-enabled').checked;
+                const displayName = app.querySelector('.app-display-name').value.trim();
+                const version = app.querySelector('.app-version').value.trim();
+                const arch = app.querySelector('.app-arch').value;
+                const patchesSource = app.querySelector('.app-patches-source').value.trim();
+                const cliSource = app.querySelector('.app-cli-source').value.trim();
+                const apkmirror = app.querySelector('.app-apkmirror').value.trim();
+                const uptodown = app.querySelector('.app-uptodown').value.trim();
+                const archive = app.querySelector('.app-archive').value.trim();
+                const excluded = app.querySelector('.app-excluded').value.trim();
+                const included = app.querySelector('.app-included').value.trim();
+
+                toml += `\n[${name}]\n`;
+                toml += `enabled = ${enabled}\n`;
+
+                if (displayName) {
+                    toml += `app-name = "${displayName}"\n`;
+                }
+
+                if (version && version !== 'auto') {
+                    toml += `version = "${version}"\n`;
+                }
+
+                if (arch) {
+                    toml += `arch = "${arch}"\n`;
+                }
+
+                if (patchesSource) {
+                    toml += `patches-source = "${patchesSource}"\n`;
+                }
+
+                if (cliSource) {
+                    toml += `cli-source = "${cliSource}"\n`;
+                }
+
+                if (apkmirror) {
+                    toml += `apkmirror-dlurl = "${apkmirror}"\n`;
+                }
+
+                if (uptodown) {
+                    toml += `uptodown-dlurl = "${uptodown}"\n`;
+                }
+
+                if (archive) {
+                    toml += `archive-dlurl = "${archive}"\n`;
+                }
+
+                if (excluded) {
+                    toml += `excluded-patches = ${excluded}\n`;
+                }
+
+                if (included) {
+                    toml += `included-patches = ${included}\nexclusive-patches = true\n`;
+                }
+            });
+
+            return toml;
+        }
+
+        function updatePreview() {
+            const toml = generateTOML();
+            document.getElementById('preview').textContent = toml;
+        }
+
+        function downloadConfig() {
+            const toml = generateTOML();
+            const blob = new Blob([toml], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.toml';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyConfig() {
+            const toml = generateTOML();
+            navigator.clipboard.writeText(toml).then(() => {
+                alert('✓ Configuration copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy. Please use the download button instead.');
+            });
+        }
+
+        function loadExample() {
+            // Clear existing apps
+            document.getElementById('apps-container').innerHTML = '';
+            appCounter = 0;
+
+            // Add example apps
+            addApp({
+                name: 'YouTube-Extended',
+                enabled: true,
+                displayName: 'YouTube',
+                version: '20.21.37',
+                arch: '',
+                patchesSource: 'anddea/revanced-patches',
+                cliSource: 'inotia00/revanced-cli',
+                apkmirror: 'https://apkmirror.com/apk/google-inc/youtube',
+                uptodown: 'https://youtube.en.uptodown.com/android',
+                archive: 'https://archive.org/download/jhc-apks/apks/com.google.android.youtube',
+                excluded: "'Enable debug logging'",
+                included: ''
+            });
+
+            addApp({
+                name: 'Music-Extended',
+                enabled: true,
+                displayName: 'Music',
+                version: '8.30.54',
+                arch: '',
+                patchesSource: 'anddea/revanced-patches',
+                cliSource: 'inotia00/revanced-cli',
+                apkmirror: 'https://apkmirror.com/apk/google-inc/youtube-music',
+                uptodown: 'https://youtube-music.en.uptodown.com/android',
+                archive: 'https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music',
+                excluded: "'Enable debug logging'",
+                included: ''
+            });
+
+            updatePreview();
+        }
+    </script>
+</body>
+</html>
