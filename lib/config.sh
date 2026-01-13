@@ -150,22 +150,6 @@ toml_get() {
 	return 0
 }
 
-# Parse a table into a Bash associative array definition (DEPRECATED - DO NOT USE)
-# Args:
-#   $1: Table object (JSON)
-# Returns:
-#   String to be eval'd: ([key]="value" ...)
-# WARNING: This function is deprecated and unsafe. Use toml_load_table_safe instead.
-toml_parse_table_to_array() {
-	local table_json="${1:-}"
-	if [[ -z "$table_json" ]]; then
-		echo "()"
-		return
-	fi
-	# Use @sh to safely quote values for eval
-	jq -r 'to_entries | map("[\(.key)]=\(.value | @sh)") | join(" ")' <<<"$table_json" 2>/dev/null || echo "()"
-}
-
 # Safely load a table into a named associative array (no eval)
 # Args:
 #   $1: Variable name to store the associative array
