@@ -12,21 +12,22 @@
 Revanced-auto/
 ├── bin/                    # Prebuilt binaries (arch-specific)
 │   ├── aapt2/             # Android Asset Packaging Tool
-│   ├── htmlq/             # HTML parser for web scraping
 │   ├── apksigner.jar      # APK signing
 │   ├── dexlib2.jar        # DEX manipulation
 │   └── paccer.jar         # Patch integrity checker
-├── lib/                    # Core library modules (2,512 LOC)
-│   ├── logger.sh          # Multi-level logging
-│   ├── helpers.sh         # Utilities & version comparison
-│   ├── config.sh          # TOML/JSON parsing
-│   ├── network.sh         # HTTP with retry logic
-│   ├── cache.sh           # Build cache management
-│   ├── prebuilts.sh       # ReVanced CLI/patches download
-│   ├── download.sh        # APK downloads (APKMirror/Uptodown/Archive)
-│   ├── patching.sh        # APK patching orchestration
-│   └── checks.sh          # Environment validation
-├── scripts/                # Automation scripts
+├── scripts/                # Automation scripts and libraries
+│   ├── lib/               # Core library modules (2,512 LOC)
+│   │   ├── logger.sh      # Multi-level logging
+│   │   ├── helpers.sh     # Utilities & version comparison
+│   │   ├── config.sh      # TOML/JSON parsing
+│   │   ├── network.sh     # HTTP with retry logic
+│   │   ├── cache.sh       # Build cache management
+│   │   ├── prebuilts.sh   # ReVanced CLI/patches download
+│   │   ├── download.sh    # APK downloads (APKMirror/Uptodown/Archive)
+│   │   ├── patching.sh    # APK patching orchestration
+│   │   └── checks.sh      # Environment validation
+│   ├── html_parser.py     # Python HTML parser (replaces htmlq)
+│   ├── toml_get.py        # Python TOML/JSON converter
 │   ├── aapt2-optimize.sh
 │   ├── changelog-generator.sh
 │   ├── dependency-checker.sh
@@ -52,7 +53,7 @@ Revanced-auto/
   - Exit codes: 0 (success), 1 (error), 130 (interrupted)
 
 ### Utilities
-- **utils.sh** - Central module loader (sources all lib/*.sh)
+- **utils.sh** - Central module loader (sources all scripts/lib/*.sh)
 - **extras.sh** - CI/CD utilities (separate-config, combine-logs)
 - **check-env.sh** - Environment prerequisite validation
 
@@ -62,7 +63,7 @@ Revanced-auto/
 
 ---
 
-## 📦 Core Modules (lib/)
+## 📦 Core Modules (scripts/lib/)
 
 ### Foundation Layer
 
@@ -174,9 +175,14 @@ Revanced-auto/
 ### Runtime
 - **Bash** 4.0+ - Shell interpreter
 - **Java** 21+ - APK signing & patching
+- **Python** 3.11+ - HTML parsing & TOML conversion
 - **jq** - JSON parsing
 - **zip** - APK manipulation
 - **curl/wget** - HTTP downloads
+
+### Python Dependencies
+- **lxml** - HTML parsing library
+- **cssselect** - CSS selector support
 
 ### Optional
 - **optipng** - Asset optimization
@@ -186,8 +192,7 @@ Revanced-auto/
 - **dexlib2.jar** - DEX manipulation
 - **paccer.jar** - Patch validation
 - **aapt2** - Resource optimization (arch: arm, arm64, x86_64)
-- **htmlq** - HTML parsing (arch: arm, arm64, x86_64)
-- **tq** - TOML parser (embedded)
+- **tq** - TOML parser (embedded, legacy)
 
 ---
 

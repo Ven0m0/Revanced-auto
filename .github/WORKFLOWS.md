@@ -71,7 +71,7 @@ The repository uses multiple workflows for different purposes:
 
 **Triggers**:
 - Pull requests to main/master
-- Only when relevant files change (*.sh, *.toml, lib/, scripts/, workflows/)
+- Only when relevant files change (*.sh, *.toml, scripts/, workflows/)
 
 **Checks**:
 1. Prerequisites (Java 21+, jq, zip, curl)

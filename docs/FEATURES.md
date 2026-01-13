@@ -183,7 +183,7 @@ Cache Statistics:
 
 ### Programmatic API
 
-The cache system is available as a library module (`lib/cache.sh`):
+The cache system is available as a library module (`scripts/lib/cache.sh`):
 
 ```bash
 # In your scripts

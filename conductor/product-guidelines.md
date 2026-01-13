@@ -1,7 +1,7 @@
 # Product Guidelines
 
 ## Code Structure & Maintainability
--   **Modular Design:** The codebase must adhere to a modular architecture. Core logic should be separated into distinct, reusable library files located in the `lib/` directory (e.g., `lib/network.sh`, `lib/patching.sh`).
+-   **Modular Design:** The codebase must adhere to a modular architecture. Core logic should be separated into distinct, reusable library files located in the `scripts/lib/` directory (e.g., `scripts/lib/network.sh`, `scripts/lib/patching.sh`).
 -   **Separation of Concerns:** Each script or module should have a single, well-defined responsibility. The main build script (`build.sh`) should act purely as an orchestrator, delegating specific tasks to the library modules.
 -   **Reusability:** Functions should be designed to be reusable across different parts of the system where possible, avoiding code duplication.
 
