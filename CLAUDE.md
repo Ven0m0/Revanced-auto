@@ -40,7 +40,7 @@ export LOG_LEVEL=0
 
 ```bash
 # Syntax check all bash scripts
-for f in lib/*.sh; do bash -n "$f" && echo "$f: OK"; done
+for f in scripts/lib/*.sh; do bash -n "$f" && echo "$f: OK"; done
 
 # Check prerequisites only
 bash -n build.sh && bash -c "source utils.sh && check_prerequisites"
@@ -50,31 +50,33 @@ bash -n build.sh && bash -c "source utils.sh && check_prerequisites"
 
 ### Modular Library Structure
 
-The codebase uses a **modular library architecture** where `utils.sh` acts as a loader that sources all modules from `lib/`:
+The codebase uses a **modular library architecture** where `utils.sh` acts as a loader that sources all modules from `scripts/lib/`:
 
 ```text
 utils.sh (loader)
   ↓
-lib/
+scripts/lib/
 ├── logger.sh      - Multi-level logging (DEBUG, INFO, WARN, ERROR)
-├── helpers.sh     - General utilities (version comparison, validation)
+├── helpers.sh     - General utilities (version comparison, validation, HTML parsing)
 ├── config.sh      - TOML/JSON parsing via tq binary
 ├── network.sh     - HTTP requests with exponential backoff retry
+├── cache.sh       - Build cache management with TTL
 ├── prebuilts.sh   - ReVanced CLI/patches download management
 ├── download.sh    - APK downloads (APKMirror, Uptodown, Archive.org)
-└── patching.sh    - APK patching orchestration
+├── patching.sh    - APK patching orchestration
+└── checks.sh      - Environment prerequisite validation
 ```
 
-**Key point:** Always `source utils.sh` to load all modules. Never source individual lib files directly.
+**Key point:** Always `source utils.sh` to load all modules. Never source individual scripts/lib files directly.
 
 ### Build Pipeline Flow
 
 ```text
-Prerequisites Check (Java 21+, jq, zip)
+Prerequisites Check (Java 21+, Python 3+, jq, zip)
   ↓
-Load config.toml (via lib/config.sh → tq binary)
+Load config.toml (via scripts/lib/config.sh → tq binary)
   ↓
-Download ReVanced CLI + Patches (lib/prebuilts.sh)
+Download ReVanced CLI + Patches (scripts/lib/prebuilts.sh)
   ├── Supports multiple patch sources (array or single string)
   ├── Downloads CLI once (shared across all sources)
   └── Downloads each patch source separately to temp/<org>-rv/
@@ -82,9 +84,10 @@ Download ReVanced CLI + Patches (lib/prebuilts.sh)
 For each enabled app:
   ├── Detect compatible version (if version="auto")
   │   └── Union of compatible versions across all patch sources
-  ├── Download stock APK (lib/download.sh - tries sources in order)
-  ├── Verify APK signature (against sig.txt)
-  ├── Apply patches (lib/patching.sh → revanced-cli)
+  ├── Download stock APK (scripts/lib/download.sh - tries sources in order)
+  │   └── HTML parsing via Python (scripts/html_parser.py)
+  ├── Verify APK signature (against assets/sig.txt)
+  ├── Apply patches (scripts/lib/patching.sh → revanced-cli)
   │   └── Multiple -p flags passed to CLI (one per patch source)
   ├── Apply optimizations (aapt2, riplib, zipalign)
   └── Sign APK (apksigner.jar with v1+v2 only)
@@ -101,7 +104,7 @@ The `version = "auto"` setting in config.toml triggers automatic version detecti
 1. Download highest compatible version from configured sources
 1. Fallback order: APKMirror → Uptodown → Archive.org
 
-This is handled in `lib/patching.sh:_determine_version()` using `lib/helpers.sh:get_patch_last_supported_ver()`.
+This is handled in `scripts/lib/patching.sh:_determine_version()` using `scripts/lib/helpers.sh:get_patch_last_supported_ver()`.
 
 **Union Strategy** (for multiple patch sources):
 
@@ -129,10 +132,10 @@ patches-source = "anddea/revanced-patches"
 
 **Implementation Details:**
 
-- `lib/config.sh:toml_get_array_or_string()`: Normalizes string/array to array format
-- `lib/prebuilts.sh:get_rv_prebuilts_multi()`: Downloads CLI + all patch sources
-- `lib/helpers.sh:get_patch_last_supported_ver()`: Union version detection across sources
-- `lib/patching.sh:patch_apk()`: Applies multiple patch bundles with `-p jar1 -p jar2 -p jar3`
+- `scripts/lib/config.sh:toml_get_array_or_string()`: Normalizes string/array to array format
+- `scripts/lib/prebuilts.sh:get_rv_prebuilts_multi()`: Downloads CLI + all patch sources
+- `scripts/lib/helpers.sh:get_patch_last_supported_ver()`: Union version detection across sources
+- `scripts/lib/patching.sh:patch_apk()`: Applies multiple patch bundles with `-p jar1 -p jar2 -p jar3`
 
 **Conflict Resolution:**
 
@@ -159,15 +162,15 @@ Each app can define multiple download sources. The system tries them in this pri
 1. **Uptodown** (`uptodown-dlurl`) - Secondary, includes XAPK support
 1. **Archive.org** (`archive-dlurl`) - Tertiary, historical versions
 
-All sources in `lib/download.sh` follow the pattern:
+All sources in `scripts/lib/download.sh` follow the pattern:
 
 - `get_<source>_resp()` - Fetch and cache HTML page
-- `get_<source>_vers()` - Extract available versions
+- `get_<source>_vers()` - Extract available versions (using scripts/html_parser.py)
 - `dl_<source>()` - Download and merge split APKs if needed
 
 ### Retry Logic with Exponential Backoff
 
-All network operations in `lib/network.sh` use retry logic:
+All network operations in `scripts/lib/network.sh` use retry logic:
 
 ```text
 Attempt 1: Immediate
@@ -208,11 +211,11 @@ uptodown-dlurl = "..."
 
 ### Config Parsing Flow
 
-1. `build.sh` calls `toml_prep(config.toml)` from `lib/config.sh`
+1. `build.sh` calls `toml_prep(config.toml)` from `scripts/lib/config.sh`
 1. Uses `tq` binary (TOML parser) in `bin/toml/<arch>/tq`
 1. Converts TOML → JSON, stores in `__TOML__` global variable
 1. Access via: `toml_get <table> <key>`
-1. Architecture-specific binaries selected via `set_prebuilts()` in `lib/helpers.sh`
+1. Architecture-specific binaries selected via `set_prebuilts()` in `scripts/lib/helpers.sh`
 
 ## Important Environment Variables
 
@@ -243,15 +246,22 @@ All prebuilt binaries are in `bin/` with architecture-specific subdirectories:
 - `apksigner.jar` - APK signing (Java)
 - `dexlib2.jar` - DEX manipulation (Java)
 - `paccer.jar` - Patch integrity checker (Java)
-- `aapt2/<arch>/aapt2` - Android Asset Packaging Tool
-- `htmlq/<arch>/htmlq` - HTML parser for APKMirror scraping
+- `aapt2/<arch>/aapt2` - Android Asset Packaging Tool (auto-detects system binary first)
 - `toml/<arch>/tq` - TOML parser
 
-Architecture detection in `lib/helpers.sh:set_prebuilts()` sets these paths based on `uname -m`.
+### Python Utilities
+
+Python scripts in `scripts/`:
+
+- `html_parser.py` - HTML parsing with CSS selectors (replaces htmlq binary)
+  - Requires: `pip install lxml cssselect`
+  - Usage: `cat page.html | python3 scripts/html_parser.py --text "div.class"`
+
+Architecture detection in `scripts/lib/helpers.sh:set_prebuilts()` sets these paths based on `uname -m`.
 
 ## Logging System
 
-Multi-level logging in `lib/logger.sh`:
+Multi-level logging in `scripts/lib/logger.sh`:
 
 ```bash
 log_debug "Debug info"      # Gray, only shown if LOG_LEVEL=0
@@ -279,8 +289,7 @@ java -jar bin/apksigner.jar sign \
 
 ### Signature Verification
 
-Before patching, `lib/patching.sh:check_sig()` verifies the stock APK's signature against known good signatures in `sig.txt`. This prevents
-patching modified/malicious APKs.
+Before patching, `scripts/lib/patching.sh:check_sig()` verifies the stock APK's signature against known good signatures in `assets/sig.txt`. This prevents patching modified/malicious APKs.
 
 ### CI/CD Security
 
@@ -290,14 +299,16 @@ patching modified/malicious APKs.
 
 ## Key Functions Reference
 
-### lib/helpers.sh
+### scripts/lib/helpers.sh
 
 - `isoneof(value, options...)` - Check if value is in list
 - `get_highest_ver()` - Get highest semantic version from stdin
 - `get_patch_last_supported_ver(pkg, patch, patches_json)` - Find compatible version for a patch
-- `set_prebuilts()` - Set architecture-specific binary paths
+- `set_prebuilts()` - Set architecture-specific binary paths (with aapt2 auto-detection)
+- `scrape_text(selector)` - Extract text from HTML via Python parser
+- `scrape_attr(selector, attr)` - Extract attribute from HTML via Python parser
 
-### lib/patching.sh
+### scripts/lib/patching.sh
 
 - `build_rv(app_table)` - Main build orchestration for one app
 - `_determine_version()` - Auto-detect compatible version
@@ -305,8 +316,9 @@ patching modified/malicious APKs.
 - `_build_patcher_args()` - Construct revanced-cli arguments
 - `patch_apk(input, output, args, cli, patches)` - Run patching process
 - `merge_splits(bundle, output)` - Merge split APKs into single APK
+- `check_sig(apk, pkg)` - Verify APK signature against known good signatures
 
-### lib/download.sh
+### scripts/lib/download.sh
 
 - `dl_apkmirror(url, version, output, arch, dpi)` - Download from APKMirror
 - `dl_uptodown(url, version, output)` - Download from Uptodown (supports XAPK)
@@ -328,26 +340,26 @@ When modifying Bash scripts, follow these standards:
 
 ### Adding a New Download Source
 
-1. Add functions in `lib/download.sh`:
+1. Add functions in `scripts/lib/download.sh`:
    - `get_<source>_resp(url)`
    - `get_<source>_pkg_name(resp)`
-   - `get_<source>_vers(resp)`
+   - `get_<source>_vers(resp)` - Use `scrape_text()` and `scrape_attr()` from helpers.sh
    - `dl_<source>(url, version, output, ...)`
 
-1. Update `_download_stock_apk()` in `lib/patching.sh` to add new source to fallback chain
+1. Update `_download_stock_apk()` in `scripts/lib/patching.sh` to add new source to fallback chain
 
 ### Adding a New Config Option
 
 1. Add to default values in `build.sh:validate_config_value()`
-1. Parse in `build_rv()` in `lib/patching.sh`
+1. Parse in `build_rv()` in `scripts/lib/patching.sh`
 1. Document in `CONFIG.md`
 
 ### Modifying Build Process
 
-The build logic is in `lib/patching.sh:build_rv()` which delegates to:
+The build logic is in `scripts/lib/patching.sh:build_rv()` which delegates to:
 
 - `_determine_version()` - Version detection
-- `_download_stock_apk()` - APK acquisition
+- `_download_stock_apk()` - APK acquisition (with Python HTML parsing)
 - `patch_apk()` - Core patching
 - `_apply_riplib_optimization()` - Library stripping
 - `scripts/aapt2-optimize.sh` - Resource optimization
