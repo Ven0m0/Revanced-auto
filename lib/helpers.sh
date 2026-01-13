@@ -302,8 +302,6 @@ set_prebuilts() {
 		arch=x86_64
 	fi
 
-	export HTMLQ="${BIN_DIR}/htmlq/htmlq-${arch}"
-
 	# Auto-detect aapt2: prefer system binary, fall back to bundled
 	local system_aapt2
 	system_aapt2=$(command -v aapt2 || true)
@@ -345,27 +343,25 @@ set_prebuilts() {
 # Scrape text content from HTML using a CSS selector
 # Args:
 #   $1: Selector
-#   $@: Additional arguments for htmlq
 #   stdin: HTML content
 # Returns:
 #   Extracted text
+# Note: Uses Python HTML parser (scripts/html_parser.py)
 scrape_text() {
 	local selector=$1
-	shift
-	"$HTMLQ" --text "$selector" "$@"
+	python3 "${CWD}/scripts/html_parser.py" --text "$selector"
 }
 
 # Scrape attribute value from HTML using a CSS selector
 # Args:
 #   $1: Selector
 #   $2: Attribute name
-#   $@: Additional arguments for htmlq
 #   stdin: HTML content
 # Returns:
 #   Extracted attribute value
+# Note: Uses Python HTML parser (scripts/html_parser.py)
 scrape_attr() {
 	local selector=$1
 	local attr=$2
-	shift 2
-	"$HTMLQ" --attribute "$attr" "$selector" "$@"
+	python3 "${CWD}/scripts/html_parser.py" --attribute "$attr" "$selector"
 }
