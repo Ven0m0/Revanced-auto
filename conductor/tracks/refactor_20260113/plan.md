@@ -10,7 +10,7 @@
 - [x] Task: Refactor build.sh to use lib/checks.sh [9d7b603]
 - [x] Task: Refactor check-env.sh to use lib/checks.sh [85a5b0b]
 - [x] Task: Verify environment checks still pass [6d021b6]
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Logic Centralization' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Logic Centralization' (Protocol in workflow.md) [checkpoint: 520063a]
 
 ## Phase 3: Code Cleanup & Dependency Fixes
 - [ ] Task: Remove deprecated toml_parse_table_to_array from lib/config.sh
