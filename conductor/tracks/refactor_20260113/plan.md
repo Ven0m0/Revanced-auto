@@ -3,7 +3,7 @@
 ## Phase 1: Structural Reorganization
 - [x] Task: Create 'assets' and 'tests' directories and move relevant files [d04b50e]
 - [x] Task: Update .gitignore to reflect new asset locations [fd902cf]
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Structural Reorganization' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Structural Reorganization' (Protocol in workflow.md) [checkpoint: aeea6f4]
 
 ## Phase 2: Logic Centralization (Environment Checks)
 - [ ] Task: Create lib/checks.sh and implement check_prerequisites
@@ -16,4 +16,5 @@
 - [ ] Task: Remove deprecated toml_parse_table_to_array from lib/config.sh
 - [ ] Task: Update lib/patching.sh to reference new asset paths
 - [ ] Task: Improve aapt2 detection logic in lib/helpers.sh (Support system binary)
+- [ ] Task: Replace htmlq with Python script for HTML parsing
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Code Cleanup & Dependency Fixes' (Protocol in workflow.md)
