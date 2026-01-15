@@ -80,14 +80,14 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
       - name: Upload APKs as artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: apks-${{ matrix.id }}
           path: ./build/*.apk
           if-no-files-found: warn
           retention-days: 1
       - name: Upload build log as artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: build-log-${{ matrix.id }}
           path: build.md
