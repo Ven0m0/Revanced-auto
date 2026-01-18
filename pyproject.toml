@@ -1,0 +1,36 @@
+[project]
+name = "revanced-auto"
+version = "1.0.0"
+description = "ReVanced Builder: Automated APK patching and building system"
+requires-python = ">=3.11"
+readme = "README.md"
+license = { file = "LICENSE" }
+
+authors = [
+    { name = "ReVanced Builder Contributors" }
+]
+
+dependencies = [
+    "lxml>=5.2.2,<6.0.0",
+    "cssselect>=1.2.0,<2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0.0",
+    "mypy>=1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
