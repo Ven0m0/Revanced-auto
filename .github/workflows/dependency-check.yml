@@ -68,7 +68,7 @@ jobs:
           cat dependency-report.md
 
       - name: Upload dependency report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: dependency-report
           path: dependency-report.md
@@ -76,7 +76,7 @@ jobs:
 
       - name: Create or update issue
         if: steps.check.outputs.updates_available == 'true' && (github.event.inputs.create_issue != 'false' || github.event_name == 'schedule')
-        uses: actions/github-script@v8
+        uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
@@ -136,7 +136,7 @@ _To disable automatic issues, remove the \`dependency-check.yml\` workflow._`;
 
       - name: Comment on existing PRs
         if: steps.check.outputs.updates_available == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
