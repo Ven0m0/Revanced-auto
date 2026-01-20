@@ -4,8 +4,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ReVanced Builder: Automated APK patching and building system for ReVanced and RVX (ReVanced Extended) applications. This is a Bash-based
-system that downloads stock APKs and patches them using ReVanced CLI and patches.
+**ReVanced Builder**: Automated APK patching and building system for ReVanced and RVX (ReVanced Extended) applications. This Bash-based system downloads stock APKs and patches them using ReVanced CLI and patches.
+
+**Tech Stack**: Bash, Python 3+, Java 21+, jq, zip
+
+## Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [Essential Commands](#essential-commands)
+3. [Architecture](#architecture)
+4. [Configuration](#configuration)
+5. [Security](#security-considerations)
+6. [Development Guide](#development-guide)
+7. [Troubleshooting](#troubleshooting)
+8. [Reference](#reference)
+
+## Quick Start
+
+```bash
+# 1. Check prerequisites
+./check-env.sh
+
+# 2. Set required environment variables
+export KEYSTORE_PASSWORD="your-password"
+export KEYSTORE_ENTRY_PASSWORD="your-entry-password"
+
+# 3. Build all enabled apps
+./build.sh config.toml
+
+# 4. Find output in build/ directory
+```
+
+**Prerequisites**: Java 21+, Python 3+, jq, zip, lxml, cssselect
 
 ## Essential Commands
 
@@ -183,14 +213,30 @@ Then: Fail
 
 Configurable via: `MAX_RETRIES`, `INITIAL_RETRY_DELAY`, `CONNECTION_TIMEOUT`
 
-## Configuration System
+## Configuration
+
+### Environment Variables
+
+**Required:**
+- `KEYSTORE_PASSWORD` - Keystore password
+- `KEYSTORE_ENTRY_PASSWORD` - Key entry password
+- `KEYSTORE_PATH` - Path to keystore (default: ks.keystore)
+- `KEYSTORE_ALIAS` - Key alias (default: jhc)
+
+**Optional:**
+- `LOG_LEVEL` - Logging level: 0=DEBUG, 1=INFO, 2=WARN, 3=ERROR
+- `MAX_RETRIES` - Network retry attempts (default: 4)
+- `INITIAL_RETRY_DELAY` - Initial retry delay in seconds (default: 2)
+- `CONNECTION_TIMEOUT` - Connection timeout (default: 10)
+- `GITHUB_TOKEN` - For authenticated GitHub API requests
+- `BUILD_MODE` - Force "dev" or "stable" patches
 
 ### config.toml Structure
 
 ```toml
 # Global settings (apply to all apps unless overridden)
 parallel-jobs = 1
-patches-source = "anddea/revanced-patches"
+patches-source = "anddea/revanced-patches"  # or array: ["source1", "source2"]
 cli-source = "inotia00/revanced-cli"
 patches-version = "dev"  # or "latest" or "v2.160.0"
 cli-version = "dev"
@@ -207,71 +253,48 @@ excluded-patches = "'Enable debug logging'"
 patcher-args = ["-e", "Custom branding icon"]
 apkmirror-dlurl = "..."
 uptodown-dlurl = "..."
+archive-dlurl = "..."
 ```
 
-### Config Parsing Flow
+**Key Features:**
+- **Multi-source patches**: Use array for multiple patch sources (last wins in conflicts)
+- **Auto version detection**: Set `version = "auto"` for automatic compatibility matching
+- **Download fallback**: Configure multiple download sources (APKMirror → Uptodown → Archive.org)
+- **Global + per-app**: Global settings with per-app overrides
 
-1. `build.sh` calls `toml_prep(config.toml)` from `scripts/lib/config.sh`
-1. Uses Python `toml_get.py` (TOML parser using tomllib)
-1. Converts TOML → JSON, stores in `__TOML__` global variable
-1. Access via: `toml_get <table> <key>`
-1. Architecture-specific aapt2 binaries selected via `set_prebuilts()` in `scripts/lib/helpers.sh`
+### Config Parsing Implementation
 
-## Important Environment Variables
-
-### Required for Building
-
-```bash
-KEYSTORE_PASSWORD        # Keystore password (required)
-KEYSTORE_ENTRY_PASSWORD  # Key entry password (required)
-KEYSTORE_PATH           # Path to keystore (default: ks.keystore)
-KEYSTORE_ALIAS          # Key alias (default: jhc)
+```text
+build.sh → toml_prep() → scripts/lib/config.sh
+  ↓
+Python toml_get.py (uses tomllib)
+  ↓
+TOML → JSON → __TOML__ global variable
+  ↓
+Access via: toml_get <table> <key>
 ```
 
-### Optional Runtime Config
+### Tools & Utilities
 
-```bash
-LOG_LEVEL=0             # Debug logging (0=DEBUG, 1=INFO, 2=WARN, 3=ERROR)
-MAX_RETRIES=4           # Network retry attempts
-INITIAL_RETRY_DELAY=2   # Initial retry delay in seconds
-CONNECTION_TIMEOUT=10   # Connection timeout
-GITHUB_TOKEN            # For authenticated GitHub API requests
-BUILD_MODE              # Force "dev" or "stable" patches
-```
+**Java Tools** (in `bin/`):
+- `apksigner.jar` - APK signing
+- `dexlib2.jar` - DEX manipulation
+- `paccer.jar` - Patch integrity checker
+- `aapt2/<arch>/aapt2` - Android Asset Packaging (auto-detects system binary first)
 
-## Binary Tools
-
-All prebuilt binaries are in `bin/` with architecture-specific subdirectories:
-
-- `apksigner.jar` - APK signing (Java)
-- `dexlib2.jar` - DEX manipulation (Java)
-- `paccer.jar` - Patch integrity checker (Java)
-- `aapt2/<arch>/aapt2` - Android Asset Packaging Tool (auto-detects system binary first)
-
-### Python Utilities
-
-Python scripts in `scripts/`:
-
-- `html_parser.py` - HTML parsing with CSS selectors
-  - Requires: `pip install lxml cssselect`
-  - Usage: `cat page.html | python3 scripts/html_parser.py --text "div.class"`
+**Python Scripts** (in `scripts/`):
+- `html_parser.py` - HTML parsing with CSS selectors (requires: lxml, cssselect)
 - `toml_get.py` - TOML config parsing (uses Python tomllib)
-  - Usage: `python3 scripts/toml_get.py --file config.toml`
 
-Architecture detection in `scripts/lib/helpers.sh:set_prebuilts()` sets these paths for aapt2 based on `uname -m`.
-
-## Logging System
-
-Multi-level logging in `scripts/lib/logger.sh`:
-
+**Logging Functions** (`scripts/lib/logger.sh`):
 ```bash
-log_debug "Debug info"      # Gray, only shown if LOG_LEVEL=0
-log_info "Information"       # Cyan, default level
-log_warn "Warning"           # Yellow
-epr "Error"                  # Red, non-fatal
-abort "Fatal error"          # Red, exits with code 1
-pr "Success message"         # Green
-log "Build notes"            # Writes to build.md
+log_debug "msg"   # Gray, LOG_LEVEL=0 only
+log_info "msg"    # Cyan, default
+log_warn "msg"    # Yellow
+epr "msg"         # Red error, non-fatal
+abort "msg"       # Red error, exits
+pr "msg"          # Green success
+log "msg"         # Writes to build.md
 ```
 
 ## Security Considerations
@@ -325,91 +348,150 @@ Before patching, `scripts/lib/patching.sh:check_sig()` verifies the stock APK's 
 - `dl_uptodown(url, version, output)` - Download from Uptodown (supports XAPK)
 - `dl_archive(url, version, output)` - Download from Archive.org
 
-## Code Style (from AGENTS.md)
+## Development Guide
 
-When modifying Bash scripts, follow these standards:
+### Code Style Standards
 
+**Bash Scripts:**
 - Header: `#!/usr/bin/env bash`
 - Options: `set -euo pipefail`
 - Tests: Use `[[ ... ]]` not `[ ... ]`
 - Arrays: Use `mapfile -t`, `read -ra`
 - Avoid: `eval`, backticks, unquoted expansions, piping curl to shell
 - Prefer: Modern tools (`fd`, `rg`, `jq`) over traditional (`find`, `grep`, `awk`)
-- Format: Ensure complexity is O(n) or better, sanitize inputs, no secrets in code
+- Performance: O(n) complexity or better, sanitize inputs, no secrets in code
 
-## Common Development Patterns
+**Module Loading:**
+- Always `source utils.sh` to load all library modules
+- Never source individual `scripts/lib/*.sh` files directly
 
-### Adding a New Download Source
+### Common Development Tasks
 
-1. Add functions in `scripts/lib/download.sh`:
-   - `get_<source>_resp(url)`
-   - `get_<source>_pkg_name(resp)`
-   - `get_<source>_vers(resp)` - Use `scrape_text()` and `scrape_attr()` from helpers.sh
-   - `dl_<source>(url, version, output, ...)`
+**Adding a Download Source:**
 
-1. Update `_download_stock_apk()` in `scripts/lib/patching.sh` to add new source to fallback chain
+1. Implement in `scripts/lib/download.sh`:
+   ```bash
+   get_<source>_resp(url)              # Fetch HTML
+   get_<source>_pkg_name(resp)         # Extract package name
+   get_<source>_vers(resp)             # Extract versions (use scrape_text/scrape_attr)
+   dl_<source>(url, version, output)   # Download APK
+   ```
 
-### Adding a New Config Option
+2. Add to fallback chain in `scripts/lib/patching.sh:_download_stock_apk()`
 
-1. Add to default values in `build.sh:validate_config_value()`
-1. Parse in `build_rv()` in `scripts/lib/patching.sh`
-1. Document in `CONFIG.md`
+**Adding a Config Option:**
 
-### Modifying Build Process
+1. Add default in `build.sh:validate_config_value()`
+2. Parse in `scripts/lib/patching.sh:build_rv()`
+3. Document in `CONFIG.md`
 
-The build logic is in `scripts/lib/patching.sh:build_rv()` which delegates to:
+**Modifying Build Pipeline:**
 
-- `_determine_version()` - Version detection
-- `_download_stock_apk()` - APK acquisition (with Python HTML parsing)
-- `patch_apk()` - Core patching
+Core logic: `scripts/lib/patching.sh:build_rv()` delegates to:
+- `_determine_version()` - Version auto-detection
+- `_download_stock_apk()` - APK download with fallback
+- `patch_apk()` - Patching orchestration
 - `_apply_riplib_optimization()` - Library stripping
 - `scripts/aapt2-optimize.sh` - Resource optimization
 
 ## Troubleshooting
 
-### Enable Debug Output
+### Debug Mode
+
+Enable detailed logging to diagnose issues:
 
 ```bash
-export LOG_LEVEL=0
+export LOG_LEVEL=0  # 0=DEBUG, 1=INFO, 2=WARN, 3=ERROR
 ./build.sh config.toml
 ```
 
-This shows all `log_debug()` calls, including:
-
+Debug output includes:
 - Config parsing details
-- Network request/retry details
+- Network requests and retries
 - Version detection logic
 - Patch compatibility checks
+- Build pipeline steps
 
-### Common Build Failures
+### Common Issues
 
-**"Java version must be 21 or higher"**
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Java version must be 21 or higher" | Wrong Java version | Install OpenJDK 21+, verify with `java -version` |
+| "Request failed after 4 retries" | Network issue | Check connectivity, try different download source |
+| "Building 'App-Name' failed" | Version incompatibility | Use `version = "auto"` in config.toml |
+| "Keystore password not set" | Missing env vars | Set `KEYSTORE_PASSWORD` and `KEYSTORE_ENTRY_PASSWORD` |
+| "Signature verification failed" | Modified APK | Download stock APK from trusted source |
+| "Patch not compatible" | Version mismatch | Check patch changelog, use compatible version |
 
-- Install OpenJDK Temurin 21+
-- Check: `java -version`
+### Validation Commands
 
-**"Request failed after 4 retries"**
+```bash
+# Check all prerequisites
+./check-env.sh
 
-- Network connectivity issue
-- Try different download source in config.toml
-- Check if source website is accessible
+# Syntax check all Bash scripts
+for f in scripts/lib/*.sh; do bash -n "$f" && echo "$f: OK"; done
 
-**"Building 'App-Name' failed"**
+# Verify config parsing
+bash -c "source utils.sh && toml_prep config.toml && toml_get YouTube-Extended enabled"
 
-- Version incompatibility with patches
-- Set `version = "auto"` to auto-detect compatible version
-- Check patch changelog for supported versions
+# Test download source
+./build.sh config.toml  # Add specific app to test
+```
 
-**"Keystore password not set"**
+## Reference
 
-- Set `KEYSTORE_PASSWORD` and `KEYSTORE_ENTRY_PASSWORD` environment variables
-- For CI: Configure as repository secrets
-
-## Output Artifacts
+### Project Structure
 
 ```text
-build/          - Final patched APKs
-temp/           - Cached downloads, temporary files
-logs/           - Build logs (CI mode)
-build.md        - Build summary with changelogs
+.
+├── build.sh              - Main build script
+├── utils.sh              - Module loader
+├── check-env.sh          - Prerequisites checker
+├── extras.sh             - CI/CD utilities
+├── config.toml           - Build configuration
+├── scripts/
+│   ├── lib/              - Core modules (source via utils.sh)
+│   │   ├── logger.sh     - Logging system
+│   │   ├── helpers.sh    - Utilities
+│   │   ├── config.sh     - Config parsing
+│   │   ├── network.sh    - HTTP client
+│   │   ├── cache.sh      - Cache management
+│   │   ├── prebuilts.sh  - CLI/patches download
+│   │   ├── download.sh   - APK downloads
+│   │   ├── patching.sh   - Build orchestration
+│   │   └── checks.sh     - Environment checks
+│   ├── html_parser.py    - HTML scraping
+│   └── toml_get.py       - TOML parser
+├── bin/                  - Prebuilt binaries
+├── assets/sig.txt        - Known APK signatures
+├── build/                - Output APKs
+└── temp/                 - Cache & temporary files
+```
+
+### Output Artifacts
+
+| Path | Description |
+|------|-------------|
+| `build/` | Final patched APKs |
+| `temp/` | Cached downloads, temporary files |
+| `temp/<org>-rv/` | Per-organization patch caches |
+| `logs/` | Build logs (CI mode only) |
+| `build.md` | Build summary with changelogs |
+
+### Quick Command Reference
+
+```bash
+# Building
+./build.sh config.toml                    # Build all enabled apps
+./build.sh clean                          # Clean artifacts
+LOG_LEVEL=0 ./build.sh config.toml        # Debug build
+
+# CI/CD
+./extras.sh separate-config config.toml youtube out.toml
+./extras.sh combine-logs logs/
+
+# Testing
+./check-env.sh                            # Check prerequisites
+bash -n build.sh                          # Syntax check
 ```
