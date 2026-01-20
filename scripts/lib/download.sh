@@ -241,7 +241,7 @@ dl_uptodown() {
 
 	# Optimization: Cache version list responses to avoid repeated polling (TTL: 1 hour)
 	# This saves 2-8 seconds per download when cache hits
-	local cache_key="uptodown_versions_${data_code}"
+	local cache_key="uptodown_versions_$(echo "$data_code" | tr -d './\\')"
 	local cache_file="${TEMP_DIR}/.cache_${cache_key}.json"
 	local cache_ttl=3600  # 1 hour
 
