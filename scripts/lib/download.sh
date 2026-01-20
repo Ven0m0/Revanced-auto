@@ -64,38 +64,9 @@ apk_mirror_search() {
 		apparch=("$arch" universal noarch 'arm64-v8a + armeabi-v7a')
 	fi
 
-	# Extract all table row text content at once (more efficient than processing individually)
-	local all_text
-	all_text=$(scrape_text "div.table-row.headerFont" <<<"$resp")
-
-	# Process rows: each row has multiple lines of text, we need to group them
-	local line_count=0
-	local -a row_lines=()
-
-	while IFS= read -r line; do
-		[[ -z "$line" ]] && continue
-		row_lines+=("$line")
-		((line_count++))
-
-		# APKMirror table rows typically have 7+ fields
-		# When we have enough fields, check if this row matches our criteria
-		if [[ $line_count -ge 7 ]]; then
-			# Use awk for efficient multi-field extraction (replaces 3 sed calls)
-			local bundle arch_field dpi_field
-			read -r bundle arch_field dpi_field < <(
-				printf '%s\n' "${row_lines[@]}" | awk 'NR==3 {bundle=$0} NR==4 {arch=$0} NR==6 {dpi=$0} END {print bundle, arch, dpi}'
-			)
-
-			if [[ "$bundle" = "$apk_bundle" ]] &&
-			   [[ "$dpi_field" = "$dpi" ]] &&
-			   isoneof "$arch_field" "${apparch[@]}"; then
-				# Found matching row - extract download URL from the same row group
-				# The URL is in the first child link of the first div
-				dlurl=$(printf '%s\n' "${row_lines[@]}" | head -1 | python3 "${CWD}/scripts/html_parser.py" --attribute href "a" 2>/dev/null || echo "")
-
-				if [[ -z "$dlurl" ]]; then
-					# Fallback: extract URL from original HTML for this specific row
-					dlurl=$(echo "$resp" | python3 -c '
+	# Use Python to properly parse HTML and handle rows with varying field counts
+	# This approach correctly handles rows with 7+ fields by processing entire row elements
+	dlurl=$(echo "$resp" | python3 -c '
 import sys
 from lxml import html
 
@@ -108,6 +79,7 @@ try:
     rows = tree.cssselect("div.table-row.headerFont")
     for row in rows:
         texts = [el.text_content().strip() for el in row.cssselect("span")]
+        # Rows have 7+ fields; only process the first 7 for matching
         if len(texts) >= 7 and texts[2] == bundle and texts[5] == dpi and texts[3] in [arch, "universal", "noarch", "arm64-v8a + armeabi-v7a"]:
             link = row.cssselect("div a")[0]
             url = link.get("href")
@@ -118,23 +90,11 @@ try:
 except Exception:
     sys.exit(1)
 ' "$bundle" "$dpi" "$arch" 2>/dev/null)
-				fi
 
-				if [[ -n "$dlurl" ]]; then
-					# Ensure absolute URL
-					if [[ "$dlurl" != http* ]]; then
-						dlurl="https://www.apkmirror.com${dlurl}"
-					fi
-					echo "$dlurl"
-					return 0
-				fi
-			fi
-
-			# Reset for next row
-			row_lines=()
-			line_count=0
-		fi
-	done <<<"$all_text"
+	if [[ -n "$dlurl" ]]; then
+		echo "$dlurl"
+		return 0
+	fi
 
 	return 1
 }
@@ -243,47 +203,53 @@ dl_uptodown() {
 	# This saves 2-8 seconds per download when cache hits
 	local cache_key="uptodown_versions_$(echo "$data_code" | tr -d './\\')"
 	local cache_file="${TEMP_DIR}/.cache_${cache_key}.json"
+	local cache_lock="${cache_file}.lock"
 	local cache_ttl=3600  # 1 hour
 
-	# Try cache first
+	# Try cache first with file locking to prevent race conditions
 	local all_versions=""
-	if [[ -f "$cache_file" ]]; then
-		local cache_age cache_mtime now
-		now=$(date +%s)
-		cache_mtime=$(stat -c%Y "$cache_file" 2>/dev/null || stat -f%m "$cache_file" 2>/dev/null || echo "")
-		if [[ -n "$cache_mtime" ]]; then
-			cache_age=$((now - cache_mtime))
-			if [[ $cache_age -lt $cache_ttl ]]; then
-				all_versions=$(cat "$cache_file")
-				log_debug "Using cached Uptodown version list (age: ${cache_age}s)"
-			fi
-		else
-			log_debug "Could not determine cache file mtime; treating as cache miss"
-		fi
-	fi
+	{
+		# Use flock to ensure atomic cache operations (prevent concurrent access)
+		flock -x 200
 
-	# If no cache, fetch and combine all pages
-	if [[ -z "$all_versions" ]]; then
-		log_debug "Fetching Uptodown version pages (no cache)"
-		local -a page_responses=()
-		for i in {1..5}; do
-			local page_resp
-			page_resp=$(req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" -)
-			if [[ -n "$page_resp" && "$page_resp" != "null" ]]; then
-				page_responses+=("$page_resp")
+		if [[ -f "$cache_file" ]]; then
+			local cache_age cache_mtime now
+			now=$(date +%s)
+			cache_mtime=$(stat -c%Y "$cache_file" 2>/dev/null || stat -f%m "$cache_file" 2>/dev/null || echo "")
+			if [[ -n "$cache_mtime" ]]; then
+				cache_age=$((now - cache_mtime))
+				if [[ $cache_age -lt $cache_ttl ]]; then
+					all_versions=$(cat "$cache_file")
+					log_debug "Using cached Uptodown version list (age: ${cache_age}s)"
+				fi
+			else
+				log_debug "Could not determine cache file mtime; treating as cache miss"
 			fi
-		done
-
-		# Combine all pages into one JSON array
-		if [[ ${#page_responses[@]} -gt 0 ]]; then
-			all_versions=$(printf '%s\n' "${page_responses[@]}" | jq -s '[.[].data[]?] | unique_by(.version)')
-			# Cache the combined result atomically to avoid partial writes
-			local tmp_cache_file="${cache_file}.$$.$RANDOM.tmp"
-			printf '%s\n' "$all_versions" > "$tmp_cache_file"
-			mv -f "$tmp_cache_file" "$cache_file"
-			log_debug "Cached ${#page_responses[@]} Uptodown version pages"
 		fi
-	fi
+
+		# If no cache, fetch and combine all pages
+		if [[ -z "$all_versions" ]]; then
+			log_debug "Fetching Uptodown version pages (no cache)"
+			local -a page_responses=()
+			for i in {1..5}; do
+				local page_resp
+				page_resp=$(req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" -)
+				if [[ -n "$page_resp" && "$page_resp" != "null" ]]; then
+					page_responses+=("$page_resp")
+				fi
+			done
+
+			# Combine all pages into one JSON array
+			if [[ ${#page_responses[@]} -gt 0 ]]; then
+				all_versions=$(printf '%s\n' "${page_responses[@]}" | jq -s '[.[].data[]?] | unique_by(.version)')
+				# Cache the combined result atomically to avoid partial writes
+				local tmp_cache_file="${cache_file}.$$.$RANDOM.tmp"
+				printf '%s\n' "$all_versions" > "$tmp_cache_file"
+				mv -f "$tmp_cache_file" "$cache_file"
+				log_debug "Cached ${#page_responses[@]} Uptodown version pages"
+			fi
+		fi
+	} 200>"$cache_lock"
 
 	# Search in cached/combined version list
 	if [[ -n "$all_versions" && "$all_versions" != "null" ]]; then

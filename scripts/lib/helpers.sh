@@ -241,6 +241,14 @@ get_patch_last_supported_ver() {
 	local all_versions="" source_idx=1
 	local -a temp_files=() pids=()
 
+	# Trap to ensure temp files are cleaned up on early exit (error or signal)
+	cleanup_temp_files() {
+		for temp_file in "${temp_files[@]}"; do
+			rm -f "$temp_file" 2>/dev/null || true
+		done
+	}
+	trap cleanup_temp_files RETURN EXIT INT TERM
+
 	log_debug "Parallelizing version detection across ${#patches_jars[@]} patch source(s)"
 
 	# Launch version detection in parallel for each patch source
@@ -249,7 +257,10 @@ get_patch_last_supported_ver() {
 		temp_file=$(mktemp)
 		temp_files+=("$temp_file")
 
-		# Run in background
+		# Run in background subshell
+		# Note: The subshell inherits parent environment variables (cli_jar, pkg_name, temp_file)
+		# which allows us to use them safely without explicit passing. The subshell cannot
+		# modify parent scope variables, ensuring thread-safe parallel execution.
 		(
 			local result
 			if result=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
