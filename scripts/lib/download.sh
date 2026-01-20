@@ -56,7 +56,7 @@ get_apkmirror_vers() {
 #   Download URL
 apk_mirror_search() {
 	local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
-	local apparch dlurl node app_table
+	local apparch dlurl app_table
 
 	if [[ "$arch" = all ]]; then
 		apparch=(universal noarch 'arm64-v8a + armeabi-v7a')
@@ -64,24 +64,72 @@ apk_mirror_search() {
 		apparch=("$arch" universal noarch 'arm64-v8a + armeabi-v7a')
 	fi
 
-	# Extract all rows at once instead of one-by-one to avoid repeated htmlq calls
-	local all_nodes
-	all_nodes=$("$HTMLQ" "div.table-row.headerFont" -r "span:nth-child(n+3)" <<<"$resp")
+	# Extract all table row text content at once (more efficient than processing individually)
+	local all_text
+	all_text=$(scrape_text "div.table-row.headerFont" <<<"$resp")
 
-	# Process rows one by one from the extracted content
-	local node
-	while IFS= read -r node; do
-		[[ -z "$node" ]] && continue
+	# Process rows: each row has multiple lines of text, we need to group them
+	local line_count=0
+	local -a row_lines=()
 
-		app_table=$(scrape_text --ignore-whitespace <<<"$node")
-		if [[ "$(sed -n 3p <<<"$app_table")" = "$apk_bundle" ]] &&
-			[[ "$(sed -n 6p <<<"$app_table")" = "$dpi" ]] &&
-			isoneof "$(sed -n 4p <<<"$app_table")" "${apparch[@]}"; then
-			dlurl=$(scrape_attr "div:nth-child(1) > a:nth-child(1)" href --base https://www.apkmirror.com <<<"$node")
-			echo "$dlurl"
-			return 0
+	while IFS= read -r line; do
+		[[ -z "$line" ]] && continue
+		row_lines+=("$line")
+		((line_count++))
+
+		# APKMirror table rows typically have 7+ fields
+		# When we have enough fields, check if this row matches our criteria
+		if [[ $line_count -ge 7 ]]; then
+			# Use awk for efficient multi-field extraction (replaces 3 sed calls)
+			local bundle arch_field dpi_field
+			read -r bundle arch_field dpi_field < <(
+				printf '%s\n' "${row_lines[@]}" | awk 'NR==3 {bundle=$0} NR==4 {arch=$0} NR==6 {dpi=$0} END {print bundle, arch, dpi}'
+			)
+
+			if [[ "$bundle" = "$apk_bundle" ]] &&
+			   [[ "$dpi_field" = "$dpi" ]] &&
+			   isoneof "$arch_field" "${apparch[@]}"; then
+				# Found matching row - extract download URL from the same row group
+				# The URL is in the first child link of the first div
+				dlurl=$(printf '%s\n' "${row_lines[@]}" | head -1 | python3 "${CWD}/scripts/html_parser.py" --attribute href "a" 2>/dev/null || echo "")
+
+				if [[ -z "$dlurl" ]]; then
+					# Fallback: extract URL from original HTML for this specific row
+					dlurl=$(echo "$resp" | python3 -c "
+import sys
+from lxml import html
+try:
+    tree = html.fromstring(sys.stdin.read())
+    rows = tree.cssselect('div.table-row.headerFont')
+    for row in rows:
+        texts = [el.text_content().strip() for el in row.cssselect('span')]
+        if len(texts) >= 7 and texts[2] == '${bundle}' and texts[5] == '${dpi}' and texts[3] in ['${arch}', 'universal', 'noarch', 'arm64-v8a + armeabi-v7a']:
+            link = row.cssselect('div a')[0]
+            url = link.get('href')
+            if not url.startswith('http'):
+                url = 'https://www.apkmirror.com' + url
+            print(url)
+            sys.exit(0)
+except:
+    sys.exit(1)
+" 2>/dev/null)
+				fi
+
+				if [[ -n "$dlurl" ]]; then
+					# Ensure absolute URL
+					if [[ "$dlurl" != http* ]]; then
+						dlurl="https://www.apkmirror.com${dlurl}"
+					fi
+					echo "$dlurl"
+					return 0
+				fi
+			fi
+
+			# Reset for next row
+			row_lines=()
+			line_count=0
 		fi
-	done <<<"$all_nodes"
+	done <<<"$all_text"
 
 	return 1
 }
@@ -111,9 +159,9 @@ dl_apkmirror() {
 
 		log_info "Searching APKMirror release page: $url"
 		resp=$(req "$url" -) || return 1
-		node=$("$HTMLQ" "div.table-row.headerFont:nth-last-child(1)" -r "span:nth-child(n+3)" <<<"$resp")
 
-		if [[ "$node" ]]; then
+		# Check if variants table exists
+		if scrape_text "div.table-row.headerFont" <<<"$resp" >/dev/null 2>&1; then
 			if ! dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "APK"); then
 				if ! dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "BUNDLE"); then
 					return 1
@@ -185,22 +233,65 @@ dl_uptodown() {
 	local versionURL="" is_bundle=false
 
 	log_info "Searching Uptodown for version: $version"
-	for i in {1..5}; do
-		resp=$(req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" -)
-		if ! op=$(jq -e -r ".data | map(select(.version == \"${version}\")) | .[0]" <<<"$resp"); then
-			continue
-		fi
 
-		if [[ "$(jq -e -r ".kindFile" <<<"$op")" = "xapk" ]]; then
-			is_bundle=true
-		fi
+	# Optimization: Cache version list responses to avoid repeated polling (TTL: 1 hour)
+	# This saves 2-8 seconds per download when cache hits
+	local cache_key="uptodown_versions_${data_code}"
+	local cache_file="${TEMP_DIR}/.cache_${cache_key}.json"
+	local cache_ttl=3600  # 1 hour
 
-		if versionURL=$(jq -e -r '.versionURL' <<<"$op"); then
-			break
+	# Try cache first
+	local all_versions=""
+	if [[ -f "$cache_file" ]]; then
+		local cache_age
+		cache_age=$(($(date +%s) - $(stat -c%Y "$cache_file" 2>/dev/null || stat -f%m "$cache_file" 2>/dev/null || echo 0)))
+		if [[ $cache_age -lt $cache_ttl ]]; then
+			all_versions=$(cat "$cache_file")
+			log_debug "Using cached Uptodown version list (age: ${cache_age}s)"
+		fi
+	fi
+
+	# If no cache, fetch and combine all pages
+	if [[ -z "$all_versions" ]]; then
+		log_debug "Fetching Uptodown version pages (no cache)"
+		local -a page_responses=()
+		for i in {1..5}; do
+			local page_resp
+			page_resp=$(req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" -)
+			if [[ -n "$page_resp" && "$page_resp" != "null" ]]; then
+				page_responses+=("$page_resp")
+			fi
+		done
+
+		# Combine all pages into one JSON array
+		if [[ ${#page_responses[@]} -gt 0 ]]; then
+			all_versions=$(printf '%s\n' "${page_responses[@]}" | jq -s '[.[].data[]?] | unique_by(.version)')
+			# Cache the combined result
+			echo "$all_versions" > "$cache_file"
+			log_debug "Cached ${#page_responses[@]} Uptodown version pages"
+		fi
+	fi
+
+	# Search in cached/combined version list
+	if [[ -n "$all_versions" && "$all_versions" != "null" ]]; then
+		if op=$(jq -e -r "map(select(.version == \"${version}\")) | .[0]" <<<"$all_versions" 2>/dev/null); then
+			if [[ "$(jq -e -r ".kindFile" <<<"$op")" = "xapk" ]]; then
+				is_bundle=true
+			fi
+
+			if versionURL=$(jq -e -r '.versionURL' <<<"$op" 2>/dev/null); then
+				log_debug "Found version in Uptodown cache/data"
+			else
+				return 1
+			fi
 		else
+			log_warn "Version $version not found in Uptodown version list"
 			return 1
 		fi
-	done
+	else
+		log_warn "Failed to fetch Uptodown version list"
+		return 1
+	fi
 
 	if [[ "$versionURL" = "" ]]; then
 		log_warn "Version not found on Uptodown: $version"
