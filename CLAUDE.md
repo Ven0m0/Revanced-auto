@@ -58,7 +58,7 @@ utils.sh (loader)
 scripts/lib/
 ├── logger.sh      - Multi-level logging (DEBUG, INFO, WARN, ERROR)
 ├── helpers.sh     - General utilities (version comparison, validation, HTML parsing)
-├── config.sh      - TOML/JSON parsing via tq binary
+├── config.sh      - TOML/JSON parsing via Python (tomllib/jq)
 ├── network.sh     - HTTP requests with exponential backoff retry
 ├── cache.sh       - Build cache management with TTL
 ├── prebuilts.sh   - ReVanced CLI/patches download management
@@ -74,7 +74,7 @@ scripts/lib/
 ```text
 Prerequisites Check (Java 21+, Python 3+, jq, zip)
   ↓
-Load config.toml (via scripts/lib/config.sh → tq binary)
+Load config.toml (via scripts/lib/config.sh → Python toml_get.py)
   ↓
 Download ReVanced CLI + Patches (scripts/lib/prebuilts.sh)
   ├── Supports multiple patch sources (array or single string)
@@ -212,10 +212,10 @@ uptodown-dlurl = "..."
 ### Config Parsing Flow
 
 1. `build.sh` calls `toml_prep(config.toml)` from `scripts/lib/config.sh`
-1. Uses `tq` binary (TOML parser) in `bin/toml/<arch>/tq`
+1. Uses Python `toml_get.py` (TOML parser using tomllib)
 1. Converts TOML → JSON, stores in `__TOML__` global variable
 1. Access via: `toml_get <table> <key>`
-1. Architecture-specific binaries selected via `set_prebuilts()` in `scripts/lib/helpers.sh`
+1. Architecture-specific aapt2 binaries selected via `set_prebuilts()` in `scripts/lib/helpers.sh`
 
 ## Important Environment Variables
 
@@ -247,17 +247,18 @@ All prebuilt binaries are in `bin/` with architecture-specific subdirectories:
 - `dexlib2.jar` - DEX manipulation (Java)
 - `paccer.jar` - Patch integrity checker (Java)
 - `aapt2/<arch>/aapt2` - Android Asset Packaging Tool (auto-detects system binary first)
-- `toml/<arch>/tq` - TOML parser
 
 ### Python Utilities
 
 Python scripts in `scripts/`:
 
-- `html_parser.py` - HTML parsing with CSS selectors (replaces htmlq binary)
+- `html_parser.py` - HTML parsing with CSS selectors
   - Requires: `pip install lxml cssselect`
   - Usage: `cat page.html | python3 scripts/html_parser.py --text "div.class"`
+- `toml_get.py` - TOML config parsing (uses Python tomllib)
+  - Usage: `python3 scripts/toml_get.py --file config.toml`
 
-Architecture detection in `scripts/lib/helpers.sh:set_prebuilts()` sets these paths based on `uname -m`.
+Architecture detection in `scripts/lib/helpers.sh:set_prebuilts()` sets these paths for aapt2 based on `uname -m`.
 
 ## Logging System
 
