@@ -248,11 +248,17 @@ dl_uptodown() {
 	# Try cache first
 	local all_versions=""
 	if [[ -f "$cache_file" ]]; then
-		local cache_age
-		cache_age=$(($(date +%s) - $(stat -c%Y "$cache_file" 2>/dev/null || stat -f%m "$cache_file" 2>/dev/null || echo 0)))
-		if [[ $cache_age -lt $cache_ttl ]]; then
-			all_versions=$(cat "$cache_file")
-			log_debug "Using cached Uptodown version list (age: ${cache_age}s)"
+		local cache_age cache_mtime now
+		now=$(date +%s)
+		cache_mtime=$(stat -c%Y "$cache_file" 2>/dev/null || stat -f%m "$cache_file" 2>/dev/null || echo "")
+		if [[ -n "$cache_mtime" ]]; then
+			cache_age=$((now - cache_mtime))
+			if [[ $cache_age -lt $cache_ttl ]]; then
+				all_versions=$(cat "$cache_file")
+				log_debug "Using cached Uptodown version list (age: ${cache_age}s)"
+			fi
+		else
+			log_debug "Could not determine cache file mtime; treating as cache miss"
 		fi
 	fi
 
