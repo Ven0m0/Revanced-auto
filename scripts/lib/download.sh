@@ -95,24 +95,29 @@ apk_mirror_search() {
 
 				if [[ -z "$dlurl" ]]; then
 					# Fallback: extract URL from original HTML for this specific row
-					dlurl=$(echo "$resp" | python3 -c "
+					dlurl=$(echo "$resp" | python3 -c '
 import sys
 from lxml import html
+
+bundle = sys.argv[1]
+dpi = sys.argv[2]
+arch = sys.argv[3]
+
 try:
     tree = html.fromstring(sys.stdin.read())
-    rows = tree.cssselect('div.table-row.headerFont')
+    rows = tree.cssselect("div.table-row.headerFont")
     for row in rows:
-        texts = [el.text_content().strip() for el in row.cssselect('span')]
-        if len(texts) >= 7 and texts[2] == '${bundle}' and texts[5] == '${dpi}' and texts[3] in ['${arch}', 'universal', 'noarch', 'arm64-v8a + armeabi-v7a']:
-            link = row.cssselect('div a')[0]
-            url = link.get('href')
-            if not url.startswith('http'):
-                url = 'https://www.apkmirror.com' + url
+        texts = [el.text_content().strip() for el in row.cssselect("span")]
+        if len(texts) >= 7 and texts[2] == bundle and texts[5] == dpi and texts[3] in [arch, "universal", "noarch", "arm64-v8a + armeabi-v7a"]:
+            link = row.cssselect("div a")[0]
+            url = link.get("href")
+            if not url.startswith("http"):
+                url = "https://www.apkmirror.com" + url
             print(url)
             sys.exit(0)
 except:
     sys.exit(1)
-" 2>/dev/null)
+' "$bundle" "$dpi" "$arch" 2>/dev/null)
 				fi
 
 				if [[ -n "$dlurl" ]]; then
