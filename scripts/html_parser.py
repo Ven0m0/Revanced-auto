@@ -24,12 +24,15 @@ License: Same as parent project
 
 import sys
 import argparse
-from typing import List, Optional
+from typing import List
 
 try:
     from lxml import html, etree
 except ImportError:
-    print("Error: lxml not installed. Install with: pip install lxml cssselect", file=sys.stderr)
+    print(
+        "Error: lxml not installed. Install with: pip install lxml cssselect",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 
@@ -80,7 +83,9 @@ def scrape_text(tree: html.HtmlElement, selector: str) -> List[str]:
         sys.exit(1)
 
 
-def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> List[str]:
+def scrape_attribute(
+    tree: html.HtmlElement, selector: str, attribute: str
+) -> List[str]:
     """
     Extract attribute values from elements matching CSS selector.
 
@@ -104,7 +109,10 @@ def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> L
 
         return results
     except Exception as e:
-        print(f"Error with selector '{selector}' or attribute '{attribute}': {e}", file=sys.stderr)
+        print(
+            f"Error with selector '{selector}' or attribute '{attribute}': {e}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
@@ -115,24 +123,21 @@ def main():
     parser = argparse.ArgumentParser(
         description="Parse HTML and extract text or attributes using CSS selectors",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog=__doc__,
     )
 
-    parser.add_argument(
-        "selector",
-        help="CSS selector to match elements"
-    )
+    parser.add_argument("selector", help="CSS selector to match elements")
 
     parser.add_argument(
         "--text",
         action="store_true",
-        help="Extract text content from matching elements"
+        help="Extract text content from matching elements",
     )
 
     parser.add_argument(
         "--attribute",
         metavar="ATTR",
-        help="Extract attribute value from matching elements"
+        help="Extract attribute value from matching elements",
     )
 
     args = parser.parse_args()

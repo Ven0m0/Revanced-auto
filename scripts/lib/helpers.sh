@@ -237,61 +237,18 @@ get_patch_last_supported_ver() {
 	fi
 
 	# Collect versions from all patch sources (union approach)
-	# Parallelize version detection for better performance (saves ~2-3s for multiple sources)
 	local all_versions="" source_idx=1
-	local -a temp_files=() pids=()
-
-	# Trap to ensure temp files are cleaned up on early exit (error or signal)
-	cleanup_temp_files() {
-		for temp_file in "${temp_files[@]}"; do
-			rm -f "$temp_file" 2>/dev/null || true
-		done
-	}
-	trap cleanup_temp_files RETURN EXIT INT TERM
-
-	log_debug "Parallelizing version detection across ${#patches_jars[@]} patch source(s)"
-
-	# Launch version detection in parallel for each patch source
 	for patches_jar in "${patches_jars[@]}"; do
-		local temp_file
-		temp_file=$(mktemp)
-		temp_files+=("$temp_file")
+		log_debug "Checking compatible versions from patch source ${source_idx}/${#patches_jars[@]}"
 
-		# Run in background subshell
-		# Note: The subshell inherits parent environment variables (cli_jar, pkg_name, temp_file)
-		# which allows us to use them safely without explicit passing. The subshell cannot
-		# modify parent scope variables, ensuring thread-safe parallel execution.
-		(
-			local result
-			if result=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
-				echo "$result" > "$temp_file"
-			else
-				echo "ERROR: $result" > "$temp_file"
-			fi
-		) &
-		pids+=($!)
-	done
-
-	# Wait for all background jobs to complete
-	for pid in "${pids[@]}"; do
-		wait "$pid" 2>/dev/null || true
-	done
-
-	# Process results from all sources
-	source_idx=1
-	for temp_file in "${temp_files[@]}"; do
-		local op
-		op=$(cat "$temp_file" 2>/dev/null)
-		rm -f "$temp_file"
-
-		if [[ "$op" =~ ^ERROR: ]]; then
-			log_warn "Failed to get versions from patch source ${source_idx}: ${op#ERROR: }"
+		if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
+			log_warn "Failed to get versions from patch source ${source_idx}: $op"
 			source_idx=$((source_idx + 1))
 			continue
 		fi
 
-		if [[ "$op" = "Any" || -z "$op" ]]; then
-			# This source supports any version or returned nothing - skip
+		if [[ "$op" = "Any" ]]; then
+			# This source supports any version - skip to next
 			source_idx=$((source_idx + 1))
 			continue
 		fi
@@ -307,9 +264,9 @@ get_patch_last_supported_ver() {
 			continue
 		fi
 
-		# Extract versions supported by this source (optimized: single awk replaces grep+sed)
+		# Extract versions supported by this source
 		local source_versions
-		source_versions=$(awk -v pattern="($pcount patch" '$0 ~ pattern {sub(/ \(.*/, ""); print}' <<<"$op")
+		source_versions=$(grep -F "($pcount patch" <<<"$op" | sed 's/ (.* patch.*//')
 
 		if [[ "$source_versions" ]]; then
 			all_versions+="$source_versions"$'\n'

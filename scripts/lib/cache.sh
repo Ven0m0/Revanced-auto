@@ -62,7 +62,7 @@ cache_is_valid() {
 		return 1
 	fi
 
-	# Check TTL first (early exit optimization - avoids expensive checksum calculation)
+	# Check TTL
 	local created
 	created=$(echo "$cache_entry" | jq -r '.created // 0')
 	local now
@@ -76,13 +76,12 @@ cache_is_valid() {
 		ttl=$entry_ttl
 	fi
 
-	# Early exit if expired - no need to calculate checksum (saves 20-50ms for large files)
 	if [[ $age -gt $ttl ]]; then
 		log_debug "Cache expired: $file_path (age: ${age}s, ttl: ${ttl}s)"
 		return 1
 	fi
 
-	# Verify checksum only if cache is not expired
+	# Verify checksum if available
 	local stored_checksum
 	stored_checksum=$(echo "$cache_entry" | jq -r '.checksum // ""')
 

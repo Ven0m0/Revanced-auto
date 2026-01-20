@@ -81,7 +81,7 @@ Revanced-auto/
 
 #### **config.sh**
 - **Exports:** `toml_prep`, `toml_get`, `toml_get_array_or_string`
-- **Purpose:** TOML/JSON parsing via Python (tomllib)
+- **Purpose:** TOML/JSON parsing via tq binary
 - **Features:** Converts TOML → JSON, caches in `__TOML__` variable
 
 ### Network Layer
@@ -192,10 +192,7 @@ Revanced-auto/
 - **dexlib2.jar** - DEX manipulation
 - **paccer.jar** - Patch validation
 - **aapt2** - Resource optimization (arch: arm, arm64, x86_64)
-
-### Python Utilities
-- **html_parser.py** - HTML parsing with CSS selectors (lxml)
-- **toml_get.py** - TOML config parsing (tomllib)
+- **tq** - TOML parser (embedded, legacy)
 
 ---
 
@@ -234,7 +231,7 @@ export LOG_LEVEL=0
 ```
 Prerequisites Check (Java 21+, jq, zip)
   ↓
-Load config.toml (TOML → JSON via Python toml_get.py)
+Load config.toml (TOML → JSON via tq)
   ↓
 Download ReVanced CLI + Patches (multi-source support)
   ├── CLI: shared across all sources
