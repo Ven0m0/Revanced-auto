@@ -115,7 +115,7 @@ try:
                 url = "https://www.apkmirror.com" + url
             print(url)
             sys.exit(0)
-except:
+except Exception:
     sys.exit(1)
 ' "$bundle" "$dpi" "$arch" 2>/dev/null)
 				fi
