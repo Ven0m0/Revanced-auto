@@ -58,7 +58,6 @@ cd <repository-directory>
    - `dexlib2.jar` - DEX manipulation
    - `paccer.jar` - Patch integrity checker
    - `aapt2` - Android Asset Packaging Tool (arch-specific)
-   - `toml` (tq) - TOML parser (arch-specific)
 
 1. Ensure scripts are executable:
 
@@ -142,8 +141,7 @@ The project is organized into modular components:
 │   ├── apksigner.jar
 │   ├── dexlib2.jar
 │   ├── paccer.jar
-│   ├── aapt2/           # Architecture-specific AAPT2
-│   └── toml/            # TOML parser (tq)
+│   └── aapt2/           # Architecture-specific AAPT2
 ├── scripts/
 │   ├── lib/             # Modular library components
 │   │   ├── logger.sh     # Logging functions
@@ -153,7 +151,8 @@ The project is organized into modular components:
 │   │   ├── prebuilts.sh  # ReVanced CLI/patches management
 │   │   ├── download.sh   # APK downloads
 │   │   └── patching.sh   # APK patching and building
-│   ├── html_parser.py    # Python HTML parser (replaces htmlq)
+│   ├── html_parser.py    # Python HTML parser (CSS selectors)
+│   ├── toml_get.py       # Python TOML parser (tomllib)
 │   ├── aapt2-optimize.sh # Resource optimization
 │   ├── optimize-assets.sh # PNG optimization
 │   └── unused-strings.sh # Remove unused resources
