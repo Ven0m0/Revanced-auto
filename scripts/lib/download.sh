@@ -277,8 +277,10 @@ dl_uptodown() {
 		# Combine all pages into one JSON array
 		if [[ ${#page_responses[@]} -gt 0 ]]; then
 			all_versions=$(printf '%s\n' "${page_responses[@]}" | jq -s '[.[].data[]?] | unique_by(.version)')
-			# Cache the combined result
-			echo "$all_versions" > "$cache_file"
+			# Cache the combined result atomically to avoid partial writes
+			local tmp_cache_file="${cache_file}.$$.$RANDOM.tmp"
+			printf '%s\n' "$all_versions" > "$tmp_cache_file"
+			mv -f "$tmp_cache_file" "$cache_file"
 			log_debug "Cached ${#page_responses[@]} Uptodown version pages"
 		fi
 	fi
