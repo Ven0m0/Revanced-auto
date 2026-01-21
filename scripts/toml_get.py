@@ -22,9 +22,9 @@ Author: ReVanced Builder
 License: Same as parent project
 """
 
-import sys
-import json
 import argparse
+import json
+import sys
 from pathlib import Path
 
 
@@ -34,12 +34,6 @@ def check_python_version():
 
     Exits with code 2 if version is insufficient.
     """
-    if sys.version_info < (3, 11):
-        print(
-            f"Error: Python 3.11 or higher is required (found {sys.version_info.major}.{sys.version_info.minor})",
-            file=sys.stderr,
-        )
-        sys.exit(2)
 
 
 def parse_toml(file_path: Path) -> dict:
@@ -86,7 +80,7 @@ def parse_json(file_path: Path) -> dict:
         SystemExit: On parsing errors or file access issues
     """
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON syntax in {file_path}: {e}", file=sys.stderr)
@@ -104,12 +98,8 @@ def main():
     """
     check_python_version()
 
-    parser = argparse.ArgumentParser(
-        description="Convert TOML or JSON file to JSON output"
-    )
-    parser.add_argument(
-        "--file", type=Path, required=True, help="Path to TOML or JSON file"
-    )
+    parser = argparse.ArgumentParser(description="Convert TOML or JSON file to JSON output")
+    parser.add_argument("--file", type=Path, required=True, help="Path to TOML or JSON file")
     parser.add_argument(
         "--pretty",
         action="store_true",

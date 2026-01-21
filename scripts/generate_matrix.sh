@@ -10,7 +10,7 @@ source "${PROJECT_ROOT}/scripts/lib/helpers.sh"
 source "${PROJECT_ROOT}/scripts/lib/config.sh"
 
 # Load config
-toml_prep "config.toml" >/dev/null
+toml_prep "config.toml" > /dev/null
 
 # Generate JSON matrix
 echo "Generating build matrix..." >&2
@@ -18,4 +18,4 @@ echo "Generating build matrix..." >&2
 # Use jq to filter and construct the JSON directly from __TOML__
 # Select only object-type values (tables) and check their 'enabled' field
 # If 'enabled' is missing or not false, include it in the matrix
-jq -c '{include: [to_entries[] | select(.value | type == "object") | select(.value.enabled != false) | {id: .key}]}' <<<"$__TOML__"
+jq -c '{include: [to_entries[] | select(.value | type == "object") | select(.value.enabled != false) | {id: .key}]}' <<< "$__TOML__"

@@ -67,7 +67,16 @@ patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
 rv-brand = "RVX"
 version = "8.30.54"
-patcher-args = ["-e", "Custom branding icon for YouTube Music", "-OappIcon=mnt", "-e", "Visual preferences icons for YouTube Music", "-OsettingsMenuIcon=revanced", "-OdarkThemeBackgroundColor=@android:color/black", "-OlightThemeBackgroundColor=@android:color/white"]
+patcher-args = [
+  "-e",
+  "Custom branding icon for YouTube Music",
+  "-OappIcon=mnt",
+  "-e",
+  "Visual preferences icons for YouTube Music",
+  "-OsettingsMenuIcon=revanced",
+  "-OdarkThemeBackgroundColor=@android:color/black",
+  "-OlightThemeBackgroundColor=@android:color/white",
+]
 excluded-patches = "'Enable debug logging'"
 uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
@@ -81,7 +90,16 @@ patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
 rv-brand = "RVX"
 version = "20.21.37"
-patcher-args = ["-e", "Custom branding icon for YouTube", "-OappIcon=mnt", "-OdarkThemeBackgroundColor=@android:color/black", "-OlightThemeBackgroundColor=@android:color/white", "-e", "Visual preferences icons for YouTube", "-OsettingsMenuIcon=revanced"]
+patcher-args = [
+  "-e",
+  "Custom branding icon for YouTube",
+  "-OappIcon=mnt",
+  "-OdarkThemeBackgroundColor=@android:color/black",
+  "-OlightThemeBackgroundColor=@android:color/white",
+  "-e",
+  "Visual preferences icons for YouTube",
+  "-OsettingsMenuIcon=revanced",
+]
 excluded-patches = "'Enable debug logging'"
 uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
@@ -93,17 +111,23 @@ enabled = false
 uptodown-dlurl = "https://spotify.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.spotify.music"
 included-patches = "'Custom theme'"
-patcher-args = ["-e", "Custom branding name for Spotify", "-OappName=RVX Spotify"]
-
+patcher-args = [
+  "-e",
+  "Custom branding name for Spotify",
+  "-OappName=RVX Spotify",
+]
 
 # Reddit
 [Reddit]
 enabled = false
 uptodown-dlurl = "https://reddit-official-app.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
-patcher-args = ["-e", "Custom branding name for Reddit", "-OappName=RVX Reddit"]
+patcher-args = [
+  "-e",
+  "Custom branding name for Reddit",
+  "-OappName=RVX Reddit",
+]
 dpi = "320-480dpi"
-
 
 # X (Twitter)
 [X]

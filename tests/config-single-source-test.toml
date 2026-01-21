@@ -1,6 +1,6 @@
 # Test backwards compatibility with single source (string format)
 
-patches-source = "anddea/revanced-patches"  # Single string (old format)
+patches-source = "anddea/revanced-patches" # Single string (old format)
 cli-source = "inotia00/revanced-cli"
 patches-version = "dev"
 cli-version = "dev"

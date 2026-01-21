@@ -6,22 +6,15 @@ requires-python = ">=3.11"
 readme = "README.md"
 license = { file = "LICENSE" }
 
-authors = [
-    { name = "ReVanced Builder Contributors" }
-]
+authors = [ { name = "ReVanced Builder Contributors" } ]
 
-dependencies = [
-    "lxml>=5.2.2,<6.0.0",
-    "cssselect>=1.2.0,<2.0.0",
-]
+dependencies = [ "lxml>=5.2.2,<6.0.0", "cssselect>=1.2.0,<2.0.0" ]
 
 [project.optional-dependencies]
-dev = [
-    "ruff>=0.8.0",
-]
+dev = [ "ruff>=0.8.0" ]
 
 [build-system]
-requires = ["setuptools>=68.0"]
+requires = [ "setuptools>=68.0" ]
 build-backend = "setuptools.build_meta"
 
 [tool.ruff]
@@ -30,19 +23,19 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings
-    "F",      # pyflakes
-    "I",      # isort
-    "N",      # pep8-naming
-    "UP",     # pyupgrade
-    "B",      # flake8-bugbear
-    "C4",     # flake8-comprehensions
-    "SIM",    # flake8-simplify
-    "RUF",    # ruff-specific rules
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "N",   # pep8-naming
+  "UP",  # pyupgrade
+  "B",   # flake8-bugbear
+  "C4",  # flake8-comprehensions
+  "SIM", # flake8-simplify
+  "RUF", # ruff-specific rules
 ]
 ignore = [
-    "E501",   # line too long (handled by formatter)
+  "E501", # line too long (handled by formatter)
 ]
 
 [tool.ruff.format]
@@ -51,4 +44,4 @@ indent-style = "space"
 line-ending = "auto"
 
 [tool.ruff.lint.isort]
-known-first-party = ["scripts"]
+known-first-party = [ "scripts" ]

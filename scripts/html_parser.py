@@ -22,12 +22,11 @@ Author: ReVanced Builder
 License: Same as parent project
 """
 
-import sys
 import argparse
-from typing import List
+import sys
 
 try:
-    from lxml import html, etree
+    from lxml import etree, html
 except ImportError:
     print(
         "Error: lxml not installed. Install with: pip install lxml cssselect",
@@ -56,7 +55,7 @@ def parse_html(html_content: str) -> html.HtmlElement:
         sys.exit(1)
 
 
-def scrape_text(tree: html.HtmlElement, selector: str) -> List[str]:
+def scrape_text(tree: html.HtmlElement, selector: str) -> list[str]:
     """
     Extract text content from elements matching CSS selector.
 
@@ -83,9 +82,7 @@ def scrape_text(tree: html.HtmlElement, selector: str) -> List[str]:
         sys.exit(1)
 
 
-def scrape_attribute(
-    tree: html.HtmlElement, selector: str, attribute: str
-) -> List[str]:
+def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> list[str]:
     """
     Extract attribute values from elements matching CSS selector.
 

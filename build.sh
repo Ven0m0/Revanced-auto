@@ -141,12 +141,12 @@ if [[ ${2-} == "--config-update" ]]; then
 fi
 
 # Initialize build.md
-: >build.md
+: > build.md
 
 # Clear changelogs (if any exist)
 for changelog in "$TEMP_DIR"/*-rv/changelog.md; do
-  [[ -f $changelog ]] && : >"$changelog"
-done 2>/dev/null || :
+  [[ -f $changelog ]] && : > "$changelog"
+done 2> /dev/null || :
 
 # ==================== Build Processing ====================
 
@@ -277,7 +277,7 @@ process_app_config() {
 
   # Load patcher-args as an array if present
   local -a patcher_args_array=()
-  if toml_get_array "patcher_args_array" "$t" "patcher-args" 2>/dev/null; then
+  if toml_get_array "patcher_args_array" "$t" "patcher-args" 2> /dev/null; then
     # Convert array to space-separated string for passing to build_rv
     # The actual array will be reconstructed in patching.sh
     app_args[patcher_args]="${patcher_args_array[*]}"
@@ -364,7 +364,7 @@ process_app_config() {
     local args_file
     args_file=$(mktemp)
     for key in "${!app_args[@]}"; do
-      printf '%s=%s\n' "$key" "${app_args[${key}]}" >>"$args_file"
+      printf '%s=%s\n' "$key" "${app_args[${key}]}" >> "$args_file"
     done
     build_rv "$args_file" &
 
@@ -381,7 +381,7 @@ process_app_config() {
     # Serialize args to temp file
     args_file=$(mktemp)
     for key in "${!app_args[@]}"; do
-      printf '%s=%s\n' "$key" "${app_args[${key}]}" >>"$args_file"
+      printf '%s=%s\n' "$key" "${app_args[${key}]}" >> "$args_file"
     done
     build_rv "$args_file" &
   else
@@ -392,7 +392,7 @@ process_app_config() {
     local args_file
     args_file=$(mktemp)
     for key in "${!app_args[@]}"; do
-      printf '%s=%s\n' "$key" "${app_args[${key}]}" >>"$args_file"
+      printf '%s=%s\n' "$key" "${app_args[${key}]}" >> "$args_file"
     done
     build_rv "$args_file" &
   fi
@@ -422,21 +422,21 @@ if [[ ${#failed_jobs[@]} -gt 0 ]]; then
 fi
 
 # Clean up temporary files
-rm -rf temp/tmp.* 2>/dev/null || :
+rm -rf temp/tmp.* 2> /dev/null || :
 
 # ==================== Post-Build ====================
 
 # Check if any builds succeeded
-if [[ "$(ls -A1 "$BUILD_DIR" 2>/dev/null)" == "" ]]; then
+if [[ "$(ls -A1 "$BUILD_DIR" 2> /dev/null)" == "" ]]; then
   abort "All builds failed."
 fi
 
 # Add build notes
 log "\nInstall [Microg](https://github.com/ReVanced/GmsCore/releases) for non-root YouTube and YT Music APKs"
-log "$(cat "$TEMP_DIR"/*-rv/changelog.md 2>/dev/null || :)"
+log "$(cat "$TEMP_DIR"/*-rv/changelog.md 2> /dev/null || :)"
 
 # Add skipped builds info
-SKIPPED=$(cat "$TEMP_DIR"/skipped 2>/dev/null || :)
+SKIPPED=$(cat "$TEMP_DIR"/skipped 2> /dev/null || :)
 if [[ $SKIPPED != "" ]]; then
   log "\nSkipped:"
   log "$SKIPPED"

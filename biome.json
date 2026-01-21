@@ -8,15 +8,7 @@
   },
   "files": {
     "include": ["**/*.json", "**/*.html", "**/*.js", "**/*.ts", "**/*.css"],
-    "ignore": [
-      "node_modules",
-      ".git",
-      "build",
-      "temp",
-      "bin",
-      "*.min.js",
-      "*.min.css"
-    ]
+    "ignore": ["node_modules", ".git", "build", "temp", "bin", "*.min.js", "*.min.css"]
   },
   "formatter": {
     "enabled": true,

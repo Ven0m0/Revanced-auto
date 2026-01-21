@@ -6,20 +6,20 @@
 echo "[INFO] Optimizing PNG assets..."
 
 # Check if optipng is installed
-if ! command -v optipng &>/dev/null; then
-	echo "[WARNING] optipng not found, skipping PNG optimization"
-	exit 0
+if ! command -v optipng &> /dev/null; then
+  echo "[WARNING] optipng not found, skipping PNG optimization"
+  exit 0
 fi
 
 # Detect number of processors
-NPROC=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+NPROC=$(nproc 2> /dev/null || getconf _NPROCESSORS_ONLN 2> /dev/null || sysctl -n hw.ncpu 2> /dev/null || echo 4)
 echo "[INFO] Using $NPROC parallel processes for optimization"
 
 # Find and optimize all PNG files
 PNG_COUNT=$(find . -type f -iname '*.png' | wc -l)
 if [ "$PNG_COUNT" -eq 0 ]; then
-	echo "[INFO] No PNG files found to optimize"
-	exit 0
+  echo "[INFO] No PNG files found to optimize"
+  exit 0
 fi
 
 echo "[INFO] Found $PNG_COUNT PNG files to optimize"

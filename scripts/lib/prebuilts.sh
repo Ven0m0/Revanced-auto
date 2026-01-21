@@ -11,107 +11,107 @@ set -euo pipefail
 # Returns:
 #   Paths to CLI JAR and patches file
 get_rv_prebuilts() {
-	local cli_src=$1 cli_ver=$2 patches_src=$3 patches_ver=$4
-	pr "Getting prebuilts (${patches_src%/*})" >&2
+  local cli_src=$1 cli_ver=$2 patches_src=$3 patches_ver=$4
+  pr "Getting prebuilts (${patches_src%/*})" >&2
 
-	local cl_dir=${patches_src%/*}
-	cl_dir=${TEMP_DIR}/${cl_dir,,}-rv
-	[ -d "$cl_dir" ] || mkdir -p "$cl_dir"
+  local cl_dir=${patches_src%/*}
+  cl_dir=${TEMP_DIR}/${cl_dir,,}-rv
+  [ -d "$cl_dir" ] || mkdir -p "$cl_dir"
 
-	local files=()
+  local files=()
 
-	for src_ver in "$cli_src CLI $cli_ver revanced-cli" "$patches_src Patches $patches_ver patches"; do
-		# shellcheck disable=SC2086
-		set -- "$src_ver"
-		local src=$1 tag=$2 ver=${3-} fprefix=$4
-		local ext grab_cl
+  for src_ver in "$cli_src CLI $cli_ver revanced-cli" "$patches_src Patches $patches_ver patches"; do
+    # shellcheck disable=SC2086
+    set -- "$src_ver"
+    local src=$1 tag=$2 ver=${3-} fprefix=$4
+    local ext grab_cl
 
-		if [[ "$tag" = "CLI" ]]; then
-			ext="jar"
-			grab_cl=false
-		elif [[ "$tag" = "Patches" ]]; then
-			ext="rvp"
-			grab_cl=true
-		else
-			abort "unreachable: invalid tag $tag"
-		fi
+    if [[ "$tag" = "CLI" ]]; then
+      ext="jar"
+      grab_cl=false
+    elif [[ "$tag" = "Patches" ]]; then
+      ext="rvp"
+      grab_cl=true
+    else
+      abort "unreachable: invalid tag $tag"
+    fi
 
-		local dir=${src%/*}
-		dir=${TEMP_DIR}/${dir,,}-rv
-		[ -d "$dir" ] || mkdir -p "$dir"
+    local dir=${src%/*}
+    dir=${TEMP_DIR}/${dir,,}-rv
+    [ -d "$dir" ] || mkdir -p "$dir"
 
-		local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
+    local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
 
-		# Handle version selection
-		if [[ "$ver" = "dev" ]]; then
-			log_info "Fetching dev version for $tag"
-			local resp
-			resp=$(gh_req "$rv_rel" -) || return 1
-			ver=$(jq -e -r '.[] | .tag_name' <<<"$resp" | get_highest_ver) || return 1
-			log_debug "Selected dev version: $ver"
-		fi
+    # Handle version selection
+    if [[ "$ver" = "dev" ]]; then
+      log_info "Fetching dev version for $tag"
+      local resp
+      resp=$(gh_req "$rv_rel" -) || return 1
+      ver=$(jq -e -r '.[] | .tag_name' <<< "$resp" | get_highest_ver) || return 1
+      log_debug "Selected dev version: $ver"
+    fi
 
-		if [[ "$ver" = "latest" ]]; then
-			rv_rel+="/latest"
-			name_ver="*"
-		else
-			rv_rel+="/tags/${ver}"
-			name_ver="$ver"
-		fi
+    if [[ "$ver" = "latest" ]]; then
+      rv_rel+="/latest"
+      name_ver="*"
+    else
+      rv_rel+="/tags/${ver}"
+      name_ver="$ver"
+    fi
 
-		# Check if file already exists locally
-		local url file tag_name name
-		file=$(find "$dir" -name "${fprefix}-${name_ver#v}.${ext}" -type f 2>/dev/null)
+    # Check if file already exists locally
+    local url file tag_name name
+    file=$(find "$dir" -name "${fprefix}-${name_ver#v}.${ext}" -type f 2> /dev/null)
 
-		if [[ "$file" = "" ]]; then
-			log_info "Downloading $tag from GitHub"
-			local resp asset
-			resp=$(gh_req "$rv_rel" -) || return 1
-			tag_name=$(jq -r '.tag_name' <<<"$resp")
-			asset=$(jq -e -r ".assets[] | select(.name | endswith(\"$ext\"))" <<<"$resp") || return 1
-			url=$(jq -r .url <<<"$asset")
-			name=$(jq -r .name <<<"$asset")
-			file="${dir}/${name}"
-			gh_dl "$file" "$url" >&2 || return 1
-			echo "$tag: $(cut -d/ -f1 <<<"$src")/${name}  " >>"${cl_dir}/changelog.md"
-		else
-			grab_cl=false
-			local for_err=$file
-			if [[ "$ver" = "latest" ]]; then
-				file=$(grep -v '/[^/]*dev[^/]*$' <<<"$file" | head -1)
-			else
-				file=$(grep "/[^/]*${ver#v}[^/]*\$" <<<"$file" | head -1)
-			fi
+    if [[ "$file" = "" ]]; then
+      log_info "Downloading $tag from GitHub"
+      local resp asset
+      resp=$(gh_req "$rv_rel" -) || return 1
+      tag_name=$(jq -r '.tag_name' <<< "$resp")
+      asset=$(jq -e -r ".assets[] | select(.name | endswith(\"$ext\"))" <<< "$resp") || return 1
+      url=$(jq -r .url <<< "$asset")
+      name=$(jq -r .name <<< "$asset")
+      file="${dir}/${name}"
+      gh_dl "$file" "$url" >&2 || return 1
+      echo "$tag: $(cut -d/ -f1 <<< "$src")/${name}  " >> "${cl_dir}/changelog.md"
+    else
+      grab_cl=false
+      local for_err=$file
+      if [[ "$ver" = "latest" ]]; then
+        file=$(grep -v '/[^/]*dev[^/]*$' <<< "$file" | head -1)
+      else
+        file=$(grep "/[^/]*${ver#v}[^/]*\$" <<< "$file" | head -1)
+      fi
 
-			if [[ "$file" = "" ]]; then
-				abort "filter fail: '$for_err' with '$ver'"
-			fi
+      if [[ "$file" = "" ]]; then
+        abort "filter fail: '$for_err' with '$ver'"
+      fi
 
-			name=$(basename "$file")
-			tag_name=$(cut -d'-' -f3- <<<"$name")
-			tag_name=v${tag_name%.*}
-			log_debug "Using cached $tag: $file"
-		fi
+      name=$(basename "$file")
+      tag_name=$(cut -d'-' -f3- <<< "$name")
+      tag_name=v${tag_name%.*}
+      log_debug "Using cached $tag: $file"
+    fi
 
-		# Handle patches-specific processing
-		if [[ "$tag" = "Patches" ]]; then
-			# shellcheck disable=SC2086
-			if [[ "$grab_cl" = true ]]; then
-				echo -e "[Changelog](https://github.com/${src}/releases/tag/${tag_name})\n" >>"${cl_dir}/changelog.md"
-			fi
+    # Handle patches-specific processing
+    if [[ "$tag" = "Patches" ]]; then
+      # shellcheck disable=SC2086
+      if [[ "$grab_cl" = true ]]; then
+        echo -e "[Changelog](https://github.com/${src}/releases/tag/${tag_name})\n" >> "${cl_dir}/changelog.md"
+      fi
 
-			# Remove integrations checks if requested
-			if [[ "$REMOVE_RV_INTEGRATIONS_CHECKS" = true ]]; then
-				if ! _remove_integrations_checks "$file"; then
-					log_warn "Patching revanced-integrations failed"
-				fi
-			fi
-		fi
+      # Remove integrations checks if requested
+      if [[ "$REMOVE_RV_INTEGRATIONS_CHECKS" = true ]]; then
+        if ! _remove_integrations_checks "$file"; then
+          log_warn "Patching revanced-integrations failed"
+        fi
+      fi
+    fi
 
-		files+=("$file")
-	done
+    files+=("$file")
+  done
 
-	echo "${files[@]}"
+  echo "${files[@]}"
 }
 
 # Get ReVanced CLI and patches from multiple sources
@@ -129,39 +129,39 @@ get_rv_prebuilts() {
 #     /path/to/patches1.rvp
 #     /path/to/patches2.rvp
 get_rv_prebuilts_multi() {
-	local cli_src=$1 cli_ver=$2
-	shift 2
-	local -a patches_srcs=("$@")
+  local cli_src=$1 cli_ver=$2
+  shift 2
+  local -a patches_srcs=("$@")
 
-	if [[ ${#patches_srcs[@]} -eq 0 ]]; then
-		abort "get_rv_prebuilts_multi: no patch sources provided"
-	fi
+  if [[ ${#patches_srcs[@]} -eq 0 ]]; then
+    abort "get_rv_prebuilts_multi: no patch sources provided"
+  fi
 
-	log_debug "Downloading prebuilts for ${#patches_srcs[@]} patch source(s)"
+  log_debug "Downloading prebuilts for ${#patches_srcs[@]} patch source(s)"
 
-	# Download CLI once (shared across all patch sources)
-	local cli_jar
-	local prebuilts
-	# Use first patch source to determine cache directory for CLI
-	prebuilts=$(get_rv_prebuilts "$cli_src" "$cli_ver" "${patches_srcs[0]}" "$PATCHES_VER")
-	read -r cli_jar _ <<<"$prebuilts"
-	echo "$cli_jar"
+  # Download CLI once (shared across all patch sources)
+  local cli_jar
+  local prebuilts
+  # Use first patch source to determine cache directory for CLI
+  prebuilts=$(get_rv_prebuilts "$cli_src" "$cli_ver" "${patches_srcs[0]}" "$PATCHES_VER")
+  read -r cli_jar _ <<< "$prebuilts"
+  echo "$cli_jar"
 
-	# Download patches from each source
-	local idx=1
-	for patches_src in "${patches_srcs[@]}"; do
-		log_info "Downloading patches from ${patches_src} (${idx}/${#patches_srcs[@]})"
+  # Download patches from each source
+  local idx=1
+  for patches_src in "${patches_srcs[@]}"; do
+    log_info "Downloading patches from ${patches_src} (${idx}/${#patches_srcs[@]})"
 
-		# Get patches jar for this source
-		local patches_prebuilts patches_jar
-		patches_prebuilts=$(get_rv_prebuilts "$cli_src" "$cli_ver" "$patches_src" "$PATCHES_VER")
-		read -r _ patches_jar <<<"$patches_prebuilts"
+    # Get patches jar for this source
+    local patches_prebuilts patches_jar
+    patches_prebuilts=$(get_rv_prebuilts "$cli_src" "$cli_ver" "$patches_src" "$PATCHES_VER")
+    read -r _ patches_jar <<< "$patches_prebuilts"
 
-		echo "$patches_jar"
-		idx=$((idx + 1))
-	done
+    echo "$patches_jar"
+    idx=$((idx + 1))
+  done
 
-	log_debug "Downloaded CLI and ${#patches_srcs[@]} patch bundle(s)"
+  log_debug "Downloaded CLI and ${#patches_srcs[@]} patch bundle(s)"
 }
 
 # Remove integrations checks from patches
@@ -170,23 +170,23 @@ get_rv_prebuilts_multi() {
 # Returns:
 #   0 on success, 1 on failure
 _remove_integrations_checks() {
-	local file=$1
-	log_info "Removing integrations checks from patches"
+  local file=$1
+  log_info "Removing integrations checks from patches"
 
-	(
-		mkdir -p "${file}-zip" || return 1
-		unzip -qo "$file" -d "${file}-zip" || return 1
-		java -cp "${BIN_DIR}/paccer.jar:${BIN_DIR}/dexlib2.jar" com.jhc.Main \
-			"${file}-zip/extensions/shared.rve" \
-			"${file}-zip/extensions/shared-patched.rve" || return 1
-		mv -f "${file}-zip/extensions/shared-patched.rve" \
-			"${file}-zip/extensions/shared.rve" || return 1
-		rm "$file" || return 1
-		cd "${file}-zip" || return 1
-		zip -0rq "${CWD}/${file}" . || return 1
-	) >&2
+  (
+    mkdir -p "${file}-zip" || return 1
+    unzip -qo "$file" -d "${file}-zip" || return 1
+    java -cp "${BIN_DIR}/paccer.jar:${BIN_DIR}/dexlib2.jar" com.jhc.Main \
+      "${file}-zip/extensions/shared.rve" \
+      "${file}-zip/extensions/shared-patched.rve" || return 1
+    mv -f "${file}-zip/extensions/shared-patched.rve" \
+      "${file}-zip/extensions/shared.rve" || return 1
+    rm "$file" || return 1
+    cd "${file}-zip" || return 1
+    zip -0rq "${CWD}/${file}" . || return 1
+  ) >&2
 
-	local ret=$?
-	rm -rf "${file}-zip" 2>/dev/null || :
-	return "$ret"
+  local ret=$?
+  rm -rf "${file}-zip" 2> /dev/null || :
+  return "$ret"
 }
