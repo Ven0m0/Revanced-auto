@@ -9,7 +9,7 @@ show_downloads: false
 # GitHub metadata
 github:
   is_project_page: true
-  repository_url: https://github.com/YOUR-USERNAME/Revanced-auto
+  repository_url: https://github.com/Ven0m0/Revanced-auto
 
 # Plugins
 plugins:
@@ -24,3 +24,7 @@ kramdown:
 # Exclude files from site build
 exclude:
   - README.md
+  - LICENSE
+  
+timezone: UTC
+encoding: utf-8
