@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,8 +7,20 @@
     "defaultBranch": "main"
   },
   "files": {
-    "include": ["**/*.json", "**/*.html", "**/*.js", "**/*.ts", "**/*.css"],
-    "ignore": ["node_modules", ".git", "build", "temp", "bin", "*.min.js", "*.min.css"]
+    "includes": [
+      "**/*.json",
+      "**/*.html",
+      "**/*.js",
+      "**/*.ts",
+      "**/*.css",
+      "!**/node_modules",
+      "!**/.git",
+      "!**/build",
+      "!**/temp",
+      "!**/bin",
+      "!**/*.min.js",
+      "!**/*.min.css"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -18,21 +30,18 @@
     "lineEnding": "lf",
     "lineWidth": 100
   },
-  "organizeImports": {
-    "enabled": true
-  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
       "complexity": {
         "noExtraBooleanCast": "error",
-        "noMultipleSpacesInRegularExpressionLiterals": "error",
         "noUselessCatch": "error",
         "noUselessConstructor": "error",
         "noUselessLabel": "error",
         "noUselessRename": "error",
-        "noWith": "error"
+        "noAdjacentSpacesInRegex": "error"
       },
       "correctness": {
         "noConstAssign": "error",
@@ -42,7 +51,6 @@
         "noGlobalObjectCalls": "error",
         "noInnerDeclarations": "error",
         "noInvalidConstructorSuper": "error",
-        "noNewSymbol": "error",
         "noNonoctalDecimalEscape": "error",
         "noPrecisionLoss": "error",
         "noSelfAssign": "error",
@@ -57,10 +65,11 @@
         "noUnusedVariables": "warn",
         "useIsNan": "error",
         "useValidForDirection": "error",
-        "useYield": "error"
+        "useYield": "error",
+        "noInvalidBuiltinInstantiation": "error",
+        "useValidTypeof": "error"
       },
       "style": {
-        "noVar": "error",
         "useConst": "error",
         "useTemplate": "warn"
       },
@@ -88,7 +97,8 @@
         "noRedeclare": "error",
         "noShadowRestrictedNames": "error",
         "noUnsafeNegation": "error",
-        "useValidTypeof": "error"
+        "noWith": "error",
+        "noVar": "error"
       }
     }
   },
@@ -108,5 +118,17 @@
     "linter": {
       "enabled": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.html"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -828,7 +828,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
 
                 patchesCache.set(repoPath, patches);
                 return patches;
-            } catch (error) {
+            } catch {
                 // Fallback: try to fetch from releases API
                 try {
                     const releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
@@ -952,7 +952,9 @@ rv-brand = "${document.getElementById('rv-brand').value}"
         function selectAllPatches(appId, selectAll) {
             const patchList = document.getElementById(`patch-list-${appId}`);
             const checkboxes = patchList.querySelectorAll('.patch-checkbox');
-            checkboxes.forEach(cb => cb.checked = selectAll);
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll;
+            });
             updatePatchSelection(appId);
         }
 
