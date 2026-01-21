@@ -14,19 +14,19 @@ pass_count=0
 fail_count=0
 
 run_test() {
-    local test_name=$1
-    local test_cmd=$2
-    test_count=$((test_count + 1))
+  local test_name=$1
+  local test_cmd=$2
+  test_count=$((test_count + 1))
 
-    echo "Test $test_count: $test_name"
-    if eval "$test_cmd"; then
-        echo "  ✓ PASS"
-        pass_count=$((pass_count + 1))
-    else
-        echo "  ✗ FAIL"
-        fail_count=$((fail_count + 1))
-    fi
-    echo
+  echo "Test $test_count: $test_name"
+  if eval "$test_cmd"; then
+    echo "  ✓ PASS"
+    pass_count=$((pass_count + 1))
+  else
+    echo "  ✗ FAIL"
+    fail_count=$((fail_count + 1))
+  fi
+  echo
 }
 
 # Test 1: Multi-source config parsing
@@ -102,9 +102,9 @@ echo "Failed: $fail_count"
 echo
 
 if [[ $fail_count -eq 0 ]]; then
-    echo "✓ All tests passed!"
-    exit 0
+  echo "✓ All tests passed!"
+  exit 0
 else
-    echo "✗ Some tests failed"
-    exit 1
+  echo "✗ Some tests failed"
+  exit 1
 fi

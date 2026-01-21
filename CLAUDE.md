@@ -46,6 +46,45 @@ for f in scripts/lib/*.sh; do bash -n "$f" && echo "$f: OK"; done
 bash -n build.sh && bash -c "source utils.sh && check_prerequisites"
 ```
 
+### Linting and Formatting
+
+The project uses comprehensive linting and formatting tools for all file types:
+
+```bash
+# Check all files (lint only)
+make lint
+
+# Fix all formatting issues automatically
+make format
+
+# Install all linting/formatting tools
+make install-tools
+
+# Set up pre-commit hooks
+make setup-pre-commit
+
+# Or use the script directly
+./scripts/lint.sh          # check only
+./scripts/lint.sh --fix    # auto-fix
+```
+
+**Supported tools by file type:**
+- **Python**: Ruff (linting + formatting)
+- **Shell**: ShellCheck, shfmt, shellharden
+- **YAML**: yamllint, yamlfmt
+- **TOML**: taplo
+- **JSON/HTML/JS/TS/CSS**: Biome
+
+**Configuration files:**
+- `.shellcheckrc` - ShellCheck rules
+- `.editorconfig` - Editor settings
+- `.yamllint.yml` - YAML linting rules
+- `.yamlfmt` - YAML formatting
+- `.taplo.toml` - TOML formatting
+- `biome.json` - Biome config
+- `pyproject.toml` - Python tools (Ruff)
+- `.pre-commit-config.yaml` - Pre-commit hooks
+
 ## Architecture
 
 ### Modular Library Structure

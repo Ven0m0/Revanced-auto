@@ -37,7 +37,7 @@ separate_config() {
 
   # Get the specific app table
   local app_table
-  if ! app_table=$(toml_get_table "$app_name" 2>/dev/null); then
+  if ! app_table=$(toml_get_table "$app_name" 2> /dev/null); then
     abort "App '$app_name' not found in config"
   fi
 
@@ -54,10 +54,10 @@ separate_config() {
     # For TOML output, we need to use a tool or write manually
     # Since we don't have a JSON->TOML converter, we'll output JSON with .toml extension
     # The build.sh accepts both .json and .toml
-    echo "$new_config" >"$output_config"
+    echo "$new_config" > "$output_config"
     log_info "Separated config saved to: $output_config (JSON format)"
   else
-    echo "$new_config" >"$output_config"
+    echo "$new_config" > "$output_config"
     log_info "Separated config saved to: $output_config"
   fi
 }
@@ -75,7 +75,7 @@ combine_logs() {
 
   # Find all build.md files and combine them
   local log_files
-  log_files=$(find "$logs_dir" -name "build.md" -type f 2>/dev/null | sort)
+  log_files=$(find "$logs_dir" -name "build.md" -type f 2> /dev/null | sort)
 
   if [ "$log_files" = "" ]; then
     log_warn "No build.md files found in $logs_dir"
@@ -94,7 +94,7 @@ combine_logs() {
       echo ""
     fi
     cat "$log_file"
-  done <<<"$log_files"
+  done <<< "$log_files"
 }
 
 # Main command dispatcher

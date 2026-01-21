@@ -40,3 +40,12 @@ __pycache__/
 .claude-dev-helper/
 conductor/
 .pair-programming-session.md
+
+# Linting and formatting tool caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.taplo/
+node_modules/
+package-lock.json
+yarn.lock

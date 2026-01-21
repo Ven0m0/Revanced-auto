@@ -1,0 +1,8 @@
+# yamlfmt configuration
+formatter:
+  type: basic
+  indent: 2
+  include_document_start: false
+  line_ending: lf
+  retain_line_breaks: true
+  max_line_length: 120

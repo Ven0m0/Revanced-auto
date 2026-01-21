@@ -1,0 +1,29 @@
+# Taplo TOML formatter configuration
+
+[formatting]
+# Align entries vertically
+align_entries = false
+# Align comments after entries
+align_comments = true
+# Append trailing comma
+array_trailing_comma = true
+# Auto expand arrays when they don't fit
+array_auto_expand = true
+# Collapse arrays that fit on one line
+array_auto_collapse = true
+# Compact arrays (no spaces)
+compact_arrays = false
+# Compact inline tables
+compact_inline_tables = false
+# Number of spaces to indent
+indent_tables = false
+# Indent string should be 2 spaces
+indent_string = "  "
+# Reorder keys alphabetically
+reorder_keys = false
+# Allowed blank lines between entries
+allowed_blank_lines = 1
+# Add trailing newline
+trailing_newline = true
+# Unix line endings
+crlf = false
