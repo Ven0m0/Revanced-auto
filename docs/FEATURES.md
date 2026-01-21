@@ -4,9 +4,133 @@ This document describes the advanced automation features available in ReVanced B
 
 ## Table of Contents
 
-1. [Changelog Automation](#changelog-automation)
-2. [Build Cache System](#build-cache-system)
-3. [Dependency Update Checker](#dependency-update-checker)
+1. [GitHub Pages Configuration Generator](#github-pages-configuration-generator)
+2. [Changelog Automation](#changelog-automation)
+3. [Build Cache System](#build-cache-system)
+4. [Dependency Update Checker](#dependency-update-checker)
+
+---
+
+## GitHub Pages Configuration Generator
+
+Web-based visual configuration generator with patch selection capabilities similar to ReVanced Manager.
+
+### Features
+
+- **Visual Patch Selector**: Browse and select patches with checkboxes
+- **Automatic Patch Fetching**: Fetches available patches from GitHub repositories
+- **Smart Filtering**: Filter patches by app compatibility
+- **Search Functionality**: Quick search through patches by name or description
+- **Live Preview**: Real-time TOML configuration preview
+- **Multi-Source Support**: Works with any patch repository
+- **Caching**: Intelligent caching of patch data for faster loading
+
+### Usage
+
+#### Accessing the Generator
+
+1. Open your browser to the GitHub Pages URL (or open `docs/index.html` locally)
+2. Configure global settings (patches source, CLI source, etc.)
+3. Add applications using the "+ Add Application" button
+
+#### Using the Patch Selector
+
+1. Click the "📦 Browse & Select Patches" button for any app
+2. Wait for patches to load from the configured patch source
+3. Use the search box to filter patches by name or description
+4. Click patch items or checkboxes to select/deselect patches
+5. Use "Select All" / "Deselect All" for bulk operations
+6. The excluded-patches field will auto-populate based on selections
+
+**Example workflow:**
+
+```
+1. Add "YouTube-Extended" app
+2. Set patches-source to "anddea/revanced-patches"
+3. Click "Browse & Select Patches"
+4. Search for "adblock"
+5. Select/deselect desired ad-blocking patches
+6. Review generated config in preview pane
+7. Download config.toml
+```
+
+### How It Works
+
+The patch selector:
+
+1. **Fetches patches.json** from the configured GitHub repository
+   - First tries: `https://raw.githubusercontent.com/{owner}/{repo}/main/patches.json`
+   - Fallback: GitHub releases API for latest release assets
+
+2. **Filters patches** based on app compatibility
+   - Maps app display names to package names
+   - Shows only patches compatible with the selected app
+   - Falls back to showing all patches if package unknown
+
+3. **Generates configuration** based on selections
+   - Creates `excluded-patches` list for unchecked patches
+   - Automatically formats patch names with proper quoting
+   - Updates preview in real-time
+
+### Package Name Mapping
+
+The generator automatically maps common app names to package names:
+
+| App Display Name | Package Name |
+|-----------------|--------------|
+| YouTube | com.google.android.youtube |
+| Music | com.google.android.apps.youtube.music |
+| Spotify | com.spotify.music |
+| Reddit | com.reddit.frontpage |
+| X / Twitter | com.twitter.android |
+| TikTok | com.zhiliaoapp.musically |
+| Instagram | com.instagram.android |
+| GooglePhotos | com.google.android.apps.photos |
+
+### Patch Data Format
+
+The system expects patches.json in ReVanced standard format:
+
+```json
+[
+  {
+    "name": "Remove ads",
+    "description": "Removes all ads from the app",
+    "compatiblePackages": [
+      {
+        "name": "com.google.android.youtube",
+        "versions": ["18.48.39", "19.01.34"]
+      }
+    ],
+    "use": true,
+    "requiresIntegrations": false,
+    "options": []
+  }
+]
+```
+
+### Manual Override
+
+Users can still manually edit the excluded-patches and included-patches fields:
+
+- Manual edits take precedence over visual selection
+- The system detects manual edits and stops auto-updating those fields
+- Useful for advanced users who want precise control
+
+### Limitations
+
+- Requires JavaScript enabled in browser
+- Patch repository must have a public patches.json file
+- GitHub API rate limits apply (60 requests/hour unauthenticated)
+- Large patch lists may take time to load
+
+### Benefits
+
+- **User-Friendly**: No need to manually type patch names
+- **Error-Free**: Eliminates typos in patch names
+- **Visual**: See patch descriptions before selecting
+- **Compatible**: Works with any ReVanced-compatible patch source
+- **Fast**: Caching reduces repeated API calls
 
 ---
 

@@ -5,29 +5,36 @@ Welcome to the ReVanced Builder documentation and tools directory.
 ## 📁 Contents
 
 ### Configuration Generator
-**Location**: [`config-generator/`](./config-generator/)
+**Location**: [`index.html`](./index.html)
 
 A web-based tool for creating `config.toml` files without manual editing.
 
 **Features**:
 - Interactive form-based interface
 - Live TOML preview
+- **Visual patch selector** - Browse and select patches like ReVanced Manager
 - Global and per-app settings
 - Download or copy generated configuration
 - Example configurations
+- Patch search and filtering
+- Auto-fetch patches from GitHub repositories
 
-**Access**: [Open Configuration Generator](./config-generator/index.html)
+**Access**: [Open Configuration Generator](./index.html)
 
 ## 🚀 Quick Start
 
 ### Using the Configuration Generator
 
-1. Open [`config-generator/index.html`](./config-generator/index.html) in your browser
+1. Open [`index.html`](./index.html) in your browser
 2. Configure global settings (parallel jobs, compression, etc.)
 3. Add applications using the "+ Add Application" button
 4. Fill in app details (name, version, download URLs)
-5. See live preview on the right
-6. Download or copy the generated `config.toml`
+5. **Click "Browse & Select Patches"** to visually select patches (like ReVanced Manager)
+   - Searches and filters available patches
+   - Select/deselect individual patches with checkboxes
+   - Auto-generates excluded-patches configuration
+6. See live preview on the right
+7. Download or copy the generated `config.toml`
 
 ### Configuration Options
 
@@ -46,7 +53,11 @@ A web-based tool for creating `config.toml` files without manual editing.
 - `version` - auto, latest, or specific version
 - `patches-source` - Override patches source
 - Download URLs (APKMirror, Uptodown, Archive.org)
-- `excluded-patches` - Patches to skip
+- **Patch Selection** - Visual patch browser (fetches from GitHub)
+  - Search and filter patches
+  - Select/deselect with checkboxes
+  - Auto-detects compatible patches
+- `excluded-patches` - Patches to skip (manual or auto-generated)
 - `included-patches` - Exclusive patch list
 
 ## 📖 Additional Documentation
@@ -73,4 +84,4 @@ When adding documentation:
 ---
 
 **Generated with**: ReVanced Builder
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-01-21
