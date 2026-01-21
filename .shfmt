@@ -1,8 +1,0 @@
-# shfmt configuration
-# Use in .editorconfig format
-
-# Options:
-# -i: indent with 2 spaces
-# -bn: binary ops like && and | may start a line
-# -ci: switch cases will be indented
-# -sr: redirect operators will be followed by a space
