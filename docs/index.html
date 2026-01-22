@@ -796,6 +796,30 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             }
         }
 
+        // HTML escape helper to prevent XSS
+        // Note: Separate functions for semantic clarity (content vs attributes)
+        // even though implementation is currently identical
+        function escapeHtml(text) {
+            if (text == null) return '';  // Handle null/undefined
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Escape HTML attributes - kept separate for semantic clarity
+        function escapeHtmlAttr(text) {
+            if (text == null) return '';  // Handle null/undefined
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // Fetch patches from GitHub repository
         async function fetchPatches(repoPath) {
             // Check cache
@@ -904,40 +928,53 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                 relevantPatches = allPatches;
             }
 
-            // Create UI
+            // Create UI with escaped content to prevent XSS
+            const escapedRepoPath = escapeHtml(repoPath);
+            
             patchSelector.innerHTML = `
                 <div class="patch-selector-header">
                     <div>
                         <strong>Available Patches</strong>
-                        <span class="patch-count">(${relevantPatches.length} patches from ${repoPath})</span>
+                        <span class="patch-count">(${relevantPatches.length} patches from ${escapedRepoPath})</span>
                     </div>
-                    <button class="btn-danger btn-small" onclick="closePatchSelector(${appId})">Close</button>
+                    <button type="button" class="btn-danger btn-small" onclick="closePatchSelector(${appId})">Close</button>
                 </div>
 
                 <div class="toggle-buttons">
-                    <button class="btn-primary btn-small" onclick="selectAllPatches(${appId}, true)">✓ Select All</button>
-                    <button class="btn-secondary btn-small" onclick="selectAllPatches(${appId}, false)">✗ Deselect All</button>
+                    <button type="button" class="btn-primary btn-small" onclick="selectAllPatches(${appId}, true)">✓ Select All</button>
+                    <button type="button" class="btn-secondary btn-small" onclick="selectAllPatches(${appId}, false)">✗ Deselect All</button>
                 </div>
 
-                <input type="text" class="patch-search" placeholder="🔍 Search patches..." oninput="filterPatches(${appId})">
+                <input type="text" class="patch-search" placeholder="🔍 Search patches..." aria-label="Search patches" oninput="filterPatches(${appId})">
 
                 <div class="patch-list" id="patch-list-${appId}">
-                    ${relevantPatches.map((patch, index) => `
-                        <div class="patch-item" data-patch-name="${patch.name}" onclick="togglePatch(${appId}, ${index})">
+                    ${relevantPatches.map((patch, index) => {
+                        const escapedPatchName = escapeHtml(patch.name);
+                        const escapedPatchNameAttr = escapeHtmlAttr(patch.name);
+                        const escapedDescription = escapeHtml(patch.description);
+                        const compatiblePackages = patch.compatiblePackages || [];  // Null safety
+                        const escapedPackages = compatiblePackages
+                            .filter(p => p && p.name)  // Safety check for null packages and missing name property
+                            .map(p => escapeHtml(p.name))
+                            .join(', ');
+                        
+                        return `
+                        <div class="patch-item" data-patch-name="${escapedPatchNameAttr}" onclick="togglePatch(${appId}, ${index})">
                             <input type="checkbox" class="patch-checkbox"
                                    id="patch-${appId}-${index}"
                                    aria-labelledby="patch-label-${appId}-${index}"
                                    ${patch.use ? 'checked' : ''}
                                    onclick="event.stopPropagation(); updatePatchSelection(${appId})">
                             <div class="patch-info">
-                                <div class="patch-name" id="patch-label-${appId}-${index}">${patch.name}</div>
-                                <div class="patch-description">${patch.description}</div>
-                                ${patch.compatiblePackages.length > 0 ?
-                                    `<div class="patch-version">Compatible: ${patch.compatiblePackages.map(p => p.name).join(', ')}</div>`
+                                <div class="patch-name" id="patch-label-${appId}-${index}">${escapedPatchName}</div>
+                                <div class="patch-description">${escapedDescription}</div>
+                                ${compatiblePackages.length > 0 ?
+                                    `<div class="patch-version">Compatible: ${escapedPackages}</div>`
                                     : ''}
                             </div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             `;
 
