@@ -234,6 +234,119 @@
             color: var(--text-muted);
             white-space: nowrap;
         }
+
+        .patch-selector {
+            margin-top: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            background: var(--surface);
+        }
+
+        .patch-selector-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .patch-search {
+            width: 100%;
+            margin-bottom: 0.75rem;
+        }
+
+        .patch-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.5rem;
+            background: var(--bg);
+        }
+
+        .patch-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 0.625rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .patch-item:last-child {
+            border-bottom: none;
+        }
+
+        .patch-item:hover {
+            background: var(--surface);
+        }
+
+        .patch-checkbox {
+            margin-right: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .patch-info {
+            flex: 1;
+        }
+
+        .patch-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .patch-description {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .patch-version {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        .patch-count {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            color: var(--danger);
+            padding: 0.75rem;
+            background: rgba(220, 38, 38, 0.1);
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            font-size: 0.85rem;
+        }
+
+        .btn-small {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .toggle-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -438,15 +551,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Excluded Patches</label>
-                    <textarea class="app-excluded" rows="2" placeholder="'Patch name 1' 'Patch name 2'" onchange="updatePreview()">${appData.excluded || ''}</textarea>
-                    <p class="help-text">Space-separated, quoted patch names to exclude</p>
+                    <label>Patch Selection</label>
+                    <button type="button" class="btn-primary btn-small" onclick="loadPatches(${id})">📦 Browse & Select Patches</button>
+                    <div id="patch-selector-${id}" class="patch-selector" style="display: none;">
+                        <!-- Patch selector will be dynamically populated -->
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Included Patches (exclusive mode)</label>
+                    <label>Excluded Patches (Manual)</label>
+                    <textarea class="app-excluded" rows="2" placeholder="'Patch name 1' 'Patch name 2'" onchange="updatePreview()">${appData.excluded || ''}</textarea>
+                    <p class="help-text">Space-separated, quoted patch names to exclude (overrides visual selection)</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Included Patches (Manual, exclusive mode)</label>
                     <textarea class="app-included" rows="2" placeholder="'Patch name 1' 'Patch name 2'" onchange="updatePreview()">${appData.included || ''}</textarea>
-                    <p class="help-text">Only include these patches (if specified)</p>
+                    <p class="help-text">Only include these patches (overrides visual selection)</p>
                 </div>
             `;
 
@@ -454,7 +575,7 @@
             updatePreview();
         }
 
-        function _removeApp(id) {
+        function removeApp(id) {
             document.getElementById(`app-${id}`).remove();
             updatePreview();
         }
@@ -584,7 +705,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             document.getElementById('preview').textContent = toml;
         }
 
-        function _downloadConfig() {
+        function downloadConfig() {
             const toml = generateTOML();
             const blob = new Blob([toml], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
@@ -595,7 +716,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             URL.revokeObjectURL(url);
         }
 
-        function _copyConfig() {
+        function copyConfig() {
             const toml = generateTOML();
             navigator.clipboard.writeText(toml).then(() => {
                 alert('✓ Configuration copied to clipboard!');
@@ -604,7 +725,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             });
         }
 
-        function _loadExample() {
+        function loadExample() {
             // Clear existing apps
             document.getElementById('apps-container').innerHTML = '';
             appCounter = 0;
@@ -642,6 +763,328 @@ rv-brand = "${document.getElementById('rv-brand').value}"
 
             updatePreview();
         }
+
+        // =============================================================================
+        // Package Name Mapping
+        // =============================================================================
+        const PACKAGE_MAP = {
+            "YouTube": "com.google.android.youtube",
+            "Music": "com.google.android.apps.youtube.music",
+            "Spotify": "com.spotify.music",
+            "Reddit": "com.reddit.frontpage",
+            "X / Twitter": "com.twitter.android",
+            "TikTok": "com.zhiliaoapp.musically",
+            "Instagram": "com.instagram.android",
+            "GooglePhotos": "com.google.android.apps.photos"
+        };
+
+        // =============================================================================
+        // Patch Selection System
+        // =============================================================================
+
+        // Cache for patches data
+        const patchesCache = new Map();
+
+        // Load patches from GitHub API
+        async function loadPatches(appId) {
+            const appCard = document.getElementById(`app-${appId}`);
+            const patchSelector = document.getElementById(`patch-selector-${appId}`);
+            const patchesSource = appCard.querySelector('.app-patches-source').value.trim()
+                || document.getElementById('patches-source').value;
+
+            // Toggle visibility
+            if (patchSelector.style.display !== 'none') {
+                patchSelector.style.display = 'none';
+                return;
+            }
+
+            patchSelector.style.display = 'block';
+            patchSelector.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p style="margin-top: 1rem; color: var(--text-muted);">Loading patches...</p></div>';
+
+            try {
+                const patches = await fetchPatches(patchesSource);
+                renderPatchSelector(appId, patches, patchesSource);
+            } catch (error) {
+                patchSelector.innerHTML = '<div class="error-message">❌ Failed to load patches: <span class="error-content"></span></div>';
+                patchSelector.querySelector('.error-content').textContent = error.message;
+            }
+        }
+
+        // HTML escape helper to prevent XSS
+        // Note: Separate functions for semantic clarity (content vs attributes)
+        // even though implementation is currently identical
+        function escapeHtml(text) {
+            if (text == null) return '';  // Handle null/undefined
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Escape HTML attributes - kept separate for semantic clarity
+        function escapeHtmlAttr(text) {
+            if (text == null) return '';  // Handle null/undefined
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Fetch patches from GitHub repository
+        async function fetchPatches(repoPath) {
+            // Check cache
+            if (patchesCache.has(repoPath)) {
+                return patchesCache.get(repoPath);
+            }
+
+            // Validate and normalize repoPath ("owner/repo")
+            if (typeof repoPath !== 'string') {
+                throw new Error('Invalid repository path: expected a string in the format "owner/repo".');
+            }
+
+            const normalizedRepoPath = repoPath.trim();
+            const segments = normalizedRepoPath.split('/').filter(Boolean);
+            if (segments.length !== 2) {
+                throw new Error(`Invalid repository path "${repoPath}". Expected format "owner/repo".`);
+            }
+            const [owner, repo] = segments;
+            // First, try to get patches.json from the main branch
+            const patchesJsonUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/patches.json`;
+
+            try {
+                const response = await fetch(patchesJsonUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const patchesData = await response.json();
+
+                // Transform to our format
+                const patches = patchesData.map(patch => ({
+                    name: patch.name,
+                    description: patch.description || 'No description available',
+                    compatiblePackages: patch.compatiblePackages || [],
+                    use: patch.use !== false,
+                    requiresIntegrations: patch.requiresIntegrations || false,
+                    options: patch.options || []
+                }));
+
+                patchesCache.set(repoPath, patches);
+                return patches;
+            } catch (primaryError) {
+                console.error(`Failed to fetch patches.json from raw.githubusercontent.com for ${repoPath}:`, primaryError);
+                // Fallback: try to fetch from releases API
+                try {
+                    const releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+                    const releaseResponse = await fetch(releaseUrl);
+
+                    if (!releaseResponse.ok) {
+                        throw new Error(`Cannot fetch patches from ${repoPath}. Please ensure the repository exists and has a patches.json file.`);
+                    }
+
+                    const releaseData = await releaseResponse.json();
+
+                    // Look for patches.json in release assets
+                    const patchesAsset = releaseData.assets.find(asset =>
+                        asset.name === 'patches.json'
+                    );
+
+                    if (patchesAsset) {
+                        const assetResponse = await fetch(patchesAsset.browser_download_url);
+
+                        if (!assetResponse.ok) {
+                            throw new Error(`Cannot download patches.json from ${repoPath} releases`);
+                        }
+                        const patchesData = await assetResponse.json();
+
+                        const transformPatch = patch => ({
+                            name: patch.name,
+                            description: patch.description || 'No description available',
+                            compatiblePackages: patch.compatiblePackages || [],
+                            use: patch.use !== false,
+                            requiresIntegrations: patch.requiresIntegrations || false,
+                            options: patch.options || []
+                        });
+
+                        const patches = patchesData.map(transformPatch);
+                        patchesCache.set(repoPath, patches);
+                        return patches;
+                    }
+
+                    throw new Error(`No patches.json found in ${repoPath} releases`);
+                } catch (fallbackError) {
+                    throw new Error(`Failed to fetch patches: ${fallbackError.message}`);
+                }
+            }
+        }
+
+        // Render the patch selector UI
+        function renderPatchSelector(appId, allPatches, repoPath) {
+            const patchSelector = document.getElementById(`patch-selector-${appId}`);
+            const appCard = document.getElementById(`app-${appId}`);
+            const appDisplayName = appCard.querySelector('.app-display-name').value.trim();
+
+            // Try to determine package name from app display name
+            const packageName = PACKAGE_MAP[appDisplayName] || '';
+
+            // Filter patches compatible with this app
+            let relevantPatches = allPatches.filter(patch => {
+                if (!packageName) return true; // Show all if we don't know the package
+                return patch.compatiblePackages.some(pkg => pkg.name === packageName);
+            });
+
+            // If no relevant patches found, show all
+            if (relevantPatches.length === 0) {
+                relevantPatches = allPatches;
+            }
+
+            // Create UI with escaped content to prevent XSS
+            const escapedRepoPath = escapeHtml(repoPath);
+            
+            patchSelector.innerHTML = `
+                <div class="patch-selector-header">
+                    <div>
+                        <strong>Available Patches</strong>
+                        <span class="patch-count">(${relevantPatches.length} patches from ${escapedRepoPath})</span>
+                    </div>
+                    <button type="button" class="btn-danger btn-small" onclick="closePatchSelector(${appId})">Close</button>
+                </div>
+
+                <div class="toggle-buttons">
+                    <button type="button" class="btn-primary btn-small" onclick="selectAllPatches(${appId}, true)">✓ Select All</button>
+                    <button type="button" class="btn-secondary btn-small" onclick="selectAllPatches(${appId}, false)">✗ Deselect All</button>
+                </div>
+
+                <input type="text" class="patch-search" placeholder="🔍 Search patches..." aria-label="Search patches" oninput="filterPatches(${appId})">
+
+                <div class="patch-list" id="patch-list-${appId}">
+                    ${relevantPatches.map((patch, index) => {
+                        const escapedPatchName = escapeHtml(patch.name);
+                        const escapedPatchNameAttr = escapeHtmlAttr(patch.name);
+                        const escapedDescription = escapeHtml(patch.description);
+                        const compatiblePackages = patch.compatiblePackages || [];  // Null safety
+                        const escapedPackages = compatiblePackages
+                            .filter(p => p && p.name)  // Safety check for null packages and missing name property
+                            .map(p => escapeHtml(p.name))
+                            .join(', ');
+                        
+                        return `
+                        <div class="patch-item" data-patch-name="${escapedPatchNameAttr}" onclick="togglePatch(${appId}, ${index})">
+                            <input type="checkbox" class="patch-checkbox"
+                                   id="patch-${appId}-${index}"
+                                   aria-labelledby="patch-label-${appId}-${index}"
+                                   ${patch.use ? 'checked' : ''}
+                                   onclick="event.stopPropagation(); updatePatchSelection(${appId})">
+                            <div class="patch-info">
+                                <div class="patch-name" id="patch-label-${appId}-${index}">${escapedPatchName}</div>
+                                <div class="patch-description">${escapedDescription}</div>
+                                ${compatiblePackages.length > 0 ?
+                                    `<div class="patch-version">Compatible: ${escapedPackages}</div>`
+                                    : ''}
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            // Store patches data in the app card for later use
+            appCard.dataset.patches = JSON.stringify(relevantPatches);
+        }
+
+        // Toggle individual patch
+        function togglePatch(appId, patchIndex) {
+            const checkbox = document.getElementById(`patch-${appId}-${patchIndex}`);
+            checkbox.checked = !checkbox.checked;
+            updatePatchSelection(appId);
+        }
+
+        // Select/deselect all patches
+        function selectAllPatches(appId, selectAll) {
+            const patchList = document.getElementById(`patch-list-${appId}`);
+            const checkboxes = patchList.querySelectorAll('.patch-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll;
+            });
+            updatePatchSelection(appId);
+        }
+
+        // Filter patches by search query
+        function filterPatches(appId) {
+            const patchList = document.getElementById(`patch-list-${appId}`);
+            const searchInput = patchList.previousElementSibling;
+            const query = searchInput.value.toLowerCase();
+            const patchItems = patchList.querySelectorAll('.patch-item');
+
+            patchItems.forEach(item => {
+                const patchName = item.querySelector('.patch-name').textContent.toLowerCase();
+                const patchDesc = item.querySelector('.patch-description').textContent.toLowerCase();
+
+                if (patchName.includes(query) || patchDesc.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // Update patch selection and regenerate config
+        function updatePatchSelection(appId) {
+            const appCard = document.getElementById(`app-${appId}`);
+            const patchesData = JSON.parse(appCard.dataset.patches || '[]');
+            const patchList = document.getElementById(`patch-list-${appId}`);
+
+            if (!patchList) return;
+
+            const checkboxes = patchList.querySelectorAll('.patch-checkbox');
+            const selectedPatches = [];
+            const excludedPatches = [];
+
+            checkboxes.forEach((checkbox, index) => {
+                const patch = patchesData[index];
+                if (checkbox.checked) {
+                    selectedPatches.push(patch.name);
+                } else {
+                    excludedPatches.push(patch.name);
+                }
+            });
+
+            // Update the excluded patches textarea
+            const excludedTextarea = appCard.querySelector('.app-excluded');
+
+            // Only auto-populate if user hasn't manually edited
+            if (!excludedTextarea.dataset.manualEdit) {
+                excludedTextarea.value = excludedPatches.map(p => `'${p}'`).join(' ');
+            }
+
+            updatePreview();
+        }
+
+        // Close patch selector
+        function closePatchSelector(appId) {
+            const patchSelector = document.getElementById(`patch-selector-${appId}`);
+            patchSelector.style.display = 'none';
+        }
+
+        // Track manual edits to excluded/included patches
+        document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('input', (e) => {
+                if (e.target.classList && (e.target.classList.contains('app-excluded') || e.target.classList.contains('app-included'))) {
+                    const value = typeof e.target.value === 'string' ? e.target.value : '';
+                    if (value.trim() === '') {
+                        // If the user clears the field, allow auto-population again
+                        delete e.target.dataset.manualEdit;
+                    } else {
+                        // Non-empty manual input should disable auto-population
+                        e.target.dataset.manualEdit = 'true';
+                    }
+                }
+            });
+        });
     </script>
 </body>
 </html>

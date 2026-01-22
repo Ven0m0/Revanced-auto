@@ -154,7 +154,7 @@ jobs:
           node-version: '20'
 
       - name: Install Biome
-        run: npm install -g @biomejs/biome@1.9.4
+        run: npm install -g @biomejs/biome@2.3.11
 
       - name: Run Biome
         run: biome check --reporter=github .
