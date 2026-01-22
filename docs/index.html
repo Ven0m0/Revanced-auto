@@ -1010,8 +1010,15 @@ rv-brand = "${document.getElementById('rv-brand').value}"
         // Track manual edits to excluded/included patches
         document.addEventListener('DOMContentLoaded', () => {
             document.addEventListener('input', (e) => {
-                if (e.target.classList.contains('app-excluded') || e.target.classList.contains('app-included')) {
-                    e.target.dataset.manualEdit = 'true';
+                if (e.target.classList && (e.target.classList.contains('app-excluded') || e.target.classList.contains('app-included'))) {
+                    const value = typeof e.target.value === 'string' ? e.target.value : '';
+                    if (value.trim() === '') {
+                        // If the user clears the field, allow auto-population again
+                        delete e.target.dataset.manualEdit;
+                    } else {
+                        // Non-empty manual input should disable auto-population
+                        e.target.dataset.manualEdit = 'true';
+                    }
                 }
             });
         });
