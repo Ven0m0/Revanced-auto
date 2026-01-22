@@ -803,9 +803,17 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                 return patchesCache.get(repoPath);
             }
 
-            // Try to fetch patches.json from repository
-            const [owner, repo] = repoPath.split('/');
+            // Validate and normalize repoPath ("owner/repo")
+            if (typeof repoPath !== 'string') {
+                throw new Error('Invalid repository path: expected a string in the format "owner/repo".');
+            }
 
+            const normalizedRepoPath = repoPath.trim();
+            const segments = normalizedRepoPath.split('/').filter(Boolean);
+            if (segments.length !== 2) {
+                throw new Error(`Invalid repository path "${repoPath}". Expected format "owner/repo".`);
+            }
+            const [owner, repo] = segments;
             // First, try to get patches.json from the main branch
             const patchesJsonUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/patches.json`;
 
