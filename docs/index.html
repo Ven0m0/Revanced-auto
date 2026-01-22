@@ -6,6 +6,19 @@
     <title>ReVanced Builder - Configuration Generator</title>
     <style>
         :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --success: #22c55e;
+            --warning: #f97316;
+            --danger: #ef4444;
+            --bg: #1e293b;
+            --surface: #0f172a;
+            --border: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        [data-theme="light"] {
             --primary: #2563eb;
             --primary-dark: #1e40af;
             --success: #16a34a;
@@ -184,7 +197,7 @@
         }
 
         #preview {
-            background: #1e293b;
+            background: #0f172a;
             color: #e2e8f0;
             padding: 1rem;
             border-radius: 6px;
@@ -194,6 +207,39 @@
             overflow-x: auto;
             max-height: 600px;
             overflow-y: auto;
+        }
+
+        [data-theme="light"] #preview {
+            background: #1e293b;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 2px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            background: var(--primary-dark);
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
         }
 
         .sticky-preview {
@@ -468,7 +514,55 @@
         </div>
     </div>
 
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle light/dark mode">
+        <span id="theme-icon">☀️</span>
+    </button>
+
     <script>
+        // =============================================================================
+        // Theme Management
+        // =============================================================================
+
+        // Initialize theme (default to dark)
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const theme = savedTheme || 'dark'; // Default to dark mode
+
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                document.getElementById('theme-icon').textContent = '🌙';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                document.getElementById('theme-icon').textContent = '☀️';
+            }
+        }
+
+        // Toggle theme
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            if (newTheme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                document.getElementById('theme-icon').textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                document.getElementById('theme-icon').textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Initialize theme before page loads
+        initTheme();
+
+        // Add event listener to toggle button
+        document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+        // =============================================================================
+        // App Configuration
+        // =============================================================================
+
         let appCounter = 0;
 
         // Initialize with example apps
