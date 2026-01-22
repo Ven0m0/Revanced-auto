@@ -798,14 +798,21 @@ rv-brand = "${document.getElementById('rv-brand').value}"
 
         // HTML escape helper to prevent XSS
         function escapeHtml(text) {
+            if (text == null) return '';  // Handle null/undefined
             const div = document.createElement('div');
-            div.textContent = text;
+            div.textContent = String(text);  // Ensure string conversion
             return div.innerHTML;
         }
 
         // Escape HTML attributes (handles quotes for data attributes)
         function escapeHtmlAttr(text) {
-            return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            if (text == null) return '';  // Handle null/undefined
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         // Fetch patches from GitHub repository
