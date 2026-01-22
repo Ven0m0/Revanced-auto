@@ -857,6 +857,10 @@ rv-brand = "${document.getElementById('rv-brand').value}"
 
                     if (patchesAsset) {
                         const assetResponse = await fetch(patchesAsset.browser_download_url);
+
+                        if (!assetResponse.ok) {
+                            throw new Error(`Cannot download patches.json from ${repoPath} releases`);
+                        }
                         const patchesData = await assetResponse.json();
 
                         const transformPatch = patch => ({
