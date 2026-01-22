@@ -796,12 +796,15 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             }
         }
 
-        // HTML escape helper to prevent XSS
+        // HTML escape helper to prevent XSS (optimized for repeated use)
         function escapeHtml(text) {
             if (text == null) return '';  // Handle null/undefined
-            const div = document.createElement('div');
-            div.textContent = String(text);  // Ensure string conversion
-            return div.innerHTML;
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         // Escape HTML attributes (handles quotes for data attributes)
@@ -947,7 +950,8 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                         const escapedPatchName = escapeHtml(patch.name);
                         const escapedPatchNameAttr = escapeHtmlAttr(patch.name);
                         const escapedDescription = escapeHtml(patch.description);
-                        const escapedPackages = patch.compatiblePackages
+                        const compatiblePackages = patch.compatiblePackages || [];  // Null safety
+                        const escapedPackages = compatiblePackages
                             .filter(p => p && p.name)  // Safety check for missing name property
                             .map(p => escapeHtml(p.name))
                             .join(', ');
@@ -962,7 +966,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                             <div class="patch-info">
                                 <div class="patch-name" id="patch-label-${appId}-${index}">${escapedPatchName}</div>
                                 <div class="patch-description">${escapedDescription}</div>
-                                ${patch.compatiblePackages.length > 0 ?
+                                ${compatiblePackages.length > 0 ?
                                     `<div class="patch-version">Compatible: ${escapedPackages}</div>`
                                     : ''}
                             </div>
