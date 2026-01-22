@@ -796,7 +796,9 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             }
         }
 
-        // HTML escape helper to prevent XSS (optimized for repeated use)
+        // HTML escape helper to prevent XSS
+        // Note: Separate functions for semantic clarity (content vs attributes)
+        // even though implementation is currently identical
         function escapeHtml(text) {
             if (text == null) return '';  // Handle null/undefined
             return String(text)
@@ -807,7 +809,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                 .replace(/'/g, '&#39;');
         }
 
-        // Escape HTML attributes (handles quotes for data attributes)
+        // Escape HTML attributes - kept separate for semantic clarity
         function escapeHtmlAttr(text) {
             if (text == null) return '';  // Handle null/undefined
             return String(text)
@@ -952,7 +954,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                         const escapedDescription = escapeHtml(patch.description);
                         const compatiblePackages = patch.compatiblePackages || [];  // Null safety
                         const escapedPackages = compatiblePackages
-                            .filter(p => p && p.name)  // Safety check for missing name property
+                            .filter(p => p && p.name)  // Safety check for null packages and missing name property
                             .map(p => escapeHtml(p.name))
                             .join(', ');
                         
