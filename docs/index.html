@@ -829,7 +829,8 @@ rv-brand = "${document.getElementById('rv-brand').value}"
 
                 patchesCache.set(repoPath, patches);
                 return patches;
-            } catch {
+            } catch (primaryError) {
+                console.error(`Failed to fetch patches.json from raw.githubusercontent.com for ${repoPath}:`, primaryError);
                 // Fallback: try to fetch from releases API
                 try {
                     const releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
