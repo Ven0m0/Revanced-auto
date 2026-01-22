@@ -867,7 +867,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                 const patches = patchesData.map(patch => ({
                     name: patch.name,
                     description: patch.description || 'No description available',
-                    compatiblePackages: patch.compatiblePackages || [],
+                    compatiblePackages: Array.isArray(patch.compatiblePackages) ? patch.compatiblePackages : [],
                     use: patch.use !== false,
                     requiresIntegrations: patch.requiresIntegrations || false,
                     options: patch.options || []
@@ -904,7 +904,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                         const transformPatch = patch => ({
                             name: patch.name,
                             description: patch.description || 'No description available',
-                            compatiblePackages: patch.compatiblePackages || [],
+                            compatiblePackages: Array.isArray(patch.compatiblePackages) ? patch.compatiblePackages : [],
                             use: patch.use !== false,
                             requiresIntegrations: patch.requiresIntegrations || false,
                             options: patch.options || []
@@ -934,7 +934,8 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             // Filter patches compatible with this app
             let relevantPatches = allPatches.filter(patch => {
                 if (!packageName) return true; // Show all if we don't know the package
-                return patch.compatiblePackages.some(pkg => pkg.name === packageName);
+                const compatiblePackages = Array.isArray(patch.compatiblePackages) ? patch.compatiblePackages : [];
+                return compatiblePackages.some(pkg => pkg && pkg.name === packageName);
             });
 
             // If no relevant patches found, show all
@@ -966,7 +967,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                         const escapedPatchName = escapeHtml(patch.name);
                         const escapedPatchNameAttr = escapeHtmlAttr(patch.name);
                         const escapedDescription = escapeHtml(patch.description);
-                        const compatiblePackages = patch.compatiblePackages || [];  // Null safety
+                        const compatiblePackages = Array.isArray(patch.compatiblePackages) ? patch.compatiblePackages : [];  // Ensure it's an array
                         const escapedPackages = compatiblePackages
                             .filter(p => p && p.name)  // Safety check for null packages and missing name property
                             .map(p => escapeHtml(p.name))
