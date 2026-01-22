@@ -850,15 +850,16 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                         const assetResponse = await fetch(patchesAsset.browser_download_url);
                         const patchesData = await assetResponse.json();
 
-                        const patches = patchesData.map(patch => ({
+                        const transformPatch = patch => ({
                             name: patch.name,
                             description: patch.description || 'No description available',
                             compatiblePackages: patch.compatiblePackages || [],
                             use: patch.use !== false,
                             requiresIntegrations: patch.requiresIntegrations || false,
                             options: patch.options || []
-                        }));
+                        });
 
+                        const patches = patchesData.map(transformPatch);
                         patchesCache.set(repoPath, patches);
                         return patches;
                     }
