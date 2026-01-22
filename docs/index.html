@@ -803,6 +803,11 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             return div.innerHTML;
         }
 
+        // Escape HTML attributes (handles quotes for data attributes)
+        function escapeHtmlAttr(text) {
+            return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
         // Fetch patches from GitHub repository
         async function fetchPatches(repoPath) {
             // Check cache
@@ -933,11 +938,15 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                 <div class="patch-list" id="patch-list-${appId}">
                     ${relevantPatches.map((patch, index) => {
                         const escapedPatchName = escapeHtml(patch.name);
+                        const escapedPatchNameAttr = escapeHtmlAttr(patch.name);
                         const escapedDescription = escapeHtml(patch.description);
-                        const escapedPackages = patch.compatiblePackages.map(p => escapeHtml(p.name)).join(', ');
+                        const escapedPackages = patch.compatiblePackages
+                            .filter(p => p && p.name)  // Safety check for missing name property
+                            .map(p => escapeHtml(p.name))
+                            .join(', ');
                         
                         return `
-                        <div class="patch-item" data-patch-name="${escapedPatchName}" onclick="togglePatch(${appId}, ${index})">
+                        <div class="patch-item" data-patch-name="${escapedPatchNameAttr}" onclick="togglePatch(${appId}, ${index})">
                             <input type="checkbox" class="patch-checkbox"
                                    id="patch-${appId}-${index}"
                                    aria-labelledby="patch-label-${appId}-${index}"
