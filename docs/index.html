@@ -791,7 +791,8 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                 const patches = await fetchPatches(patchesSource);
                 renderPatchSelector(appId, patches, patchesSource);
             } catch (error) {
-                patchSelector.innerHTML = `<div class="error-message">❌ Failed to load patches: ${error.message}</div>`;
+                patchSelector.innerHTML = '<div class="error-message">❌ Failed to load patches: <span class="error-content"></span></div>';
+                patchSelector.querySelector('.error-content').textContent = error.message;
             }
         }
 
