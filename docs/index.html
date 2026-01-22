@@ -1003,15 +1003,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
 
             // Only auto-populate if user hasn't manually edited
             if (!excludedTextarea.dataset.manualEdit) {
-                if (excludedPatches.length > 0 && excludedPatches.length < selectedPatches.length) {
-                    // If fewer excluded than included, use excluded mode
-                    excludedTextarea.value = excludedPatches.map(p => `'${p}'`).join(' ');
-                } else if (excludedPatches.length === patchesData.length) {
-                    // All excluded
-                    excludedTextarea.value = '';
-                } else {
-                    excludedTextarea.value = excludedPatches.map(p => `'${p}'`).join(' ');
-                }
+                excludedTextarea.value = excludedPatches.map(p => `'${p}'`).join(' ');
             }
 
             updatePreview();
