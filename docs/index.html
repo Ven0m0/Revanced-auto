@@ -913,10 +913,11 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                         <div class="patch-item" data-patch-name="${patch.name}" onclick="togglePatch(${appId}, ${index})">
                             <input type="checkbox" class="patch-checkbox"
                                    id="patch-${appId}-${index}"
+                                   aria-labelledby="patch-label-${appId}-${index}"
                                    ${patch.use ? 'checked' : ''}
                                    onclick="event.stopPropagation(); updatePatchSelection(${appId})">
                             <div class="patch-info">
-                                <div class="patch-name">${patch.name}</div>
+                                <div class="patch-name" id="patch-label-${appId}-${index}">${patch.name}</div>
                                 <div class="patch-description">${patch.description}</div>
                                 ${patch.compatiblePackages.length > 0 ?
                                     `<div class="patch-version">Compatible: ${patch.compatiblePackages.map(p => p.name).join(', ')}</div>`
