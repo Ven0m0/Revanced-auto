@@ -876,19 +876,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             const appDisplayName = appCard.querySelector('.app-display-name').value.trim();
 
             // Try to determine package name from app display name
-            const packageMap = {
-                'YouTube': 'com.google.android.youtube',
-                'Music': 'com.google.android.apps.youtube.music',
-                'Spotify': 'com.spotify.music',
-                'Reddit': 'com.reddit.frontpage',
-                'X': 'com.twitter.android',
-                'Twitter': 'com.twitter.android',
-                'TikTok': 'com.zhiliaoapp.musically',
-                'Instagram': 'com.instagram.android',
-                'GooglePhotos': 'com.google.android.apps.photos'
-            };
-
-            const packageName = packageMap[appDisplayName] || '';
+            const packageName = PACKAGE_MAP[appDisplayName] || '';
 
             // Filter patches compatible with this app
             let relevantPatches = allPatches.filter(patch => {
