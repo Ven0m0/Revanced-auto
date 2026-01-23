@@ -112,6 +112,14 @@
             border-radius: 4px;
             font-size: 0.9rem;
             font-family: inherit;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        input[type="text"]::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+            opacity: 0.7;
         }
 
         input[type="text"]:focus,
@@ -123,10 +131,37 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
+[data-theme="light"] :is(input[type="text"], input[type="number"], select, textarea):focus {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+:is(input[type="text"], input[type="number"], select, textarea):disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.625rem center;
+            padding-right: 2.5rem;
+        }
+
+        [data-theme="light"] select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        }
+
         input[type="checkbox"] {
             width: 18px;
             height: 18px;
             cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        input[type="checkbox"]:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
 
         .checkbox-label {
@@ -144,6 +179,11 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
+        }
+
+        button:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
 
         .btn-primary {
@@ -194,6 +234,13 @@
         .app-name {
             font-weight: 600;
             font-size: 1.1rem;
+            background: var(--surface);
+            border: 2px solid var(--border);
+        }
+
+        .app-name:focus {
+            border-color: var(--primary);
+            background: var(--bg);
         }
 
         #preview {
@@ -1062,7 +1109,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
                         const escapedDescription = escapeHtml(patch.description);
                         const compatiblePackages = patch.compatiblePackages;  // Already an array
                         const escapedPackages = compatiblePackages
-                            .filter(p => p && p.name)  // Safety check for null packages and missing name property
+                            .filter(p => p?.name)  // Safety check for null packages and missing name property
                             .map(p => escapeHtml(p.name))
                             .join(', ');
                         
