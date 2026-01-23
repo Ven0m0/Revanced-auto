@@ -131,10 +131,7 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
-        [data-theme="light"] input[type="text"]:focus,
-        [data-theme="light"] input[type="number"]:focus,
-        [data-theme="light"] select:focus,
-        [data-theme="light"] textarea:focus {
+[data-theme="light"] :is(input[type="text"], input[type="number"], select, textarea):focus {
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
 
