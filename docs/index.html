@@ -1028,8 +1028,7 @@ rv-brand = "${document.getElementById('rv-brand').value}"
             // Filter patches compatible with this app
             let relevantPatches = allPatches.filter(patch => {
                 if (!packageName) return true; // Show all if we don't know the package
-                const compatiblePackages = Array.isArray(patch.compatiblePackages) ? patch.compatiblePackages : [];
-                return compatiblePackages.some(pkg => pkg && pkg.name === packageName);
+                return patch.compatiblePackages.some(pkg => pkg && pkg.name === packageName);
             });
 
             // If no relevant patches found, show all
