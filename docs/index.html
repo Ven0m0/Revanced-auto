@@ -135,10 +135,7 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
 
-        input[type="text"]:disabled,
-        input[type="number"]:disabled,
-        select:disabled,
-        textarea:disabled {
+:is(input[type="text"], input[type="number"], select, textarea):disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
