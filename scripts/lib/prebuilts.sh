@@ -50,7 +50,7 @@ resolve_rv_artifact() {
 
   # Check if file already exists locally
   local url file tag_name name
-  file=$(find "$dir" -name "${fprefix}-${name_ver#v}.${ext}" -type f 2> /dev/null)
+file=$(find "$dir" -name "${fprefix}-${name_ver#v}*.${ext}" -type f 2> /dev/null)
 
   if [[ "$file" = "" ]]; then
     log_info "Downloading $tag from GitHub"
