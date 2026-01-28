@@ -59,7 +59,7 @@ resolve_rv_artifact() {
     tag_name=$(jq -r '.tag_name' <<< "$resp")
     asset=$(jq -e -r "first(.assets[] | select(.name | endswith(\".$ext\")))" <<< "$resp") || return 1
     url=$(jq -r .url <<< "$asset")
-    name=$(jq -r .name <<< "$asset")
+    name=$(basename "$(jq -r .name <<< "$asset")")
     file="${dir}/${name}"
     gh_dl "$file" "$url" >&2 || return 1
     echo "$tag: $(cut -d/ -f1 <<< "$src")/${name}  " >> "${cl_dir}/changelog.md"
