@@ -57,7 +57,7 @@ resolve_rv_artifact() {
     local resp asset
     resp=$(gh_req "$rv_rel" -) || return 1
     tag_name=$(jq -r '.tag_name' <<< "$resp")
-    asset=$(jq -e -r ".assets[] | select(.name | endswith(\"$ext\"))" <<< "$resp") || return 1
+    asset=$(jq -e -r "first(.assets[] | select(.name | endswith(\".$ext\")))" <<< "$resp") || return 1
     url=$(jq -r .url <<< "$asset")
     name=$(jq -r .name <<< "$asset")
     file="${dir}/${name}"
