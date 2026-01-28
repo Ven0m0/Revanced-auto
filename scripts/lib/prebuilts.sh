@@ -84,7 +84,6 @@ resolve_rv_artifact() {
 
   # Handle patches-specific processing
   if [[ "$tag" = "Patches" ]]; then
-    # shellcheck disable=SC2086
     if [[ "$grab_cl" = true ]]; then
       echo -e "[Changelog](https://github.com/${src}/releases/tag/${tag_name})\n" >> "${cl_dir}/changelog.md"
     fi
