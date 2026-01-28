@@ -85,7 +85,7 @@ resolve_rv_artifact() {
   # Handle patches-specific processing
   if [[ "$tag" = "Patches" ]]; then
     if [[ "$grab_cl" = true ]]; then
-      echo -e "[Changelog](https://github.com/${src}/releases/tag/${tag_name})\n" >> "${cl_dir}/changelog.md"
+      printf "[Changelog](https://github.com/%s/releases/tag/%s)\n\n" "$src" "$tag_name" >> "${cl_dir}/changelog.md"
     fi
 
     # Remove integrations checks if requested
