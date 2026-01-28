@@ -22,7 +22,9 @@ get_rv_prebuilts() {
 
   for src_ver in "$cli_src CLI $cli_ver revanced-cli" "$patches_src Patches $patches_ver patches"; do
     # shellcheck disable=SC2086
+    set -f
     set -- $src_ver
+    set +f
     local src=$1 tag=$2 ver=${3-} fprefix=$4
     local ext grab_cl
 
