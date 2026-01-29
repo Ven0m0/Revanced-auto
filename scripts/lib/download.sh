@@ -56,32 +56,16 @@ get_apkmirror_vers() {
 #   Download URL
 apk_mirror_search() {
   local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
-  local apparch dlurl node app_table
+  local dlurl
 
-  if [[ "$arch" = all ]]; then
-    apparch=(universal noarch 'arm64-v8a + armeabi-v7a')
-  else
-    apparch=("$arch" universal noarch 'arm64-v8a + armeabi-v7a')
+  # Process with Python script to avoid N+1 process spawning
+  if dlurl=$(python3 "${CWD}/scripts/apkmirror_search.py" \
+    --apk-bundle "$apk_bundle" \
+    --dpi "$dpi" \
+    --arch "$arch" <<< "$resp"); then
+    echo "$dlurl"
+    return 0
   fi
-
-  # Extract all rows at once instead of one-by-one to avoid repeated htmlq calls
-  local all_nodes
-  all_nodes=$("$HTMLQ" "div.table-row.headerFont" -r "span:nth-child(n+3)" <<< "$resp")
-
-  # Process rows one by one from the extracted content
-  local node
-  while IFS= read -r node; do
-    [[ -z "$node" ]] && continue
-
-    app_table=$(scrape_text --ignore-whitespace <<< "$node")
-    if [[ "$(sed -n 3p <<< "$app_table")" = "$apk_bundle" ]] \
-      && [[ "$(sed -n 6p <<< "$app_table")" = "$dpi" ]] \
-      && isoneof "$(sed -n 4p <<< "$app_table")" "${apparch[@]}"; then
-      dlurl=$(scrape_attr "div:nth-child(1) > a:nth-child(1)" href --base https://www.apkmirror.com <<< "$node")
-      echo "$dlurl"
-      return 0
-    fi
-  done <<< "$all_nodes"
 
   return 1
 }
