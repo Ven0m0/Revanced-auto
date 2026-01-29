@@ -22,7 +22,7 @@ get_rv_prebuilts() {
 
   for src_ver in "$cli_src CLI $cli_ver revanced-cli" "$patches_src Patches $patches_ver patches"; do
     # shellcheck disable=SC2086
-    set -- "$src_ver"
+    set -- $src_ver
     local src=$1 tag=$2 ver=${3-} fprefix=$4
     local ext grab_cl
 
@@ -45,10 +45,22 @@ get_rv_prebuilts() {
     # Handle version selection
     if [[ "$ver" = "dev" ]]; then
       log_info "Fetching dev version for $tag"
-      local resp
-      resp=$(gh_req "$rv_rel" -) || return 1
-      ver=$(jq -e -r '.[] | .tag_name' <<< "$resp" | get_highest_ver) || return 1
-      log_debug "Selected dev version: $ver"
+
+      # Initialize cache if needed
+      if [[ -z "${RV_DEV_VER_CACHE+x}" ]]; then
+        declare -gA RV_DEV_VER_CACHE
+      fi
+
+      if [[ -n "${RV_DEV_VER_CACHE[$rv_rel]-}" ]]; then
+        ver="${RV_DEV_VER_CACHE[$rv_rel]}"
+        log_debug "Using cached dev version: $ver"
+      else
+        local resp
+        resp=$(gh_req "$rv_rel" -) || return 1
+        ver=$(jq -e -r '.[] | .tag_name' <<< "$resp" | get_highest_ver) || return 1
+        RV_DEV_VER_CACHE[$rv_rel]="$ver"
+        log_debug "Selected dev version: $ver"
+      fi
     fi
 
     if [[ "$ver" = "latest" ]]; then
