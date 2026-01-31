@@ -53,7 +53,9 @@ def process_row(row, apk_bundle, dpi, allowed_archs):
                 # Ensure we handle base URL
                 if href.startswith("http"):
                     return href
-                return "https://www.apkmirror.com" + href
+                if href.startswith("/"):
+                    return "https://www.apkmirror.com" + href
+                return "https://www.apkmirror.com/" + href
 
     return None
 
