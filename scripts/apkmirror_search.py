@@ -79,6 +79,7 @@ def main():
         sys.exit(130)
 
     if not html_content:
+        print("Error: No HTML content provided on stdin", file=sys.stderr)
         sys.exit(1)
 
     try:
