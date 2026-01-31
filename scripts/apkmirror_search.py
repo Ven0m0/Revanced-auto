@@ -7,6 +7,10 @@ try:
 except ImportError:
     # If lxml is not available, we can't run.
     # The environment check should have ensured this, but let's be safe.
+    print(
+        "Error: lxml not installed. Install with: pip install lxml cssselect",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 
