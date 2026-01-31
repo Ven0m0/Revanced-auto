@@ -59,7 +59,12 @@ def process_row(row, apk_bundle, dpi, allowed_archs):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description=(
+            "Search APKMirror HTML from stdin for a matching APK variant "
+            "and print its download URL."
+        )
+    )
     parser.add_argument("--apk-bundle", required=True)
     parser.add_argument("--dpi", required=True)
     parser.add_argument("--arch", required=True)
