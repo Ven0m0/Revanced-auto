@@ -1,0 +1,108 @@
+<html>
+<body>
+    <!-- Row 1: Valid Match (APK, nodpi, arm64-v8a) -->
+    <div class="table-row headerFont">
+        <div class="table-cell">
+            <a href="/apk/google-inc/youtube/youtube-19-09-37-release/youtube-19-09-37-android-apk-download/">
+                19.09.37 <!-- Index 0 -->
+            </a>
+        </div>
+        <div class="table-cell">
+            <span>214MB</span> <!-- Index 1 -->
+            <span class="apkm-badge">APK</span> <!-- Index 2 -->
+        </div>
+        <div class="table-cell">
+            arm64-v8a <!-- Index 3 -->
+        </div>
+        <div class="table-cell">
+            Android 8.0+ <!-- Index 4 -->
+        </div>
+        <div class="table-cell">
+            nodpi <!-- Index 5 -->
+        </div>
+        <div class="table-cell">
+            Something else <!-- Index 6 -->
+        </div>
+    </div>
+
+    <!-- Row 2: Wrong Bundle (BUNDLE instead of APK) -->
+    <div class="table-row headerFont">
+        <div class="table-cell">
+            <a href="/fail-bundle">v2</a> <!-- Index 0 -->
+        </div>
+        <div class="table-cell">
+            <span>214MB</span> <!-- Index 1 -->
+            <span class="apkm-badge">BUNDLE</span> <!-- Index 2 -->
+        </div>
+        <div class="table-cell">
+            arm64-v8a <!-- Index 3 -->
+        </div>
+        <div class="table-cell">
+            Android 8.0+ <!-- Index 4 -->
+        </div>
+        <div class="table-cell">
+            nodpi <!-- Index 5 -->
+        </div>
+    </div>
+
+    <!-- Row 3: Wrong DPI (480dpi instead of nodpi) -->
+    <div class="table-row headerFont">
+        <div class="table-cell">
+            <a href="/fail-dpi">v3</a>
+        </div>
+        <div class="table-cell">
+            <span>214MB</span>
+            <span class="apkm-badge">APK</span> <!-- Index 2 -->
+        </div>
+        <div class="table-cell">
+            arm64-v8a <!-- Index 3 -->
+        </div>
+        <div class="table-cell">
+            Android 8.0+
+        </div>
+        <div class="table-cell">
+            480dpi <!-- Index 5 -->
+        </div>
+    </div>
+
+    <!-- Row 4: Wrong Arch (x86 instead of arm64-v8a) -->
+    <div class="table-row headerFont">
+        <div class="table-cell">
+            <a href="/fail-arch">v4</a>
+        </div>
+        <div class="table-cell">
+            <span>214MB</span>
+            <span class="apkm-badge">APK</span>
+        </div>
+        <div class="table-cell">
+            x86 <!-- Index 3 -->
+        </div>
+        <div class="table-cell">
+            Android 8.0+
+        </div>
+        <div class="table-cell">
+            nodpi
+        </div>
+    </div>
+
+    <!-- Row 5: Another Valid Match but Universal (should match if requested arch is arm64-v8a due to fallback) -->
+    <div class="table-row headerFont">
+        <div class="table-cell">
+            <a href="/success-universal">v5</a>
+        </div>
+        <div class="table-cell">
+            <span>214MB</span>
+            <span class="apkm-badge">APK</span>
+        </div>
+        <div class="table-cell">
+            universal
+        </div>
+        <div class="table-cell">
+            Android 8.0+
+        </div>
+        <div class="table-cell">
+            nodpi
+        </div>
+    </div>
+</body>
+</html>
