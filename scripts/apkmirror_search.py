@@ -55,7 +55,14 @@ def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
 
     # Use XPath instead of cssselect to avoid dependency on cssselect package
     # Select div elements with class "table-row" and "headerFont"
-    rows = tree.xpath("//div[contains(@class, 'table-row') and contains(@class, 'headerFont')]")
+    # Use concat() with spaces to match exact class names (CSS-style word boundary matching)
+    # This ensures we don't match substrings like "my-table-row" or "table-row-extra"
+    rows = tree.xpath(
+        "//div["
+        "contains(concat(' ', normalize-space(@class), ' '), ' table-row ') and "
+        "contains(concat(' ', normalize-space(@class), ' '), ' headerFont ')"
+        "]"
+    )
 
     if not rows:
         return 2
