@@ -325,9 +325,10 @@ cache_clean_pattern() {
     mv "$temp_index" "$CACHE_INDEX_FILE"
 
     # Remove files
-    jq -r '.[]' "$matching_keys_file" | while IFS= read -r file_path; do
+    # Remove files
+    jq -j '.[] | . + "\u0000"' "$matching_keys_file" | while IFS= read -r -d '' file_path; do
       if [[ -f "$file_path" ]]; then
-        rm -f "$file_path"
+        rm -f -- "$file_path"
         log_debug "Removed from cache: $file_path"
       fi
     done
