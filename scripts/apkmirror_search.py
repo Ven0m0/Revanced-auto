@@ -11,7 +11,6 @@ import sys
 
 try:
     from lxml import html
-    from lxml.etree import LxmlError
 except ImportError:
     print("Error: lxml not installed", file=sys.stderr)
     sys.exit(1)
