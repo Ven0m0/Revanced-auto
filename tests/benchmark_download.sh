@@ -118,7 +118,7 @@ run_benchmark() {
 
     local start=$(measure_time)
     local output
-    output=$(eval "$cmd" "\"$vers_in\"" "\"$html_in\"")
+    output=$("$cmd" "$vers_in" "$html_in")
     local end=$(measure_time)
 
     local duration=$(calc_duration "$start" "$end")
