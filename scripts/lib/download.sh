@@ -202,7 +202,7 @@ dl_uptodown() {
       resp=$(cat "${temp_dir}/${i}")
       if [[ -z "$resp" ]]; then continue; fi
 
-      if ! op=$(jq -e -r ".data | map(select(.version == \"${version}\")) | .[0]" <<< "$resp"); then
+      if ! op=$(jq -e -r --arg ver "$version" '.data | map(select(.version == $ver)) | .[0]' <<< "$resp"); then
         continue
       fi
 
