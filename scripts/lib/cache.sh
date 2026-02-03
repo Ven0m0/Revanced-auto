@@ -238,7 +238,10 @@ cache_cleanup() {
   # Get list of expired entries (keys) as a JSON array and save to file
   # Using a file avoids ARG_MAX limits with large caches
   local temp_keys_file
-  temp_keys_file=$(mktemp)
+temp_keys_file=$(mktemp)
+  if [[ $? -ne 0 ]]; then
+    abort "Failed to create temporary file for expired keys."
+  fi
   jq -c --arg now "$now" \
     '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
     "$CACHE_INDEX_FILE" > "$temp_keys_file"
