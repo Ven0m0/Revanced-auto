@@ -11,9 +11,22 @@ import sys
 
 try:
     from lxml import html
+    from lxml.etree import ParserError, XMLSyntaxError
 except ImportError:
     print("Error: lxml not installed", file=sys.stderr)
     sys.exit(1)
+
+# Valid values for input validation
+VALID_APK_BUNDLE = ("APK", "BUNDLE")
+VALID_ARCHS = (
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64",
+    "universal",
+    "noarch",
+    "all",
+)
 
 
 def get_target_archs(arch: str) -> list[str]:
@@ -43,19 +56,27 @@ def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
         arch: Architecture (e.g., "arm64-v8a")
 
     Returns:
-        0 if found
-        1 if table found but no match
-        2 if no table found (legacy fallback mode)
+        0 if a matching variant is found and its URL is printed
+        1 if the table is present but no matching row is found, or if the
+            HTML content cannot be parsed
+        2 if no matching table rows are found (legacy fallback mode)
     """
     try:
         tree = html.fromstring(html_content)
-    except Exception as e:
+    except (ParserError, XMLSyntaxError) as e:
         print(f"Error parsing HTML: {e}", file=sys.stderr)
         return 1  # Treat parse error as failure
 
     # Use XPath instead of cssselect to avoid dependency on cssselect package
     # Select div elements with class "table-row" and "headerFont"
-    rows = tree.xpath("//div[contains(@class, 'table-row') and contains(@class, 'headerFont')]")
+    # Use concat() with spaces to match exact class names (CSS-style word boundary matching)
+    # This ensures we don't match substrings like "my-table-row" or "table-row-extra"
+    rows = tree.xpath(
+        "//div["
+        "contains(concat(' ', normalize-space(@class), ' '), ' table-row ') and "
+        "contains(concat(' ', normalize-space(@class), ' '), ' headerFont ')"
+        "]"
+    )
 
     if not rows:
         return 2
@@ -96,8 +117,16 @@ def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
         if links:
             href = links[0].get("href")
             if href:
-                # Base URL is https://www.apkmirror.com
-                print(f"https://www.apkmirror.com{href}")
+                # Validate and construct full URL
+                if href.startswith("http://") or href.startswith("https://"):
+                    # Already absolute URL
+                    print(href)
+                elif href.startswith("/"):
+                    # Relative path starting with /
+                    print(f"https://www.apkmirror.com{href}")
+                else:
+                    # Relative path without leading /
+                    print(f"https://www.apkmirror.com/{href}")
                 return 0
 
     return 1
@@ -107,15 +136,30 @@ def main():
     parser = argparse.ArgumentParser(
         description="Search APKMirror release page for specific variant"
     )
-    parser.add_argument("--apk-bundle", required=True, help="APK bundle type (APK or BUNDLE)")
+    parser.add_argument(
+        "--apk-bundle",
+        required=True,
+        choices=VALID_APK_BUNDLE,
+        help="APK bundle type (APK or BUNDLE)",
+    )
     parser.add_argument("--dpi", required=True, help="Screen DPI")
-    parser.add_argument("--arch", required=True, help="Architecture")
+    parser.add_argument(
+        "--arch",
+        required=True,
+        help="Architecture (e.g., arm64-v8a, armeabi-v7a, x86, x86_64, universal, noarch, all)",
+    )
 
     args = parser.parse_args()
 
-    # Read HTML from stdin
+    # Validate arch - allow any value since APKMirror pages may have various arch names
+    # but warn if it's not a common one
+    if args.arch not in VALID_ARCHS:
+        # Allow it through but it may not match anything
+        pass
+
+    # Read HTML from stdin with explicit UTF-8 encoding
     try:
-        html_content = sys.stdin.read()
+        html_content = sys.stdin.buffer.read().decode("utf-8", errors="replace")
     except KeyboardInterrupt:
         sys.exit(130)
 
