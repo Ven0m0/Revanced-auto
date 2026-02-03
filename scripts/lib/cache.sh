@@ -267,7 +267,10 @@ temp_keys_file=$(mktemp)
     # Batch update index: remove all expired keys in one go
     # This is significantly faster than removing them one by one
     local temp_index
-    temp_index=$(mktemp)
+temp_index=$(mktemp)
+    if [[ $? -ne 0 ]]; then
+      abort "Failed to create temporary file for index update."
+    fi
     # --slurpfile reads the array from file into a variable (array of arrays)
     jq --slurpfile keys_wrapper "$temp_keys_file" \
       'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" > "$temp_index" || abort "Failed to batch update cache index."
