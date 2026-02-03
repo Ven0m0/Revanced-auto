@@ -234,16 +234,49 @@ cache_cleanup() {
 
   log_info "Cleaning expired cache entries..."
 
-  # Get list of expired keys as JSON array to a file
-  local expired_keys_file
-  expired_keys_file=$(mktemp)
-
-  jq --arg now "$now" \
+  # Get list of expired entries (keys) as a JSON array and save to file
+  # Using a file avoids ARG_MAX limits with large caches
+  local temp_keys_file
+temp_keys_file=$(mktemp)
+  if [[ $? -ne 0 ]]; then
+    abort "Failed to create temporary file for expired keys."
+  fi
+  jq -c --arg now "$now" \
     '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
-    "$CACHE_INDEX_FILE" > "$expired_keys_file"
+    '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
+    "$CACHE_INDEX_FILE" > "$temp_keys_file" || abort "Failed to generate expired keys list."
 
-  local expired_count
-  expired_count=$(jq 'length' "$expired_keys_file")
+  # Check if there are any expired entries
+  local count
+  count=$(jq 'length' "$temp_keys_file")
+
+  if [[ $count -gt 0 ]]; then
+    # Remove files
+    # Using process substitution and while loop for better portability (vs mapfile)
+    while IFS= read -r file_path; do
+      if [[ -f "$file_path" ]]; then
+        rm -f "$file_path"
+        log_debug "Removed from cache: $file_path"
+      fi
+        rm -f "$file_path"
+        log_debug "Removed from cache: $file_path"
+        ((removed_count++))
+    done < <(jq -r '.[]' "$temp_keys_file")
+
+    # Batch update index: remove all expired keys in one go
+    # This is significantly faster than removing them one by one
+    local temp_index
+temp_index=$(mktemp)
+    if [[ $? -ne 0 ]]; then
+      abort "Failed to create temporary file for index update."
+    fi
+    # --slurpfile reads the array from file into a variable (array of arrays)
+    jq --slurpfile keys_wrapper "$temp_keys_file" \
+      'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" > "$temp_index" || abort "Failed to batch update cache index."
+    mv "$temp_index" "$CACHE_INDEX_FILE"
+  fi
+
+  rm -f "$temp_keys_file"
 
   if [[ "$expired_count" -gt 0 ]]; then
     # Batch remove from index
