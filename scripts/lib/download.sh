@@ -187,7 +187,7 @@ dl_uptodown() {
         rm -f "${temp_dir}/${i}"
       fi
 
-      rm -rf "$TEMP_DIR"
+      rm -rf "$TEMP_DIR" || true
     ) &
     pids+=($!)
   done
