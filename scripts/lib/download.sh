@@ -39,7 +39,7 @@ get_apkmirror_vers() {
     if [[ -n "$vers" ]]; then
       local pattern bad_vers
       # Escape dots in versions for regex safety
-      pattern=$(echo "$vers" | sed 's/\./\\./g' | tr '\n' '|')
+      pattern=$(printf "%s" "$vers" | sed 's/\./\\./g' | tr '\n' '|')
       pattern="${pattern%|}"
 
       # Find versions that are followed by beta/alpha in HTML
