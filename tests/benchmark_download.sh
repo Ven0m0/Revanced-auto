@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Benchmark for APKMirror version filtering
-
 generate_data() {
     local num_versions=50
     local i
