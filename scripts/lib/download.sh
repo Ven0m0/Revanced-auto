@@ -65,18 +65,14 @@ get_apkmirror_vers() {
 #   Download URL
 apk_mirror_search() {
   local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
-  local dlurl
 
-  # Process with Python script to avoid N+1 process spawning
-  if dlurl=$(python3 "${CWD}/scripts/apkmirror_search.py" \
+  # Delegate to Python script for efficient parsing
+  # Exit codes: 0 = found, 1 = table found but no match, 2 = no table found
+  python3 "${CWD}/scripts/apkmirror_search.py" \
     --apk-bundle "$apk_bundle" \
     --dpi "$dpi" \
-    --arch "$arch" <<< "$resp"); then
-    echo "$dlurl"
-    return 0
-  fi
-
-  return 1
+    --arch "$arch" \
+    <<< "$resp"
 }
 
 # Download APK from APKMirror
@@ -104,18 +100,27 @@ dl_apkmirror() {
 
     log_info "Searching APKMirror release page: $url"
     resp=$(req "$url" -) || return 1
-    node=$("$HTMLQ" "div.table-row.headerFont:nth-last-child(1)" -r "span:nth-child(n+3)" <<< "$resp")
 
-    if [[ "$node" ]]; then
-      if ! dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "APK"); then
-        if ! dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "BUNDLE"); then
-          return 1
-        else
+    local ret
+    # Try APK first
+    if dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "APK"); then
+      # Found APK, follow link
+      resp=$(req "$dlurl" -)
+    else
+      ret=$?
+      if [[ $ret -eq 2 ]]; then
+        # No variants table found (exit code 2), fall through to legacy/direct scraping
+        :
+      else
+        # Table found but no APK, try BUNDLE
+        if dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "BUNDLE"); then
           is_bundle=true
+          resp=$(req "$dlurl" -)
+        else
+          # Table exists but no compatible version found
+          return 1
         fi
       fi
-      [ "$dlurl" = "" ] && return 1
-      resp=$(req "$dlurl" -)
     fi
 
     url=$(echo "$resp" | scrape_attr "a.btn" href --base https://www.apkmirror.com) || return 1
