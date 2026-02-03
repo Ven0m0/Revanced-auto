@@ -244,7 +244,8 @@ temp_keys_file=$(mktemp)
   fi
   jq -c --arg now "$now" \
     '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
-    "$CACHE_INDEX_FILE" > "$temp_keys_file"
+    '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
+    "$CACHE_INDEX_FILE" > "$temp_keys_file" || abort "Failed to generate expired keys list."
 
   # Check if there are any expired entries
   local count
