@@ -238,18 +238,62 @@ get_patch_last_supported_ver() {
 
   # Collect versions from all patch sources (union approach)
   local all_versions="" source_idx=1
-  for patches_jar in "${patches_jars[@]}"; do
-    log_debug "Checking compatible versions from patch source ${source_idx}/${#patches_jars[@]}"
 
-    if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
-      log_warn "Failed to get versions from patch source ${source_idx}: $op"
-      source_idx=$((source_idx + 1))
+  # Create temp dir for parallel processing
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  local pids=()
+  local i=0
+
+  # Launch all jobs in parallel
+  for patches_jar in "${patches_jars[@]}"; do
+    log_debug "Checking compatible versions from patch source $((i + 1))/${#patches_jars[@]}"
+
+    (
+      local op
+      if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
+        # Write error to file
+        echo "$op" > "${temp_dir}/${i}.err"
+        exit 1
+      fi
+
+      echo "$op" > "${temp_dir}/${i}.out"
+    ) &
+    pids+=($!)
+    i=$((i + 1))
+  done
+
+  # Wait for all jobs to complete
+  for pid in "${pids[@]}"; do
+    wait "$pid" || true
+  done
+
+  # Process results
+  i=0
+  for patches_jar in "${patches_jars[@]}"; do
+    source_idx=$((i + 1))
+
+    if [[ -f "${temp_dir}/${i}.err" ]]; then
+      local err_msg
+      err_msg=$(cat "${temp_dir}/${i}.err")
+      log_warn "Failed to get versions from patch source ${source_idx}: $err_msg"
+      i=$((i + 1))
       continue
     fi
 
+    if [[ ! -f "${temp_dir}/${i}.out" ]]; then
+      # Should not happen if err file not present, but safety check
+      log_warn "Failed to get versions from patch source ${source_idx}: No output"
+      i=$((i + 1))
+      continue
+    fi
+
+    local op
+    op=$(cat "${temp_dir}/${i}.out")
+
     if [[ "$op" = "Any" ]]; then
       # This source supports any version - skip to next
-      source_idx=$((source_idx + 1))
+      i=$((i + 1))
       continue
     fi
 
@@ -260,7 +304,7 @@ get_patch_last_supported_ver() {
 
     if [[ "$pcount" = "" ]]; then
       log_warn "Could not determine patch count for source ${source_idx}"
-      source_idx=$((source_idx + 1))
+      i=$((i + 1))
       continue
     fi
 
@@ -273,8 +317,10 @@ get_patch_last_supported_ver() {
       log_debug "Source ${source_idx} supports $(echo "$source_versions" | wc -l) version(s)"
     fi
 
-    source_idx=$((source_idx + 1))
+    i=$((i + 1))
   done
+
+  rm -rf "$temp_dir"
 
   if [[ -z "$all_versions" ]]; then
     log_warn "No compatible versions found across ${#patches_jars[@]} patch source(s)"

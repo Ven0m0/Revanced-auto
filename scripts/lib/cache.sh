@@ -235,19 +235,49 @@ cache_cleanup() {
 
   log_info "Cleaning expired cache entries..."
 
-  # Get list of expired entries
-  local expired_entries
-  expired_entries=$(jq -r --arg now "$now" \
-    'to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key' \
-    "$CACHE_INDEX_FILE")
+  # Get list of expired entries (keys) as a JSON array and save to file
+  # Using a file avoids ARG_MAX limits with large caches
+  local temp_keys_file
+temp_keys_file=$(mktemp)
+  if [[ $? -ne 0 ]]; then
+    abort "Failed to create temporary file for expired keys."
+  fi
+  jq -c --arg now "$now" \
+    '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
+    '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
+    "$CACHE_INDEX_FILE" > "$temp_keys_file" || abort "Failed to generate expired keys list."
 
-  # Remove expired entries
-  while IFS= read -r file_path; do
-    if [[ -n "$file_path" ]]; then
-      cache_remove "$file_path" true
-      ((removed_count++))
+  # Check if there are any expired entries
+  local count
+  count=$(jq 'length' "$temp_keys_file")
+
+  if [[ $count -gt 0 ]]; then
+    # Remove files
+    # Using process substitution and while loop for better portability (vs mapfile)
+    while IFS= read -r file_path; do
+      if [[ -f "$file_path" ]]; then
+        rm -f "$file_path"
+        log_debug "Removed from cache: $file_path"
+      fi
+        rm -f "$file_path"
+        log_debug "Removed from cache: $file_path"
+        ((removed_count++))
+    done < <(jq -r '.[]' "$temp_keys_file")
+
+    # Batch update index: remove all expired keys in one go
+    # This is significantly faster than removing them one by one
+    local temp_index
+temp_index=$(mktemp)
+    if [[ $? -ne 0 ]]; then
+      abort "Failed to create temporary file for index update."
     fi
-  done <<< "$expired_entries"
+    # --slurpfile reads the array from file into a variable (array of arrays)
+    jq --slurpfile keys_wrapper "$temp_keys_file" \
+      'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" > "$temp_index" || abort "Failed to batch update cache index."
+    mv "$temp_index" "$CACHE_INDEX_FILE"
+  fi
+
+  rm -f "$temp_keys_file"
 
   if [[ $removed_count -gt 0 ]]; then
     log_success "Removed $removed_count expired cache entries"

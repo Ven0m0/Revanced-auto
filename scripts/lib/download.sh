@@ -65,32 +65,16 @@ get_apkmirror_vers() {
 #   Download URL
 apk_mirror_search() {
   local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
-  local apparch dlurl node app_table
+  local dlurl
 
-  if [[ "$arch" = all ]]; then
-    apparch=(universal noarch 'arm64-v8a + armeabi-v7a')
-  else
-    apparch=("$arch" universal noarch 'arm64-v8a + armeabi-v7a')
+  # Process with Python script to avoid N+1 process spawning
+  if dlurl=$(python3 "${CWD}/scripts/apkmirror_search.py" \
+    --apk-bundle "$apk_bundle" \
+    --dpi "$dpi" \
+    --arch "$arch" <<< "$resp"); then
+    echo "$dlurl"
+    return 0
   fi
-
-  # Extract all rows at once instead of one-by-one to avoid repeated htmlq calls
-  local all_nodes
-  all_nodes=$("$HTMLQ" "div.table-row.headerFont" -r "span:nth-child(n+3)" <<< "$resp")
-
-  # Process rows one by one from the extracted content
-  local node
-  while IFS= read -r node; do
-    [[ -z "$node" ]] && continue
-
-    app_table=$(scrape_text --ignore-whitespace <<< "$node")
-    if [[ "$(sed -n 3p <<< "$app_table")" = "$apk_bundle" ]] \
-      && [[ "$(sed -n 6p <<< "$app_table")" = "$dpi" ]] \
-      && isoneof "$(sed -n 4p <<< "$app_table")" "${apparch[@]}"; then
-      dlurl=$(scrape_attr "div:nth-child(1) > a:nth-child(1)" href --base https://www.apkmirror.com <<< "$node")
-      echo "$dlurl"
-      return 0
-    fi
-  done <<< "$all_nodes"
 
   return 1
 }
@@ -194,22 +178,63 @@ dl_uptodown() {
   local versionURL="" is_bundle=false
 
   log_info "Searching Uptodown for version: $version"
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  trap 'rm -rf -- "$temp_dir"' RETURN
+  local pids=()
+
   for i in {1..5}; do
-    resp=$(req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" -)
-    if ! op=$(jq -e -r ".data | map(select(.version == \"${version}\")) | .[0]" <<< "$resp"); then
-      continue
-    fi
+    (
+      # Create isolated temp dir for cookies to avoid race conditions
+      local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
+      TEMP_DIR=$(mktemp -d)
+      if [[ -f "$parent_cookie_file" ]]; then
+        cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
+      fi
 
-    if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
-      is_bundle=true
-    fi
+      if ! req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" - > "${temp_dir}/${i}"; then
+        rm -f "${temp_dir}/${i}"
+      fi
 
-    if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
-      break
-    else
-      return 1
+      rm -rf "$TEMP_DIR" || true
+    ) &
+    pids+=($!)
+  done
+
+  local failed_jobs=0
+  local total_jobs=${#pids[@]}
+
+  for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+      failed_jobs=$((failed_jobs + 1))
     fi
   done
+
+  if (( failed_jobs == total_jobs )); then
+    log_warn "All Uptodown download attempts failed for version: $version"
+  fi
+  for i in {1..5}; do
+    if [[ -f "${temp_dir}/${i}" ]]; then
+      resp=$(cat "${temp_dir}/${i}")
+      if [[ -z "$resp" ]]; then continue; fi
+
+      if ! op=$(jq -e -r --arg ver "$version" '.data | map(select(.version == $ver)) | .[0]' <<< "$resp"); then
+        continue
+      fi
+
+      if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
+        is_bundle=true
+      fi
+
+      if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
+        break
+      else
+        rm -rf "$temp_dir"
+        return 1
+      fi
+    fi
+  done
+  rm -rf "$temp_dir"
 
   if [[ "$versionURL" = "" ]]; then
     log_warn "Version not found on Uptodown: $version"
