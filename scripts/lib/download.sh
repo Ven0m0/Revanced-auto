@@ -67,7 +67,6 @@ apk_mirror_search() {
   local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
 
   # Delegate to Python script for efficient parsing
-  # Exit codes: 0 = found, 1 = table found but no match, 2 = no table found
   python3 "${CWD}/scripts/apkmirror_search.py" \
     --apk-bundle "$apk_bundle" \
     --dpi "$dpi" \
