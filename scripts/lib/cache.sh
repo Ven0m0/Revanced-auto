@@ -281,7 +281,7 @@ cache_cleanup() {
     if [[ ${#orphaned_keys[@]} -gt 0 ]]; then
       local orphaned_keys_file
       orphaned_keys_file=$(mktemp)
-      printf '%s\n' "${orphaned_keys[@]}" | jq -R . | jq -s . > "$orphaned_keys_file"
+      jq -n --args '$ARGS.positional' -- "${orphaned_keys[@]}" > "$orphaned_keys_file"
 
       local temp_index
       temp_index=$(mktemp)
