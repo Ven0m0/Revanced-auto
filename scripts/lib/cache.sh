@@ -259,7 +259,9 @@ temp_keys_file=$(mktemp)
         rm -f "$file_path"
         log_debug "Removed from cache: $file_path"
       fi
-      ((removed_count++))
+        rm -f "$file_path"
+        log_debug "Removed from cache: $file_path"
+        ((removed_count++))
     done < <(jq -r '.[]' "$temp_keys_file")
 
     # Batch update index: remove all expired keys in one go
