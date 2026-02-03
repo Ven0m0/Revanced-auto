@@ -34,13 +34,22 @@ get_apkmirror_vers() {
   vers=$(sed -n 's;.*Version:</span><span class="infoSlide-value">\(.*\) </span>.*;\1;p' <<< "$apkm_resp" | awk '{$1=$1}1')
 
   if [[ "$__AAV__" = false ]]; then
-    local IFS=$'\n'
     vers=$(grep -iv "\(beta\|alpha\)" <<< "$vers")
-    local v r_vers=()
-    for v in "${vers[@]}"; do
-      grep -iq "${v} \(beta\|alpha\)" <<< "$apkm_resp" || r_vers+=("$v")
-    done
-    echo "${r_vers[*]}"
+
+    if [[ -n "$vers" ]]; then
+      local pattern bad_vers
+      # Escape dots in versions for regex safety
+      pattern=$(printf "%s" "$vers" | sed 's/\./\\./g' | tr '\n' '|')
+      pattern="${pattern%|}"
+
+      # Find versions that are followed by beta/alpha in HTML
+      bad_vers=$(grep -Eoi "(${pattern})[[:space:]]+(beta|alpha)" <<< "$apkm_resp" | awk '{print tolower($1)}' | sort -u)
+
+      if [[ -n "$bad_vers" ]]; then
+        vers=$(grep -vxFf <(echo "$bad_vers") <<< "$vers" || true)
+      fi
+    fi
+    echo "$vers"
   else
     echo "$vers"
   fi
@@ -173,22 +182,63 @@ dl_uptodown() {
   local versionURL="" is_bundle=false
 
   log_info "Searching Uptodown for version: $version"
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  trap 'rm -rf -- "$temp_dir"' RETURN
+  local pids=()
+
   for i in {1..5}; do
-    resp=$(req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" -)
-    if ! op=$(jq -e -r ".data | map(select(.version == \"${version}\")) | .[0]" <<< "$resp"); then
-      continue
-    fi
+    (
+      # Create isolated temp dir for cookies to avoid race conditions
+      local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
+      TEMP_DIR=$(mktemp -d)
+      if [[ -f "$parent_cookie_file" ]]; then
+        cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
+      fi
 
-    if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
-      is_bundle=true
-    fi
+      if ! req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" - > "${temp_dir}/${i}"; then
+        rm -f "${temp_dir}/${i}"
+      fi
 
-    if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
-      break
-    else
-      return 1
+      rm -rf "$TEMP_DIR" || true
+    ) &
+    pids+=($!)
+  done
+
+  local failed_jobs=0
+  local total_jobs=${#pids[@]}
+
+  for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+      failed_jobs=$((failed_jobs + 1))
     fi
   done
+
+  if (( failed_jobs == total_jobs )); then
+    log_warn "All Uptodown download attempts failed for version: $version"
+  fi
+  for i in {1..5}; do
+    if [[ -f "${temp_dir}/${i}" ]]; then
+      resp=$(cat "${temp_dir}/${i}")
+      if [[ -z "$resp" ]]; then continue; fi
+
+      if ! op=$(jq -e -r --arg ver "$version" '.data | map(select(.version == $ver)) | .[0]' <<< "$resp"); then
+        continue
+      fi
+
+      if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
+        is_bundle=true
+      fi
+
+      if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
+        break
+      else
+        rm -rf "$temp_dir"
+        return 1
+      fi
+    fi
+  done
+  rm -rf "$temp_dir"
 
   if [[ "$versionURL" = "" ]]; then
     log_warn "Version not found on Uptodown: $version"
