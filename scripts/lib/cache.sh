@@ -264,7 +264,7 @@ cache_cleanup() {
     temp_index=$(mktemp)
     # --slurpfile reads the array from file into a variable (array of arrays)
     jq --slurpfile keys_wrapper "$temp_keys_file" \
-      'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" > "$temp_index"
+      'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" > "$temp_index" || abort "Failed to batch update cache index."
     mv "$temp_index" "$CACHE_INDEX_FILE"
   fi
 
