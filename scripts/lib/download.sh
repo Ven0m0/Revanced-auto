@@ -177,12 +177,10 @@ dl_uptodown() {
   for i in {1..5}; do
     (
       # Create isolated temp dir for cookies to avoid race conditions
-      if [[ -n "${TEMP_DIR:-}" ]] && [[ -f "${TEMP_DIR}/cookie.txt" ]]; then
-        local parent_cookie="${TEMP_DIR}/cookie.txt"
-        TEMP_DIR=$(mktemp -d)
-        cp "$parent_cookie" "${TEMP_DIR}/cookie.txt"
-      else
-        TEMP_DIR=$(mktemp -d)
+      local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
+      TEMP_DIR=$(mktemp -d)
+      if [[ -f "$parent_cookie_file" ]]; then
+        cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
       fi
 
       if ! req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" - > "${temp_dir}/${i}"; then
