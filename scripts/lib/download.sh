@@ -171,6 +171,7 @@ dl_uptodown() {
   log_info "Searching Uptodown for version: $version"
   local temp_dir
   temp_dir=$(mktemp -d)
+  trap 'rm -rf -- "$temp_dir"' RETURN
   local pids=()
 
   for i in {1..5}; do
