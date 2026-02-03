@@ -47,14 +47,14 @@ run_test() {
 # Test 1: Exact Match
 run_test "Exact Match (APK, nodpi, arm64-v8a)" "APK" "nodpi" "arm64-v8a" "https://www.apkmirror.com/apk/google-inc/youtube/youtube-19-09-37-release/youtube-19-09-37-android-apk-download/"
 
-# Test 2: Match BUNDLE type
-run_test "Match BUNDLE type" "BUNDLE" "nodpi" "arm64-v8a" "https://www.apkmirror.com/fail-bundle"
+# Test 2: Mismatch Bundle
+run_test "Mismatch Bundle (BUNDLE vs APK)" "BUNDLE" "nodpi" "arm64-v8a" "https://www.apkmirror.com/fail-bundle"
 
-# Test 3: Match on 480dpi
-run_test "Match on 480dpi" "APK" "480dpi" "arm64-v8a" "https://www.apkmirror.com/fail-dpi"
+# Test 3: Mismatch DPI
+run_test "Mismatch DPI" "APK" "480dpi" "arm64-v8a" "https://www.apkmirror.com/fail-dpi"
 
-# Test 4: Match on x86 architecture
-run_test "Match on x86 architecture" "APK" "nodpi" "x86" "https://www.apkmirror.com/fail-arch"
+# Test 4: Mismatch Arch
+run_test "Mismatch Arch (x86 request)" "APK" "nodpi" "x86" "https://www.apkmirror.com/fail-arch"
 
 # Test 5: Universal Fallback (Request arm64-v8a, match universal)
 # Note: The fixture has two matches for arm64-v8a (Row 1 and Row 5).
