@@ -231,7 +231,6 @@ cache_cleanup() {
 
   local now
   now=$(date +%s)
-  local removed_count=0
 
   log_info "Cleaning expired cache entries..."
 
@@ -279,29 +278,52 @@ temp_index=$(mktemp)
 
   rm -f "$temp_keys_file"
 
-  if [[ $removed_count -gt 0 ]]; then
-    log_success "Removed $removed_count expired cache entries"
+  if [[ "$expired_count" -gt 0 ]]; then
+    # Batch remove from index
+    local temp_index
+    temp_index=$(mktemp)
+    jq --slurpfile keys "$expired_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" > "$temp_index"
+    mv "$temp_index" "$CACHE_INDEX_FILE"
+
+    # Remove files
+    # Remove files
+    jq -j '.[] | . + "\u0000"' "$expired_keys_file" | while IFS= read -r -d '' file_path; do
+      if [[ -f "$file_path" ]]; then
+        rm -f -- "$file_path"
+        log_debug "Removed from cache: $file_path"
+      fi
+    done
+
+    pr "Removed $expired_count expired cache entries"
   else
     log_info "No expired entries to remove"
   fi
+  rm -f "$expired_keys_file"
 
   # Force cleanup: remove entries for non-existent files
   if [[ "$force" == "true" ]]; then
     log_info "Performing forced cleanup..."
 
-    local orphaned_count=0
-    local all_entries
-    all_entries=$(jq -r 'keys[]' "$CACHE_INDEX_FILE")
-
+    local orphaned_keys=()
+    # Read all keys
     while IFS= read -r file_path; do
       if [[ -n "$file_path" && ! -f "$file_path" ]]; then
-        cache_remove "$file_path" false
-        ((orphaned_count++))
+        orphaned_keys+=("$file_path")
       fi
-    done <<< "$all_entries"
+    done < <(jq -r 'keys[]' "$CACHE_INDEX_FILE")
 
-    if [[ $orphaned_count -gt 0 ]]; then
-      log_success "Removed $orphaned_count orphaned index entries"
+    if [[ ${#orphaned_keys[@]} -gt 0 ]]; then
+      local orphaned_keys_file
+      orphaned_keys_file=$(mktemp)
+      jq -n --args '$ARGS.positional' -- "${orphaned_keys[@]}" > "$orphaned_keys_file"
+
+      local temp_index
+      temp_index=$(mktemp)
+      jq --slurpfile keys "$orphaned_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" > "$temp_index"
+      mv "$temp_index" "$CACHE_INDEX_FILE"
+
+      pr "Removed ${#orphaned_keys[@]} orphaned index entries"
+      rm -f "$orphaned_keys_file"
     fi
   fi
 
@@ -318,24 +340,38 @@ cache_clean_pattern() {
 
   log_info "Cleaning cache entries matching: $pattern"
 
-  local removed_count=0
-  local matching_entries
-  matching_entries=$(jq -r --arg pattern "$pattern" \
-    'to_entries | .[] | select(.key | test($pattern)) | .key' \
-    "$CACHE_INDEX_FILE")
+  # Get matching keys as JSON array to a file
+  local matching_keys_file
+  matching_keys_file=$(mktemp)
 
-  while IFS= read -r file_path; do
-    if [[ -n "$file_path" ]]; then
-      cache_remove "$file_path" true
-      ((removed_count++))
-    fi
-  done <<< "$matching_entries"
+  jq --arg pattern "$pattern" \
+    '[to_entries | .[] | select(.key | test($pattern)) | .key]' \
+    "$CACHE_INDEX_FILE" > "$matching_keys_file"
 
-  if [[ $removed_count -gt 0 ]]; then
-    log_success "Removed $removed_count cache entries"
+  local removed_count
+  removed_count=$(jq 'length' "$matching_keys_file")
+
+  if [[ "$removed_count" -gt 0 ]]; then
+    # Batch remove from index
+    local temp_index
+    temp_index=$(mktemp)
+    jq --slurpfile keys "$matching_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" > "$temp_index"
+    mv "$temp_index" "$CACHE_INDEX_FILE"
+
+    # Remove files
+    # Remove files
+    jq -j '.[] | . + "\u0000"' "$matching_keys_file" | while IFS= read -r -d '' file_path; do
+      if [[ -f "$file_path" ]]; then
+        rm -f -- "$file_path"
+        log_debug "Removed from cache: $file_path"
+      fi
+    done
+
+    pr "Removed $removed_count cache entries"
   else
     log_info "No matching entries found"
   fi
+  rm -f "$matching_keys_file"
 }
 
 # Cache-aware download function
