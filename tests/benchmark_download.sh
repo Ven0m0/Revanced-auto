@@ -82,7 +82,7 @@ optimized_logic() {
             # echo "Bad vers: $bad_vers" >&2
 
             if [[ -n "$bad_vers" ]]; then
-                vers=$(grep -vxFf <(echo "$bad_vers") <<< "$vers")
+                vers=$(grep -vxFf <(echo "$bad_vers") <<< "$vers" || true)
             fi
         fi
         echo "$vers"
