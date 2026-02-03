@@ -34,13 +34,22 @@ get_apkmirror_vers() {
   vers=$(sed -n 's;.*Version:</span><span class="infoSlide-value">\(.*\) </span>.*;\1;p' <<< "$apkm_resp" | awk '{$1=$1}1')
 
   if [[ "$__AAV__" = false ]]; then
-    local IFS=$'\n'
     vers=$(grep -iv "\(beta\|alpha\)" <<< "$vers")
-    local v r_vers=()
-    for v in "${vers[@]}"; do
-      grep -iq "${v} \(beta\|alpha\)" <<< "$apkm_resp" || r_vers+=("$v")
-    done
-    echo "${r_vers[*]}"
+
+    if [[ -n "$vers" ]]; then
+      local pattern bad_vers
+      # Escape dots in versions for regex safety
+      pattern=$(printf "%s" "$vers" | sed 's/\./\\./g' | tr '\n' '|')
+      pattern="${pattern%|}"
+
+      # Find versions that are followed by beta/alpha in HTML
+      bad_vers=$(grep -Eoi "(${pattern})[[:space:]]+(beta|alpha)" <<< "$apkm_resp" | awk '{print tolower($1)}' | sort -u)
+
+      if [[ -n "$bad_vers" ]]; then
+        vers=$(grep -vxFf <(echo "$bad_vers") <<< "$vers" || true)
+      fi
+    fi
+    echo "$vers"
   else
     echo "$vers"
   fi
