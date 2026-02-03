@@ -44,9 +44,10 @@ def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
         arch: Architecture (e.g., "arm64-v8a")
 
     Returns:
-        0 if found
-        1 if table found but no match
-        2 if no table found (legacy fallback mode)
+        0 if a matching variant is found and its URL is printed
+        1 if the table is present but no matching row is found, or if the
+            HTML content cannot be parsed
+        2 if no matching table rows are found (legacy fallback mode)
     """
     try:
         tree = html.fromstring(html_content)
