@@ -117,7 +117,7 @@ def main():
 
     # Read HTML from stdin
     try:
-        html_content = sys.stdin.read()
+        html_content = sys.stdin.buffer.read().decode("utf-8", errors="replace")
     except KeyboardInterrupt:
         sys.exit(130)
 
