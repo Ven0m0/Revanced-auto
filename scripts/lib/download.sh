@@ -192,10 +192,18 @@ dl_uptodown() {
     pids+=($!)
   done
 
+  local failed_jobs=0
+  local total_jobs=${#pids[@]}
+
   for pid in "${pids[@]}"; do
-    wait "$pid" || true
+    if ! wait "$pid"; then
+      failed_jobs=$((failed_jobs + 1))
+    fi
   done
 
+  if (( failed_jobs == total_jobs )); then
+    log_warn "All Uptodown download attempts failed for version: $version"
+  fi
   for i in {1..5}; do
     if [[ -f "${temp_dir}/${i}" ]]; then
       resp=$(cat "${temp_dir}/${i}")
