@@ -134,7 +134,7 @@ run_benchmark() {
         :
     fi
     echo ""
-    eval "${name}_output='$output'"
+    printf -v "${name}_output" '%s' "$output"
 }
 
 main() {
