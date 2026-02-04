@@ -40,7 +40,7 @@ def main():
 
     try:
         tree = html.fromstring(wrapped_content)
-    except Exception:
+    except html.etree.XMLSyntaxError:
         sys.exit(1)
 
     children = list(tree)
