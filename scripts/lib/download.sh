@@ -34,13 +34,22 @@ get_apkmirror_vers() {
   vers=$(sed -n 's;.*Version:</span><span class="infoSlide-value">\(.*\) </span>.*;\1;p' <<< "$apkm_resp" | awk '{$1=$1}1')
 
   if [[ "$__AAV__" = false ]]; then
-    local IFS=$'\n'
     vers=$(grep -iv "\(beta\|alpha\)" <<< "$vers")
-    local v r_vers=()
-    for v in "${vers[@]}"; do
-      grep -iq "${v} \(beta\|alpha\)" <<< "$apkm_resp" || r_vers+=("$v")
-    done
-    echo "${r_vers[*]}"
+
+    if [[ -n "$vers" ]]; then
+      local pattern bad_vers
+      # Escape dots in versions for regex safety
+      pattern=$(printf "%s" "$vers" | sed 's/\./\\./g' | tr '\n' '|')
+      pattern="${pattern%|}"
+
+      # Find versions that are followed by beta/alpha in HTML
+      bad_vers=$(grep -Eoi "(${pattern})[[:space:]]+(beta|alpha)" <<< "$apkm_resp" | awk '{print tolower($1)}' | sort -u)
+
+      if [[ -n "$bad_vers" ]]; then
+        vers=$(grep -vxFf <(echo "$bad_vers") <<< "$vers" || true)
+      fi
+    fi
+    echo "$vers"
   else
     echo "$vers"
   fi
@@ -56,18 +65,13 @@ get_apkmirror_vers() {
 #   Download URL
 apk_mirror_search() {
   local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
-  local dlurl
 
-  # Process with Python script to avoid N+1 process spawning
-  if dlurl=$(python3 "${CWD}/scripts/apkmirror_search.py" \
+  # Delegate to Python script for efficient parsing
+  python3 "${CWD}/scripts/apkmirror_search.py" \
     --apk-bundle "$apk_bundle" \
     --dpi "$dpi" \
-    --arch "$arch" <<< "$resp"); then
-    echo "$dlurl"
-    return 0
-  fi
-
-  return 1
+    --arch "$arch" \
+    <<< "$resp"
 }
 
 # Download APK from APKMirror
@@ -95,18 +99,27 @@ dl_apkmirror() {
 
     log_info "Searching APKMirror release page: $url"
     resp=$(req "$url" -) || return 1
-    node=$("$HTMLQ" "div.table-row.headerFont:nth-last-child(1)" -r "span:nth-child(n+3)" <<< "$resp")
 
-    if [[ "$node" ]]; then
-      if ! dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "APK"); then
-        if ! dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "BUNDLE"); then
-          return 1
-        else
+    local ret
+    # Try APK first
+    if dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "APK"); then
+      # Found APK, follow link
+      resp=$(req "$dlurl" -)
+    else
+      ret=$?
+      if [[ $ret -eq 2 ]]; then
+        # No variants table found (exit code 2), fall through to legacy/direct scraping
+        :
+      else
+        # Table found but no APK, try BUNDLE
+        if dlurl=$(apk_mirror_search "$resp" "$dpi" "$arch" "BUNDLE"); then
           is_bundle=true
+          resp=$(req "$dlurl" -)
+        else
+          # Table exists but no compatible version found
+          return 1
         fi
       fi
-      [ "$dlurl" = "" ] && return 1
-      resp=$(req "$dlurl" -)
     fi
 
     url=$(echo "$resp" | scrape_attr "a.btn" href --base https://www.apkmirror.com) || return 1
@@ -169,22 +182,63 @@ dl_uptodown() {
   local versionURL="" is_bundle=false
 
   log_info "Searching Uptodown for version: $version"
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  trap 'rm -rf -- "$temp_dir"' RETURN
+  local pids=()
+
   for i in {1..5}; do
-    resp=$(req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" -)
-    if ! op=$(jq -e -r ".data | map(select(.version == \"${version}\")) | .[0]" <<< "$resp"); then
-      continue
-    fi
+    (
+      # Create isolated temp dir for cookies to avoid race conditions
+      local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
+      TEMP_DIR=$(mktemp -d)
+      if [[ -f "$parent_cookie_file" ]]; then
+        cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
+      fi
 
-    if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
-      is_bundle=true
-    fi
+      if ! req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" - > "${temp_dir}/${i}"; then
+        rm -f "${temp_dir}/${i}"
+      fi
 
-    if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
-      break
-    else
-      return 1
+      rm -rf "$TEMP_DIR" || true
+    ) &
+    pids+=($!)
+  done
+
+  local failed_jobs=0
+  local total_jobs=${#pids[@]}
+
+  for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+      failed_jobs=$((failed_jobs + 1))
     fi
   done
+
+  if (( failed_jobs == total_jobs )); then
+    log_warn "All Uptodown download attempts failed for version: $version"
+  fi
+  for i in {1..5}; do
+    if [[ -f "${temp_dir}/${i}" ]]; then
+      resp=$(cat "${temp_dir}/${i}")
+      if [[ -z "$resp" ]]; then continue; fi
+
+      if ! op=$(jq -e -r --arg ver "$version" '.data | map(select(.version == $ver)) | .[0]' <<< "$resp"); then
+        continue
+      fi
+
+      if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
+        is_bundle=true
+      fi
+
+      if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
+        break
+      else
+        rm -rf "$temp_dir"
+        return 1
+      fi
+    fi
+  done
+  rm -rf "$temp_dir"
 
   if [[ "$versionURL" = "" ]]; then
     log_warn "Version not found on Uptodown: $version"

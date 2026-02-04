@@ -1,105 +1,136 @@
 #!/usr/bin/env python3
+"""
+APKMirror Search Parser
+
+Optimized replacement for bash-based HTML parsing loop.
+Extracts download URL for a specific APK variant from APKMirror release page.
+"""
+
 import argparse
 import sys
 
 try:
     from lxml import html
 except ImportError:
-    # If lxml is not available, we can't run.
-    # The environment check should have ensured this, but let's be safe.
-    print(
-        "Error: lxml not installed. Install with: pip install lxml cssselect",
-        file=sys.stderr,
-    )
+    print("Error: lxml not installed", file=sys.stderr)
     sys.exit(1)
 
 
-def get_allowed_archs(arch):
-    base = ["universal", "noarch", "arm64-v8a + armeabi-v7a"]
+def get_target_archs(arch: str) -> list[str]:
+    """
+    Get list of compatible architectures based on requested arch.
+    Matches logic in scripts/lib/download.sh
+    """
+    # Base fallback architectures
+    base_archs = ["universal", "noarch", "arm64-v8a + armeabi-v7a"]
+
     if arch == "all":
-        return base
-    return [arch, *base]
+        return base_archs
+
+    # Prepend requested arch to fallbacks
+    return [arch, *base_archs]
 
 
-def process_row(row, apk_bundle, dpi, allowed_archs):
-    # Mimic the bash logic: remove span:nth-child(n+3)
-    # logic: "$HTMLQ" "div.table-row.headerFont" -r "span:nth-child(n+3)"
-    spans = row.cssselect("span:nth-child(n+3)")
-    for span in spans:
-        span.drop_tree()
+def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
+    """
+    Search for matching APK variant in HTML content.
+    Prints download URL to stdout on success.
 
-    # Extract all text nodes, stripped and non-empty
-    texts = [t.strip() for t in row.xpath(".//text()") if t.strip()]
+    Args:
+        html_content: HTML string
+        apk_bundle: Bundle type ("APK" or "BUNDLE")
+        dpi: Screen DPI (e.g., "nodpi")
+        arch: Architecture (e.g., "arm64-v8a")
 
-    # We need at least 6 items to check index 5 (6th item)
-    if len(texts) < 6:
-        return None
+    Returns:
+        0 if found
+        1 if table found but no match
+        2 if no table found (legacy fallback mode)
+    """
+    try:
+        tree = html.fromstring(html_content)
+    except Exception as e:
+        print(f"Error parsing HTML: {e}", file=sys.stderr)
+        return 1  # Treat parse error as failure
 
-    # Indices based on:
-    # Line 3 (index 2): apk_bundle
-    # Line 4 (index 3): arch
-    # Line 6 (index 5): dpi
+    # Use XPath instead of cssselect to avoid dependency on cssselect package
+    # Select div elements with class "table-row" and "headerFont"
+    # Use concat() with spaces to match exact class names (CSS-style word boundary matching)
+    # This ensures we don't match substrings like "my-table-row" or "table-row-extra"
+    rows = tree.xpath(
+        "//div["
+        "contains(concat(' ', normalize-space(@class), ' '), ' table-row ') and "
+        "contains(concat(' ', normalize-space(@class), ' '), ' headerFont ')"
+        "]"
+    )
 
-    curr_bundle = texts[2]
-    curr_arch = texts[3]
-    curr_dpi = texts[5]
+    if not rows:
+        return 2
 
-    if curr_bundle == apk_bundle and curr_dpi == dpi and curr_arch in allowed_archs:
-        # dlurl=$(scrape_attr "div:nth-child(1) > a:nth-child(1)" href ...)
-        link = row.cssselect("div:nth-child(1) > a:nth-child(1)")
-        if link:
-            href = link[0].get("href")
+    target_archs = get_target_archs(arch)
+
+    for row in rows:
+        # Extract all text nodes from the row, stripping whitespace
+        # This matches the behavior of scrape_text in the bash script
+        text_nodes = [t.strip() for t in row.itertext() if t.strip()]
+
+        # We need at least 6 text nodes to check the conditions
+        # Index mapping based on 'sed -n Np':
+        # 3p -> index 2 (Bundle type)
+        # 4p -> index 3 (Architecture)
+        # 6p -> index 5 (DPI)
+        if len(text_nodes) < 6:
+            continue
+
+        row_bundle = text_nodes[2]
+        row_arch = text_nodes[3]
+        row_dpi = text_nodes[5]
+
+        # Check conditions
+        if row_bundle != apk_bundle:
+            continue
+
+        if row_dpi != dpi:
+            continue
+
+        if row_arch not in target_archs:
+            continue
+
+        # Extract download URL
+        # Logic: div:nth-child(1) > a:nth-child(1) -> href
+        # XPath: ./div[1]/a[1]
+        links = row.xpath("./div[1]/a[1]")
+        if links:
+            href = links[0].get("href")
             if href:
-                # Ensure we handle base URL
-                if href.startswith("http"):
-                    return href
-                if href.startswith("/"):
-                    return "https://www.apkmirror.com" + href
-                return "https://www.apkmirror.com/" + href
+                # Base URL is https://www.apkmirror.com
+                print(f"https://www.apkmirror.com{href}")
+                return 0
 
-    return None
+    return 1
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description=(
-            "Search APKMirror HTML from stdin for a matching APK variant "
-            "and print its download URL."
-        )
+        description="Search APKMirror release page for specific variant"
     )
-    parser.add_argument("--apk-bundle", required=True)
-    parser.add_argument("--dpi", required=True)
-    parser.add_argument("--arch", required=True)
+    parser.add_argument("--apk-bundle", required=True, help="APK bundle type (APK or BUNDLE)")
+    parser.add_argument("--dpi", required=True, help="Screen DPI")
+    parser.add_argument("--arch", required=True, help="Architecture")
+
     args = parser.parse_args()
 
-    # Read from stdin
+    # Read HTML from stdin
     try:
         html_content = sys.stdin.read()
     except KeyboardInterrupt:
         sys.exit(130)
 
     if not html_content:
-        print("Error: No HTML content provided on stdin", file=sys.stderr)
-        sys.exit(1)
+        # Treat empty input as "no table found" so it falls back
+        sys.exit(2)
 
-    try:
-        tree = html.fromstring(html_content)
-    except Exception:
-        sys.exit(1)
-
-    allowed_archs = get_allowed_archs(args.arch)
-
-    # Find all rows
-    rows = tree.cssselect("div.table-row.headerFont")
-
-    for row in rows:
-        url = process_row(row, args.apk_bundle, args.dpi, allowed_archs)
-        if url:
-            print(url)
-            sys.exit(0)
-
-    # Not found
-    sys.exit(1)
+    sys.exit(search(html_content, args.apk_bundle, args.dpi, args.arch))
 
 
 if __name__ == "__main__":
