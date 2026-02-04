@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # ReVanced prebuilts management
+# Fixed syntax error in loop structure
 
 # Resolve a single ReVanced artifact (CLI or Patches)
 # Args:
@@ -232,3 +233,4 @@ _remove_integrations_checks() {
   rm -rf "${file}-zip" 2> /dev/null || :
   return "$ret"
 }
+# Force CI update 1770206204
