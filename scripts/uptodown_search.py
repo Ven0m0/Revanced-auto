@@ -47,32 +47,21 @@ def main():
 
     # Iterate through children to find matching architecture
     # The structure is typically: <p>Arch Name</p> <div class="variant">...</div>
-    i = 0
-    while i < len(children) - 1:
-        elem = children[i]
+    allowed_archs = set(args.archs)
 
-        # Look for <p> tags containing the architecture name
-        if elem.tag == "p":
-            arch_text = elem.text_content().strip()
+    # Iterate through adjacent pairs of elements (p, div).
+    for p_elem, variant_div in zip(children, children[1:]):
+        if p_elem.tag == "p":
+            arch_text = p_elem.text_content().strip()
 
-            # Check if this architecture is in our allowed list
-            if arch_text in args.archs:
-                # The next element should be the variant div
-                next_elem = children[i + 1]
-
-                # Verify it's a div (optional but good for robustness)
-                # and search for the data-file-id inside it
-                # Selector used in bash: div.variant > .v-report
-
-                # We search within the next element
-                v_reports = next_elem.cssselect(".v-report")
+            if arch_text in allowed_archs:
+                # Found a matching architecture, get file ID from the next element.
+                v_reports = variant_div.cssselect(".v-report")
                 if v_reports:
                     file_id = v_reports[0].get("data-file-id")
                     if file_id:
                         print(file_id)
                         sys.exit(0)
-
-        i += 1
 
     # No matching architecture found
     sys.exit(1)
