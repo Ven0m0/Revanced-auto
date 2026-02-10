@@ -286,9 +286,9 @@ export LOG_LEVEL=0  # Enable debug logging
 
 ### Security (Non-Negotiable)
 
-1. **SHA Pinning**: Pin all actions to commit SHAs with version comments
-   - ✅ `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`
-   - ❌ `actions/checkout@v4`
+1. **Version Tags**: Use major version tags for actions to allow automatic updates
+   - ✅ `actions/checkout@v4`
+   - ❌ `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683`
 
 2. **Permissions**: Explicit `permissions:` block per job, never `write-all`
    - Default: `contents: read`

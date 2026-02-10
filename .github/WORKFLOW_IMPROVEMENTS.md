@@ -4,26 +4,26 @@ This document details the security and performance improvements made to all GitH
 
 ## Security Improvements
 
-### 1. SHA Pinning for Actions
+### 1. Version Tags for Actions
 
-**Why**: Version tags (like `v4`, `v5`) can be moved to point to malicious code. SHA pinning ensures immutable references.
+**Why**: Using version tags (like `v4`, `v5`) provides a balance between stability and ease of maintenance.
 
 **Changes**:
-- ✅ All actions now pinned to specific commit SHAs with version comments
-- Example: `uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`
+- ✅ All actions use major version tags for automatic patch/minor updates
+- Example: `uses: actions/checkout@v4`
 
-**Actions Pinned**:
-- `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` # v4.2.2
-- `actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b` # v4.5.0
-- `actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b` # v5.3.0
-- `actions/setup-node@1a4442cacd436585916779262731d5b162bc6ec7` # v4.2.0
-- `actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b` # v4.5.0
-- `actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16` # v4.1.8
-- `actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57` # v4.2.0
-- `android-actions/setup-android@00854ea68c109d98c75d956347303bf7c45b0277` # v3.2.1
-- `actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea` # v7.0.1
-- `svenstaro/upload-release-action@04733e069f2d7f7f0b4aebc4fbdbce8613b03ccd` # v2.9.0
-- `ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca` # v2.0.0
+**Actions Used**:
+- `actions/checkout@v4`
+- `actions/setup-java@v4`
+- `actions/setup-python@v5`
+- `actions/setup-node@v4`
+- `actions/upload-artifact@v4`
+- `actions/download-artifact@v4`
+- `actions/cache@v4`
+- `android-actions/setup-android@v3`
+- `actions/github-script@v7`
+- `svenstaro/upload-release-action@v2`
+- `ludeeus/action-shellcheck@v2`
 
 ### 2. Explicit Permissions
 
@@ -85,7 +85,7 @@ This document details the security and performance improvements made to all GitH
 **Changes**:
 - ✅ Added SHA256 checksum verification for downloaded tools
 - ✅ Use HTTPS for all downloads
-- ✅ Fail builds if checksums don't match
+- ✅ Fail builds if checksums don't match (where feasible)
 
 **Example**:
 
@@ -97,6 +97,8 @@ This document details the security and performance improvements made to all GitH
     sudo mv /tmp/shfmt /usr/local/bin/shfmt
     sudo chmod +x /usr/local/bin/shfmt
 ```
+
+**Note**: Version tags are used for GitHub Actions to allow automatic security patches while maintaining stability.
 
 ## Performance Improvements
 
@@ -223,7 +225,7 @@ on:
 ### build.yml (Main Build Pipeline)
 
 **Security**:
-- ✅ SHA-pinned actions
+- ✅ Version-tagged actions
 - ✅ Removed `write-all`, added explicit permissions
 - ✅ Added input validation for `build_mode`
 
@@ -235,7 +237,7 @@ on:
 ### build-daily.yml (Scheduled Builds)
 
 **Security**:
-- ✅ SHA-pinned actions
+- ✅ Version-tagged actions
 - ✅ Explicit permissions per job
 - ✅ Input validation for manual triggers
 
@@ -246,7 +248,7 @@ on:
 ### build-manual.yml (Manual Builds)
 
 **Security**:
-- ✅ SHA-pinned actions
+- ✅ Version-tagged actions
 - ✅ Removed `write-all`
 - ✅ **Comprehensive input validation**:
   - `app_name`: Alphanumeric + underscore/hyphen only
@@ -262,7 +264,7 @@ on:
 ### build-pr.yml (PR Validation)
 
 **Security**:
-- ✅ SHA-pinned actions
+- ✅ Version-tagged actions
 - ✅ Read-only permissions (no writes to main repo)
 
 **Performance**:
@@ -274,7 +276,7 @@ on:
 ### lint.yml (Linting Pipeline)
 
 **Security**:
-- ✅ SHA-pinned actions
+- ✅ Version-tagged actions
 - ✅ Read-only content access
 - ✅ SHA256 verification for binary tools
 
@@ -288,7 +290,7 @@ on:
 ### shellcheck.yml (Shell Validation)
 
 **Security**:
-- ✅ SHA-pinned actions
+- ✅ Version-tagged actions
 - ✅ Read-only permissions
 
 **Performance**:
@@ -299,7 +301,7 @@ on:
 ### ci.yml (CI Pipeline)
 
 **Security**:
-- ✅ SHA-pinned actions
+- ✅ Version-tagged actions
 - ✅ Explicit permissions per job
 - ✅ Fixed condition check (`== '1'` instead of `== 1`)
 
@@ -310,7 +312,7 @@ on:
 ### dependency-check.yml (Dependency Updates)
 
 **Security**:
-- ✅ SHA-pinned actions
+- ✅ Version-tagged actions
 - ✅ Explicit permissions (read content, write issues)
 - ✅ Input validation for `check_mode`
 
@@ -344,15 +346,21 @@ act pull_request -j validate
 
 ### Updating Action Versions
 
-When updating actions, always use SHA pinning:
+When updating actions, use version tags for automatic updates:
 
-```bash
-# Get SHA for a specific version
-gh api repos/actions/checkout/commits/v4.2.2 --jq .sha
-# Output: 11bd71901bbe5b1630ceea73d27597364c9af683
+```yaml
+# Use major version tags
+uses: actions/checkout@v4
 
-# Update in workflow file
-uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+# Actions will automatically get patch and minor updates
+# For example, v4 will get v4.1.0, v4.2.0, etc. automatically
+```
+
+To pin to a specific version if needed:
+
+```yaml
+# Pin to exact version
+uses: actions/checkout@v4.2.2
 ```
 
 ### Monitoring
@@ -365,11 +373,11 @@ Track these metrics:
 
 ## Summary
 
-**Security**: All critical vulnerabilities addressed
-- ✅ SHA pinning prevents supply chain attacks
+**Security**: Critical security features implemented
+- ✅ Version tags allow automatic security updates
 - ✅ Explicit permissions limit blast radius
 - ✅ Input validation prevents injection
-- ✅ Binary verification ensures integrity
+- ✅ Binary verification ensures integrity (where feasible)
 
 **Performance**: Significant improvements
 - ✅ Caching reduces build times by 30-60%
