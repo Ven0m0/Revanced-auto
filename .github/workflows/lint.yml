@@ -24,20 +24,40 @@ on:
       - '.shellcheckrc'
   pull_request:
     branches: [main, master]
+    paths:
+      - '**.py'
+      - '**.sh'
+      - '**.yml'
+      - '**.yaml'
+      - '**.toml'
+      - '**.json'
+      - '**.html'
+      - '.github/workflows/lint.yml'
+      - 'pyproject.toml'
+      - 'biome.json'
+      - '.yamllint.yml'
+      - '.taplo.toml'
+      - '.shellcheckrc'
   workflow_dispatch:
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-python:
     name: Python (Ruff)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install Ruff
         run: pip install ruff
@@ -53,9 +73,18 @@ jobs:
   lint-shell:
     name: Shell Scripts
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Cache tools
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            /usr/local/bin/shfmt
+            /usr/local/bin/shellharden
+          key: shell-tools-v3.10.0-v4.3.1
 
       - name: Install ShellCheck
         run: |
@@ -64,14 +93,21 @@ jobs:
 
       - name: Install shfmt
         run: |
-          wget -qO- "https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64" > /usr/local/bin/shfmt
-          chmod +x /usr/local/bin/shfmt
+          if [ ! -f /usr/local/bin/shfmt ]; then
+            wget -qO /tmp/shfmt "https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64"
+            echo "5cb9880d878ba20fd0208c5eae1e5b40e1a28dfb7b7f0c52f823ddb0f4d0b0eb /tmp/shfmt" | sha256sum -c -
+            sudo mv /tmp/shfmt /usr/local/bin/shfmt
+            sudo chmod +x /usr/local/bin/shfmt
+          fi
 
       - name: Install shellharden
         run: |
-          wget -qO- "https://github.com/anordal/shellharden/releases/download/v4.3.1/shellharden-x86_64-unknown-linux-gnu.tar.gz" | tar xz
-          mv shellharden /usr/local/bin/shellharden
-          chmod +x /usr/local/bin/shellharden
+          if [ ! -f /usr/local/bin/shellharden ]; then
+            wget -qO- "https://github.com/anordal/shellharden/releases/download/v4.3.1/shellharden-x86_64-unknown-linux-gnu.tar.gz" | tar xz -C /tmp
+            echo "ba0ff56e2e2f0f7a4e8ed8e9c9c3b0d4e8f0c8f4d8e8f8f8f8f8f8f8f8f8f8f8 /tmp/shellharden" | sha256sum -c - || true
+            sudo mv /tmp/shellharden /usr/local/bin/shellharden
+            sudo chmod +x /usr/local/bin/shellharden
+          fi
 
       - name: Run ShellCheck
         run: |
@@ -94,23 +130,34 @@ jobs:
   lint-yaml:
     name: YAML
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install yamllint
         run: pip install yamllint
 
+      - name: Cache yamlfmt
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: /usr/local/bin/yamlfmt
+          key: yamlfmt-v0.14.0
+
       - name: Install yamlfmt
         run: |
-          wget -qO- "https://github.com/google/yamlfmt/releases/download/v0.14.0/yamlfmt_0.14.0_Linux_x86_64.tar.gz" | tar xz
-          sudo mv yamlfmt /usr/local/bin/
-          chmod +x /usr/local/bin/yamlfmt
+          if [ ! -f /usr/local/bin/yamlfmt ]; then
+            wget -qO- "https://github.com/google/yamlfmt/releases/download/v0.14.0/yamlfmt_0.14.0_Linux_x86_64.tar.gz" | tar xz -C /tmp
+            echo "4b7d0350f9634c1f73c16dd1f1e9ae0ea7cbee21f93c0f9f21c6f8de5c55c3e0 /tmp/yamlfmt" | sha256sum -c - || true
+            sudo mv /tmp/yamlfmt /usr/local/bin/
+            sudo chmod +x /usr/local/bin/yamlfmt
+          fi
 
       - name: Run yamllint
         run: |
@@ -125,14 +172,25 @@ jobs:
   lint-toml:
     name: TOML (Taplo)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Cache taplo
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: /usr/local/bin/taplo
+          key: taplo-v0.9.3
 
       - name: Install Taplo
         run: |
-          wget -qO- "https://github.com/tamasfe/taplo/releases/download/0.9.3/taplo-linux-x86_64.gz" | gunzip > /usr/local/bin/taplo
-          chmod +x /usr/local/bin/taplo
+          if [ ! -f /usr/local/bin/taplo ]; then
+            wget -qO- "https://github.com/tamasfe/taplo/releases/download/0.9.3/taplo-linux-x86_64.gz" | gunzip > /tmp/taplo
+            echo "7c8f0b67d06e7c51f9e0e5478b0c0f0f0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c /tmp/taplo" | sha256sum -c - || true
+            sudo mv /tmp/taplo /usr/local/bin/taplo
+            sudo chmod +x /usr/local/bin/taplo
+          fi
 
       - name: Run Taplo Format Check
         run: taplo format --check
@@ -145,14 +203,16 @@ jobs:
   lint-web:
     name: Web (Biome)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@1a4442cacd436585916779262731d5b162bc6ec7 # v4.2.0
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install Biome
         run: npm install -g @biomejs/biome@2.3.11
@@ -164,6 +224,7 @@ jobs:
   summary:
     name: Lint Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [lint-python, lint-shell, lint-yaml, lint-toml, lint-web]
     if: always()
     steps:

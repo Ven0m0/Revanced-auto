@@ -2,6 +2,7 @@ name: Build
 permissions:
   contents: write
   actions: read
+
 on:
   workflow_call:
     inputs:
@@ -28,14 +29,29 @@ on:
         options:
           - stable
           - dev
+
+concurrency:
+  group: build-${{ github.ref }}-${{ inputs.build_mode }}
+  cancel-in-progress: true
+
 jobs:
   setup_matrix:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Validate inputs
+        run: |
+          if [[ "${{ inputs.build_mode }}" != "stable" && "${{ inputs.build_mode }}" != "dev" ]]; then
+            echo "Invalid build_mode: ${{ inputs.build_mode }}"
+            exit 1
+          fi
+
       - name: Generate Matrix
         id: set-matrix
         run: |
@@ -46,27 +62,35 @@ jobs:
   apk_matrix:
     needs: setup_matrix
     runs-on: ubuntu-latest
-    permissions: write-all
+    timeout-minutes: 90
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.setup_matrix.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
           submodules: true
+
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4.5.0
         with:
           distribution: "temurin"
           java-version: "21"
+          cache: 'gradle'
+
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@00854ea68c109d98c75d956347303bf7c45b0277 # v3.2.1
+
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.11"
+          cache: 'pip'
+
       - name: Install Python dependencies
         run: pip install -e .
       - name: Install Android SDK Build Tools
@@ -86,27 +110,32 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
       - name: Upload APKs as artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         with:
           name: apks-${{ matrix.id }}
           path: ./build/*.apk
           if-no-files-found: warn
           retention-days: 1
+
       - name: Upload build log as artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         with:
           name: build-log-${{ matrix.id }}
           path: build.md
           if-no-files-found: warn
           retention-days: 1
+
   release:
     needs: apk_matrix
     # Only run on trusted repository and non-PR events to prevent forks from publishing releases
     if: ${{ needs.apk_matrix.result == 'success' && !cancelled() && github.event_name != 'pull_request' && (github.repository_owner == 'anomalyco' || github.repository == github.event.repository.full_name) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
       - name: Check if any artifacts exist
@@ -132,14 +161,15 @@ jobs:
           echo "version=${VER}" >> $GITHUB_OUTPUT
       - name: Download all APKs
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           pattern: apks-*
           path: all-apks
           merge-multiple: true
+
       - name: Download all build logs
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           pattern: build-log-*
           path: build-logs
@@ -153,7 +183,7 @@ jobs:
           echo "${DELIM}" >> "$GITHUB_OUTPUT"
       - name: Upload APKs to release
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@04733e069f2d7f7f0b4aebc4fbdbce8613b03ccd # v2.9.0
         with:
           body: ${{ steps.get_output.outputs.BUILD_LOG }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
