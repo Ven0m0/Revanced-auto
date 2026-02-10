@@ -11,7 +11,7 @@ authors = [ { name = "ReVanced Builder Contributors" } ]
 dependencies = [ "lxml>=5.2.2,<7.0.0", "cssselect>=1.2.0,<2.0.0" ]
 
 [project.optional-dependencies]
-dev = [ "ruff>=0.8.0" ]
+dev = [ "ruff>=0.8.0", "mypy>=1.0.0", "types-lxml>=2024.0.0" ]
 
 [build-system]
 requires = [ "setuptools>=68.0" ]
@@ -45,3 +45,21 @@ line-ending = "auto"
 
 [tool.ruff.lint.isort]
 known-first-party = [ "scripts" ]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_unimported = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+check_untyped_defs = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "lxml.*"
+ignore_missing_imports = true

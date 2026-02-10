@@ -28,7 +28,7 @@ resolve_rv_artifact() {
     abort "unreachable: invalid tag $tag"
   fi
 
-  local rv_rel="https://api.github.com/repos/${src}/releases"
+  local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
 
   # Handle version selection
   if [[ "$ver" = "dev" ]]; then

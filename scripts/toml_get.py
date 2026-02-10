@@ -26,9 +26,10 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
-def check_python_version():
+def check_python_version() -> None:
     """
     Verify Python version is >= 3.11 (required for tomllib).
 
@@ -36,7 +37,7 @@ def check_python_version():
     """
 
 
-def parse_toml(file_path: Path) -> dict:
+def parse_toml(file_path: Path) -> dict[str, Any]:
     """
     Parse TOML file and return as dictionary.
 
@@ -66,7 +67,7 @@ def parse_toml(file_path: Path) -> dict:
         sys.exit(1)
 
 
-def parse_json(file_path: Path) -> dict:
+def parse_json(file_path: Path) -> dict[str, Any]:
     """
     Parse and validate JSON file.
 
@@ -81,7 +82,8 @@ def parse_json(file_path: Path) -> dict:
     """
     try:
         with open(file_path, encoding="utf-8") as f:
-            return json.load(f)
+            data: dict[str, Any] = json.load(f)
+            return data
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON syntax in {file_path}: {e}", file=sys.stderr)
         sys.exit(2)
@@ -90,7 +92,7 @@ def parse_json(file_path: Path) -> dict:
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     """
     Main entry point for TOML/JSON converter CLI.
 
