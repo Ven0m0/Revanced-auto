@@ -102,7 +102,11 @@ jobs:
           retention-days: 1
   release:
     needs: apk_matrix
-    if: ${{ needs.apk_matrix.result == 'success' && !cancelled() && github.event_name != 'pull_request' && (github.repository_owner == 'anomalyco' || github.repository == github.event.repository.full_name) }}
+    if: >-
+      ${{ needs.apk_matrix.result == 'success' && !cancelled() &&
+      github.event_name != 'pull_request' &&
+      (github.repository_owner == 'anomalyco' ||
+      github.repository == github.event.repository.full_name) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -174,4 +178,3 @@ jobs:
           prerelease: ${{ inputs.build_mode == 'dev' }}
           file_glob: true
           overwrite: true
-

@@ -238,4 +238,3 @@ jobs:
           echo "| Web (Biome) | ${{ needs.lint-web.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run \`make format\` locally to auto-fix issues." >> $GITHUB_STEP_SUMMARY
-
