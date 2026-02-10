@@ -282,12 +282,40 @@ export LOG_LEVEL=0  # Enable debug logging
 - Python 3.11+
 - Tools: jq, zip, curl/wget
 
+## GitHub Actions Workflows
+
+### Security (Non-Negotiable)
+
+1. **Version Tags**: Use major version tags for actions to allow automatic updates
+   - ✅ `actions/checkout@v4`
+   - ❌ `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683`
+
+2. **Permissions**: Explicit `permissions:` block per job, never `write-all`
+   - Default: `contents: read`
+   - Add write permissions only where needed
+
+3. **Input Validation**: Validate all `workflow_dispatch` inputs
+   - Sanitize user-controlled strings with regex
+   - Validate format constraints
+
+4. **Binary Verification**: SHA256 checksums for downloaded tools
+
+### Performance
+
+- **Caching**: pip, npm, gradle, custom tools
+- **Concurrency**: Prevent duplicate runs with `concurrency:` groups
+- **Timeouts**: Add `timeout-minutes` to all jobs
+- **Path Filtering**: Skip runs when irrelevant files change
+
+See `.github/WORKFLOW_IMPROVEMENTS.md` for detailed documentation.
+
 ## Additional Resources
 
 - **AGENTS.md** - Comprehensive guide for all AI assistants
 - **README.md** - User documentation
 - **CONFIG.md** - Configuration reference
 - **LINTING.md** - Linting guide
+- **.github/WORKFLOW_IMPROVEMENTS.md** - GitHub Actions improvements
 - **.github/instructions/** - Detailed style guides
 
 ---
