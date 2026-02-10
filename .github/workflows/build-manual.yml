@@ -2,6 +2,7 @@ name: Manual Build
 permissions:
   contents: write
   actions: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -37,10 +38,17 @@ on:
         default: true
         type: boolean
 
+concurrency:
+  group: manual-build-${{ github.event.inputs.app_name }}-${{ github.event.inputs.architecture }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: write-all
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -48,26 +56,8 @@ jobs:
           fetch-depth: 0
           submodules: true
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: "temurin"
-          java-version: "21"
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-      - name: Install Python dependencies
-        run: pip install -e .
-
-      - name: Install Android SDK Build Tools
-        run: |
-          sdkmanager "build-tools;34.0.0"
-          echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+      - name: Setup build environment
+        uses: ./.github/actions/setup-environment
 
       - name: Generate config for ${{ inputs.app_name }}
         run: |
