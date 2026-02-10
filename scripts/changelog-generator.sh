@@ -57,66 +57,11 @@ parse_commits() {
 
     log_info "Parsing commits from range: $range"
 
-    # Parse commits with enhanced categorization
-    git log "$range" --pretty=format:'%H|%s|%an|%ae|%ai' --no-merges | while IFS='|' read -r hash subject author email date; do
-        local category="other"
-        local scope=""
-        local description="$subject"
+    # Parse commits using Python script for performance
+    # Use Unit Separator (0x1F) as delimiter
+    local separator=$'\x1f'
+    git log "$range" --pretty=format:"%H${separator}%s${separator}%an${separator}%ae${separator}%ai" --no-merges | python3 "$(dirname "$0")/changelog_parser.py"
 
-        # Extract conventional commit format: type(scope): description
-        local pattern='^([a-z]+)(\(([^)]+)\))?:[[:space:]](.+)$'
-        if [[ "$subject" =~ $pattern ]]; then
-            local commit_type="${BASH_REMATCH[1]}"
-            scope="${BASH_REMATCH[3]}"
-            description="${BASH_REMATCH[4]}"
-
-            case "$commit_type" in
-                feat|feature)
-                    category="features"
-                    ;;
-                fix|bugfix)
-                    category="fixes"
-                    ;;
-                perf|performance)
-                    category="performance"
-                    ;;
-                refactor|style)
-                    category="refactor"
-                    ;;
-                docs|doc)
-                    category="documentation"
-                    ;;
-                test|tests)
-                    category="tests"
-                    ;;
-                build|ci|chore)
-                    category="build"
-                    ;;
-                security|sec)
-                    category="security"
-                    ;;
-            esac
-        else
-            # Heuristic categorization for non-conventional commits
-            local lower_subject="${subject,,}"
-
-            if [[ "$lower_subject" =~ (add|implement|new|create) ]]; then
-                category="features"
-            elif [[ "$lower_subject" =~ (fix|resolve|correct|patch) ]]; then
-                category="fixes"
-            elif [[ "$lower_subject" =~ (update|upgrade|bump) ]]; then
-                category="updates"
-            elif [[ "$lower_subject" =~ (improve|optimize|enhance|better) ]]; then
-                category="improvements"
-            elif [[ "$lower_subject" =~ (remove|delete|deprecate) ]]; then
-                category="removals"
-            elif [[ "$lower_subject" =~ (security|vulnerability|cve) ]]; then
-                category="security"
-            fi
-        fi
-
-        echo "$category|$scope|$description|$hash|$author|$date"
-    done
 }
 
 # Get ReVanced patches changelog for a repository
@@ -217,7 +162,8 @@ generate_changelog() {
     categorized_commits[removals]=""
     categorized_commits[other]=""
 
-    while IFS='|' read -r category scope description hash author date; do
+    local separator=$'\x1f'
+    while IFS=$separator read -r category scope description hash author date; do
         local line="- $description"
         if [[ -n "$scope" ]]; then
             line="- **$scope**: $description"
