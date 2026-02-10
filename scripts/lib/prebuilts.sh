@@ -14,7 +14,9 @@ set -euo pipefail
 #   Path to artifact file
 resolve_rv_artifact() {
   local src=$1 tag=$2 ver=$3 fprefix=$4 cl_dir=$5
-  local ext grab_cl
+  local ext grab_cl dir
+
+  dir="$cl_dir"
 
   if [[ "$tag" = "CLI" ]]; then
     ext="jar"
@@ -31,43 +33,34 @@ resolve_rv_artifact() {
   # Handle version selection
   if [[ "$ver" = "dev" ]]; then
     log_info "Fetching dev version for $tag"
-    local resp
-    resp=$(gh_req "$rv_rel" -) || return 1
-    ver=$(jq -e -r '.[] | .tag_name' <<< "$resp" | get_highest_ver) || return 1
-    log_debug "Selected dev version: $ver"
-  fi
 
-    # Handle version selection
-    if [[ "$ver" = "dev" ]]; then
-      log_info "Fetching dev version for $tag"
-
-      # Initialize cache if needed
-      if [[ -z "${RV_DEV_VER_CACHE+x}" ]]; then
-        declare -gA RV_DEV_VER_CACHE
-      fi
-
-      if [[ -n "${RV_DEV_VER_CACHE[$rv_rel]-}" ]]; then
-        ver="${RV_DEV_VER_CACHE[$rv_rel]}"
-        log_debug "Using cached dev version: $ver"
-      else
-        local resp
-        resp=$(gh_req "$rv_rel" -) || return 1
-        ver=$(jq -e -r '.[] | .tag_name' <<< "$resp" | get_highest_ver) || return 1
-        RV_DEV_VER_CACHE[$rv_rel]="$ver"
-        log_debug "Selected dev version: $ver"
-      fi
+    # Initialize cache if needed
+    if [[ -z "${RV_DEV_VER_CACHE+x}" ]]; then
+      declare -gA RV_DEV_VER_CACHE
     fi
+
+    if [[ -n "${RV_DEV_VER_CACHE[$rv_rel]-}" ]]; then
+      ver="${RV_DEV_VER_CACHE[$rv_rel]}"
+      log_debug "Using cached dev version: $ver"
+    else
+      local resp
+      resp=$(gh_req "$rv_rel" -) || return 1
+      ver=$(jq -e -r '.[] | .tag_name' <<< "$resp" | get_highest_ver) || return 1
+      RV_DEV_VER_CACHE[$rv_rel]="$ver"
+      log_debug "Selected dev version: $ver"
+    fi
+  fi
 
   # Check if file already exists locally
   local url file tag_name name
-file=$(find "$dir" -name "${fprefix}-${name_ver#v}*.${ext}" -type f 2> /dev/null)
+  file=$(find "$dir" -name "${fprefix}-${ver#v}*.${ext}" -type f 2> /dev/null || find "$dir" -name "${fprefix}-*.${ext}" -type f 2> /dev/null)
 
-  if [[ "$file" = "" ]]; then
+  if [[ -z "$file" ]]; then
     log_info "Downloading $tag from GitHub"
     local resp asset
     resp=$(gh_req "$rv_rel" -) || return 1
-    tag_name=$(jq -r '.tag_name' <<< "$resp")
-    asset=$(jq -e -r "first(.assets[] | select(.name | endswith(\".$ext\")))" <<< "$resp") || return 1
+    tag_name=$(jq -r ".[0].tag_name" <<< "$resp")
+    asset=$(jq -e -r "first(.[0].assets[] | select(.name | endswith(\".$ext\")))" <<< "$resp") || return 1
     url=$(jq -r .url <<< "$asset")
     name=$(basename "$(jq -r .name <<< "$asset")")
     file="${dir}/${name}"
@@ -82,7 +75,7 @@ file=$(find "$dir" -name "${fprefix}-${name_ver#v}*.${ext}" -type f 2> /dev/null
       file=$(grep "/[^/]*${ver#v}[^/]*\$" <<< "$file" | head -1)
     fi
 
-    if [[ "$file" = "" ]]; then
+    if [[ -z "$file" ]]; then
       abort "filter fail: '$for_err' with '$ver'"
     fi
 
@@ -217,4 +210,3 @@ _remove_integrations_checks() {
   rm -rf "${file}-zip" 2> /dev/null || :
   return "$ret"
 }
-# Force CI update 1770206204

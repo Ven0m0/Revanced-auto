@@ -5,10 +5,7 @@ set -euo pipefail
 # Refactored for better maintainability and organization
 LC_ALL=C
 # Global constants
-export CWD=$PWD
-export TEMP_DIR="temp"
-export BIN_DIR="bin"
-export BUILD_DIR="build"
+export CWD=$PWD TEMP_DIR="temp" BIN_DIR="bin" BUILD_DIR="build"
 
 # GitHub authentication header
 if [[ "${GITHUB_TOKEN-}" ]]; then
@@ -21,8 +18,7 @@ fi
 export NEXT_VER_CODE=${NEXT_VER_CODE:-$(date +'%Y%m%d')}
 
 # Operating system detection
-OS=$(uname -o)
-export OS
+export OS=$(uname -o)
 
 # Source all library modules
 LIB_DIR="${CWD}/scripts/lib"
