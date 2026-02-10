@@ -16,7 +16,6 @@ cmpr
 /plans
 
 # Test files
-# test* -> Removed to allow 'tests/' directory
 test-results
 
 # Editor and IDE files
@@ -25,26 +24,27 @@ test-results
 *.swp
 *.swo
 *~
-.DS_Store
 
 # OS files
 Thumbs.db
 .DS_Store
-.claude/
-.pair-programming-session.md
-*.pyc
-__pycache__/
 
+# AI/Copilot files
+.claude/
+.claude-dev-helper/
+.pair-programming-session.md
 .plugin-config/
 .plugin-config
-.claude-dev-helper/
 conductor/
-.pair-programming-session.md
 
-# Linting and formatting tool caches
+# Python caches
+*.pyc
+__pycache__/
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
+
+# Linting and formatting tool caches
 .taplo/
 node_modules/
 package-lock.json
