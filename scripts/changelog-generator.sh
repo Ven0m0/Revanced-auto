@@ -162,7 +162,8 @@ generate_changelog() {
     categorized_commits[removals]=""
     categorized_commits[other]=""
 
-    while IFS=$'' read -r category scope description hash author date; do
+    local separator=$'\x1f'
+    while IFS=$separator read -r category scope description hash author date; do
         local line="- $description"
         if [[ -n "$scope" ]]; then
             line="- **$scope**: $description"
