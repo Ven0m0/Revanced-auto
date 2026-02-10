@@ -185,59 +185,83 @@ dl_uptodown() {
   local temp_dir
   temp_dir=$(mktemp -d)
   trap 'rm -rf -- "$temp_dir"' RETURN
-  local pids=()
-
-  for i in {1..5}; do
-    (
-      # Create isolated temp dir for cookies to avoid race conditions
-      local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
-      TEMP_DIR=$(mktemp -d)
-      if [[ -f "$parent_cookie_file" ]]; then
-        cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
-      fi
-
-      if ! req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" - > "${temp_dir}/${i}"; then
-        rm -f "${temp_dir}/${i}"
-      fi
-
-      rm -rf "$TEMP_DIR" || true
-    ) &
-    pids+=($!)
-  done
-
-  local failed_jobs=0
-  local total_jobs=${#pids[@]}
-
-  for pid in "${pids[@]}"; do
-    if ! wait "$pid"; then
-      failed_jobs=$((failed_jobs + 1))
+  # Speculative fetch: Try page 1 first as it's the most likely to contain the version
+  (
+    # Create isolated temp dir for cookies to avoid race conditions
+    local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
+    TEMP_DIR=$(mktemp -d)
+    if [[ -f "$parent_cookie_file" ]]; then
+      cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
     fi
-  done
 
-  if (( failed_jobs == total_jobs )); then
-    log_warn "All Uptodown download attempts failed for version: $version"
+    if ! req "${uptodown_dlurl}/apps/${data_code}/versions/1" - > "${temp_dir}/1"; then
+      rm -f "${temp_dir}/1"
+    fi
+
+    rm -rf "$TEMP_DIR" || true
+  )
+
+  # Check if the version is on page 1
+  if [[ -f "${temp_dir}/1" ]]; then
+    resp=$(cat "${temp_dir}/1")
+    if [[ -n "$resp" ]]; then
+      if op=$(jq -e -r --arg ver "$version" '.data | map(select(.version == $ver)) | .[0]' <<< "$resp"); then
+        if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
+          if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
+            is_bundle=true
+          fi
+        else
+          return 1
+        fi
+      fi
+    fi
   fi
-  for i in {1..5}; do
-    if [[ -f "${temp_dir}/${i}" ]]; then
-      resp=$(cat "${temp_dir}/${i}")
-      if [[ -z "$resp" ]]; then continue; fi
 
-      if ! op=$(jq -e -r --arg ver "$version" '.data | map(select(.version == $ver)) | .[0]' <<< "$resp"); then
-        continue
-      fi
+  # If not found on page 1, search pages 2-5 in parallel
+  if [[ -z "$versionURL" ]]; then
+    log_info "Version not found on page 1, searching pages 2-5..."
+    local pids=()
+    for i in {2..5}; do
+      (
+        local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
+        TEMP_DIR=$(mktemp -d)
+        if [[ -f "$parent_cookie_file" ]]; then
+          cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
+        fi
 
-      if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
-        is_bundle=true
-      fi
+        if ! req "${uptodown_dlurl}/apps/${data_code}/versions/${i}" - > "${temp_dir}/${i}"; then
+          rm -f "${temp_dir}/${i}"
+        fi
 
-      if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
-        break
-      else
-        rm -rf "$temp_dir"
-        return 1
+        rm -rf "$TEMP_DIR" || true
+      ) &
+      pids+=($!)
+    done
+
+    for pid in "${pids[@]}"; do
+      wait "$pid" || true
+    done
+
+    for i in {2..5}; do
+      if [[ -f "${temp_dir}/${i}" ]]; then
+        resp=$(cat "${temp_dir}/${i}")
+        if [[ -z "$resp" ]]; then continue; fi
+
+        if ! op=$(jq -e -r --arg ver "$version" '.data | map(select(.version == $ver)) | .[0]' <<< "$resp"); then
+          continue
+        fi
+
+        if versionURL=$(jq -e -r '.versionURL' <<< "$op"); then
+          if [[ "$(jq -e -r ".kindFile" <<< "$op")" = "xapk" ]]; then
+            is_bundle=true
+          fi
+          break
+        else
+          return 1
+        fi
       fi
-    fi
-  done
+    done
+  fi
   rm -rf "$temp_dir"
 
   if [[ "$versionURL" = "" ]]; then
