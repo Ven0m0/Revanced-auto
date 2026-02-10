@@ -85,7 +85,7 @@ This document details the security and performance improvements made to all GitH
 **Changes**:
 - ✅ Added SHA256 checksum verification for downloaded tools
 - ✅ Use HTTPS for all downloads
-- ✅ Fail builds if checksums don't match (where feasible)
+- ✅ Enforce checksum failures in workflows where this is enabled; other workflows log or ignore checksum mismatches as appropriate
 
 **Example**:
 
