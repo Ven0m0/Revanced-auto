@@ -29,13 +29,13 @@ check_java_version() {
   java_version=$(java -version 2>&1 | head -n 1)
 
   local major_version="0"
-  if [[ $java_version =~ "([0-9]+)\.([0-9]+)" ]]; then
+  if [[ $java_version =~ ([0-9]+)\.([0-9]+) ]]; then
     if [[ ${BASH_REMATCH[1]} == "1" ]]; then
       major_version="${BASH_REMATCH[2]}"
     else
       major_version="${BASH_REMATCH[1]}"
     fi
-  elif [[ $java_version =~ "([0-9]+)" ]]; then
+  elif [[ $java_version =~ ([0-9]+) ]]; then
     major_version="${BASH_REMATCH[1]}"
   fi
 

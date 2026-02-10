@@ -107,7 +107,7 @@ cache_put() {
   local ttl=${3:-$DEFAULT_CACHE_TTL}
 
   if [[ ! -f "$file_path" ]]; then
-    log_error "Cannot cache non-existent file: $file_path"
+    epr "Cannot cache non-existent file: $file_path"
     return 1
   fi
 
@@ -149,47 +149,6 @@ cache_put() {
 
   log_debug "Cached: $file_path (size: $file_size, ttl: ${ttl}s)"
   return 0
-}
-
-# Update last accessed timestamp
-cache_touch() {
-  local file_path=$1
-
-  if [[ ! -f "$CACHE_INDEX_FILE" ]]; then
-    return 1
-  fi
-
-  local now
-  now=$(date +%s)
-
-  local temp_index
-  temp_index=$(mktemp)
-  jq --arg path "$file_path" --arg accessed "$now" \
-    'if .[$path] then .[$path].accessed = ($accessed | tonumber) else . end' \
-    "$CACHE_INDEX_FILE" > "$temp_index"
-  mv "$temp_index" "$CACHE_INDEX_FILE"
-
-  log_debug "Cache touched: $file_path"
-}
-
-# Remove cache entry
-cache_remove() {
-  local file_path=$1
-  local remove_file=${2:-true}
-
-  # Remove from index
-  if [[ -f "$CACHE_INDEX_FILE" ]]; then
-    local temp_index
-    temp_index=$(mktemp)
-    jq --arg path "$file_path" 'del(.[$path])' "$CACHE_INDEX_FILE" > "$temp_index"
-    mv "$temp_index" "$CACHE_INDEX_FILE"
-  fi
-
-  # Remove file
-  if [[ "$remove_file" == "true" && -f "$file_path" ]]; then
-    rm -f "$file_path"
-    log_debug "Removed from cache: $file_path"
-  fi
 }
 
 # Get cache statistics
@@ -238,12 +197,10 @@ cache_cleanup() {
   # Get list of expired entries (keys) as a JSON array and save to file
   # Using a file avoids ARG_MAX limits with large caches
   local temp_keys_file
-temp_keys_file=$(mktemp)
-  if [[ $? -ne 0 ]]; then
+  if ! temp_keys_file=$(mktemp); then
     abort "Failed to create temporary file for expired keys."
   fi
   jq -c --arg now "$now" \
-    '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
     '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
     "$CACHE_INDEX_FILE" > "$temp_keys_file" || abort "Failed to generate expired keys list."
 
@@ -254,52 +211,32 @@ temp_keys_file=$(mktemp)
   if [[ $count -gt 0 ]]; then
     # Remove files
     # Using process substitution and while loop for better portability (vs mapfile)
+    local removed_count=0
     while IFS= read -r file_path; do
       if [[ -f "$file_path" ]]; then
-        rm -f "$file_path"
+        rm -f -- "$file_path"
         log_debug "Removed from cache: $file_path"
       fi
-        rm -f "$file_path"
-        log_debug "Removed from cache: $file_path"
-        ((removed_count++))
+      ((removed_count++))
     done < <(jq -r '.[]' "$temp_keys_file")
 
     # Batch update index: remove all expired keys in one go
     # This is significantly faster than removing them one by one
     local temp_index
-temp_index=$(mktemp)
-    if [[ $? -ne 0 ]]; then
+    if ! temp_index=$(mktemp); then
       abort "Failed to create temporary file for index update."
     fi
     # --slurpfile reads the array from file into a variable (array of arrays)
     jq --slurpfile keys_wrapper "$temp_keys_file" \
       'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" > "$temp_index" || abort "Failed to batch update cache index."
     mv "$temp_index" "$CACHE_INDEX_FILE"
-  fi
 
-  rm -f "$temp_keys_file"
-
-  if [[ "$expired_count" -gt 0 ]]; then
-    # Batch remove from index
-    local temp_index
-    temp_index=$(mktemp)
-    jq --slurpfile keys "$expired_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" > "$temp_index"
-    mv "$temp_index" "$CACHE_INDEX_FILE"
-
-    # Remove files
-    # Remove files
-    jq -j '.[] | . + "\u0000"' "$expired_keys_file" | while IFS= read -r -d '' file_path; do
-      if [[ -f "$file_path" ]]; then
-        rm -f -- "$file_path"
-        log_debug "Removed from cache: $file_path"
-      fi
-    done
-
-    pr "Removed $expired_count expired cache entries"
+    pr "Removed $removed_count expired cache entries"
   else
     log_info "No expired entries to remove"
   fi
-  rm -f "$expired_keys_file"
+
+  rm -f "$temp_keys_file"
 
   # Force cleanup: remove entries for non-existent files
   if [[ "$force" == "true" ]]; then
@@ -360,7 +297,6 @@ cache_clean_pattern() {
     mv "$temp_index" "$CACHE_INDEX_FILE"
 
     # Remove files
-    # Remove files
     jq -j '.[] | . + "\u0000"' "$matching_keys_file" | while IFS= read -r -d '' file_path; do
       if [[ -f "$file_path" ]]; then
         rm -f -- "$file_path"
@@ -373,61 +309,6 @@ cache_clean_pattern() {
     log_info "No matching entries found"
   fi
   rm -f "$matching_keys_file"
-}
-
-# Cache-aware download function
-# Downloads file and caches it, or returns cached version if valid
-cache_download() {
-  local url=$1
-  local output_path=$2
-  local ttl=${3:-$DEFAULT_CACHE_TTL}
-  local force_download=${4:-false}
-
-  # Check if cached version is valid
-  if [[ "$force_download" != "true" ]] && cache_is_valid "$output_path" "$ttl"; then
-    log_info "Using cached file: $output_path"
-    cache_touch "$output_path"
-    return 0
-  fi
-
-  # Download file
-  log_info "Downloading: $url"
-
-  # Ensure parent directory exists
-  mkdir -p "$(dirname "$output_path")"
-
-  # Use existing req function from network.sh if available
-  if declare -f req &> /dev/null; then
-    if req "$url" "$output_path"; then
-      # Cache the downloaded file
-      cache_put "$output_path" "$url" "$ttl"
-      return 0
-    else
-      log_error "Download failed: $url"
-      return 1
-    fi
-  else
-    # Fallback to direct curl/wget
-    if command -v curl &> /dev/null; then
-      if curl -sSL -o "$output_path" "$url"; then
-        cache_put "$output_path" "$url" "$ttl"
-        return 0
-      fi
-    elif command -v wget &> /dev/null; then
-      if wget -q -O "$output_path" "$url"; then
-        cache_put "$output_path" "$url" "$ttl"
-        return 0
-      fi
-    fi
-
-    log_error "Download failed: $url"
-    return 1
-  fi
-}
-
-# Export cache directory for use in other modules
-get_cache_dir() {
-  echo "$CACHE_DIR"
 }
 
 # Get cache path for a given key/identifier

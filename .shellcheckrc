@@ -10,9 +10,6 @@ disable=SC1090
 # SC1091: Not following sourced file (expected for modular structure)
 disable=SC1091
 
-# SC2250: Prefer braces around variables (style preference, too verbose)
-disable=SC2250
-
 # SC2312: Consider invoking command separately (informational, not critical)
 disable=SC2312
 
@@ -22,12 +19,6 @@ disable=SC2120
 
 # SC2310: Function used in conditional (informational)
 disable=SC2310
-
-# SC2292: Prefer [[ ]] over [ ] (style preference in some contexts)
-disable=SC2292
-
-# SC2066: Loop over quoted strings (expected behavior in some cases)
-disable=SC2066
 
 # SC2154: Variable referenced but not assigned (common in sourced scripts)
 disable=SC2154
@@ -41,9 +32,6 @@ disable=SC2004
 # SC2178: Variable was used as array (nameref issues with declare -n)
 disable=SC2178
 
-# SC2076: Remove quotes from regex (context-dependent)
-disable=SC2076
-
 # SC2153: Possible misspelling (informational, context-dependent)
 disable=SC2153
 
@@ -53,8 +41,8 @@ disable=SC2155
 # SC2016: Expressions don't expand in single quotes (informational)
 disable=SC2016
 
-# SC2248: Prefer double quoting (style preference)
-disable=SC2248
+# SC2250: Prefer braces around variables (codebase-wide migration pending)
+disable=SC2250
 
 # SC1072/SC1073/SC1009: Parse errors (false positives on complex regex)
 disable=SC1072

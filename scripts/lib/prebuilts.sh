@@ -102,30 +102,6 @@ resolve_rv_artifact() {
   echo "$file"
 }
 
-# Get ReVanced CLI and patches
-# Args:
-#   $1: CLI source (e.g., "j-hc/revanced-cli")
-#   $2: CLI version
-#   $3: Patches source (e.g., "ReVanced/revanced-patches")
-#   $4: Patches version
-# Returns:
-#   Paths to CLI JAR and patches file
-get_rv_prebuilts() {
-  local cli_src=$1 cli_ver=$2 patches_src=$3 patches_ver=$4
-  pr "Getting prebuilts (${patches_src%/*})" >&2
-
-  local cl_dir=${patches_src%/*}
-  cl_dir=${TEMP_DIR}/${cl_dir,,}-rv
-  [ -d "$cl_dir" ] || mkdir -p "$cl_dir"
-
-  local files=()
-
-  files+=("$(resolve_rv_artifact "$cli_src" "CLI" "$cli_ver" "revanced-cli" "$cl_dir")")
-  files+=("$(resolve_rv_artifact "$patches_src" "Patches" "$patches_ver" "patches" "$cl_dir")")
-
-  echo "${files[@]}"
-}
-
 # Get ReVanced CLI and patches from multiple sources
 # Args:
 #   $1: CLI source (e.g., "j-hc/revanced-cli")
@@ -155,7 +131,7 @@ get_rv_prebuilts_multi() {
   local first_patches_src=${patches_srcs[0]}
   local cl_dir=${first_patches_src%/*}
   cl_dir=${TEMP_DIR}/${cl_dir,,}-rv
-  [ -d "$cl_dir" ] || mkdir -p "$cl_dir"
+  [[ -d "$cl_dir" ]] || mkdir -p "$cl_dir"
 
   # Download CLI once (shared across all patch sources)
   local cli_jar
@@ -172,7 +148,7 @@ get_rv_prebuilts_multi() {
     # Recalculate cl_dir for this patch source
     cl_dir=${patches_src%/*}
     cl_dir=${TEMP_DIR}/${cl_dir,,}-rv
-    [ -d "$cl_dir" ] || mkdir -p "$cl_dir"
+    [[ -d "$cl_dir" ]] || mkdir -p "$cl_dir"
 
     local patches_jar
     patches_jar=$(resolve_rv_artifact "$patches_src" "Patches" "$PATCHES_VER" "patches" "$cl_dir")

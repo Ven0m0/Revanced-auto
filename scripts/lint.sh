@@ -101,12 +101,13 @@ fi
 # ============================================================================
 log_section "Shell Scripts"
 
-SHELL_FILES=$(find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2> /dev/null || true)
+SHELL_FILES=()
+mapfile -t SHELL_FILES < <(find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2> /dev/null || true)
 
-if [[ -n "$SHELL_FILES" ]]; then
+if [[ ${#SHELL_FILES[@]} -gt 0 ]]; then
   # ShellCheck
   if check_command "shellcheck" "ShellCheck"; then
-    if echo "$SHELL_FILES" | xargs shellcheck --color=always; then
+    if shellcheck --color=always "${SHELL_FILES[@]}"; then
       log_success "ShellCheck passed"
     else
       log_error "ShellCheck failed"
@@ -116,17 +117,20 @@ if [[ -n "$SHELL_FILES" ]]; then
 
   # shfmt (exclude files with complex regex that confuse shfmt parser)
   if check_command "shfmt" "shfmt"; then
-    SHFMT_FILES=$(echo "$SHELL_FILES" | grep -v "changelog-generator.sh" || true)
-    if [[ -n "$SHFMT_FILES" ]]; then
+    SHFMT_FILES=()
+    for f in "${SHELL_FILES[@]}"; do
+      [[ "$f" == *changelog-generator.sh ]] || SHFMT_FILES+=("$f")
+    done
+    if [[ ${#SHFMT_FILES[@]} -gt 0 ]]; then
       if [[ "$FIX_MODE" == true ]]; then
-        if echo "$SHFMT_FILES" | xargs shfmt -w -i 2 -bn -ci -sr; then
+        if shfmt -w -i 2 -bn -ci -sr "${SHFMT_FILES[@]}"; then
           log_success "Shell scripts formatted with shfmt"
         else
           log_error "shfmt failed"
           EXIT_CODE=1
         fi
       else
-        if echo "$SHFMT_FILES" | xargs shfmt -d -i 2 -bn -ci -sr; then
+        if shfmt -d -i 2 -bn -ci -sr "${SHFMT_FILES[@]}"; then
           log_success "Shell scripts pass shfmt"
         else
           log_error "shfmt check failed"
@@ -139,7 +143,7 @@ if [[ -n "$SHELL_FILES" ]]; then
   # shellharden
   if check_command "shellharden" "shellharden"; then
     if [[ "$FIX_MODE" == true ]]; then
-      for file in $SHELL_FILES; do
+      for file in "${SHELL_FILES[@]}"; do
         if shellharden --replace "$file"; then
           log_success "Hardened: $file"
         else
@@ -148,7 +152,11 @@ if [[ -n "$SHELL_FILES" ]]; then
         fi
       done
     else
-      if echo "$SHELL_FILES" | xargs shellharden --check; then
+      sh_pass=true
+      for file in "${SHELL_FILES[@]}"; do
+        shellharden --check "$file" 2> /dev/null || sh_pass=false
+      done
+      if "$sh_pass"; then
         log_success "Shell scripts pass shellharden"
       else
         log_warn "shellharden suggests improvements (run with --fix to apply)"
@@ -275,4 +283,4 @@ else
 fi
 echo "========================================"
 
-exit $EXIT_CODE
+exit "$EXIT_CODE"

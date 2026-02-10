@@ -6,17 +6,11 @@
 /temp
 /build
 build.md
-cmpr
 
 # Logs and temporary files
 /logs
 *.log
 *.tmp
-/docs/sessions
-/plans
-
-# Test files
-test-results
 
 # Editor and IDE files
 .vscode/
@@ -31,21 +25,14 @@ Thumbs.db
 
 # AI/Copilot files
 .claude/
-.claude-dev-helper/
-.pair-programming-session.md
-.plugin-config/
-.plugin-config
-conductor/
 
 # Python caches and build artifacts
 *.pyc
 __pycache__/
 .ruff_cache/
 .mypy_cache/
-.pytest_cache/
 *.egg-info/
 dist/
-build/python/
 
 # Linting and formatting tool caches
 .taplo/

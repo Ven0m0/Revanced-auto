@@ -9,7 +9,6 @@ set -euo pipefail
 
 # Global variable to store parsed config (converted to JSON)
 __TOML__=""
-__CONFIG_FILE__=""
 
 # Load and parse config file (TOML or JSON)
 # Args:
@@ -66,7 +65,6 @@ toml_prep() {
     return 1
   fi
 
-  __CONFIG_FILE__="$config_file"
   log_debug "Config loaded successfully ($(echo "$__TOML__" | jq -r 'keys | length') keys)"
   return 0
 }

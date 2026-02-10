@@ -7,17 +7,20 @@ This directory contains optimization scripts for reducing APK size and improving
 ### aapt2-optimize.sh
 
 Optimizes APK files using Android's aapt2 tool to keep only specific resources:
+
 - **Language**: English (en) only
 - **Density**: xxhdpi only
 - **Architecture**: arm64-v8a only
 
 **Usage:**
+
 ```bash
 ./aapt2-optimize.sh input.apk output.apk
 ```
 
 **Configuration:**
 Enable in `config.toml`:
+
 ```toml
 enable-aapt2-optimize = true
 arch = "arm64-v8a"
@@ -32,12 +35,14 @@ Optimizes PNG assets using optipng to reduce file sizes without quality loss.
 **Source:** [brave-oled-dark/scripts/optimize-assets.sh](https://github.com/Ven0m0/brave-oled-dark/blob/main/scripts/optimize-assets.sh)
 
 **Usage:**
+
 ```bash
 cd <extracted-apk-directory>
 /path/to/optimize-assets.sh
 ```
 
 **Requirements:**
+
 - `optipng` must be installed
 
 ### unused-strings.sh
@@ -47,12 +52,14 @@ Removes unused string resources from Android XML files to reduce APK size.
 **Source:** [brave-oled-dark/scripts/unused-strings.sh](https://github.com/Ven0m0/brave-oled-dark/blob/main/scripts/unused-strings.sh)
 
 **Usage:**
+
 ```bash
 cd <decompiled-apk-directory>
 /path/to/unused-strings.sh
 ```
 
 **How it works:**
+
 1. Scans all XML and smali files for string references
 2. Compares with defined strings in strings.xml
 3. Removes strings that are never referenced
@@ -62,6 +69,7 @@ cd <decompiled-apk-directory>
 ### Enhancify
 
 For advanced APK patching features, check out [Enhancify](https://github.com/Graywizard888/Enhancify), a custom Revancify fork with extra features including:
+
 - Custom GitHub token support
 - Network acceleration
 - Multiple APK format support (APK, APKM, XAPK)

@@ -153,36 +153,20 @@ trim_whitespace() {
   echo "$value"
 }
 
-# Get architecture preference list for APK downloads
-# Args:
-#   $1: Requested architecture
-#   $2: Separator (default: newline for APKMirror, comma for Uptodown)
-# Returns:
-#   List of architectures to try in order of preference
-get_arch_preference() {
-  local arch="${1:-}"
-  local sep="${2:-$'\n'}" # Default to newline separator
-
-  if [[ "$arch" = "all" ]]; then
-    echo "universal${sep}noarch${sep}arm64-v8a + armeabi-v7a"
-  else
-    echo "${arch}${sep}universal${sep}noarch${sep}arm64-v8a + armeabi-v7a"
-  fi
-}
-
 # Get last supported version for a patch
 # Args:
 #   $1: list_patches output
 #   $2: Package name
 #   $3: Included patches selection
-#   $4: Excluded patches selection
-#   $5: Exclusive flag
+#   $4: (unused, kept for call-site compat)
+#   $5: (unused, kept for call-site compat)
 #   $6: CLI jar path (optional, uses $rv_cli_jar if not provided)
 #   $7+: Patches jar path(s) - supports multiple jars for multi-source
 # Returns:
 #   Highest supported version (union across all patch sources)
 get_patch_last_supported_ver() {
-  local list_patches=$1 pkg_name=$2 inc_sel=$3 _exc_sel=$4 _exclusive=$5
+  local list_patches=$1 pkg_name=$2 inc_sel=$3
+  # $4 and $5 are unused but accepted for call-site compatibility
   local cli_jar=${6:-$rv_cli_jar}
   shift 6
   local -a patches_jars=("$@")

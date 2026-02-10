@@ -1,11 +1,12 @@
 # GitHub Pages Configuration
-# This enables GitHub Pages with Jekyll
+# Serves from docs/ directory with Jekyll
 
 theme: jekyll-theme-cayman
 title: ReVanced Builder
-description: Automated APK patching and building system for ReVanced applications
+description: >-
+  Automated APK patching system for ReVanced and RVX. Visual configuration generator with app catalog, interactive patch selector,
+  build caching, changelog automation, and dependency monitoring.
 show_downloads: false
-
 # GitHub metadata
 github:
   is_project_page: true
@@ -25,6 +26,6 @@ kramdown:
 exclude:
   - README.md
   - LICENSE
-  
+
 timezone: UTC
 encoding: utf-8

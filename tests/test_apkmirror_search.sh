@@ -9,39 +9,39 @@ FIXTURE="tests/fixtures/apkmirror_mock.html"
 echo "=== Testing APKMirror Search Parser ==="
 
 if [[ ! -f "$FIXTURE" ]]; then
-    echo "Error: Fixture not found: $FIXTURE"
-    exit 1
+  echo "Error: Fixture not found: $FIXTURE"
+  exit 1
 fi
 
 fail_count=0
 
 run_test() {
-    local name=$1
-    local bundle=$2
-    local dpi=$3
-    local arch=$4
-    local expected=$5
+  local name=$1
+  local bundle=$2
+  local dpi=$3
+  local arch=$4
+  local expected=$5
 
-    echo -n "Test: $name ... "
+  echo -n "Test: $name ... "
 
-    local output
-    output=$(python3 "$SCRIPT" --apk-bundle "$bundle" --dpi "$dpi" --arch "$arch" < "$FIXTURE" || true)
+  local output
+  output=$(python3 "$SCRIPT" --apk-bundle "$bundle" --dpi "$dpi" --arch "$arch" < "$FIXTURE" || true)
 
-    if [[ "$expected" == "NONE" ]]; then
-        if [[ -z "$output" ]]; then
-            echo "PASS"
-        else
-            echo "FAIL (Expected no output, got: $output)"
-            fail_count=$((fail_count + 1))
-        fi
+  if [[ "$expected" == "NONE" ]]; then
+    if [[ -z "$output" ]]; then
+      echo "PASS"
     else
-        if [[ "$output" == *"$expected"* ]]; then
-            echo "PASS"
-        else
-            echo "FAIL (Expected '$expected', got: '$output')"
-            fail_count=$((fail_count + 1))
-        fi
+      echo "FAIL (Expected no output, got: $output)"
+      fail_count=$((fail_count + 1))
     fi
+  else
+    if [[ "$output" == *"$expected"* ]]; then
+      echo "PASS"
+    else
+      echo "FAIL (Expected '$expected', got: '$output')"
+      fail_count=$((fail_count + 1))
+    fi
+  fi
 }
 
 # Test 1: Exact Match
@@ -71,9 +71,9 @@ run_test "Arch Fallback Preference (arm64-v8a prefers explicit)" "APK" "nodpi" "
 run_test "Universal Fallback (armeabi-v7a matches universal)" "APK" "nodpi" "armeabi-v7a" "https://www.apkmirror.com/success-universal"
 
 if [[ $fail_count -eq 0 ]]; then
-    echo "All tests passed!"
-    exit 0
+  echo "All tests passed!"
+  exit 0
 else
-    echo "$fail_count tests failed."
-    exit 1
+  echo "$fail_count tests failed."
+  exit 1
 fi

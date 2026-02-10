@@ -71,16 +71,6 @@ set_prebuilts
 
 # ==================== Configuration Loading ====================
 
-validate_config_value() {
-  local value=$1 field=$2 min=${3:-} max=${4:-}
-
-  if [[ $min != "" && $max != "" ]]; then
-    if ((value < min)) || ((value > max)); then
-      abort "${field} must be within ${min}-${max} (got: ${value})"
-    fi
-  fi
-}
-
 load_configuration() {
   local config_file="${1:-config.toml}"
 
@@ -94,9 +84,6 @@ load_configuration() {
   main_config_t=$(toml_get_table_main)
 
   # Parse configuration values with defaults
-  COMPRESSION_LEVEL=$(toml_get "$main_config_t" compression-level) || COMPRESSION_LEVEL="9"
-  validate_config_value "$COMPRESSION_LEVEL" "compression-level" 0 9
-
   if ! PARALLEL_JOBS=$(toml_get "$main_config_t" parallel-jobs); then
     if [[ $OS == Android ]]; then
       PARALLEL_JOBS=1
@@ -347,10 +334,6 @@ process_app_config() {
     abort "Wrong arch '${app_args[arch]}' for '${table_name}'"
   fi
 
-  # Parse additional options
-  app_args[include_stock]=$(t_get "include-stock" "true")
-  vtf "${app_args[include_stock]}" "include-stock"
-
   app_args[dpi]=$(t_get "apkmirror-dpi" "nodpi")
 
   # Handle dual architecture builds
@@ -410,7 +393,7 @@ done < <(toml_get_table_names)
 # Wait for all builds to complete and track failures
 log_info "Waiting for all builds to complete..."
 declare -a failed_jobs=()
-for pid in "$(jobs -p)"; do
+for pid in $(jobs -p); do
   if ! wait "$pid"; then
     failed_jobs+=("$pid")
   fi

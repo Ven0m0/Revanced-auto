@@ -76,16 +76,16 @@ The patch selector:
 
 The generator automatically maps common app names to package names:
 
-| App Display Name | Package Name |
-|-----------------|--------------|
-| YouTube | com.google.android.youtube |
-| Music | com.google.android.apps.youtube.music |
-| Spotify | com.spotify.music |
-| Reddit | com.reddit.frontpage |
-| X / Twitter | com.twitter.android |
-| TikTok | com.zhiliaoapp.musically |
-| Instagram | com.instagram.android |
-| GooglePhotos | com.google.android.apps.photos |
+| App Display Name | Package Name                          |
+| ---------------- | ------------------------------------- |
+| YouTube          | com.google.android.youtube            |
+| Music            | com.google.android.apps.youtube.music |
+| Spotify          | com.spotify.music                     |
+| Reddit           | com.reddit.frontpage                  |
+| X / Twitter      | com.twitter.android                   |
+| TikTok           | com.zhiliaoapp.musically              |
+| Instagram        | com.instagram.android                 |
+| GooglePhotos     | com.google.android.apps.photos        |
 
 ### Patch Data Format
 
@@ -187,6 +187,7 @@ For best results, use conventional commit format:
 ```
 
 **Supported types:**
+
 - `feat` / `feature`: New features
 - `fix` / `bugfix`: Bug fixes
 - `perf` / `performance`: Performance improvements
@@ -197,6 +198,7 @@ For best results, use conventional commit format:
 - `security` / `sec`: Security fixes
 
 **Example:**
+
 ```bash
 git commit -m "feat(patching): add multi-source patch support"
 git commit -m "fix(download): correct APKMirror fallback logic"
@@ -254,6 +256,7 @@ Intelligent caching system with validation and automatic cleanup for improved bu
 ### Architecture
 
 The cache system uses a JSON index file (`.cache-index.json`) to track:
+
 - Creation and access timestamps
 - File size and checksum
 - Source URL
@@ -274,6 +277,7 @@ The cache system uses a JSON index file (`.cache-index.json`) to track:
 ```
 
 **Example output:**
+
 ```
 Cache Statistics:
   Total entries: 15
@@ -502,6 +506,7 @@ The workflow supports:
 - **Artifact upload**: Saves reports for 30 days
 
 **Permissions required:**
+
 - `contents: read` - Read repository content
 - `issues: write` - Create and update issues
 
@@ -569,25 +574,31 @@ When updates are found:
 ### Changelog Generation Issues
 
 **Problem**: "No releases found for repo"
+
 - **Solution**: Repository may not have releases, or GITHUB_TOKEN is invalid
 
 **Problem**: Empty changelog generated
+
 - **Solution**: Check if commits exist in specified range
 
 ### Cache Issues
 
 **Problem**: Cache index corrupted
+
 - **Solution**: Delete `.cache-index.json` and run `./build.sh cache init`
 
 **Problem**: High cache disk usage
+
 - **Solution**: Run `./build.sh cache cleanup force`
 
 ### Dependency Checker Issues
 
 **Problem**: "API rate limit exceeded"
+
 - **Solution**: Set `GITHUB_TOKEN` environment variable
 
 **Problem**: "Could not determine latest version"
+
 - **Solution**: Check repository name format and network connectivity
 
 ---

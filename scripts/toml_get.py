@@ -29,14 +29,6 @@ from pathlib import Path
 from typing import Any
 
 
-def check_python_version() -> None:
-    """
-    Verify Python version is >= 3.11 (required for tomllib).
-
-    Exits with code 2 if version is insufficient.
-    """
-
-
 def parse_toml(file_path: Path) -> dict[str, Any]:
     """
     Parse TOML file and return as dictionary.
@@ -82,8 +74,7 @@ def parse_json(file_path: Path) -> dict[str, Any]:
     """
     try:
         with open(file_path, encoding="utf-8") as f:
-            data: dict[str, Any] = json.load(f)
-            return data
+            return json.load(f)  # type: ignore[no-any-return]
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON syntax in {file_path}: {e}", file=sys.stderr)
         sys.exit(2)
@@ -98,8 +89,6 @@ def main() -> None:
 
     Parses command-line arguments, reads input file, and outputs JSON.
     """
-    check_python_version()
-
     parser = argparse.ArgumentParser(description="Convert TOML or JSON file to JSON output")
     parser.add_argument("--file", type=Path, required=True, help="Path to TOML or JSON file")
     parser.add_argument(

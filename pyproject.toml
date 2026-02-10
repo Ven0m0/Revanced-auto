@@ -41,7 +41,7 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
-line-ending = "auto"
+line-ending = "lf"
 
 [tool.ruff.lint.isort]
 known-first-party = [ "scripts" ]

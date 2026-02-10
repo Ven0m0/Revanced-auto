@@ -3,17 +3,8 @@
 
 set -euo pipefail
 
-CWD=$PWD
-TEMP_DIR="temp"
-BIN_DIR="bin"
-
-# Source required libraries
-source "${CWD}/scripts/lib/logger.sh"
-source "${CWD}/scripts/lib/helpers.sh"
-source "${CWD}/scripts/lib/config.sh"
-
-# Set prebuilt tools
-set_prebuilts
+# Source all utilities (provides logging, config parsing, helpers)
+source utils.sh
 
 # Separate config for a specific app
 # Usage: ./extras.sh separate-config <config.toml> <app_name> <output.toml>
@@ -24,7 +15,7 @@ separate_config() {
 
   log_info "Separating config for: $app_name"
 
-  if [ ! -f "$input_config" ]; then
+  if [[ ! -f "$input_config" ]]; then
     abort "Config file not found: $input_config"
   fi
 
@@ -69,7 +60,7 @@ combine_logs() {
 
   log_info "Combining build logs from: $logs_dir"
 
-  if [ ! -d "$logs_dir" ]; then
+  if [[ ! -d "$logs_dir" ]]; then
     abort "Logs directory not found: $logs_dir"
   fi
 
@@ -77,7 +68,7 @@ combine_logs() {
   local log_files
   log_files=$(find "$logs_dir" -name "build.md" -type f 2> /dev/null | sort)
 
-  if [ "$log_files" = "" ]; then
+  if [[ "$log_files" = "" ]]; then
     log_warn "No build.md files found in $logs_dir"
     echo "No builds completed"
     return 0
@@ -86,7 +77,7 @@ combine_logs() {
   # Combine all logs
   local first=true
   while IFS= read -r log_file; do
-    if [ "$first" = true ]; then
+    if [[ "$first" = true ]]; then
       first=false
     else
       echo ""
@@ -100,14 +91,14 @@ combine_logs() {
 # Main command dispatcher
 case "${1:-}" in
   separate-config)
-    if [ $# -ne 4 ]; then
+    if [[ $# -ne 4 ]]; then
       echo "Usage: $0 separate-config <config.toml> <app_name> <output.toml>"
       exit 1
     fi
     separate_config "$2" "$3" "$4"
     ;;
   combine-logs)
-    if [ $# -ne 2 ]; then
+    if [[ $# -ne 2 ]]; then
       echo "Usage: $0 combine-logs <logs_directory>"
       exit 1
     fi

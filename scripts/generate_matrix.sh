@@ -2,12 +2,9 @@
 set -euo pipefail
 # Generate GitHub Actions matrix from config.toml
 
-# Source config parsing
-# Get project root (parent of scripts/)
+# Source all utilities (provides logging, config parsing, helpers)
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "${PROJECT_ROOT}/scripts/lib/logger.sh"
-source "${PROJECT_ROOT}/scripts/lib/helpers.sh"
-source "${PROJECT_ROOT}/scripts/lib/config.sh"
+source "${PROJECT_ROOT}/utils.sh"
 
 # Load config
 toml_prep "config.toml" > /dev/null

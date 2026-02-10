@@ -12,7 +12,7 @@ max_line_length = 120
 indent_style = space
 
 [*.{sh,bash}]
-indent_style = tab
+indent_style = space
 indent_size = 2
 max_line_length = 120
 
@@ -32,6 +32,3 @@ indent_size = 2
 [*.{md,txt}]
 max_line_length = off
 trim_trailing_whitespace = false
-
-[Makefile]
-indent_style = tab

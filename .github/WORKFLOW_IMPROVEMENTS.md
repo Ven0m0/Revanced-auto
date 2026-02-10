@@ -9,10 +9,12 @@ This document details the security and performance improvements made to all GitH
 **Why**: Using version tags (like `v4`, `v5`) provides a balance between stability and ease of maintenance.
 
 **Changes**:
+
 - ✅ All actions use major version tags for automatic patch/minor updates
 - Example: `uses: actions/checkout@v4`
 
 **Actions Used**:
+
 - `actions/checkout@v4`
 - `actions/setup-java@v4`
 - `actions/setup-python@v5`
@@ -30,32 +32,34 @@ This document details the security and performance improvements made to all GitH
 **Why**: `write-all` grants excessive permissions. Least-privilege principle requires explicit, minimal permissions.
 
 **Changes**:
+
 - ❌ Removed `permissions: write-all` from all jobs
 - ✅ Added explicit permissions per job based on actual needs
 - ✅ Default to `contents: read` when no writes needed
 
 **Permission Matrix**:
 
-| Workflow | Job | Permissions |
-|----------|-----|-------------|
-| build.yml | setup_matrix | `contents: read` |
-| build.yml | apk_matrix | `contents: read` |
-| build.yml | release | `contents: write` |
-| build-daily.yml | check | `contents: read` |
-| build-daily.yml | build | `contents: write, actions: read` |
-| build-manual.yml | build | `contents: write` |
-| build-pr.yml | validate | `contents: read, pull-requests: write` |
-| ci.yml | check | `contents: read` |
-| ci.yml | build | `contents: write, actions: read` |
-| dependency-check.yml | check-dependencies | `contents: read, issues: write` |
-| lint.yml | all jobs | `contents: read, pull-requests: write` |
-| shellcheck.yml | shellcheck | `contents: read, pull-requests: write` |
+| Workflow             | Job                | Permissions                            |
+| -------------------- | ------------------ | -------------------------------------- |
+| build.yml            | setup_matrix       | `contents: read`                       |
+| build.yml            | apk_matrix         | `contents: read`                       |
+| build.yml            | release            | `contents: write`                      |
+| build-daily.yml      | check              | `contents: read`                       |
+| build-daily.yml      | build              | `contents: write, actions: read`       |
+| build-manual.yml     | build              | `contents: write`                      |
+| build-pr.yml         | validate           | `contents: read, pull-requests: write` |
+| ci.yml               | check              | `contents: read`                       |
+| ci.yml               | build              | `contents: write, actions: read`       |
+| dependency-check.yml | check-dependencies | `contents: read, issues: write`        |
+| lint.yml             | all jobs           | `contents: read, pull-requests: write` |
+| shellcheck.yml       | shellcheck         | `contents: read, pull-requests: write` |
 
 ### 3. Input Validation
 
 **Why**: Unvalidated inputs can lead to command injection or unexpected behavior.
 
 **Changes**:
+
 - ✅ Added validation for all `workflow_dispatch` inputs
 - ✅ Sanitize user-controlled strings before use
 - ✅ Validate format constraints (regex patterns, allowed values)
@@ -83,6 +87,7 @@ This document details the security and performance improvements made to all GitH
 **Why**: Downloaded binaries without verification could be tampered with.
 
 **Changes**:
+
 - ✅ Added SHA256 checksum verification for downloaded tools
 - ✅ Use HTTPS for all downloads
 - ✅ Enforce checksum failures in workflows where this is enabled; other workflows log or ignore checksum mismatches as appropriate
@@ -107,12 +112,14 @@ This document details the security and performance improvements made to all GitH
 **Why**: Re-downloading dependencies on every run wastes time and bandwidth.
 
 **Changes**:
+
 - ✅ Added pip caching for Python dependencies
 - ✅ Added npm caching for Node.js packages
 - ✅ Added gradle caching for Java builds
 - ✅ Added custom tool caching (shfmt, shellharden, yamlfmt, taplo)
 
 **Cache Keys**:
+
 - Python: `pip` (automatic via `actions/setup-python`)
 - Node.js: `npm` (automatic via `actions/setup-node`)
 - Gradle: `gradle` (automatic via `actions/setup-java`)
@@ -125,11 +132,13 @@ This document details the security and performance improvements made to all GitH
 **Why**: Prevent wasted resources on duplicate/stale runs.
 
 **Changes**:
+
 - ✅ Added concurrency groups to all workflows
 - ✅ `cancel-in-progress: true` for PR/push workflows (cancel stale runs)
 - ✅ `cancel-in-progress: false` for scheduled builds (complete all builds)
 
 **Concurrency Groups**:
+
 ```yaml
 # Per-branch builds
 concurrency:
@@ -152,6 +161,7 @@ concurrency:
 **Why**: Runaway jobs consume runner minutes and delay feedback.
 
 **Changes**:
+
 - ✅ Added `timeout-minutes` to all jobs
 - ✅ Timeout values based on job complexity
 
@@ -171,11 +181,13 @@ concurrency:
 **Why**: Repeatedly downloading the same binaries wastes time.
 
 **Changes**:
+
 - ✅ Added caching for downloaded binaries
 - ✅ Check if tool exists before downloading
 - ✅ Reuse tools across workflow steps
 
 **Example**:
+
 ```yaml
 - name: Cache tools
   uses: actions/cache@v4
@@ -199,25 +211,27 @@ concurrency:
 **Why**: Skip unnecessary workflow runs when irrelevant files change.
 
 **Changes**:
+
 - ✅ Added path filters to push/PR triggers
 - ✅ Only run workflows when relevant files change
 
 **Path Filters**:
+
 ```yaml
 # lint.yml - only run on code changes
 on:
   push:
     paths:
-      - '**.py'
-      - '**.sh'
-      - '**.yml'
-      - '**.yaml'
-      - '**.toml'
-      - '**.json'
-      - '**.html'
-      - '.github/workflows/lint.yml'
-      - 'pyproject.toml'
-      - 'biome.json'
+      - "**.py"
+      - "**.sh"
+      - "**.yml"
+      - "**.yaml"
+      - "**.toml"
+      - "**.json"
+      - "**.html"
+      - ".github/workflows/lint.yml"
+      - "pyproject.toml"
+      - "biome.json"
 ```
 
 ## Workflow-Specific Changes
@@ -225,11 +239,13 @@ on:
 ### build.yml (Main Build Pipeline)
 
 **Security**:
+
 - ✅ Version-tagged actions
 - ✅ Removed `write-all`, added explicit permissions
 - ✅ Added input validation for `build_mode`
 
 **Performance**:
+
 - ✅ Added concurrency control per branch/mode
 - ✅ Added timeouts (5min setup, 90min build, 10min release)
 - ✅ Added pip/gradle caching
@@ -237,17 +253,20 @@ on:
 ### build-daily.yml (Scheduled Builds)
 
 **Security**:
+
 - ✅ Version-tagged actions
 - ✅ Explicit permissions per job
 - ✅ Input validation for manual triggers
 
 **Performance**:
+
 - ✅ Concurrency control (no cancel for scheduled)
 - ✅ Timeout on check job (10min)
 
 ### build-manual.yml (Manual Builds)
 
 **Security**:
+
 - ✅ Version-tagged actions
 - ✅ Removed `write-all`
 - ✅ **Comprehensive input validation**:
@@ -257,6 +276,7 @@ on:
   - `architecture`: Must be valid Android arch
 
 **Performance**:
+
 - ✅ Concurrency per app+arch combination
 - ✅ 90min timeout for complex builds
 - ✅ Pip/gradle caching
@@ -264,10 +284,12 @@ on:
 ### build-pr.yml (PR Validation)
 
 **Security**:
+
 - ✅ Version-tagged actions
 - ✅ Read-only permissions (no writes to main repo)
 
 **Performance**:
+
 - ✅ Concurrency per PR number
 - ✅ 60min timeout
 - ✅ Pip caching
@@ -276,11 +298,13 @@ on:
 ### lint.yml (Linting Pipeline)
 
 **Security**:
+
 - ✅ Version-tagged actions
 - ✅ Read-only content access
 - ✅ SHA256 verification for binary tools
 
 **Performance**:
+
 - ✅ Concurrency per branch
 - ✅ 10-15min timeouts per job
 - ✅ Pip/npm caching
@@ -290,10 +314,12 @@ on:
 ### shellcheck.yml (Shell Validation)
 
 **Security**:
+
 - ✅ Version-tagged actions
 - ✅ Read-only permissions
 
 **Performance**:
+
 - ✅ Concurrency per branch
 - ✅ 15min timeout
 - ✅ Path filtering (only .sh files)
@@ -301,22 +327,26 @@ on:
 ### ci.yml (CI Pipeline)
 
 **Security**:
+
 - ✅ Version-tagged actions
 - ✅ Explicit permissions per job
 - ✅ Fixed condition check (`== '1'` instead of `== 1`)
 
 **Performance**:
+
 - ✅ Concurrency control (no cancel)
 - ✅ 10min timeout for check job
 
 ### dependency-check.yml (Dependency Updates)
 
 **Security**:
+
 - ✅ Version-tagged actions
 - ✅ Explicit permissions (read content, write issues)
 - ✅ Input validation for `check_mode`
 
 **Performance**:
+
 - ✅ Concurrency control (no cancel for scheduled)
 - ✅ 20min timeout
 
@@ -366,6 +396,7 @@ uses: actions/checkout@v4.2.2
 ### Monitoring
 
 Track these metrics:
+
 - ✅ Build success/failure rate
 - ✅ Average build time (check for cache effectiveness)
 - ✅ Runner minute consumption
@@ -374,18 +405,21 @@ Track these metrics:
 ## Summary
 
 **Security**: Critical security features implemented
+
 - ✅ Version tags allow automatic security updates
 - ✅ Explicit permissions limit blast radius
 - ✅ Input validation prevents injection
 - ✅ Binary verification ensures integrity (where feasible)
 
 **Performance**: Significant improvements
+
 - ✅ Caching reduces build times by 30-60%
 - ✅ Concurrency control prevents wasted resources
 - ✅ Timeouts prevent runaway jobs
 - ✅ Path filtering skips unnecessary runs
 
 **Optimization for GitHub Copilot**:
+
 - ✅ Clear, documented workflow structure
 - ✅ Consistent patterns across workflows
 - ✅ Inline comments for complex logic

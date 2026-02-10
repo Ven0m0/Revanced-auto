@@ -3,31 +3,40 @@ import re
 import sys
 
 
-def parse_commits():
+def parse_commits() -> None:
     # Regular expression for Conventional Commits
     # Format: type(scope): description
-    cc_regex = re.compile(r'^([a-z]+)(\(([^)]+)\))?:\ (.+)$')
+    cc_regex = re.compile(r"^([a-z]+)(\(([^)]+)\))?:\ (.+)$")
 
     # Mapping from commit type to category
     type_map = {
-        'feat': 'features', 'feature': 'features',
-        'fix': 'fixes', 'bugfix': 'fixes',
-        'perf': 'performance', 'performance': 'performance',
-        'refactor': 'refactor', 'style': 'refactor',
-        'docs': 'documentation', 'doc': 'documentation',
-        'test': 'tests', 'tests': 'tests',
-        'build': 'build', 'ci': 'build', 'chore': 'build',
-        'security': 'security', 'sec': 'security'
+        "feat": "features",
+        "feature": "features",
+        "fix": "fixes",
+        "bugfix": "fixes",
+        "perf": "performance",
+        "performance": "performance",
+        "refactor": "refactor",
+        "style": "refactor",
+        "docs": "documentation",
+        "doc": "documentation",
+        "test": "tests",
+        "tests": "tests",
+        "build": "build",
+        "ci": "build",
+        "chore": "build",
+        "security": "security",
+        "sec": "security",
     }
 
     # Heuristic keywords for non-conventional commits
     heuristic_map = [
-        (['add', 'implement', 'new', 'create'], 'features'),
-        (['fix', 'resolve', 'correct', 'patch'], 'fixes'),
-        (['update', 'upgrade', 'bump'], 'updates'),
-        (['improve', 'optimize', 'enhance', 'better'], 'improvements'),
-        (['remove', 'delete', 'deprecate'], 'removals'),
-        (['security', 'vulnerability', 'cve'], 'security')
+        (["add", "implement", "new", "create"], "features"),
+        (["fix", "resolve", "correct", "patch"], "fixes"),
+        (["update", "upgrade", "bump"], "updates"),
+        (["improve", "optimize", "enhance", "better"], "improvements"),
+        (["remove", "delete", "deprecate"], "removals"),
+        (["security", "vulnerability", "cve"], "security"),
     ]
 
     for line in sys.stdin:
@@ -37,7 +46,7 @@ def parse_commits():
 
         try:
             # Split by Unit Separator
-            parts = line.split('\x1f')
+            parts = line.split("\x1f")
             if len(parts) != 5:
                 # Fallback if split fails or data is incomplete
                 sys.stderr.write(
@@ -48,7 +57,6 @@ def parse_commits():
             commit_hash = parts[0]
             subject = parts[1]
             author = parts[2]
-            # email = parts[3] # Not used in output currently
             date = parts[4]
 
             category = "other"
@@ -77,6 +85,7 @@ def parse_commits():
         except Exception as e:
             # Log error to stderr but don't crash
             sys.stderr.write(f"Error parsing line: {line[:50]}... - {e}\n")
+
 
 if __name__ == "__main__":
     parse_commits()

@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Visual configuration generator for ReVanced Builder. Create config.toml files with an interactive patch selector, live preview, and one-click download.">
+    <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#1e293b" id="meta-theme-color">
+    <meta property="og:title" content="Configuration Generator - ReVanced Builder">
+    <meta property="og:description" content="Create ReVanced Builder config.toml files with an interactive patch selector, live preview, and one-click download.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1f6e0;</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <title>Configuration Generator - ReVanced Builder</title>
+    <style>
+        /* Generator-specific header (non-nav) */
+        .generator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .generator-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .generator-header .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+        .generator-header .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        @media (max-width: 640px) {
+            .generator-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .generator-header h1 {
+                font-size: 1.35rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Navigation -->
+    <nav class="nav" id="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">
+                <span class="nav-brand-icon" aria-hidden="true">&#x1f6e0;</span>
+                ReVanced Builder
+            </a>
+            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="generator.html" class="nav-link active">Generator</a>
+                <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/CONFIG.md" class="nav-link nav-link-external" target="_blank" rel="noopener noreferrer">Config Docs</a>
+                <a href="https://github.com/Ven0m0/Revanced-auto" class="nav-link nav-link-external" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <button class="nav-theme-toggle" id="theme-toggle" aria-label="Toggle dark/light theme" title="Toggle theme">
+                    <span id="theme-icon" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container" id="main-content">
+        <!-- Page Header -->
+        <div class="generator-header">
+            <div>
+                <h1>Configuration Generator</h1>
+                <p class="subtitle">Create your config.toml with ease &mdash; no manual editing required</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-secondary btn-small btn-icon" id="btn-import" title="Import an existing config.toml file">
+                    <span aria-hidden="true">&#x1f4c2;</span> Import
+                </button>
+            </div>
+        </div>
+
+        <div class="layout">
+            <!-- Left Column: Configuration Form -->
+            <div>
+                <!-- Global Settings -->
+                <div class="card" role="region" aria-label="Global Settings">
+                    <h2 class="card-title">Global Settings</h2>
+
+                    <div class="form-group">
+                        <label for="parallel-jobs">Parallel Jobs</label>
+                        <input type="number" id="parallel-jobs" value="1" min="1" max="10">
+                        <p class="help-text">Number of apps to build simultaneously (1 = sequential)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="compression-level">Compression Level</label>
+                        <input type="number" id="compression-level" value="9" min="0" max="9">
+                        <p class="help-text">ZIP compression (0 = none, 9 = maximum)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="patches-source">Default Patches Source</label>
+                        <input type="text" id="patches-source" value="anddea/revanced-patches">
+                        <p class="help-text">GitHub repo (owner/name) for patches</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cli-source">Default CLI Source</label>
+                        <input type="text" id="cli-source" value="inotia00/revanced-cli">
+                        <p class="help-text">GitHub repo for ReVanced CLI</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="patches-version">Patches Version</label>
+                        <select id="patches-version">
+                            <option value="dev">dev (latest development)</option>
+                            <option value="latest" selected>latest (stable)</option>
+                            <option value="specific">Specific version</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cli-version">CLI Version</label>
+                        <select id="cli-version">
+                            <option value="dev">dev (latest development)</option>
+                            <option value="latest" selected>latest (stable)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rv-brand">RV Brand</label>
+                        <input type="text" id="rv-brand" value="RVX">
+                        <p class="help-text">Brand name (RVX, ReVanced, etc.)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="arch">Default Architecture</label>
+                        <select id="arch">
+                            <option value="arm64-v8a" selected>arm64-v8a (64-bit, recommended)</option>
+                            <option value="armeabi-v7a">armeabi-v7a (32-bit)</option>
+                            <option value="both">both (build for both)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="riplib" checked>
+                            <span>Enable riplib (strip unnecessary libraries)</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="aapt2" checked>
+                            <span>Enable AAPT2 optimization</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="remove-checks" checked>
+                            <span>Remove ReVanced integrations checks</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- App Catalog -->
+                <div class="card" role="region" aria-label="Add Applications">
+                    <h2 class="card-title">Add Applications</h2>
+                    <p class="help-text" style="margin-bottom: 0.5rem">Select an app to add with pre-filled settings, or add a custom app.</p>
+                    <div class="catalog-grid" id="app-catalog" aria-label="App catalog"></div>
+                </div>
+
+                <!-- Apps Section -->
+                <div class="card" role="region" aria-label="Configured Applications">
+                    <h2 class="card-title">Configured Applications</h2>
+                    <div id="apps-container" aria-live="polite">
+                        <div class="empty-state" id="empty-state">
+                            <span class="empty-state-icon" aria-hidden="true">&#x1f4f1;</span>
+                            <p><strong>No applications added yet</strong></p>
+                            <p>Select an app from the catalog above, or load an example configuration.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Preview -->
+            <div>
+                <div class="sticky-preview">
+                    <div class="card" role="region" aria-label="TOML Preview">
+                        <h2 class="card-title">Generated config.toml</h2>
+                        <pre id="preview" tabindex="0" aria-label="Generated TOML configuration"></pre>
+                        <div class="preview-actions">
+                            <button class="btn-success btn-icon" id="btn-download">
+                                <span aria-hidden="true">&#x2B07;&#xFE0F;</span> Download
+                            </button>
+                            <button class="btn-primary btn-icon" id="btn-copy">
+                                <span aria-hidden="true">&#x1f4cb;</span> Copy
+                            </button>
+                            <button class="btn-secondary btn-icon" id="btn-example">
+                                <span aria-hidden="true">&#x1f4dd;</span> Load Example
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <nav class="footer-links" aria-label="Footer navigation">
+                <a href="https://github.com/Ven0m0/Revanced-auto" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+                <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/CONFIG.md" target="_blank" rel="noopener noreferrer">Config Reference</a>
+                <a href="https://github.com/ReVanced" target="_blank" rel="noopener noreferrer">ReVanced Project</a>
+                <a href="https://github.com/inotia00/revanced-patches" target="_blank" rel="noopener noreferrer">RVX Patches</a>
+            </nav>
+            <p>ReVanced Builder &mdash; Automated APK patching system</p>
+        </div>
+    </footer>
+
+    <div class="toast-container" id="toast-container" aria-live="assertive" role="status"></div>
+
+    <!-- Hidden file input for config import -->
+    <input type="file" id="file-import" accept=".toml,.txt" class="sr-only" aria-label="Import configuration file">
+
+    <script>
+        "use strict";
+
+        // =====================================================================
+        // App Catalog — pre-filled data for known apps
+        // =====================================================================
+
+        const APP_CATALOG = [
+            {
+                id: "YouTube-Extended",
+                displayName: "YouTube",
+                icon: "\u25B6\uFE0F",
+                packageName: "com.google.android.youtube",
+                description: "Ad-free YouTube with SponsorBlock, Return YouTube Dislike, and more",
+                patchesSource: "anddea/revanced-patches",
+                cliSource: "inotia00/revanced-cli",
+                apkmirror: "https://apkmirror.com/apk/google-inc/youtube",
+                uptodown: "https://youtube.en.uptodown.com/android",
+                archive: "https://archive.org/download/jhc-apks/apks/com.google.android.youtube",
+                excluded: "'Enable debug logging'",
+                included: "",
+            },
+            {
+                id: "Music-Extended",
+                displayName: "Music",
+                icon: "\uD83C\uDFB5",
+                packageName: "com.google.android.apps.youtube.music",
+                description: "YouTube Music with background play, ad removal, and custom themes",
+                patchesSource: "anddea/revanced-patches",
+                cliSource: "inotia00/revanced-cli",
+                apkmirror: "https://apkmirror.com/apk/google-inc/youtube-music",
+                uptodown: "https://youtube-music.en.uptodown.com/android",
+                archive: "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music",
+                excluded: "'Enable debug logging'",
+                included: "",
+            },
+            {
+                id: "Spotify",
+                displayName: "Spotify",
+                icon: "\uD83C\uDFA7",
+                packageName: "com.spotify.music",
+                description: "Spotify with custom themes and UI tweaks",
+                patchesSource: "",
+                cliSource: "",
+                apkmirror: "",
+                uptodown: "https://spotify.en.uptodown.com/android",
+                archive: "https://archive.org/download/jhc-apks/apks/com.spotify.music",
+                excluded: "",
+                included: "'Custom theme'",
+            },
+            {
+                id: "Reddit",
+                displayName: "Reddit",
+                icon: "\uD83E\uDD16",
+                packageName: "com.reddit.frontpage",
+                description: "Reddit with ad removal and customization patches",
+                patchesSource: "",
+                cliSource: "",
+                apkmirror: "https://apkmirror.com/apk/redditinc/reddit",
+                uptodown: "https://reddit-official-app.en.uptodown.com/android",
+                archive: "",
+                excluded: "",
+                included: "",
+            },
+            {
+                id: "X",
+                displayName: "X / Twitter",
+                icon: "\uD83D\uDCAC",
+                packageName: "com.twitter.android",
+                description: "X (Twitter) with Piko patches for ad removal and UI tweaks",
+                patchesSource: "crimera/piko",
+                cliSource: "",
+                apkmirror: "https://apkmirror.com/apk/x-corp/twitter",
+                uptodown: "https://twitter.en.uptodown.com/android",
+                archive: "",
+                excluded: "",
+                included: "'Dynamic color'",
+            },
+            {
+                id: "TikTok",
+                displayName: "TikTok",
+                icon: "\uD83C\uDFAC",
+                packageName: "com.zhiliaoapp.musically",
+                description: "TikTok with SIM spoof and other patches",
+                patchesSource: "",
+                cliSource: "",
+                apkmirror: "",
+                uptodown: "",
+                archive: "",
+                excluded: "",
+                included: "'SIM spoof'",
+            },
+            {
+                id: "Instagram",
+                displayName: "Instagram",
+                icon: "\uD83D\uDCF7",
+                packageName: "com.instagram.android",
+                description: "Instagram with ad removal and link sanitization",
+                patchesSource: "",
+                cliSource: "",
+                apkmirror: "https://apkmirror.com/apk/instagram/instagram-instagram/",
+                uptodown: "",
+                archive: "",
+                excluded: "",
+                included: "'Hide ads' 'Sanitize sharing links' 'Disable signature check'",
+            },
+            {
+                id: "GooglePhotos",
+                displayName: "Google Photos",
+                icon: "\uD83C\uDF05",
+                packageName: "com.google.android.apps.photos",
+                description: "Google Photos with available ReVanced patches",
+                patchesSource: "",
+                cliSource: "",
+                apkmirror: "https://www.apkmirror.com/apk/google-inc/photos/",
+                uptodown: "https://google-photos.en.uptodown.com/android",
+                archive: "https://archive.org/download/jhc-apks/apks/com.google.android.apps.photos",
+                excluded: "",
+                included: "",
+            },
+        ];
+
+        const PACKAGE_MAP = {};
+        APP_CATALOG.forEach((app) => { PACKAGE_MAP[app.displayName] = app.packageName; });
+
+        // =====================================================================
+        // Utility: HTML Escaping (XSS prevention)
+        // =====================================================================
+
+        function escapeHtml(text) {
+            if (text == null) return "";
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        // =====================================================================
+        // Toast Notification System
+        // =====================================================================
+
+        function showToast(message, type = "info", duration = 3000) {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add("toast-out");
+                toast.addEventListener("animationend", () => toast.remove(), { once: true });
+            }, duration);
+        }
+
+        // =====================================================================
+        // Theme Management
+        // =====================================================================
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem("theme") || "dark";
+            applyTheme(savedTheme);
+        }
+
+        function applyTheme(theme) {
+            const icon = document.getElementById("theme-icon");
+            const metaTheme = document.getElementById("meta-theme-color");
+
+            if (theme === "light") {
+                document.documentElement.setAttribute("data-theme", "light");
+                icon.textContent = "\u{1F319}";
+                if (metaTheme) metaTheme.content = "#ffffff";
+            } else {
+                document.documentElement.removeAttribute("data-theme");
+                icon.textContent = "\u{2600}\u{FE0F}";
+                if (metaTheme) metaTheme.content = "#1e293b";
+            }
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute("data-theme");
+            const next = current === "light" ? "dark" : "light";
+            localStorage.setItem("theme", next);
+            applyTheme(next);
+        }
+
+        initTheme();
+
+        // =====================================================================
+        // Mobile Navigation
+        // =====================================================================
+
+        function initNav() {
+            const toggle = document.getElementById("nav-toggle");
+            const menu = document.getElementById("nav-menu");
+
+            toggle.addEventListener("click", () => {
+                const expanded = toggle.getAttribute("aria-expanded") === "true";
+                toggle.setAttribute("aria-expanded", String(!expanded));
+                menu.classList.toggle("nav-open");
+            });
+
+            // Close menu when clicking a link
+            menu.addEventListener("click", (e) => {
+                if (e.target.closest(".nav-link")) {
+                    toggle.setAttribute("aria-expanded", "false");
+                    menu.classList.remove("nav-open");
+                }
+            });
+
+            // Close menu on outside click
+            document.addEventListener("click", (e) => {
+                if (!e.target.closest(".nav") && menu.classList.contains("nav-open")) {
+                    toggle.setAttribute("aria-expanded", "false");
+                    menu.classList.remove("nav-open");
+                }
+            });
+        }
+
+        // =====================================================================
+        // App Catalog Rendering
+        // =====================================================================
+
+        const addedApps = new Set();
+
+        function renderCatalog() {
+            const grid = document.getElementById("app-catalog");
+            grid.innerHTML = `${APP_CATALOG.map((app) => {
+                const added = addedApps.has(app.id);
+                return `<button class="catalog-card${added ? " catalog-added" : ""}" data-catalog-id="${escapeHtml(app.id)}" ${added ? "disabled" : ""} title="${escapeHtml(app.description)}">
+                    <span class="catalog-icon" aria-hidden="true">${app.icon}</span>
+                    <span class="catalog-name">${escapeHtml(app.displayName)}</span>
+                    <span class="catalog-pkg">${escapeHtml(app.packageName)}</span>
+                </button>`;
+            }).join("")}<button class="catalog-card catalog-custom" id="btn-add-custom" title="Add any app manually">
+                <span class="catalog-icon" aria-hidden="true">&#x2795;</span>
+                <span class="catalog-name">Custom App</span>
+                <span class="catalog-pkg">Add any app manually</span>
+            </button>`;
+        }
+
+        // =====================================================================
+        // App Configuration
+        // =====================================================================
+
+        let appCounter = 0;
+
+        function updateEmptyState() {
+            const container = document.getElementById("apps-container");
+            const emptyState = document.getElementById("empty-state");
+            const hasApps = container.querySelectorAll(".app-card").length > 0;
+
+            if (emptyState) {
+                emptyState.style.display = hasApps ? "none" : "";
+            }
+        }
+
+        function addApp(appData = {}) {
+            const id = appCounter++;
+            const container = document.getElementById("apps-container");
+
+            const appCard = document.createElement("div");
+            appCard.className = "app-card";
+            appCard.id = `app-${id}`;
+            appCard.dataset.appId = id;
+            if (appData.catalogId) appCard.dataset.catalogId = appData.catalogId;
+
+            const escapedName = escapeHtml(appData.name || "");
+            const escapedDisplayName = escapeHtml(appData.displayName || "");
+            const escapedVersion = escapeHtml(appData.version || "auto");
+            const escapedPatchesSource = escapeHtml(appData.patchesSource || "");
+            const escapedCliSource = escapeHtml(appData.cliSource || "");
+            const escapedApkmirror = escapeHtml(appData.apkmirror || "");
+            const escapedUptodown = escapeHtml(appData.uptodown || "");
+            const escapedArchive = escapeHtml(appData.archive || "");
+            const escapedExcluded = escapeHtml(appData.excluded || "");
+            const escapedIncluded = escapeHtml(appData.included || "");
+
+            appCard.innerHTML = `
+                <div class="app-header">
+                    <input type="text" class="app-name" placeholder="App-Name" value="${escapedName}" aria-label="Application section name">
+                    <button class="btn-danger btn-small btn-remove-app" data-app-id="${id}" aria-label="Remove application">&#x2715; Remove</button>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="app-enabled" ${appData.enabled !== false ? "checked" : ""}>
+                        <span>Enabled</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>App Display Name</label>
+                    <input type="text" class="app-display-name" placeholder="YouTube" value="${escapedDisplayName}">
+                </div>
+
+                <div class="form-group">
+                    <label>Version</label>
+                    <input type="text" class="app-version" placeholder="auto" value="${escapedVersion}">
+                    <p class="help-text">auto, latest, or specific version (e.g., 18.48.39)</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Architecture (override)</label>
+                    <select class="app-arch">
+                        <option value="">Use global default</option>
+                        <option value="arm64-v8a" ${appData.arch === "arm64-v8a" ? "selected" : ""}>arm64-v8a</option>
+                        <option value="armeabi-v7a" ${appData.arch === "armeabi-v7a" ? "selected" : ""}>armeabi-v7a</option>
+                        <option value="both" ${appData.arch === "both" ? "selected" : ""}>both</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Patches Source (override)</label>
+                    <input type="text" class="app-patches-source" placeholder="Use global default" value="${escapedPatchesSource}">
+                </div>
+
+                <div class="form-group">
+                    <label>CLI Source (override)</label>
+                    <input type="text" class="app-cli-source" placeholder="Use global default" value="${escapedCliSource}">
+                </div>
+
+                <div class="form-group">
+                    <label>Download URLs</label>
+                    <div class="url-group">
+                        <span class="url-label">APKMirror:</span>
+                        <input type="text" class="app-apkmirror" placeholder="https://apkmirror.com/..." value="${escapedApkmirror}">
+                    </div>
+                    <div class="url-group">
+                        <span class="url-label">Uptodown:</span>
+                        <input type="text" class="app-uptodown" placeholder="https://...uptodown.com/android" value="${escapedUptodown}">
+                    </div>
+                    <div class="url-group">
+                        <span class="url-label">Archive.org:</span>
+                        <input type="text" class="app-archive" placeholder="https://archive.org/download/..." value="${escapedArchive}">
+                    </div>
+                    <p class="help-text">At least one URL required</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Patch Selection</label>
+                    <button type="button" class="btn-primary btn-small btn-load-patches" data-app-id="${id}">Browse &amp; Select Patches</button>
+                    <div id="patch-selector-${id}" class="patch-selector" style="display: none;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Excluded Patches (Manual)</label>
+                    <textarea class="app-excluded" rows="2" placeholder="'Patch name 1' 'Patch name 2'">${escapedExcluded}</textarea>
+                    <p class="help-text">Space-separated, quoted patch names to exclude (overrides visual selection)</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Included Patches (Manual, exclusive mode)</label>
+                    <textarea class="app-included" rows="2" placeholder="'Patch name 1' 'Patch name 2'">${escapedIncluded}</textarea>
+                    <p class="help-text">Only include these patches (overrides visual selection)</p>
+                </div>
+            `;
+
+            container.appendChild(appCard);
+
+            // Track catalog app
+            if (appData.catalogId) {
+                addedApps.add(appData.catalogId);
+                renderCatalog();
+            }
+
+            updateEmptyState();
+            updatePreview();
+
+            // Scroll to the new card
+            appCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+
+        function addCatalogApp(catalogId) {
+            const entry = APP_CATALOG.find((a) => a.id === catalogId);
+            if (!entry || addedApps.has(catalogId)) return;
+
+            addApp({
+                catalogId: entry.id,
+                name: entry.id,
+                enabled: true,
+                displayName: entry.displayName,
+                version: "auto",
+                arch: "",
+                patchesSource: entry.patchesSource,
+                cliSource: entry.cliSource,
+                apkmirror: entry.apkmirror,
+                uptodown: entry.uptodown,
+                archive: entry.archive,
+                excluded: entry.excluded,
+                included: entry.included,
+            });
+        }
+
+        function removeApp(id) {
+            const card = document.getElementById(`app-${id}`);
+            if (card) {
+                const catalogId = card.dataset.catalogId;
+                if (catalogId) {
+                    addedApps.delete(catalogId);
+                    renderCatalog();
+                }
+                card.remove();
+                updateEmptyState();
+                updatePreview();
+            }
+        }
+
+        // =====================================================================
+        // TOML Generation
+        // =====================================================================
+
+        function generateTOML() {
+            const g = (id) => document.getElementById(id);
+
+            let toml = `# =============================================================================
+# ReVanced Auto-Build Configuration
+# =============================================================================
+# Documentation: https://github.com/Ven0m0/Revanced-auto/blob/main/CONFIG.md
+# =============================================================================
+
+# GLOBAL BUILD SETTINGS
+# =============================================================================
+
+# Parallel Build Jobs
+parallel-jobs = ${g("parallel-jobs").value}
+
+# Compression Level
+compression-level = ${g("compression-level").value}
+
+# ReVanced Integrations Checks
+remove-rv-integrations-checks = ${g("remove-checks").checked}
+
+# Library Stripping (riplib)
+riplib = ${g("riplib").checked}
+
+# AAPT2 Optimization
+enable-aapt2-optimize = ${g("aapt2").checked}
+
+# Default Architecture
+arch = "${g("arch").value}"
+
+# Build Mode
+build-mode = "apk"
+
+# Default Patches Version
+patches-version = "${g("patches-version").value}"
+
+# Default CLI Version
+cli-version = "${g("cli-version").value}"
+
+# Default App Version
+version = "auto"
+
+# Default Patches Source
+patches-source = "${g("patches-source").value}"
+
+# Default CLI Source
+cli-source = "${g("cli-source").value}"
+
+# RV Brand
+rv-brand = "${g("rv-brand").value}"
+
+# =============================================================================
+# APP CONFIGURATIONS
+# =============================================================================
+`;
+
+            document.querySelectorAll(".app-card").forEach((app) => {
+                const name = app.querySelector(".app-name").value.trim();
+                if (!name) return;
+
+                const enabled = app.querySelector(".app-enabled").checked;
+                const displayName = app.querySelector(".app-display-name").value.trim();
+                const version = app.querySelector(".app-version").value.trim();
+                const arch = app.querySelector(".app-arch").value;
+                const patchesSource = app.querySelector(".app-patches-source").value.trim();
+                const cliSource = app.querySelector(".app-cli-source").value.trim();
+                const apkmirror = app.querySelector(".app-apkmirror").value.trim();
+                const uptodown = app.querySelector(".app-uptodown").value.trim();
+                const archive = app.querySelector(".app-archive").value.trim();
+                const excluded = app.querySelector(".app-excluded").value.trim();
+                const included = app.querySelector(".app-included").value.trim();
+
+                toml += `\n[${name}]\n`;
+                toml += `enabled = ${enabled}\n`;
+
+                if (displayName) toml += `app-name = "${displayName}"\n`;
+                if (version && version !== "auto") toml += `version = "${version}"\n`;
+                if (arch) toml += `arch = "${arch}"\n`;
+                if (patchesSource) toml += `patches-source = "${patchesSource}"\n`;
+                if (cliSource) toml += `cli-source = "${cliSource}"\n`;
+                if (apkmirror) toml += `apkmirror-dlurl = "${apkmirror}"\n`;
+                if (uptodown) toml += `uptodown-dlurl = "${uptodown}"\n`;
+                if (archive) toml += `archive-dlurl = "${archive}"\n`;
+                if (excluded) toml += `excluded-patches = ${excluded}\n`;
+                if (included) {
+                    toml += `included-patches = ${included}\n`;
+                    toml += `exclusive-patches = true\n`;
+                }
+            });
+
+            return toml;
+        }
+
+        function updatePreview() {
+            document.getElementById("preview").textContent = generateTOML();
+        }
+
+        // =====================================================================
+        // Download / Copy / Import / Export
+        // =====================================================================
+
+        function downloadConfig() {
+            const toml = generateTOML();
+            const blob = new Blob([toml], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "config.toml";
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("Configuration downloaded", "success");
+        }
+
+        function copyConfig() {
+            const toml = generateTOML();
+            navigator.clipboard.writeText(toml).then(
+                () => showToast("Copied to clipboard", "success"),
+                () => showToast("Copy failed \u2014 use the download button instead", "error")
+            );
+        }
+
+        function importConfig(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    parseAndLoadConfig(e.target.result);
+                    showToast("Configuration imported successfully", "success");
+                } catch (err) {
+                    showToast(`Failed to parse config: ${err.message}`, "error", 5000);
+                }
+            };
+            reader.onerror = () => showToast("Failed to read file", "error");
+            reader.readAsText(file);
+        }
+
+        function parseAndLoadConfig(tomlText) {
+            const lines = tomlText.split("\n");
+            let currentSection = null;
+            const globals = {};
+            const apps = {};
+
+            const globalKeys = new Set([
+                "parallel-jobs", "compression-level", "remove-rv-integrations-checks",
+                "riplib", "enable-aapt2-optimize", "arch", "build-mode",
+                "patches-version", "cli-version", "version", "patches-source",
+                "cli-source", "rv-brand",
+            ]);
+
+            for (const rawLine of lines) {
+                const line = rawLine.trim();
+                if (!line || line.startsWith("#")) continue;
+
+                const sectionMatch = line.match(/^\[([^\]]+)\]$/);
+                if (sectionMatch) {
+                    currentSection = sectionMatch[1].trim();
+                    if (!apps[currentSection]) {
+                        apps[currentSection] = {};
+                    }
+                    continue;
+                }
+
+                const kvMatch = line.match(/^([^=]+?)\s*=\s*(.+)$/);
+                if (!kvMatch) continue;
+
+                const key = kvMatch[1].trim();
+                let value = kvMatch[2].trim();
+
+                if ((value.startsWith('"') && value.endsWith('"')) ||
+                    (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.slice(1, -1);
+                }
+
+                if (!currentSection && globalKeys.has(key)) {
+                    globals[key] = value;
+                } else if (currentSection) {
+                    apps[currentSection][key] = value;
+                }
+            }
+
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (!el || val === undefined) return;
+                if (el.type === "checkbox") {
+                    el.checked = val === "true" || val === true;
+                } else {
+                    el.value = val;
+                }
+            };
+
+            setVal("parallel-jobs", globals["parallel-jobs"]);
+            setVal("compression-level", globals["compression-level"]);
+            setVal("remove-checks", globals["remove-rv-integrations-checks"]);
+            setVal("riplib", globals.riplib);
+            setVal("aapt2", globals["enable-aapt2-optimize"]);
+            setVal("arch", globals.arch);
+            setVal("patches-version", globals["patches-version"]);
+            setVal("cli-version", globals["cli-version"]);
+            setVal("patches-source", globals["patches-source"]);
+            setVal("cli-source", globals["cli-source"]);
+            setVal("rv-brand", globals["rv-brand"]);
+
+            // Clear existing apps
+            document.getElementById("apps-container").querySelectorAll(".app-card").forEach((c) => { c.remove(); });
+            appCounter = 0;
+            addedApps.clear();
+
+            for (const [name, cfg] of Object.entries(apps)) {
+                const catalogEntry = APP_CATALOG.find((a) => a.id === name);
+                addApp({
+                    catalogId: catalogEntry ? catalogEntry.id : undefined,
+                    name,
+                    enabled: cfg.enabled !== "false",
+                    displayName: cfg["app-name"] || "",
+                    version: cfg.version || "auto",
+                    arch: cfg.arch || "",
+                    patchesSource: cfg["patches-source"] || "",
+                    cliSource: cfg["cli-source"] || "",
+                    apkmirror: cfg["apkmirror-dlurl"] || "",
+                    uptodown: cfg["uptodown-dlurl"] || "",
+                    archive: cfg["archive-dlurl"] || "",
+                    excluded: cfg["excluded-patches"] || "",
+                    included: cfg["included-patches"] || "",
+                });
+            }
+
+            renderCatalog();
+            updateEmptyState();
+            updatePreview();
+        }
+
+        function loadExample() {
+            document.getElementById("apps-container").querySelectorAll(".app-card").forEach((c) => { c.remove(); });
+            appCounter = 0;
+            addedApps.clear();
+
+            addCatalogApp("YouTube-Extended");
+            addCatalogApp("Music-Extended");
+
+            showToast("Example configuration loaded", "info");
+            updatePreview();
+        }
+
+        // =====================================================================
+        // Patch Selection System
+        // =====================================================================
+
+        const patchesCache = new Map();
+
+        async function fetchPatches(repoPath) {
+            if (patchesCache.has(repoPath)) {
+                return patchesCache.get(repoPath);
+            }
+
+            if (typeof repoPath !== "string") {
+                throw new Error("Invalid repository path: expected \"owner/repo\".");
+            }
+
+            const segments = repoPath.trim().split("/").filter(Boolean);
+            if (segments.length !== 2) {
+                throw new Error(`Invalid repository path "${repoPath}". Expected "owner/repo".`);
+            }
+            const [owner, repo] = segments;
+
+            const transformPatch = (patch) => ({
+                name: patch.name,
+                description: patch.description || "No description available",
+                compatiblePackages: Array.isArray(patch.compatiblePackages) ? patch.compatiblePackages : [],
+                use: patch.use !== false,
+                requiresIntegrations: patch.requiresIntegrations || false,
+                options: patch.options || [],
+            });
+
+            try {
+                const resp = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/patches.json`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                const patches = data.map(transformPatch);
+                patchesCache.set(repoPath, patches);
+                return patches;
+            } catch (_primaryErr) {
+                const releaseResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`);
+                if (!releaseResp.ok) {
+                    throw new Error(`Cannot fetch patches from ${repoPath}. Ensure the repo exists and has patches.json.`);
+                }
+                const release = await releaseResp.json();
+                const asset = release.assets.find((a) => a.name === "patches.json");
+                if (!asset) {
+                    throw new Error(`No patches.json found in ${repoPath} releases.`);
+                }
+                const assetResp = await fetch(asset.browser_download_url);
+                if (!assetResp.ok) {
+                    throw new Error(`Cannot download patches.json from ${repoPath} releases.`);
+                }
+                const data = await assetResp.json();
+                const patches = data.map(transformPatch);
+                patchesCache.set(repoPath, patches);
+                return patches;
+            }
+        }
+
+        async function loadPatches(appId) {
+            const appCard = document.getElementById(`app-${appId}`);
+            const selector = document.getElementById(`patch-selector-${appId}`);
+            const source = appCard.querySelector(".app-patches-source").value.trim()
+                || document.getElementById("patches-source").value;
+
+            if (selector.style.display !== "none") {
+                selector.style.display = "none";
+                return;
+            }
+
+            selector.style.display = "block";
+            selector.innerHTML = '<div style="text-align:center;padding:2rem"><div class="loading-spinner"></div><p style="margin-top:1rem;color:var(--text-muted)">Loading patches&hellip;</p></div>';
+
+            try {
+                const patches = await fetchPatches(source);
+                renderPatchSelector(appId, patches, source);
+            } catch (error) {
+                selector.innerHTML = `<div class="error-message">Failed to load patches: <span class="error-content"></span></div>`;
+                selector.querySelector(".error-content").textContent = error.message;
+            }
+        }
+
+        function renderPatchSelector(appId, allPatches, repoPath) {
+            const selector = document.getElementById(`patch-selector-${appId}`);
+            const appCard = document.getElementById(`app-${appId}`);
+            const displayName = appCard.querySelector(".app-display-name").value.trim();
+            const packageName = PACKAGE_MAP[displayName] || "";
+
+            let patches = allPatches.filter((p) => {
+                if (!packageName) return true;
+                return p.compatiblePackages.some((pkg) => pkg && pkg.name === packageName);
+            });
+            if (patches.length === 0) patches = allPatches;
+
+            const escapedRepo = escapeHtml(repoPath);
+
+            selector.innerHTML = `
+                <div class="patch-selector-header">
+                    <div>
+                        <strong>Available Patches</strong>
+                        <span class="patch-count">(${patches.length} from ${escapedRepo})</span>
+                    </div>
+                    <button type="button" class="btn-danger btn-small btn-close-patches" data-app-id="${appId}">Close</button>
+                </div>
+                <div class="toggle-buttons">
+                    <button type="button" class="btn-primary btn-small btn-select-all" data-app-id="${appId}" data-select="true">Select All</button>
+                    <button type="button" class="btn-secondary btn-small btn-select-all" data-app-id="${appId}" data-select="false">Deselect All</button>
+                </div>
+                <input type="text" class="patch-search" placeholder="Search patches..." aria-label="Search patches" data-app-id="${appId}">
+                <div class="patch-list" id="patch-list-${appId}">
+                    ${patches.map((patch, i) => `
+                        <div class="patch-item" data-patch-name="${escapeHtml(patch.name)}" data-patch-index="${i}">
+                            <input type="checkbox" class="patch-checkbox"
+                                   id="patch-${appId}-${i}"
+                                   aria-labelledby="patch-label-${appId}-${i}"
+                                   ${patch.use ? "checked" : ""}>
+                            <div class="patch-info">
+                                <div class="patch-name" id="patch-label-${appId}-${i}">${escapeHtml(patch.name)}</div>
+                                <div class="patch-description">${escapeHtml(patch.description)}</div>
+                                ${patch.compatiblePackages.length > 0
+                                    ? `<div class="patch-version">Compatible: ${patch.compatiblePackages.filter((p) => p?.name).map((p) => escapeHtml(p.name)).join(", ")}</div>`
+                                    : ""}
+                            </div>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+
+            appCard.dataset.patches = JSON.stringify(patches);
+        }
+
+        function updatePatchSelection(appId) {
+            const appCard = document.getElementById(`app-${appId}`);
+            const patchesData = JSON.parse(appCard.dataset.patches || "[]");
+            const patchList = document.getElementById(`patch-list-${appId}`);
+            if (!patchList) return;
+
+            const excludedPatches = [];
+            patchList.querySelectorAll(".patch-checkbox").forEach((cb, index) => {
+                if (!cb.checked && patchesData[index]) {
+                    excludedPatches.push(patchesData[index].name);
+                }
+            });
+
+            const textarea = appCard.querySelector(".app-excluded");
+            if (!textarea.dataset.manualEdit) {
+                textarea.value = excludedPatches.map((p) => `'${p}'`).join(" ");
+            }
+            updatePreview();
+        }
+
+        function filterPatches(appId, query) {
+            const patchList = document.getElementById(`patch-list-${appId}`);
+            if (!patchList) return;
+            const q = query.toLowerCase();
+            patchList.querySelectorAll(".patch-item").forEach((item) => {
+                const name = item.querySelector(".patch-name").textContent.toLowerCase();
+                const desc = item.querySelector(".patch-description").textContent.toLowerCase();
+                item.style.display = name.includes(q) || desc.includes(q) ? "flex" : "none";
+            });
+        }
+
+        // =====================================================================
+        // Event Delegation
+        // =====================================================================
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initNav();
+            renderCatalog();
+            updatePreview();
+
+            // Global settings: update preview on any change
+            document.querySelectorAll("#parallel-jobs, #compression-level, #patches-source, #cli-source, #patches-version, #cli-version, #rv-brand, #arch, #riplib, #aapt2, #remove-checks")
+                .forEach((el) => {
+                    el.addEventListener("input", updatePreview);
+                    el.addEventListener("change", updatePreview);
+                });
+
+            // Header action buttons
+            document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
+            document.getElementById("btn-download").addEventListener("click", downloadConfig);
+            document.getElementById("btn-copy").addEventListener("click", copyConfig);
+            document.getElementById("btn-example").addEventListener("click", loadExample);
+
+            // Import
+            const fileInput = document.getElementById("file-import");
+            document.getElementById("btn-import").addEventListener("click", () => fileInput.click());
+            fileInput.addEventListener("change", (e) => {
+                if (e.target.files.length > 0) {
+                    importConfig(e.target.files[0]);
+                    e.target.value = "";
+                }
+            });
+
+            // Delegated clicks on dynamic content
+            document.addEventListener("click", (e) => {
+                const target = e.target;
+
+                // Catalog card click
+                const catalogCard = target.closest(".catalog-card");
+                if (catalogCard) {
+                    if (catalogCard.id === "btn-add-custom") {
+                        addApp();
+                        return;
+                    }
+                    const catalogId = catalogCard.dataset.catalogId;
+                    if (catalogId) {
+                        addCatalogApp(catalogId);
+                        return;
+                    }
+                }
+
+                // Remove app button
+                const removeBtn = target.closest(".btn-remove-app");
+                if (removeBtn) {
+                    removeApp(Number(removeBtn.dataset.appId));
+                    return;
+                }
+
+                // Load patches button
+                const loadBtn = target.closest(".btn-load-patches");
+                if (loadBtn) {
+                    loadPatches(Number(loadBtn.dataset.appId));
+                    return;
+                }
+
+                // Close patches button
+                const closeBtn = target.closest(".btn-close-patches");
+                if (closeBtn) {
+                    const sel = document.getElementById(`patch-selector-${closeBtn.dataset.appId}`);
+                    if (sel) sel.style.display = "none";
+                    return;
+                }
+
+                // Select/deselect all patches
+                const selectAllBtn = target.closest(".btn-select-all");
+                if (selectAllBtn) {
+                    const appId = Number(selectAllBtn.dataset.appId);
+                    const selectAll = selectAllBtn.dataset.select === "true";
+                    const list = document.getElementById(`patch-list-${appId}`);
+                    if (list) {
+                        list.querySelectorAll(".patch-checkbox").forEach((cb) => { cb.checked = selectAll; });
+                        updatePatchSelection(appId);
+                    }
+                    return;
+                }
+
+                // Patch item click (toggle checkbox)
+                const patchItem = target.closest(".patch-item");
+                if (patchItem && !target.classList.contains("patch-checkbox")) {
+                    const appCard = patchItem.closest(".app-card");
+                    if (appCard) {
+                        const cb = patchItem.querySelector(".patch-checkbox");
+                        cb.checked = !cb.checked;
+                        updatePatchSelection(Number(appCard.dataset.appId));
+                    }
+                    return;
+                }
+            });
+
+            // Patch checkbox direct clicks
+            document.addEventListener("change", (e) => {
+                if (e.target.classList.contains("patch-checkbox")) {
+                    const appCard = e.target.closest(".app-card");
+                    if (appCard) updatePatchSelection(Number(appCard.dataset.appId));
+                }
+
+                const appCard = e.target.closest(".app-card");
+                if (appCard) updatePreview();
+            });
+
+            // Input events on dynamic app fields
+            document.addEventListener("input", (e) => {
+                const searchInput = e.target.closest(".patch-search");
+                if (searchInput) {
+                    filterPatches(Number(searchInput.dataset.appId), searchInput.value);
+                    return;
+                }
+
+                if (e.target.classList.contains("app-excluded") || e.target.classList.contains("app-included")) {
+                    const val = typeof e.target.value === "string" ? e.target.value : "";
+                    if (val.trim() === "") {
+                        delete e.target.dataset.manualEdit;
+                    } else {
+                        e.target.dataset.manualEdit = "true";
+                    }
+                }
+
+                if (e.target.closest(".app-card")) updatePreview();
+            });
+
+            // Keyboard shortcut: Ctrl+S to download
+            document.addEventListener("keydown", (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+                    e.preventDefault();
+                    downloadConfig();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

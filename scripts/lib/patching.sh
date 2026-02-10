@@ -252,10 +252,6 @@ _determine_version() {
     fi
   fi
 
-  if [[ "$version_mode" = "auto" && "$version" = "" ]]; then
-    version_mode="latest"
-  fi
-
   if isoneof "$version_mode" latest beta; then
     if [[ "$version_mode" = beta ]]; then
       __AAV__="true"
@@ -303,7 +299,7 @@ _build_patcher_args() {
     # Split on spaces while preserving quoted arguments
     local arg
     while IFS= read -r arg; do
-      [ "$arg" != "" ] && p_patcher_args+=("$arg")
+      [[ "$arg" != "" ]] && p_patcher_args+=("$arg")
     done < <(xargs -n1 <<< "${args[patcher_args]}")
   fi
 }
@@ -342,18 +338,16 @@ _download_stock_apk() {
 # Handle MicroG patch inclusion/exclusion
 # Args:
 #   $1: List patches output
-#   $2: Array name to update (p_patcher_args)
 # Returns:
-#   Updates the specified array, echoes microg_patch name
+#   Updates p_patcher_args array, echoes microg_patch name
 _handle_microg_patch() {
   local list_patches=$1
-  local _array_name=${2:-p_patcher_args}
   local microg_patch
 
   microg_patch=$(grep "^Name: " <<< "$list_patches" | grep -i "gmscore\|microg" || :)
   microg_patch=${microg_patch#*: }
 
-  if [[ "$microg_patch" != "" && "${p_patcher_args[*]}" =~ "$microg_patch" ]]; then
+  if [[ "$microg_patch" != "" && "${p_patcher_args[*]}" =~ ${microg_patch} ]]; then
     epr "You can't include/exclude microg patch as that's done by rvmm builder automatically."
     p_patcher_args=("${p_patcher_args[@]//-[ei] ${microg_patch}/}")
   fi
@@ -530,7 +524,7 @@ build_rv() {
   fi
 
   # Handle force flag for non-auto versions
-  if ! [ "$version_mode" = "auto" ] || isoneof "$version_mode" latest beta; then
+  if ! [[ "$version_mode" == "auto" ]] || isoneof "$version_mode" latest beta; then
     p_patcher_args+=("-f")
   fi
 
