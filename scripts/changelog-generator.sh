@@ -64,7 +64,8 @@ parse_commits() {
         local description="$subject"
 
         # Extract conventional commit format: type(scope): description
-        if [[ "$subject" =~ ^([a-z]+)(\(([^)]+)\))?:\ (.+)$ ]]; then
+        local pattern='^([a-z]+)(\(([^)]+)\))?:[[:space:]](.+)$'
+        if [[ "$subject" =~ $pattern ]]; then
             local commit_type="${BASH_REMATCH[1]}"
             scope="${BASH_REMATCH[3]}"
             description="${BASH_REMATCH[4]}"
