@@ -77,6 +77,26 @@ if check_command "ruff" "Python"; then
 fi
 
 # ============================================================================
+# Python - MyPy (Type Checking)
+# ============================================================================
+log_section "Python Type Checking (MyPy)"
+
+if check_command "mypy" "Python Type Checker"; then
+  PYTHON_FILES=$(find . -name "*.py" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" -not -path "./.venv/*" -not -path "./venv/*" 2> /dev/null || true)
+
+  if [[ -n "$PYTHON_FILES" ]]; then
+    if mypy --strict scripts/*.py; then
+      log_success "Python type checking passed"
+    else
+      log_error "Python type checking failed"
+      EXIT_CODE=1
+    fi
+  else
+    log_warn "No Python files found"
+  fi
+fi
+
+# ============================================================================
 # Shell - ShellCheck, shfmt, shellharden
 # ============================================================================
 log_section "Shell Scripts"

@@ -110,7 +110,7 @@ def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
     return 1
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Search APKMirror release page for specific variant"
     )

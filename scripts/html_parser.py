@@ -113,7 +113,7 @@ def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> l
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     """
     Main entry point for HTML parser CLI.
     """
