@@ -178,7 +178,7 @@ concurrency:
 **Example**:
 ```yaml
 - name: Cache tools
-  uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+  uses: actions/cache@v4
   with:
     path: |
       /usr/local/bin/shfmt
