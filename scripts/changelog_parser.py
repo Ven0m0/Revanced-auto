@@ -68,7 +68,7 @@ def parse_commits():
                         category = cat
                         break
 
-            # Output format: category|scope|description|hash|author|date
+            # Output format (Unit Separator \x1f delimited): category\x1fscope\x1fdescription\x1fhash\x1fauthor\x1fdate
             print(f"{category}\x1f{scope}\x1f{description}\x1f{commit_hash}\x1f{author}\x1f{date}")
 
         except Exception as e:
