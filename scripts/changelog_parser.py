@@ -38,8 +38,11 @@ def parse_commits():
         try:
             # Split by Unit Separator
             parts = line.split('\x1f')
-            if len(parts) < 5:
+            if len(parts) != 5:
                 # Fallback if split fails or data is incomplete
+                sys.stderr.write(
+                    f"Warning: expected 5 fields but got {len(parts)}; skipping line: {line[:50]}...\n"
+                )
                 continue
 
             commit_hash = parts[0]
