@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Cache management library for ReVanced Builder
 # Provides intelligent caching with validation and cleanup
 

@@ -8,9 +8,10 @@ Replaces the inefficient Bash loop that spawned multiple Python processes.
 
 import argparse
 import sys
+from itertools import pairwise
 
 try:
-    from lxml import html
+    from lxml import etree, html
 except ImportError:
     print(
         "Error: lxml not installed. Install with: pip install lxml cssselect",
@@ -19,7 +20,7 @@ except ImportError:
     sys.exit(1)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Search Uptodown HTML content for matching architecture"
     )
@@ -40,7 +41,7 @@ def main():
 
     try:
         tree = html.fromstring(wrapped_content)
-    except html.etree.XMLSyntaxError:
+    except etree.XMLSyntaxError:
         sys.exit(1)
 
     children = list(tree)
@@ -49,8 +50,9 @@ def main():
     # The structure is typically: <p>Arch Name</p> <div class="variant">...</div>
     allowed_archs = set(args.archs)
 
+    # Use itertools.pairwise() for better performance and readability
     # Iterate through adjacent pairs of elements (p, div).
-    for p_elem, variant_div in zip(children, children[1:]):
+    for p_elem, variant_div in pairwise(children):
         if p_elem.tag == "p":
             arch_text = p_elem.text_content().strip()
 
