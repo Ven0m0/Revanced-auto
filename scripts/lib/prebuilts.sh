@@ -26,22 +26,6 @@ resolve_rv_artifact() {
     abort "unreachable: invalid tag $tag"
   fi
 
-  for src_ver in "$cli_src CLI $cli_ver revanced-cli" "$patches_src Patches $patches_ver patches"; do
-    # shellcheck disable=SC2086
-    set -- $src_ver
-    local src=$1 tag=$2 ver=${3-} fprefix=$4
-    local ext grab_cl
-
-    if [[ "$tag" = "CLI" ]]; then
-      ext="jar"
-      grab_cl=false
-    elif [[ "$tag" = "Patches" ]]; then
-      ext="rvp"
-      grab_cl=true
-    else
-      abort "unreachable: invalid tag $tag"
-    fi
-
   local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
 
   # Handle version selection

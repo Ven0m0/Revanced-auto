@@ -386,6 +386,58 @@ _apply_riplib_optimization() {
 # Main build function for ReVanced APK/Module
 # Args:
 #   $1: Path to temporary file containing serialized array
+# Get cached list of patches
+# Args:
+#   $1: Path to CLI JAR
+#   $2: Path to patches JAR
+# Returns:
+#   List of patches (via stdout)
+get_cached_patches_list() {
+  local cli_jar=$1 patches_jar=$2
+
+  if [[ ! -f "$cli_jar" || ! -f "$patches_jar" ]]; then
+    log_warn "get_cached_patches_list: jars not found"
+    return 1
+  fi
+
+  # Calculate cache key based on hashes of both jars
+  local cli_hash patches_hash
+  cli_hash=$(sha256sum "$cli_jar" | cut -d" " -f1)
+  patches_hash=$(sha256sum "$patches_jar" | cut -d" " -f1)
+
+  local cache_key="patches-list-${cli_hash}-${patches_hash}.txt"
+  local cache_path
+  cache_path=$(get_cache_path "$cache_key" "patches")
+
+  # Ensure cache directory exists
+  mkdir -p "$(dirname "$cache_path")"
+
+  # Check cache
+  if cache_is_valid "$cache_path"; then
+    log_debug "Using cached patch list: $cache_path"
+    cat "$cache_path"
+    return 0
+  fi
+
+  log_debug "Generating patch list cache..."
+
+  # Run list-patches without -f pkg_name to get full list
+  local temp_file
+  temp_file=$(mktemp)
+
+  if ! java -jar "$cli_jar" list-patches "$patches_jar" -v -p > "$temp_file" 2>&1; then
+    rm -f "$temp_file"
+    log_warn "Failed to list patches"
+    return 1
+  fi
+
+  # Atomic update of cache
+  mv "$temp_file" "$cache_path"
+  cache_put "$cache_path"
+
+  cat "$cache_path"
+}
+
 build_rv() {
   local args_file=$1
   declare -A args
@@ -452,7 +504,7 @@ build_rv() {
     temp_files+=("$temp_file")
 
     # Run in background
-    (java -jar "${args[cli]}" list-patches "$patches_jar" -f "$pkg_name" -v -p > "$temp_file" 2>&1) &
+    (get_cached_patches_list "${args[cli]}" "$patches_jar" > "$temp_file") &
     pids+=($!)
     source_idx=$((source_idx + 1))
   done
