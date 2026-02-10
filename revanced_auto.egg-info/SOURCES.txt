@@ -1,8 +1,0 @@
-LICENSE
-README.md
-pyproject.toml
-revanced_auto.egg-info/PKG-INFO
-revanced_auto.egg-info/SOURCES.txt
-revanced_auto.egg-info/dependency_links.txt
-revanced_auto.egg-info/requires.txt
-revanced_auto.egg-info/top_level.txt
