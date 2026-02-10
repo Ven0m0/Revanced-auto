@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Generate GitHub Actions matrix from config.toml
-set -e
 
 # Source config parsing
 # Get project root (parent of scripts/)
