@@ -1,5 +1,4 @@
 name: Manual Build
-
 permissions:
   contents: write
   actions: read
@@ -46,66 +45,19 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     permissions:
       contents: write
+      actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: true
 
-      - name: Validate inputs
-        run: |
-          # Sanitize app_name to prevent injection
-          if [[ ! "${{ inputs.app_name }}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-            echo "Invalid app_name format: ${{ inputs.app_name }}"
-            exit 1
-          fi
-          # Validate version format
-          if [[ ! "${{ inputs.version }}" =~ ^(auto|latest|[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            echo "Invalid version format: ${{ inputs.version }}"
-            exit 1
-          fi
-          # Validate build_mode
-          if [[ "${{ inputs.build_mode }}" != "stable" && "${{ inputs.build_mode }}" != "dev" ]]; then
-            echo "Invalid build_mode: ${{ inputs.build_mode }}"
-            exit 1
-          fi
-          # Validate architecture
-          case "${{ inputs.architecture }}" in
-            arm64-v8a|armeabi-v7a|both)
-              ;;
-            *)
-              echo "Invalid architecture: ${{ inputs.architecture }}"
-              exit 1
-              ;;
-          esac
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "21"
-          cache: 'gradle'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: 'pip'
-
-      - name: Install Python dependencies
-        run: pip install -e .
-
-      - name: Install Android SDK Build Tools
-        run: |
-          sdkmanager "build-tools;34.0.0"
-          echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+      - name: Setup build environment
+        uses: ./.github/actions/setup-environment
 
       - name: Generate config for ${{ inputs.app_name }}
         run: |
@@ -168,7 +120,7 @@ jobs:
           KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
 
       - name: Upload APK as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.app_name }}-${{ inputs.architecture }}-manual
           path: ./build/*.apk
@@ -176,7 +128,7 @@ jobs:
           retention-days: 7
 
       - name: Upload build log
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-log-${{ inputs.app_name }}-manual
           path: build.md
