@@ -4,7 +4,7 @@ permissions:
   actions: read
 on:
   schedule:
-    # Daily at 06:00 UTC (matches RookieEnough schedule)
+    # Daily at 06:00 UTC
     - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
@@ -17,10 +17,17 @@ on:
           - stable
           - dev
 
+concurrency:
+  group: daily-build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   check:
-    permissions: write-all
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -52,7 +59,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh run list -L400 --json databaseId -q '.[].databaseId' | tail -n+10 | xargs -IID gh api "repos/$GITHUB_REPOSITORY/actions/runs/ID" -X DELETE || :
+          gh run list -L400 --json databaseId -q '.[].databaseId' | tail -n+10 | \
+            xargs -I ID gh api "repos/$GITHUB_REPOSITORY/actions/runs/ID" -X DELETE || true
 
     outputs:
       SHOULD_BUILD: ${{ steps.should_build.outputs.SHOULD_BUILD }}
