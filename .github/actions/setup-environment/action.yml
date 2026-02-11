@@ -20,7 +20,7 @@ runs:
   - name: Setup Android SDK
     uses: android-actions/setup-android@v3
   - name: Cache Android SDK Build Tools
-    uses: actions/cache@v4
+    uses: actions/cache@v5
     with:
       path: ${{ env.ANDROID_HOME }}/build-tools
       key: ${{ runner.os }}-android-build-tools-34.0.0
@@ -37,7 +37,7 @@ runs:
       python-version: ${{ inputs.python-version }}
       cache: pip
   - name: Cache Python dependencies
-    uses: actions/cache@v4
+    uses: actions/cache@v5
     id: cache-python
     with:
       path: ~/.cache/pip
