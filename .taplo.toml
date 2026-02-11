@@ -1,5 +1,4 @@
 # Taplo TOML formatter configuration
-
 [formatting]
 # Align entries vertically
 align_entries = false

@@ -1,57 +1,49 @@
-name: 'Setup Build Environment'
-description: 'Sets up Java, Python, Android SDK and dependencies for ReVanced builds'
-
+name: Setup Build Environment
+description: Sets up Java, Python, Android SDK and dependencies for ReVanced builds
 inputs:
   python-version:
-    description: 'Python version to use'
+    description: Python version to use
     required: false
     default: '3.11'
   java-version:
-    description: 'Java version to use'
+    description: Java version to use
     required: false
     default: '21'
-
 runs:
-  using: 'composite'
+  using: composite
   steps:
-    - name: Setup Java
-      uses: actions/setup-java@v5
-      with:
-        distribution: 'temurin'
-        java-version: ${{ inputs.java-version }}
-
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: Cache Android SDK Build Tools
-      uses: actions/cache@v4
-      with:
-        path: ${{ env.ANDROID_HOME }}/build-tools
-        key: ${{ runner.os }}-android-build-tools-34.0.0
-        restore-keys: |
-          ${{ runner.os }}-android-build-tools-
-
-    - name: Install Android SDK Build Tools
-      shell: bash
-      run: |
-        sdkmanager "build-tools;34.0.0"
-        echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
-
-    - name: Setup Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: ${{ inputs.python-version }}
-        cache: 'pip'
-
-    - name: Cache Python dependencies
-      uses: actions/cache@v4
-      id: cache-python
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install Python dependencies
-      shell: bash
-      run: pip install -e .
+  - name: Setup Java
+    uses: actions/setup-java@v5
+    with:
+      distribution: temurin
+      java-version: ${{ inputs.java-version }}
+  - name: Setup Android SDK
+    uses: android-actions/setup-android@v3
+  - name: Cache Android SDK Build Tools
+    uses: actions/cache@v4
+    with:
+      path: ${{ env.ANDROID_HOME }}/build-tools
+      key: ${{ runner.os }}-android-build-tools-34.0.0
+      restore-keys: |
+        ${{ runner.os }}-android-build-tools-
+  - name: Install Android SDK Build Tools
+    shell: bash
+    run: |
+      sdkmanager "build-tools;34.0.0"
+      echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+  - name: Setup Python
+    uses: actions/setup-python@v6
+    with:
+      python-version: ${{ inputs.python-version }}
+      cache: pip
+  - name: Cache Python dependencies
+    uses: actions/cache@v4
+    id: cache-python
+    with:
+      path: ~/.cache/pip
+      key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      restore-keys: |
+        ${{ runner.os }}-pip-
+  - name: Install Python dependencies
+    shell: bash
+    run: pip install -e .

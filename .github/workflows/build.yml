@@ -2,55 +2,43 @@ name: Build
 permissions:
   contents: write
   actions: read
-
 on:
   workflow_call:
     inputs:
-      from_ci:
-        type: boolean
-        required: false
-        default: true
       build_mode:
         type: string
         required: false
         default: stable
   workflow_dispatch:
     inputs:
-      from_ci:
-        description: "Run from CI"
-        required: false
-        default: true
-        type: boolean
       build_mode:
-        description: "Build target"
+        description: Build target
         required: false
         default: stable
         type: choice
         options:
-          - stable
-          - dev
-
+        - stable
+        - dev
 concurrency:
   group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   setup_matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 5
     permissions:
       contents: read
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Generate Matrix
-        id: set-matrix
-        run: |
-          chmod +x scripts/generate_matrix.sh
-          MATRIX=$(./scripts/generate_matrix.sh)
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+    - name: Generate Matrix
+      id: set-matrix
+      run: |
+        chmod +x scripts/generate_matrix.sh
+        MATRIX=$(./scripts/generate_matrix.sh)
+        echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
   apk_matrix:
     needs: setup_matrix
     runs-on: ubuntu-latest
@@ -62,117 +50,111 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.setup_matrix.outputs.matrix) }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: true
-
-      - name: Setup build environment
-        uses: ./.github/actions/setup-environment
-
-      - name: Generate ${{ matrix.id }} config
-        run: |
-          ./extras.sh separate-config config.toml ${{ matrix.id }} sep_config.toml
-          cat sep_config.toml
-
-      - name: Build APKs
-        run: ./build.sh sep_config.toml
-        env:
-          BUILD_MODE: ${{ inputs.build_mode }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
-
-      - name: Upload APKs as artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: apks-${{ matrix.id }}
-          path: ./build/*.apk
-          if-no-files-found: warn
-          retention-days: 1
-
-      - name: Upload build log as artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-log-${{ matrix.id }}
-          path: build.md
-          if-no-files-found: warn
-          retention-days: 1
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+      with:
+        fetch-depth: 0
+        submodules: true
+    - name: Setup build environment
+      uses: ./.github/actions/setup-environment
+    - name: Cache ReVanced prebuilts
+      uses: actions/cache@v5
+      with:
+        path: ./temp
+        key: ${{ runner.os }}-revanced-prebuilts-${{ hashFiles('config.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-revanced-prebuilts-
+    - name: Generate ${{ matrix.id }} config
+      run: |
+        ./extras.sh separate-config config.toml ${{ matrix.id }} sep_config.toml
+        cat sep_config.toml
+    - name: Build APKs
+      run: ./build.sh sep_config.toml
+      env:
+        BUILD_MODE: ${{ inputs.build_mode }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
+    - name: Upload APKs as artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: apks-${{ matrix.id }}
+        path: ./build/*.apk
+        if-no-files-found: warn
+        retention-days: 1
+    - name: Upload build log as artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: build-log-${{ matrix.id }}
+        path: build.md
+        if-no-files-found: warn
+        retention-days: 1
   release:
     needs: apk_matrix
-    if: >-
-      ${{ needs.apk_matrix.result == 'success' && !cancelled() && github.event_name != 'pull_request' && (github.repository_owner
-      == 'anomalyco' || github.repository == github.event.repository.full_name) }}
-    runs-on: ubuntu-latest
+    if: ${{ needs.apk_matrix.result == 'success' && !cancelled() && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name }}
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 15
     permissions:
       contents: write
       actions: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Check if any artifacts exist
-        id: check_artifacts
-        continue-on-error: true
-        run: |
-          if gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
-            --jq '.artifacts[] | select(.name | startswith("apks-")) | .name' | grep -q .; then
-            echo "has_artifacts=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_artifacts=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare version
-        if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        id: version
-        run: |
-          VER=$(date +%y.%m.%d)
-          if [ "${{ inputs.build_mode }}" == "dev" ]; then
-            VER="${VER}-pre"
-          fi
-          echo "version=${VER}" >> $GITHUB_OUTPUT
-
-      - name: Download all APKs
-        if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        uses: actions/download-artifact@v7
-        with:
-          pattern: apks-*
-          path: all-apks
-          merge-multiple: true
-
-      - name: Download all build logs
-        if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        uses: actions/download-artifact@v7
-        with:
-          pattern: build-log-*
-          path: build-logs
-
-      - name: Combine build logs
-        if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        id: get_output
-        run: |
-          DELIM="$(openssl rand -hex 8)"
-          echo "BUILD_LOG<<${DELIM}" >> "$GITHUB_OUTPUT"
-          ./extras.sh combine-logs build-logs >> "$GITHUB_OUTPUT"
-          echo "${DELIM}" >> "$GITHUB_OUTPUT"
-
-      - name: Upload APKs to release
-        if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        uses: svenstaro/upload-release-action@v2
-        with:
-          body: ${{ steps.get_output.outputs.BUILD_LOG }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: all-apks/*.apk
-          release_name: ${{ steps.version.outputs.version }}
-          tag: ${{ steps.version.outputs.version }}
-          prerelease: ${{ inputs.build_mode == 'dev' }}
-          file_glob: true
-          overwrite: true
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+      with:
+        fetch-depth: 0
+    - name: Check if any artifacts exist
+      id: check_artifacts
+      continue-on-error: true
+      run: |
+        if gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+          --jq '.artifacts[] | select(.name | startswith("apks-")) | .name' | grep -q .; then
+          echo "has_artifacts=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_artifacts=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Prepare version
+      if: steps.check_artifacts.outputs.has_artifacts == 'true'
+      id: version
+      run: |
+        VER=$(date +%y.%m.%d)
+        if [ "${{ inputs.build_mode }}" == "dev" ]; then
+          VER="${VER}-pre"
+        fi
+        echo "version=${VER}" >> $GITHUB_OUTPUT
+    - name: Download all APKs
+      if: steps.check_artifacts.outputs.has_artifacts == 'true'
+      uses: actions/download-artifact@v7
+      with:
+        pattern: apks-*
+        path: all-apks
+        merge-multiple: true
+    - name: Download all build logs
+      if: steps.check_artifacts.outputs.has_artifacts == 'true'
+      uses: actions/download-artifact@v7
+      with:
+        pattern: build-log-*
+        path: build-logs
+    - name: Combine build logs
+      if: steps.check_artifacts.outputs.has_artifacts == 'true'
+      id: get_output
+      run: |
+        DELIM="$(openssl rand -hex 8)"
+        echo "BUILD_LOG<<${DELIM}" >> "$GITHUB_OUTPUT"
+        ./extras.sh combine-logs build-logs >> "$GITHUB_OUTPUT"
+        echo "${DELIM}" >> "$GITHUB_OUTPUT"
+    - name: Upload APKs to release
+      if: steps.check_artifacts.outputs.has_artifacts == 'true'
+      uses: svenstaro/upload-release-action@v2.11.3
+      with:
+        body: ${{ steps.get_output.outputs.BUILD_LOG }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: all-apks/*.apk
+        release_name: ${{ steps.version.outputs.version }}
+        tag: ${{ steps.version.outputs.version }}
+        prerelease: ${{ inputs.build_mode == 'dev' }}
+        file_glob: true
+        overwrite: true

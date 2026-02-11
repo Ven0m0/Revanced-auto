@@ -1,239 +1,214 @@
 name: Lint and Format
-
 permissions:
   contents: read
   pull-requests: write
-
 on:
   push:
     branches: [main, master]
     paths:
-      - '**.py'
-      - '**.sh'
-      - '**.yml'
-      - '**.yaml'
-      - '**.toml'
-      - '**.json'
-      - '**.html'
-      - '.github/workflows/lint.yml'
-      - 'pyproject.toml'
-      - 'biome.json'
-      - '.yamllint.yml'
-      - '.taplo.toml'
-      - '.shellcheckrc'
+    - '**.py'
+    - '**.sh'
+    - '**.yml'
+    - '**.yaml'
+    - '**.toml'
+    - '**.json'
+    - '**.html'
+    - .github/workflows/lint.yml
+    - pyproject.toml
+    - biome.json
+    - .yamllint.yml
+    - .taplo.toml
+    - .shellcheckrc
   pull_request:
     branches: [main, master]
   workflow_dispatch:
-
 concurrency:
   group: lint-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
-
 jobs:
   lint-python:
     name: Python (Ruff)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Cache Ruff
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ruff
-          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-ruff-
-
-      - name: Install Ruff
-        run: pip install ruff
-
-      - name: Run Ruff Linter
-        run: ruff check --output-format=github .
-        continue-on-error: true
-
-      - name: Run Ruff Formatter Check
-        run: ruff format --check .
-        continue-on-error: true
-
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+    - name: Set up Python
+      uses: actions/setup-python@v6.2.0
+      with:
+        python-version: '3.11'
+        cache: pip
+    - name: Cache Ruff
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/ruff
+        key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-ruff-
+    - name: Install Ruff
+      run: pip install ruff
+    - name: Run Ruff Linter
+      run: ruff check --output-format=github .
+      continue-on-error: true
+    - name: Run Ruff Formatter Check
+      run: ruff format --check .
+      continue-on-error: true
   lint-shell:
     name: Shell Scripts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Cache linting tools
-        uses: actions/cache@v4
-        id: cache-tools
-        with:
-          path: |
-            /usr/local/bin/shfmt
-            /usr/local/bin/shellharden
-          key: ${{ runner.os }}-shell-tools-v3.10.0-v4.3.1
-
-      - name: Install ShellCheck
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck
-
-      - name: Install shfmt
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/shfmt \
-            "https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64"
-          sudo chmod +x /usr/local/bin/shfmt
-
-      - name: Install shellharden
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: |
-          wget -qO- "https://github.com/anordal/shellharden/releases/download/v4.3.1/shellharden-x86_64-unknown-linux-gnu.tar.gz" | tar xz
-          sudo mv shellharden /usr/local/bin/shellharden
-          sudo chmod +x /usr/local/bin/shellharden
-
-      - name: Run ShellCheck
-        run: |
-          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
-            | xargs shellcheck --color=always
-        continue-on-error: true
-
-      - name: Run shfmt
-        run: |
-          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
-            | xargs shfmt -d -i 2 -bn -ci -sr
-        continue-on-error: true
-
-      - name: Run shellharden
-        run: |
-          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
-            | xargs shellharden --check
-        continue-on-error: true
-
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+    - name: Setup local bin
+      run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Cache linting tools
+      uses: actions/cache@v5
+      id: cache-tools
+      with:
+        path: ~/.local/bin
+        key: ${{ runner.os }}-shell-tools-sc0.10.0-shfmt3.10.0-sh4.3.1
+    - name: Install ShellCheck
+      if: steps.cache-tools.outputs.cache-hit != 'true'
+      run: |
+        wget -qO- "https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz" \
+          | tar xJ --strip-components=1 -C "$HOME/.local/bin" shellcheck-v0.10.0/shellcheck
+        chmod +x "$HOME/.local/bin/shellcheck"
+    - name: Install shfmt
+      if: steps.cache-tools.outputs.cache-hit != 'true'
+      run: |
+        wget -qO "$HOME/.local/bin/shfmt" \
+          "https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64"
+        chmod +x "$HOME/.local/bin/shfmt"
+    - name: Install shellharden
+      if: steps.cache-tools.outputs.cache-hit != 'true'
+      run: |
+        wget -qO- "https://github.com/anordal/shellharden/releases/download/v4.3.1/shellharden-x86_64-unknown-linux-gnu.tar.gz" \
+          | tar xz -C "$HOME/.local/bin"
+        chmod +x "$HOME/.local/bin/shellharden"
+    - name: Run ShellCheck
+      run: |
+        find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
+          | xargs shellcheck --color=always
+      continue-on-error: true
+    - name: Run shfmt
+      run: |
+        find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
+          | xargs shfmt -d -i 2 -bn -ci -sr
+      continue-on-error: true
+    - name: Run shellharden
+      run: |
+        find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
+          | xargs shellharden --check
+      continue-on-error: true
   lint-yaml:
     name: YAML
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Cache yamlfmt
-        uses: actions/cache@v4
-        id: cache-yamlfmt
-        with:
-          path: /usr/local/bin/yamlfmt
-          key: ${{ runner.os }}-yamlfmt-v0.14.0
-
-      - name: Install yamllint
-        run: pip install yamllint
-
-      - name: Install yamlfmt
-        if: steps.cache-yamlfmt.outputs.cache-hit != 'true'
-        run: |
-          wget -qO- "https://github.com/google/yamlfmt/releases/download/v0.14.0/yamlfmt_0.14.0_Linux_x86_64.tar.gz" | tar xz
-          sudo mv yamlfmt /usr/local/bin/
-          sudo chmod +x /usr/local/bin/yamlfmt
-
-      - name: Run yamllint
-        run: |
-          find . \( -name "*.yml" -o -name "*.yaml" \) -not -path "./.git/*" -not -path "./build/*" \
-            | xargs yamllint
-        continue-on-error: true
-
-      - name: Run yamlfmt
-        run: yamlfmt -dry .
-        continue-on-error: true
-
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+    - name: Set up Python
+      uses: actions/setup-python@v6.2.0
+      with:
+        python-version: '3.11'
+        cache: pip
+    - name: Setup local bin
+      run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Cache yamlfmt
+      uses: actions/cache@v5
+      id: cache-yamlfmt
+      with:
+        path: ~/.local/bin/yamlfmt
+        key: ${{ runner.os }}-yamlfmt-v0.14.0
+    - name: Install yamllint
+      run: pip install yamllint
+    - name: Install yamlfmt
+      if: steps.cache-yamlfmt.outputs.cache-hit != 'true'
+      run: |
+        wget -qO- "https://github.com/google/yamlfmt/releases/download/v0.14.0/yamlfmt_0.14.0_Linux_x86_64.tar.gz" \
+          | tar xz -C "$HOME/.local/bin"
+        chmod +x "$HOME/.local/bin/yamlfmt"
+    - name: Run yamllint
+      run: |
+        find . \( -name "*.yml" -o -name "*.yaml" \) -not -path "./.git/*" -not -path "./build/*" \
+          | xargs yamllint
+      continue-on-error: true
+    - name: Run yamlfmt
+      run: yamlfmt -dry .
+      continue-on-error: true
   lint-toml:
     name: TOML (Taplo)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Cache Taplo
-        uses: actions/cache@v4
-        id: cache-taplo
-        with:
-          path: /usr/local/bin/taplo
-          key: ${{ runner.os }}-taplo-v0.9.3
-
-      - name: Install Taplo
-        if: steps.cache-taplo.outputs.cache-hit != 'true'
-        run: |
-          wget -qO- "https://github.com/tamasfe/taplo/releases/download/0.9.3/taplo-linux-x86_64.gz" | \
-            gunzip > /usr/local/bin/taplo
-          sudo chmod +x /usr/local/bin/taplo
-
-      - name: Run Taplo Format Check
-        run: taplo format --check
-        continue-on-error: true
-
-      - name: Run Taplo Lint
-        run: taplo lint
-        continue-on-error: true
-
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+    - name: Setup local bin
+      run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Cache Taplo
+      uses: actions/cache@v5
+      id: cache-taplo
+      with:
+        path: ~/.local/bin/taplo
+        key: ${{ runner.os }}-taplo-v0.9.3
+    - name: Install Taplo
+      if: steps.cache-taplo.outputs.cache-hit != 'true'
+      run: |
+        wget -qO- "https://github.com/tamasfe/taplo/releases/download/0.9.3/taplo-linux-x86_64.gz" \
+          | gunzip > "$HOME/.local/bin/taplo"
+        chmod +x "$HOME/.local/bin/taplo"
+    - name: Run Taplo Format Check
+      run: taplo format --check
+      continue-on-error: true
+    - name: Run Taplo Lint
+      run: taplo lint
+      continue-on-error: true
   lint-web:
     name: Web (Biome)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Cache Biome
-        uses: actions/cache@v4
-        id: cache-biome
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-biome-2.3.11
-
-      - name: Install Biome
-        if: steps.cache-biome.outputs.cache-hit != 'true'
-        run: npm install -g @biomejs/biome@2.3.11
-
-      - name: Run Biome
-        run: biome check --reporter=github .
-        continue-on-error: true
-
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+    - name: Setup local bin
+      run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Cache Biome
+      uses: actions/cache@v5
+      id: cache-biome
+      with:
+        path: ~/.local/bin/biome
+        key: ${{ runner.os }}-biome-v2.3.11
+    - name: Install Biome
+      if: steps.cache-biome.outputs.cache-hit != 'true'
+      run: |
+        wget -qO "$HOME/.local/bin/biome" \
+          "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.3.11/biome-linux-x64"
+        chmod +x "$HOME/.local/bin/biome"
+    - name: Run Biome
+      run: biome check --reporter=github .
+      continue-on-error: true
   summary:
     name: Lint Summary
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 5
     needs: [lint-python, lint-shell, lint-yaml, lint-toml, lint-web]
     if: always()
     steps:
-      - name: Generate Summary
-        run: |
-          echo "## 🔍 Lint Results Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Python (Ruff) | ${{ needs.lint-python.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Shell Scripts | ${{ needs.lint-shell.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| YAML | ${{ needs.lint-yaml.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| TOML (Taplo) | ${{ needs.lint-toml.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Web (Biome) | ${{ needs.lint-web.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Run \`make format\` locally to auto-fix issues." >> $GITHUB_STEP_SUMMARY
+    - name: Generate Summary
+      run: |
+        echo "## Lint Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Python (Ruff) | ${{ needs.lint-python.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Shell Scripts | ${{ needs.lint-shell.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| YAML | ${{ needs.lint-yaml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| TOML (Taplo) | ${{ needs.lint-toml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Web (Biome) | ${{ needs.lint-web.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Run \`./scripts/lint.sh\` locally to auto-fix issues." >> $GITHUB_STEP_SUMMARY

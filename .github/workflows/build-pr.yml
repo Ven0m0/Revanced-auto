@@ -3,22 +3,19 @@ permissions:
   contents: read
   pull-requests: write
   actions: read
-
 on:
   pull_request:
     branches:
-      - main
-      - master
+    - main
+    - master
     paths:
-      - "**.sh"
-      - "**.toml"
-      - "scripts/**"
-      - ".github/workflows/**"
-
+    - '**.sh'
+    - '**.toml'
+    - scripts/**
+    - .github/workflows/**
 concurrency:
   group: pr-validation-${{ github.event.pull_request.number }}
   cancel-in-progress: true
-
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -27,211 +24,184 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Checkout PR
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: "temurin"
-          java-version: "21"
-
-      - name: Check prerequisites
-        id: prereq
-        run: |
-          echo "## Prerequisites Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Check for required tools
-          MISSING=""
-          for tool in jq zip curl java; do
-            if command -v $tool &> /dev/null; then
-              echo "✓ $tool" >> $GITHUB_STEP_SUMMARY
+    - name: Checkout PR
+      uses: actions/checkout@v6.0.2
+      with:
+        fetch-depth: 0
+    - name: Setup Java
+      uses: actions/setup-java@v5.2.0
+      with:
+        distribution: temurin
+        java-version: '21'
+    - name: Check prerequisites
+      id: prereq
+      run: |
+        echo "## Prerequisites Check" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        # Check for required tools
+        MISSING=""
+        for tool in jq zip curl java; do
+          if command -v $tool &> /dev/null; then
+            echo "✓ $tool" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✗ $tool (missing)" >> $GITHUB_STEP_SUMMARY
+            MISSING="$MISSING $tool"
+          fi
+        done
+        if [[ -n "$MISSING" ]]; then
+          echo "Missing tools:$MISSING"
+          exit 1
+        fi
+        # Check Java version
+        JAVA_VER=$(java -version 2>&1 | head -n 1 | awk -F '"' '{print $2}' | cut -d'.' -f1)
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Java version: $JAVA_VER" >> $GITHUB_STEP_SUMMARY
+        if [[ $JAVA_VER -lt 21 ]]; then
+          echo "Java 21+ required"
+          exit 1
+        fi
+    - name: Validate bash syntax
+      id: syntax
+      run: |
+        echo "## Bash Syntax Validation" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        FAILED=0
+        for script in scripts/lib/*.sh build.sh extras.sh utils.sh check-env.sh; do
+          if [[ -f "$script" ]]; then
+            if bash -n "$script" 2>&1; then
+              echo "✓ $script" >> $GITHUB_STEP_SUMMARY
             else
-              echo "✗ $tool (missing)" >> $GITHUB_STEP_SUMMARY
-              MISSING="$MISSING $tool"
+              echo "✗ $script - SYNTAX ERROR" >> $GITHUB_STEP_SUMMARY
+              bash -n "$script" 2>&1 | tee -a $GITHUB_STEP_SUMMARY
+              FAILED=1
             fi
-          done
-
-          if [[ -n "$MISSING" ]]; then
-            echo "Missing tools:$MISSING"
+          fi
+        done
+        if [[ $FAILED -eq 1 ]]; then
+          echo ""
+          echo "❌ Syntax validation failed!" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo ""
+          echo "✅ All scripts passed syntax validation" >> $GITHUB_STEP_SUMMARY
+        fi
+    - name: Run automated tests
+      id: tests
+      if: success()
+      run: |
+        echo "## Automated Tests" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [[ -f "test-multi-source.sh" ]]; then
+          if ./test-multi-source.sh 2>&1 | tee test-output.txt; then
+            echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -20 test-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -30 test-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
-          # Check Java version
-          JAVA_VER=$(java -version 2>&1 | head -n 1 | awk -F '"' '{print $2}' | cut -d'.' -f1)
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Java version: $JAVA_VER" >> $GITHUB_STEP_SUMMARY
-          if [[ $JAVA_VER -lt 21 ]]; then
-            echo "Java 21+ required"
+        else
+          echo "⚠️  No test suite found (test-multi-source.sh)" >> $GITHUB_STEP_SUMMARY
+        fi
+    - name: Setup Android SDK
+      if: success()
+      uses: android-actions/setup-android@v3.2.2
+    - name: Setup build environment
+      if: success()
+      uses: ./.github/actions/setup-environment
+    - name: Test build (single app)
+      id: test_build
+      if: success()
+      run: |
+        echo "## Test Build" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        # Find first enabled app for testing
+        TEST_APP=$(jq -r 'to_entries[] | select(.value | type == "object") | select(.value.enabled != false) | .key' config.toml 2>/dev/null | head -1 || echo "")
+        if [[ -z "$TEST_APP" ]]; then
+          echo "⚠️  No enabled apps found in config.toml - skipping test build" >> $GITHUB_STEP_SUMMARY
+          exit 0
+        fi
+        echo "Testing build with app: **$TEST_APP**" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        # Generate config for test app
+        ./extras.sh separate-config config.toml "$TEST_APP" test_config.toml
+        echo "Test configuration:" >> $GITHUB_STEP_SUMMARY
+        echo '```toml' >> $GITHUB_STEP_SUMMARY
+        cat test_config.toml >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        # Try to build (will likely fail without keystore, but validates pipeline)
+        echo "Note: Build will validate pipeline but may fail at signing step (expected in PR)" >> $GITHUB_STEP_SUMMARY
+        if timeout 600 ./build.sh test_config.toml 2>&1 | tee build-output.txt; then
+          echo "✅ Build completed successfully" >> $GITHUB_STEP_SUMMARY
+        else
+          # Check if it's just the signing step that failed (expected)
+          if grep -q "Signing APK" build-output.txt || grep -q "KEYSTORE_PASSWORD" build-output.txt; then
+            echo "⚠️  Build reached signing step (expected to fail in PR without secrets)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Build failed before signing step" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 build-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
-      - name: Validate bash syntax
-        id: syntax
-        run: |
-          echo "## Bash Syntax Validation" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          FAILED=0
-          for script in scripts/lib/*.sh build.sh extras.sh utils.sh check-env.sh; do
-            if [[ -f "$script" ]]; then
-              if bash -n "$script" 2>&1; then
-                echo "✓ $script" >> $GITHUB_STEP_SUMMARY
-              else
-                echo "✗ $script - SYNTAX ERROR" >> $GITHUB_STEP_SUMMARY
-                bash -n "$script" 2>&1 | tee -a $GITHUB_STEP_SUMMARY
-                FAILED=1
-              fi
-            fi
-          done
-
-          if [[ $FAILED -eq 1 ]]; then
-            echo ""
-            echo "❌ Syntax validation failed!" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          else
-            echo ""
-            echo "✅ All scripts passed syntax validation" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Run automated tests
-        id: tests
-        if: success()
-        run: |
-          echo "## Automated Tests" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [[ -f "test-multi-source.sh" ]]; then
-            if ./test-multi-source.sh 2>&1 | tee test-output.txt; then
-              echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              tail -20 test-output.txt >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            else
-              echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              tail -30 test-output.txt >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              exit 1
-            fi
-          else
-            echo "⚠️  No test suite found (test-multi-source.sh)" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Setup Android SDK
-        if: success()
-        uses: android-actions/setup-android@v3
-
-      - name: Setup build environment
-        if: success()
-        uses: ./.github/actions/setup-environment
-
-      - name: Test build (single app)
-        id: test_build
-        if: success()
-        run: |
-          echo "## Test Build" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Find first enabled app for testing
-          TEST_APP=$(jq -r 'to_entries[] | select(.value | type == "object") | select(.value.enabled != false) | .key' config.toml 2>/dev/null | head -1 || echo "")
-
-          if [[ -z "$TEST_APP" ]]; then
-            echo "⚠️  No enabled apps found in config.toml - skipping test build" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          echo "Testing build with app: **$TEST_APP**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Generate config for test app
-          ./extras.sh separate-config config.toml "$TEST_APP" test_config.toml
-
-          echo "Test configuration:" >> $GITHUB_STEP_SUMMARY
-          echo '```toml' >> $GITHUB_STEP_SUMMARY
-          cat test_config.toml >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Try to build (will likely fail without keystore, but validates pipeline)
-          echo "Note: Build will validate pipeline but may fail at signing step (expected in PR)" >> $GITHUB_STEP_SUMMARY
-          if timeout 600 ./build.sh test_config.toml 2>&1 | tee build-output.txt; then
-            echo "✅ Build completed successfully" >> $GITHUB_STEP_SUMMARY
-          else
-            # Check if it's just the signing step that failed (expected)
-            if grep -q "Signing APK" build-output.txt || grep -q "KEYSTORE_PASSWORD" build-output.txt; then
-              echo "⚠️  Build reached signing step (expected to fail in PR without secrets)" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "❌ Build failed before signing step" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              tail -50 build-output.txt >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              exit 1
-            fi
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        continue-on-error: true
-
-      - name: Comment on PR
-        if: always()
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const summary = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
-
-            const comment = `## 🤖 PR Validation Results
-
-            ${summary}
-
-            ---
-            <sub>Automated validation from ReVanced Builder CI</sub>`;
-
-            // Find existing bot comment
-            const {data: comments} = await github.rest.issues.listComments({
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      continue-on-error: true
+    - name: Comment on PR
+      if: always()
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
+          const comment = `## 🤖 PR Validation Results
+          ${summary}
+          ---
+          <sub>Automated validation from ReVanced Builder CI</sub>`;
+          // Find existing bot comment
+          const {data: comments} = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('PR Validation Results')
+          );
+          if (botComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
+              body: comment
             });
-
-            const botComment = comments.find(comment =>
-              comment.user.type === 'Bot' &&
-              comment.body.includes('PR Validation Results')
-            );
-
-            if (botComment) {
-              // Update existing comment
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: comment
-              });
-            } else {
-              // Create new comment
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: comment
-              });
-            }
-
-      - name: Validation summary
-        if: always()
-        run: |
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "PR Validation Complete"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "Results have been posted as a PR comment."
-          echo "Review the full output in the Actions tab."
+          }
+    - name: Validation summary
+      if: always()
+      run: |
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "PR Validation Complete"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Results have been posted as a PR comment."
+        echo "Review the full output in the Actions tab."

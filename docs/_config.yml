@@ -1,31 +1,27 @@
 # GitHub Pages Configuration
 # Serves from docs/ directory with Jekyll
-
 theme: jekyll-theme-cayman
 title: ReVanced Builder
 description: >-
-  Automated APK patching system for ReVanced and RVX. Visual configuration generator with app catalog, interactive patch selector,
+  Automated APK patching system for ReVanced and RVX. Visual configuration generator
+  with app catalog, interactive patch selector,
   build caching, changelog automation, and dependency monitoring.
 show_downloads: false
 # GitHub metadata
 github:
   is_project_page: true
   repository_url: https://github.com/Ven0m0/Revanced-auto
-
 # Plugins
 plugins:
-  - jekyll-relative-links
-
+- jekyll-relative-links
 # Markdown settings
 markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
-
 # Exclude files from site build
 exclude:
-  - README.md
-  - LICENSE
-
+- README.md
+- LICENSE
 timezone: UTC
 encoding: utf-8

@@ -11,32 +11,24 @@
 # GLOBAL BUILD SETTINGS
 # =============================================================================
 # Parallel Build Jobs
-parallel-jobs = 1
-
+parallel-jobs = 0
 # ReVanced Integrations Checks
 remove-rv-integrations-checks = true
-
 # Compression Level
 compression-level = 9
-
 # Library Stripping (riplib)
 riplib = true
-
 # Default Architecture
 arch = "arm64-v8a"
-
 # Build Mode
 build-mode = "apk"
-
 # Default Patches Version
 # - latest: Most recent stable release
 # - dev: Latest development version (may be unstable)
 patches-version = "dev"
-
 # Default CLI Version
 # ReVanced CLI version: "latest", "dev", or specific version tag
 cli-version = "dev"
-
 # Default App Version
 # App version selection: "auto", "latest", "beta", or specific version
 # - auto: Automatically select version compatible with patches
@@ -81,7 +73,6 @@ excluded-patches = "'Enable debug logging'"
 uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
-
 # YouTube Extended (RVX)
 [YouTube-Extended]
 enabled = true
@@ -104,7 +95,6 @@ excluded-patches = "'Enable debug logging'"
 uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
-
 # Spotify
 [Spotify]
 enabled = false
@@ -116,7 +106,6 @@ patcher-args = [
   "Custom branding name for Spotify",
   "-OappName=RVX Spotify",
 ]
-
 # Reddit
 [Reddit]
 enabled = false
@@ -128,7 +117,6 @@ patcher-args = [
   "-OappName=RVX Reddit",
 ]
 dpi = "320-480dpi"
-
 # X (Twitter)
 [X]
 enabled = false
@@ -138,17 +126,14 @@ patches-source = "crimera/piko"
 rv-brand = "Piko"
 included-patches = "'Dynamic color'"
 dpi = "120-640dpi"
-
 [TikTok]
 enabled = false
 included-patches = "'SIM spoof'"
-
 [Instagram]
 enabled = false
 apkmirror-dlurl = "https://apkmirror.com/apk/instagram/instagram-instagram/"
 included-patches = "'Hide ads' 'Sanitize sharing links' 'Disable signature check'"
 exclusive-patches = true
-
 [GooglePhotos]
 enabled = false
 version = "auto"

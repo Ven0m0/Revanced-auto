@@ -5,22 +5,20 @@ permissions:
 on:
   schedule:
     # Daily at 06:00 UTC
-    - cron: "0 6 * * *"
+  - cron: 0 6 * * *
   workflow_dispatch:
     inputs:
       build_mode:
-        description: "Build target"
+        description: Build target
         required: false
         default: stable
         type: choice
         options:
-          - stable
-          - dev
-
+        - stable
+        - dev
 concurrency:
   group: daily-build-${{ github.ref }}
   cancel-in-progress: false
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -29,48 +27,43 @@ jobs:
       actions: read
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Should build?
-        id: should_build
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if ! git checkout origin/update build.md 2>/dev/null; then
-            echo "First time building!"
+    - name: Checkout
+      uses: actions/checkout@v6.0.2
+      with:
+        fetch-depth: 0
+    - name: Should build?
+      id: should_build
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if ! git checkout origin/update build.md 2>/dev/null; then
+          echo "First time building!"
+          echo "SHOULD_BUILD=1" >> $GITHUB_OUTPUT
+        else
+          UPDATE_CFG=$(./build.sh config.toml --config-update)
+          if [ "$UPDATE_CFG" ]; then
+            echo "Updates available: $UPDATE_CFG"
             echo "SHOULD_BUILD=1" >> $GITHUB_OUTPUT
           else
-            UPDATE_CFG=$(./build.sh config.toml --config-update)
-            if [ "$UPDATE_CFG" ]; then
-              echo "Updates available: $UPDATE_CFG"
-              echo "SHOULD_BUILD=1" >> $GITHUB_OUTPUT
-            else
-              echo "No updates needed"
-              echo "SHOULD_BUILD=0" >> $GITHUB_OUTPUT
-            fi
+            echo "No updates needed"
+            echo "SHOULD_BUILD=0" >> $GITHUB_OUTPUT
           fi
-
-      - name: Clear older runs
-        if: steps.should_build.outputs.SHOULD_BUILD == '1'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh run list -L400 --json databaseId -q '.[].databaseId' | tail -n+10 | \
-            xargs -I ID gh api "repos/$GITHUB_REPOSITORY/actions/runs/ID" -X DELETE || true
-
+        fi
+    - name: Clear older runs
+      if: steps.should_build.outputs.SHOULD_BUILD == '1'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh run list -L400 --json databaseId -q '.[].databaseId' | tail -n+10 | \
+          xargs -I ID gh api "repos/$GITHUB_REPOSITORY/actions/runs/ID" -X DELETE || true
     outputs:
       SHOULD_BUILD: ${{ steps.should_build.outputs.SHOULD_BUILD }}
-
   build:
     needs: check
     if: ${{ needs.check.outputs.SHOULD_BUILD == '1' }}
     uses: ./.github/workflows/build.yml
     with:
-      from_ci: true
       build_mode: ${{ inputs.build_mode || 'stable' }}
     secrets: inherit
     permissions:

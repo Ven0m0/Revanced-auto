@@ -24,7 +24,6 @@ generate_data() {
   html_content+="</body></html>"
   vers_list="${vers_list%$'\n'}"
 }
-
 original_logic() {
   local vers="$1"
   local apkm_resp="$2"
@@ -41,7 +40,6 @@ original_logic() {
     echo "$vers"
   fi
 }
-
 corrected_loop_logic() {
   local vers="$1"
   local apkm_resp="$2"
@@ -58,7 +56,6 @@ corrected_loop_logic() {
     echo "$vers"
   fi
 }
-
 optimized_logic() {
   local vers="$1"
   local apkm_resp="$2"
@@ -70,17 +67,13 @@ optimized_logic() {
       # Escape dots
       pattern=$(echo "$vers" | sed 's/\./\\./g' | tr '\n' '|')
       pattern="${pattern%|}"
-
       # Debug: print pattern to stderr
       # echo "Pattern: $pattern" >&2
-
       local bad_vers
       # Use grep to find matches
       bad_vers=$(grep -Eoi "(${pattern})[[:space:]]+(beta|alpha)" <<< "$apkm_resp" | awk '{print tolower($1)}' | sort -u)
-
       # Debug: print bad_vers
       # echo "Bad vers: $bad_vers" >&2
-
       if [[ -n "$bad_vers" ]]; then
         vers=$(grep -vxFf <(echo "$bad_vers") <<< "$vers" || true)
       fi
@@ -90,14 +83,12 @@ optimized_logic() {
     echo "$vers"
   fi
 }
-
 measure_time() {
   local start
   start=$(date +%s%N 2> /dev/null || date +%s)
   # Return start time
   echo "$start"
 }
-
 calc_duration() {
   local start=$1
   local end=$2
@@ -109,25 +100,20 @@ calc_duration() {
     echo "$((end - start)) s"
   fi
 }
-
 run_benchmark() {
   local name="$1"
   local cmd="$2"
   local vers_in="$3"
   local html_in="$4"
-
   local start=$(measure_time)
   local output
   output=$("$cmd" "$vers_in" "$html_in")
   local end=$(measure_time)
-
   local duration=$(calc_duration "$start" "$end")
   local count=$(echo "$output" | wc -w)
-
   echo "Bench: $name"
   echo "Time:  $duration"
   echo "Count: $count items"
-
   if [ "$name" == "optimized" ]; then
     # Check what was removed
     # diff based check
@@ -136,21 +122,16 @@ run_benchmark() {
   echo ""
   printf -v "${name}_output" '%s' "$output"
 }
-
 main() {
   generate_data
-
   run_benchmark "original" "original_logic" "$vers_list" "$html_content"
   run_benchmark "corrected" "corrected_loop_logic" "$vers_list" "$html_content"
   run_benchmark "optimized" "optimized_logic" "$vers_list" "$html_content"
-
   local orig_count=$(echo "$original_output" | wc -w)
   local corr_count=$(echo "$corrected_output" | wc -w)
   local opt_count=$(echo "$optimized_output" | wc -w)
-
   if [[ "$corr_count" -ne "$opt_count" ]]; then
     echo "FAIL: Corrected ($corr_count) and Optimized ($opt_count) counts differ!"
-
     # Debugging diff
     echo "Diff:"
     diff <(echo "$corrected_output" | tr ' ' '\n' | sort) <(echo "$optimized_output" | tr ' ' '\n' | sort)
@@ -158,5 +139,4 @@ main() {
     echo "PASS: Counts match."
   fi
 }
-
 main

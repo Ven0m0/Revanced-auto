@@ -2,12 +2,10 @@
 set -euo pipefail
 # Cache management library for ReVanced Builder
 # Provides intelligent caching with validation and cleanup
-
 # Cache configuration
 readonly CACHE_DIR="${CACHE_DIR:-temp}"
 readonly DEFAULT_CACHE_TTL=86400 # 24 hours in seconds
 readonly CACHE_INDEX_FILE="$CACHE_DIR/.cache-index.json"
-
 # Cache metadata structure (JSON):
 # {
 #   "path/to/file": {
@@ -19,101 +17,81 @@ readonly CACHE_INDEX_FILE="$CACHE_DIR/.cache-index.json"
 #     "ttl": seconds
 #   }
 # }
-
 # Initialize cache system
 cache_init() {
   local cache_dir=${1:-$CACHE_DIR}
-
   # Create cache directory
   mkdir -p "$cache_dir"
-
   # Initialize index file if it doesn't exist
   if [[ ! -f "$CACHE_INDEX_FILE" ]]; then
     echo "{}" > "$CACHE_INDEX_FILE"
     log_debug "Created cache index: $CACHE_INDEX_FILE"
   fi
-
   log_debug "Cache initialized: $cache_dir"
 }
-
 # Check if cached file is valid
 # Returns 0 if valid, 1 otherwise
 cache_is_valid() {
   local file_path=$1
   local ttl=${2:-$DEFAULT_CACHE_TTL}
-
   # Check if file exists
   if [[ ! -f "$file_path" ]]; then
     log_debug "Cache miss: file not found - $file_path"
     return 1
   fi
-
   # Check if index exists
   if [[ ! -f "$CACHE_INDEX_FILE" ]]; then
     log_debug "Cache miss: index not found"
     return 1
   fi
-
   # Get cache entry from index
   local cache_entry
   cache_entry=$(jq -r --arg path "$file_path" '.[$path] // empty' "$CACHE_INDEX_FILE" 2> /dev/null)
-
   if [[ -z "$cache_entry" || "$cache_entry" == "null" ]]; then
     log_debug "Cache miss: no index entry for $file_path"
     return 1
   fi
-
   # Check TTL
   local created
   created=$(echo "$cache_entry" | jq -r '.created // 0')
   local now
   now=$(date +%s)
   local age=$((now - created))
-
   # Use TTL from cache entry if available, otherwise use provided/default TTL
   local entry_ttl
   entry_ttl=$(echo "$cache_entry" | jq -r '.ttl // 0')
   if [[ "$entry_ttl" -gt 0 ]]; then
     ttl=$entry_ttl
   fi
-
   if [[ $age -gt $ttl ]]; then
     log_debug "Cache expired: $file_path (age: ${age}s, ttl: ${ttl}s)"
     return 1
   fi
-
   # Verify checksum if available
   local stored_checksum
   stored_checksum=$(echo "$cache_entry" | jq -r '.checksum // ""')
-
   if [[ -n "$stored_checksum" ]]; then
     local current_checksum
     current_checksum=$(sha256sum "$file_path" | cut -d' ' -f1)
-
     if [[ "$current_checksum" != "$stored_checksum" ]]; then
       log_warn "Cache integrity check failed: $file_path"
       return 1
     fi
   fi
-
   log_debug "Cache hit: $file_path"
   return 0
 }
-
 # Add or update cache entry
 cache_put() {
   local file_path=$1
   local source_url=${2:-""}
   local ttl=${3:-$DEFAULT_CACHE_TTL}
-
   if [[ ! -f "$file_path" ]]; then
     epr "Cannot cache non-existent file: $file_path"
     return 1
   fi
-
   # Initialize cache if needed
   cache_init
-
   # Get file metadata
   local file_size
   file_size=$(stat -c%s "$file_path" 2> /dev/null || stat -f%z "$file_path" 2> /dev/null)
@@ -121,7 +99,6 @@ cache_put() {
   checksum=$(sha256sum "$file_path" | cut -d' ' -f1)
   local now
   now=$(date +%s)
-
   # Create cache entry
   local cache_entry
   cache_entry=$(jq -n \
@@ -139,61 +116,48 @@ cache_put() {
 			url: $url,
 			ttl: ($ttl | tonumber)
 		}')
-
   # Update index
   local temp_index
   temp_index=$(mktemp)
   jq --arg path "$file_path" --argjson entry "$cache_entry" \
     '.[$path] = $entry' "$CACHE_INDEX_FILE" > "$temp_index"
   mv "$temp_index" "$CACHE_INDEX_FILE"
-
   log_debug "Cached: $file_path (size: $file_size, ttl: ${ttl}s)"
   return 0
 }
-
 # Get cache statistics
 cache_stats() {
   if [[ ! -f "$CACHE_INDEX_FILE" ]]; then
     echo "Cache empty or not initialized"
     return 0
   fi
-
   local total_entries
   total_entries=$(jq 'length' "$CACHE_INDEX_FILE")
-
   local total_size
   total_size=$(jq '[.[] | .size] | add // 0' "$CACHE_INDEX_FILE")
-
   local now
   now=$(date +%s)
-
   # Count expired entries
   local expired_count
   expired_count=$(jq --arg now "$now" \
     '[.[] | select((.created + .ttl) < ($now | tonumber))] | length' \
     "$CACHE_INDEX_FILE")
-
   echo "Cache Statistics:"
   echo "  Total entries: $total_entries"
   echo "  Total size: $(numfmt --to=iec-i --suffix=B "$total_size" 2> /dev/null || echo "${total_size} bytes")"
   echo "  Expired entries: $expired_count"
   echo "  Cache directory: $CACHE_DIR"
 }
-
 # Clean expired cache entries
 cache_cleanup() {
   local force=${1:-false}
-
   if [[ ! -f "$CACHE_INDEX_FILE" ]]; then
     log_info "No cache to clean"
     return 0
   fi
-
   local now
   now=$(date +%s)
-
   log_info "Cleaning expired cache entries..."
-
   # Get list of expired entries (keys) as a JSON array and save to file
   # Using a file avoids ARG_MAX limits with large caches
   local temp_keys_file
@@ -203,11 +167,9 @@ cache_cleanup() {
   jq -c --arg now "$now" \
     '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
     "$CACHE_INDEX_FILE" > "$temp_keys_file" || abort "Failed to generate expired keys list."
-
   # Check if there are any expired entries
   local count
   count=$(jq 'length' "$temp_keys_file")
-
   if [[ $count -gt 0 ]]; then
     # Remove files
     # Using process substitution and while loop for better portability (vs mapfile)
@@ -219,7 +181,6 @@ cache_cleanup() {
       fi
       ((removed_count++))
     done < <(jq -r '.[]' "$temp_keys_file")
-
     # Batch update index: remove all expired keys in one go
     # This is significantly faster than removing them one by one
     local temp_index
@@ -230,18 +191,14 @@ cache_cleanup() {
     jq --slurpfile keys_wrapper "$temp_keys_file" \
       'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" > "$temp_index" || abort "Failed to batch update cache index."
     mv "$temp_index" "$CACHE_INDEX_FILE"
-
     pr "Removed $removed_count expired cache entries"
   else
     log_info "No expired entries to remove"
   fi
-
   rm -f "$temp_keys_file"
-
   # Force cleanup: remove entries for non-existent files
   if [[ "$force" == "true" ]]; then
     log_info "Performing forced cleanup..."
-
     local orphaned_keys=()
     # Read all keys
     while IFS= read -r file_path; do
@@ -249,53 +206,41 @@ cache_cleanup() {
         orphaned_keys+=("$file_path")
       fi
     done < <(jq -r 'keys[]' "$CACHE_INDEX_FILE")
-
     if [[ ${#orphaned_keys[@]} -gt 0 ]]; then
       local orphaned_keys_file
       orphaned_keys_file=$(mktemp)
       jq -n --args '$ARGS.positional' -- "${orphaned_keys[@]}" > "$orphaned_keys_file"
-
       local temp_index
       temp_index=$(mktemp)
       jq --slurpfile keys "$orphaned_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" > "$temp_index"
       mv "$temp_index" "$CACHE_INDEX_FILE"
-
       pr "Removed ${#orphaned_keys[@]} orphaned index entries"
       rm -f "$orphaned_keys_file"
     fi
   fi
-
   return 0
 }
-
 # Clean cache entries by pattern
 cache_clean_pattern() {
   local pattern=$1
-
   if [[ ! -f "$CACHE_INDEX_FILE" ]]; then
     return 0
   fi
-
   log_info "Cleaning cache entries matching: $pattern"
-
   # Get matching keys as JSON array to a file
   local matching_keys_file
   matching_keys_file=$(mktemp)
-
   jq --arg pattern "$pattern" \
     '[to_entries | .[] | select(.key | test($pattern)) | .key]' \
     "$CACHE_INDEX_FILE" > "$matching_keys_file"
-
   local removed_count
   removed_count=$(jq 'length' "$matching_keys_file")
-
   if [[ "$removed_count" -gt 0 ]]; then
     # Batch remove from index
     local temp_index
     temp_index=$(mktemp)
     jq --slurpfile keys "$matching_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" > "$temp_index"
     mv "$temp_index" "$CACHE_INDEX_FILE"
-
     # Remove files
     jq -j '.[] | . + "\u0000"' "$matching_keys_file" | while IFS= read -r -d '' file_path; do
       if [[ -f "$file_path" ]]; then
@@ -303,19 +248,16 @@ cache_clean_pattern() {
         log_debug "Removed from cache: $file_path"
       fi
     done
-
     pr "Removed $removed_count cache entries"
   else
     log_info "No matching entries found"
   fi
   rm -f "$matching_keys_file"
 }
-
 # Get cache path for a given key/identifier
 get_cache_path() {
   local key=$1
   local subdir=${2:-""}
-
   if [[ -n "$subdir" ]]; then
     echo "$CACHE_DIR/$subdir/$key"
   else

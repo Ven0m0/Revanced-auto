@@ -2,7 +2,6 @@
 set -euo pipefail
 # ReVanced prebuilts management
 # Fixed syntax error in loop structure
-
 # Resolve a single ReVanced artifact (CLI or Patches)
 # Args:
 #   $1: Source (e.g., "j-hc/revanced-cli")
@@ -15,9 +14,7 @@ set -euo pipefail
 resolve_rv_artifact() {
   local src=$1 tag=$2 ver=$3 fprefix=$4 cl_dir=$5
   local ext grab_cl dir
-
   dir="$cl_dir"
-
   if [[ "$tag" = "CLI" ]]; then
     ext="jar"
     grab_cl=false
@@ -27,18 +24,14 @@ resolve_rv_artifact() {
   else
     abort "unreachable: invalid tag $tag"
   fi
-
   local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
-
   # Handle version selection
   if [[ "$ver" = "dev" ]]; then
     log_info "Fetching dev version for $tag"
-
     # Initialize cache if needed
     if [[ -z "${RV_DEV_VER_CACHE+x}" ]]; then
       declare -gA RV_DEV_VER_CACHE
     fi
-
     if [[ -n "${RV_DEV_VER_CACHE[$rv_rel]-}" ]]; then
       ver="${RV_DEV_VER_CACHE[$rv_rel]}"
       log_debug "Using cached dev version: $ver"
@@ -50,11 +43,9 @@ resolve_rv_artifact() {
       log_debug "Selected dev version: $ver"
     fi
   fi
-
   # Check if file already exists locally
   local url file tag_name name
   file=$(find "$dir" -name "${fprefix}-${ver#v}*.${ext}" -type f 2> /dev/null || find "$dir" -name "${fprefix}-*.${ext}" -type f 2> /dev/null)
-
   if [[ -z "$file" ]]; then
     log_info "Downloading $tag from GitHub"
     local resp asset
@@ -74,23 +65,19 @@ resolve_rv_artifact() {
     else
       file=$(grep "/[^/]*${ver#v}[^/]*\$" <<< "$file" | head -1)
     fi
-
     if [[ -z "$file" ]]; then
       abort "filter fail: '$for_err' with '$ver'"
     fi
-
     name=$(basename "$file")
     tag_name=$(cut -d'-' -f3- <<< "$name")
     tag_name=v${tag_name%.*}
     log_debug "Using cached $tag: $file"
   fi
-
   # Handle patches-specific processing
   if [[ "$tag" = "Patches" ]]; then
     if [[ "$grab_cl" = true ]]; then
       printf "[Changelog](https://github.com/%s/releases/tag/%s)\n\n" "$src" "$tag_name" >> "${cl_dir}/changelog.md"
     fi
-
     # Remove integrations checks if requested
     if [[ "${REMOVE_RV_INTEGRATIONS_CHECKS:-}" = true ]]; then
       if ! _remove_integrations_checks "$file"; then
@@ -98,10 +85,8 @@ resolve_rv_artifact() {
       fi
     fi
   fi
-
   echo "$file"
 }
-
 # Get ReVanced CLI and patches from multiple sources
 # Args:
 #   $1: CLI source (e.g., "j-hc/revanced-cli")
@@ -120,46 +105,35 @@ get_rv_prebuilts_multi() {
   local cli_src=$1 cli_ver=$2
   shift 2
   local -a patches_srcs=("$@")
-
   if [[ ${#patches_srcs[@]} -eq 0 ]]; then
     abort "get_rv_prebuilts_multi: no patch sources provided"
   fi
-
   log_debug "Downloading prebuilts for ${#patches_srcs[@]} patch source(s)"
-
   # Use first patch source to determine cache directory for CLI logging
   local first_patches_src=${patches_srcs[0]}
   local cl_dir=${first_patches_src%/*}
   cl_dir=${TEMP_DIR}/${cl_dir,,}-rv
   [[ -d "$cl_dir" ]] || mkdir -p "$cl_dir"
-
   # Download CLI once (shared across all patch sources)
   local cli_jar
   cli_jar=$(resolve_rv_artifact "$cli_src" "CLI" "$cli_ver" "revanced-cli" "$cl_dir")
   echo "$cli_jar"
-
   # Download patches from each source
   local idx=1
   for patches_src in "${patches_srcs[@]}"; do
     log_info "Downloading patches from ${patches_src} (${idx}/${#patches_srcs[@]})"
-
     pr "Getting prebuilts (${patches_src%/*})" >&2
-
     # Recalculate cl_dir for this patch source
     cl_dir=${patches_src%/*}
     cl_dir=${TEMP_DIR}/${cl_dir,,}-rv
     [[ -d "$cl_dir" ]] || mkdir -p "$cl_dir"
-
     local patches_jar
     patches_jar=$(resolve_rv_artifact "$patches_src" "Patches" "$PATCHES_VER" "patches" "$cl_dir")
-
     echo "$patches_jar"
     idx=$((idx + 1))
   done
-
   log_debug "Downloaded CLI and ${#patches_srcs[@]} patch bundle(s)"
 }
-
 # Remove integrations checks from patches
 # Args:
 #   $1: Patches file path
@@ -168,7 +142,6 @@ get_rv_prebuilts_multi() {
 _remove_integrations_checks() {
   local file=$1
   log_info "Removing integrations checks from patches"
-
   (
     mkdir -p "${file}-zip" || return 1
     unzip -qo "$file" -d "${file}-zip" || return 1
@@ -181,7 +154,6 @@ _remove_integrations_checks() {
     cd "${file}-zip" || return 1
     zip -0rq "${CWD}/${file}" . || return 1
   ) >&2
-
   local ret=$?
   rm -rf "${file}-zip" 2> /dev/null || :
   return "$ret"

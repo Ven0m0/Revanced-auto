@@ -49,7 +49,6 @@
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
-
     <!-- Navigation -->
     <nav class="nav" id="main-nav">
         <div class="nav-container">
@@ -73,7 +72,6 @@
             </div>
         </div>
     </nav>
-
     <main class="container" id="main-content">
         <!-- Page Header -->
         <div class="generator-header">
@@ -87,38 +85,32 @@
                 </button>
             </div>
         </div>
-
         <div class="layout">
             <!-- Left Column: Configuration Form -->
             <div>
                 <!-- Global Settings -->
                 <div class="card" role="region" aria-label="Global Settings">
                     <h2 class="card-title">Global Settings</h2>
-
                     <div class="form-group">
                         <label for="parallel-jobs">Parallel Jobs</label>
                         <input type="number" id="parallel-jobs" value="1" min="1" max="10">
                         <p class="help-text">Number of apps to build simultaneously (1 = sequential)</p>
                     </div>
-
                     <div class="form-group">
                         <label for="compression-level">Compression Level</label>
                         <input type="number" id="compression-level" value="9" min="0" max="9">
                         <p class="help-text">ZIP compression (0 = none, 9 = maximum)</p>
                     </div>
-
                     <div class="form-group">
                         <label for="patches-source">Default Patches Source</label>
                         <input type="text" id="patches-source" value="anddea/revanced-patches">
                         <p class="help-text">GitHub repo (owner/name) for patches</p>
                     </div>
-
                     <div class="form-group">
                         <label for="cli-source">Default CLI Source</label>
                         <input type="text" id="cli-source" value="inotia00/revanced-cli">
                         <p class="help-text">GitHub repo for ReVanced CLI</p>
                     </div>
-
                     <div class="form-group">
                         <label for="patches-version">Patches Version</label>
                         <select id="patches-version">
@@ -127,7 +119,6 @@
                             <option value="specific">Specific version</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label for="cli-version">CLI Version</label>
                         <select id="cli-version">
@@ -135,13 +126,11 @@
                             <option value="latest" selected>latest (stable)</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label for="rv-brand">RV Brand</label>
                         <input type="text" id="rv-brand" value="RVX">
                         <p class="help-text">Brand name (RVX, ReVanced, etc.)</p>
                     </div>
-
                     <div class="form-group">
                         <label for="arch">Default Architecture</label>
                         <select id="arch">
@@ -150,21 +139,18 @@
                             <option value="both">both (build for both)</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="riplib" checked>
                             <span>Enable riplib (strip unnecessary libraries)</span>
                         </label>
                     </div>
-
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="aapt2" checked>
                             <span>Enable AAPT2 optimization</span>
                         </label>
                     </div>
-
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="remove-checks" checked>
@@ -172,14 +158,12 @@
                         </label>
                     </div>
                 </div>
-
                 <!-- App Catalog -->
                 <div class="card" role="region" aria-label="Add Applications">
                     <h2 class="card-title">Add Applications</h2>
                     <p class="help-text" style="margin-bottom: 0.5rem">Select an app to add with pre-filled settings, or add a custom app.</p>
                     <div class="catalog-grid" id="app-catalog" aria-label="App catalog"></div>
                 </div>
-
                 <!-- Apps Section -->
                 <div class="card" role="region" aria-label="Configured Applications">
                     <h2 class="card-title">Configured Applications</h2>
@@ -192,7 +176,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- Right Column: Preview -->
             <div>
                 <div class="sticky-preview">
@@ -215,7 +198,6 @@
             </div>
         </div>
     </main>
-
     <footer>
         <div class="container">
             <nav class="footer-links" aria-label="Footer navigation">
@@ -227,19 +209,14 @@
             <p>ReVanced Builder &mdash; Automated APK patching system</p>
         </div>
     </footer>
-
     <div class="toast-container" id="toast-container" aria-live="assertive" role="status"></div>
-
     <!-- Hidden file input for config import -->
     <input type="file" id="file-import" accept=".toml,.txt" class="sr-only" aria-label="Import configuration file">
-
     <script>
         "use strict";
-
         // =====================================================================
         // App Catalog — pre-filled data for known apps
         // =====================================================================
-
         const APP_CATALOG = [
             {
                 id: "YouTube-Extended",
@@ -354,14 +331,11 @@
                 included: "",
             },
         ];
-
         const PACKAGE_MAP = {};
         APP_CATALOG.forEach((app) => { PACKAGE_MAP[app.displayName] = app.packageName; });
-
         // =====================================================================
         // Utility: HTML Escaping (XSS prevention)
         // =====================================================================
-
         function escapeHtml(text) {
             if (text == null) return "";
             return String(text)
@@ -371,37 +345,30 @@
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#39;");
         }
-
         // =====================================================================
         // Toast Notification System
         // =====================================================================
-
         function showToast(message, type = "info", duration = 3000) {
             const container = document.getElementById("toast-container");
             const toast = document.createElement("div");
             toast.className = `toast toast-${type}`;
             toast.textContent = message;
             container.appendChild(toast);
-
             setTimeout(() => {
                 toast.classList.add("toast-out");
                 toast.addEventListener("animationend", () => toast.remove(), { once: true });
             }, duration);
         }
-
         // =====================================================================
         // Theme Management
         // =====================================================================
-
         function initTheme() {
             const savedTheme = localStorage.getItem("theme") || "dark";
             applyTheme(savedTheme);
         }
-
         function applyTheme(theme) {
             const icon = document.getElementById("theme-icon");
             const metaTheme = document.getElementById("meta-theme-color");
-
             if (theme === "light") {
                 document.documentElement.setAttribute("data-theme", "light");
                 icon.textContent = "\u{1F319}";
@@ -412,30 +379,24 @@
                 if (metaTheme) metaTheme.content = "#1e293b";
             }
         }
-
         function toggleTheme() {
             const current = document.documentElement.getAttribute("data-theme");
             const next = current === "light" ? "dark" : "light";
             localStorage.setItem("theme", next);
             applyTheme(next);
         }
-
         initTheme();
-
         // =====================================================================
         // Mobile Navigation
         // =====================================================================
-
         function initNav() {
             const toggle = document.getElementById("nav-toggle");
             const menu = document.getElementById("nav-menu");
-
             toggle.addEventListener("click", () => {
                 const expanded = toggle.getAttribute("aria-expanded") === "true";
                 toggle.setAttribute("aria-expanded", String(!expanded));
                 menu.classList.toggle("nav-open");
             });
-
             // Close menu when clicking a link
             menu.addEventListener("click", (e) => {
                 if (e.target.closest(".nav-link")) {
@@ -443,7 +404,6 @@
                     menu.classList.remove("nav-open");
                 }
             });
-
             // Close menu on outside click
             document.addEventListener("click", (e) => {
                 if (!e.target.closest(".nav") && menu.classList.contains("nav-open")) {
@@ -452,13 +412,10 @@
                 }
             });
         }
-
         // =====================================================================
         // App Catalog Rendering
         // =====================================================================
-
         const addedApps = new Set();
-
         function renderCatalog() {
             const grid = document.getElementById("app-catalog");
             grid.innerHTML = `${APP_CATALOG.map((app) => {
@@ -474,33 +431,26 @@
                 <span class="catalog-pkg">Add any app manually</span>
             </button>`;
         }
-
         // =====================================================================
         // App Configuration
         // =====================================================================
-
         let appCounter = 0;
-
         function updateEmptyState() {
             const container = document.getElementById("apps-container");
             const emptyState = document.getElementById("empty-state");
             const hasApps = container.querySelectorAll(".app-card").length > 0;
-
             if (emptyState) {
                 emptyState.style.display = hasApps ? "none" : "";
             }
         }
-
         function addApp(appData = {}) {
             const id = appCounter++;
             const container = document.getElementById("apps-container");
-
             const appCard = document.createElement("div");
             appCard.className = "app-card";
             appCard.id = `app-${id}`;
             appCard.dataset.appId = id;
             if (appData.catalogId) appCard.dataset.catalogId = appData.catalogId;
-
             const escapedName = escapeHtml(appData.name || "");
             const escapedDisplayName = escapeHtml(appData.displayName || "");
             const escapedVersion = escapeHtml(appData.version || "auto");
@@ -511,31 +461,26 @@
             const escapedArchive = escapeHtml(appData.archive || "");
             const escapedExcluded = escapeHtml(appData.excluded || "");
             const escapedIncluded = escapeHtml(appData.included || "");
-
             appCard.innerHTML = `
                 <div class="app-header">
                     <input type="text" class="app-name" placeholder="App-Name" value="${escapedName}" aria-label="Application section name">
                     <button class="btn-danger btn-small btn-remove-app" data-app-id="${id}" aria-label="Remove application">&#x2715; Remove</button>
                 </div>
-
                 <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" class="app-enabled" ${appData.enabled !== false ? "checked" : ""}>
                         <span>Enabled</span>
                     </label>
                 </div>
-
                 <div class="form-group">
                     <label>App Display Name</label>
                     <input type="text" class="app-display-name" placeholder="YouTube" value="${escapedDisplayName}">
                 </div>
-
                 <div class="form-group">
                     <label>Version</label>
                     <input type="text" class="app-version" placeholder="auto" value="${escapedVersion}">
                     <p class="help-text">auto, latest, or specific version (e.g., 18.48.39)</p>
                 </div>
-
                 <div class="form-group">
                     <label>Architecture (override)</label>
                     <select class="app-arch">
@@ -545,17 +490,14 @@
                         <option value="both" ${appData.arch === "both" ? "selected" : ""}>both</option>
                     </select>
                 </div>
-
                 <div class="form-group">
                     <label>Patches Source (override)</label>
                     <input type="text" class="app-patches-source" placeholder="Use global default" value="${escapedPatchesSource}">
                 </div>
-
                 <div class="form-group">
                     <label>CLI Source (override)</label>
                     <input type="text" class="app-cli-source" placeholder="Use global default" value="${escapedCliSource}">
                 </div>
-
                 <div class="form-group">
                     <label>Download URLs</label>
                     <div class="url-group">
@@ -572,45 +514,36 @@
                     </div>
                     <p class="help-text">At least one URL required</p>
                 </div>
-
                 <div class="form-group">
                     <label>Patch Selection</label>
                     <button type="button" class="btn-primary btn-small btn-load-patches" data-app-id="${id}">Browse &amp; Select Patches</button>
                     <div id="patch-selector-${id}" class="patch-selector" style="display: none;"></div>
                 </div>
-
                 <div class="form-group">
                     <label>Excluded Patches (Manual)</label>
                     <textarea class="app-excluded" rows="2" placeholder="'Patch name 1' 'Patch name 2'">${escapedExcluded}</textarea>
                     <p class="help-text">Space-separated, quoted patch names to exclude (overrides visual selection)</p>
                 </div>
-
                 <div class="form-group">
                     <label>Included Patches (Manual, exclusive mode)</label>
                     <textarea class="app-included" rows="2" placeholder="'Patch name 1' 'Patch name 2'">${escapedIncluded}</textarea>
                     <p class="help-text">Only include these patches (overrides visual selection)</p>
                 </div>
             `;
-
             container.appendChild(appCard);
-
             // Track catalog app
             if (appData.catalogId) {
                 addedApps.add(appData.catalogId);
                 renderCatalog();
             }
-
             updateEmptyState();
             updatePreview();
-
             // Scroll to the new card
             appCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
-
         function addCatalogApp(catalogId) {
             const entry = APP_CATALOG.find((a) => a.id === catalogId);
             if (!entry || addedApps.has(catalogId)) return;
-
             addApp({
                 catalogId: entry.id,
                 name: entry.id,
@@ -627,7 +560,6 @@
                 included: entry.included,
             });
         }
-
         function removeApp(id) {
             const card = document.getElementById(`app-${id}`);
             if (card) {
@@ -641,71 +573,51 @@
                 updatePreview();
             }
         }
-
         // =====================================================================
         // TOML Generation
         // =====================================================================
-
         function generateTOML() {
             const g = (id) => document.getElementById(id);
-
             let toml = `# =============================================================================
 # ReVanced Auto-Build Configuration
 # =============================================================================
 # Documentation: https://github.com/Ven0m0/Revanced-auto/blob/main/CONFIG.md
 # =============================================================================
-
 # GLOBAL BUILD SETTINGS
 # =============================================================================
-
 # Parallel Build Jobs
 parallel-jobs = ${g("parallel-jobs").value}
-
 # Compression Level
 compression-level = ${g("compression-level").value}
-
 # ReVanced Integrations Checks
 remove-rv-integrations-checks = ${g("remove-checks").checked}
-
 # Library Stripping (riplib)
 riplib = ${g("riplib").checked}
-
 # AAPT2 Optimization
 enable-aapt2-optimize = ${g("aapt2").checked}
-
 # Default Architecture
 arch = "${g("arch").value}"
-
 # Build Mode
 build-mode = "apk"
-
 # Default Patches Version
 patches-version = "${g("patches-version").value}"
-
 # Default CLI Version
 cli-version = "${g("cli-version").value}"
-
 # Default App Version
 version = "auto"
-
 # Default Patches Source
 patches-source = "${g("patches-source").value}"
-
 # Default CLI Source
 cli-source = "${g("cli-source").value}"
-
 # RV Brand
 rv-brand = "${g("rv-brand").value}"
-
 # =============================================================================
 # APP CONFIGURATIONS
 # =============================================================================
 `;
-
             document.querySelectorAll(".app-card").forEach((app) => {
                 const name = app.querySelector(".app-name").value.trim();
                 if (!name) return;
-
                 const enabled = app.querySelector(".app-enabled").checked;
                 const displayName = app.querySelector(".app-display-name").value.trim();
                 const version = app.querySelector(".app-version").value.trim();
@@ -717,10 +629,8 @@ rv-brand = "${g("rv-brand").value}"
                 const archive = app.querySelector(".app-archive").value.trim();
                 const excluded = app.querySelector(".app-excluded").value.trim();
                 const included = app.querySelector(".app-included").value.trim();
-
                 toml += `\n[${name}]\n`;
                 toml += `enabled = ${enabled}\n`;
-
                 if (displayName) toml += `app-name = "${displayName}"\n`;
                 if (version && version !== "auto") toml += `version = "${version}"\n`;
                 if (arch) toml += `arch = "${arch}"\n`;
@@ -735,18 +645,14 @@ rv-brand = "${g("rv-brand").value}"
                     toml += `exclusive-patches = true\n`;
                 }
             });
-
             return toml;
         }
-
         function updatePreview() {
             document.getElementById("preview").textContent = generateTOML();
         }
-
         // =====================================================================
         // Download / Copy / Import / Export
         // =====================================================================
-
         function downloadConfig() {
             const toml = generateTOML();
             const blob = new Blob([toml], { type: "text/plain" });
@@ -758,7 +664,6 @@ rv-brand = "${g("rv-brand").value}"
             URL.revokeObjectURL(url);
             showToast("Configuration downloaded", "success");
         }
-
         function copyConfig() {
             const toml = generateTOML();
             navigator.clipboard.writeText(toml).then(
@@ -766,7 +671,6 @@ rv-brand = "${g("rv-brand").value}"
                 () => showToast("Copy failed \u2014 use the download button instead", "error")
             );
         }
-
         function importConfig(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -780,24 +684,20 @@ rv-brand = "${g("rv-brand").value}"
             reader.onerror = () => showToast("Failed to read file", "error");
             reader.readAsText(file);
         }
-
         function parseAndLoadConfig(tomlText) {
             const lines = tomlText.split("\n");
             let currentSection = null;
             const globals = {};
             const apps = {};
-
             const globalKeys = new Set([
                 "parallel-jobs", "compression-level", "remove-rv-integrations-checks",
                 "riplib", "enable-aapt2-optimize", "arch", "build-mode",
                 "patches-version", "cli-version", "version", "patches-source",
                 "cli-source", "rv-brand",
             ]);
-
             for (const rawLine of lines) {
                 const line = rawLine.trim();
                 if (!line || line.startsWith("#")) continue;
-
                 const sectionMatch = line.match(/^\[([^\]]+)\]$/);
                 if (sectionMatch) {
                     currentSection = sectionMatch[1].trim();
@@ -806,25 +706,20 @@ rv-brand = "${g("rv-brand").value}"
                     }
                     continue;
                 }
-
                 const kvMatch = line.match(/^([^=]+?)\s*=\s*(.+)$/);
                 if (!kvMatch) continue;
-
                 const key = kvMatch[1].trim();
                 let value = kvMatch[2].trim();
-
                 if ((value.startsWith('"') && value.endsWith('"')) ||
                     (value.startsWith("'") && value.endsWith("'"))) {
                     value = value.slice(1, -1);
                 }
-
                 if (!currentSection && globalKeys.has(key)) {
                     globals[key] = value;
                 } else if (currentSection) {
                     apps[currentSection][key] = value;
                 }
             }
-
             const setVal = (id, val) => {
                 const el = document.getElementById(id);
                 if (!el || val === undefined) return;
@@ -834,7 +729,6 @@ rv-brand = "${g("rv-brand").value}"
                     el.value = val;
                 }
             };
-
             setVal("parallel-jobs", globals["parallel-jobs"]);
             setVal("compression-level", globals["compression-level"]);
             setVal("remove-checks", globals["remove-rv-integrations-checks"]);
@@ -846,12 +740,10 @@ rv-brand = "${g("rv-brand").value}"
             setVal("patches-source", globals["patches-source"]);
             setVal("cli-source", globals["cli-source"]);
             setVal("rv-brand", globals["rv-brand"]);
-
             // Clear existing apps
             document.getElementById("apps-container").querySelectorAll(".app-card").forEach((c) => { c.remove(); });
             appCounter = 0;
             addedApps.clear();
-
             for (const [name, cfg] of Object.entries(apps)) {
                 const catalogEntry = APP_CATALOG.find((a) => a.id === name);
                 addApp({
@@ -870,45 +762,35 @@ rv-brand = "${g("rv-brand").value}"
                     included: cfg["included-patches"] || "",
                 });
             }
-
             renderCatalog();
             updateEmptyState();
             updatePreview();
         }
-
         function loadExample() {
             document.getElementById("apps-container").querySelectorAll(".app-card").forEach((c) => { c.remove(); });
             appCounter = 0;
             addedApps.clear();
-
             addCatalogApp("YouTube-Extended");
             addCatalogApp("Music-Extended");
-
             showToast("Example configuration loaded", "info");
             updatePreview();
         }
-
         // =====================================================================
         // Patch Selection System
         // =====================================================================
-
         const patchesCache = new Map();
-
         async function fetchPatches(repoPath) {
             if (patchesCache.has(repoPath)) {
                 return patchesCache.get(repoPath);
             }
-
             if (typeof repoPath !== "string") {
                 throw new Error("Invalid repository path: expected \"owner/repo\".");
             }
-
             const segments = repoPath.trim().split("/").filter(Boolean);
             if (segments.length !== 2) {
                 throw new Error(`Invalid repository path "${repoPath}". Expected "owner/repo".`);
             }
             const [owner, repo] = segments;
-
             const transformPatch = (patch) => ({
                 name: patch.name,
                 description: patch.description || "No description available",
@@ -917,7 +799,6 @@ rv-brand = "${g("rv-brand").value}"
                 requiresIntegrations: patch.requiresIntegrations || false,
                 options: patch.options || [],
             });
-
             try {
                 const resp = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/patches.json`);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -945,21 +826,17 @@ rv-brand = "${g("rv-brand").value}"
                 return patches;
             }
         }
-
         async function loadPatches(appId) {
             const appCard = document.getElementById(`app-${appId}`);
             const selector = document.getElementById(`patch-selector-${appId}`);
             const source = appCard.querySelector(".app-patches-source").value.trim()
                 || document.getElementById("patches-source").value;
-
             if (selector.style.display !== "none") {
                 selector.style.display = "none";
                 return;
             }
-
             selector.style.display = "block";
             selector.innerHTML = '<div style="text-align:center;padding:2rem"><div class="loading-spinner"></div><p style="margin-top:1rem;color:var(--text-muted)">Loading patches&hellip;</p></div>';
-
             try {
                 const patches = await fetchPatches(source);
                 renderPatchSelector(appId, patches, source);
@@ -968,21 +845,17 @@ rv-brand = "${g("rv-brand").value}"
                 selector.querySelector(".error-content").textContent = error.message;
             }
         }
-
         function renderPatchSelector(appId, allPatches, repoPath) {
             const selector = document.getElementById(`patch-selector-${appId}`);
             const appCard = document.getElementById(`app-${appId}`);
             const displayName = appCard.querySelector(".app-display-name").value.trim();
             const packageName = PACKAGE_MAP[displayName] || "";
-
             let patches = allPatches.filter((p) => {
                 if (!packageName) return true;
                 return p.compatiblePackages.some((pkg) => pkg && pkg.name === packageName);
             });
             if (patches.length === 0) patches = allPatches;
-
             const escapedRepo = escapeHtml(repoPath);
-
             selector.innerHTML = `
                 <div class="patch-selector-header">
                     <div>
@@ -1014,30 +887,25 @@ rv-brand = "${g("rv-brand").value}"
                     `).join("")}
                 </div>
             `;
-
             appCard.dataset.patches = JSON.stringify(patches);
         }
-
         function updatePatchSelection(appId) {
             const appCard = document.getElementById(`app-${appId}`);
             const patchesData = JSON.parse(appCard.dataset.patches || "[]");
             const patchList = document.getElementById(`patch-list-${appId}`);
             if (!patchList) return;
-
             const excludedPatches = [];
             patchList.querySelectorAll(".patch-checkbox").forEach((cb, index) => {
                 if (!cb.checked && patchesData[index]) {
                     excludedPatches.push(patchesData[index].name);
                 }
             });
-
             const textarea = appCard.querySelector(".app-excluded");
             if (!textarea.dataset.manualEdit) {
                 textarea.value = excludedPatches.map((p) => `'${p}'`).join(" ");
             }
             updatePreview();
         }
-
         function filterPatches(appId, query) {
             const patchList = document.getElementById(`patch-list-${appId}`);
             if (!patchList) return;
@@ -1048,29 +916,24 @@ rv-brand = "${g("rv-brand").value}"
                 item.style.display = name.includes(q) || desc.includes(q) ? "flex" : "none";
             });
         }
-
         // =====================================================================
         // Event Delegation
         // =====================================================================
-
         document.addEventListener("DOMContentLoaded", () => {
             initNav();
             renderCatalog();
             updatePreview();
-
             // Global settings: update preview on any change
             document.querySelectorAll("#parallel-jobs, #compression-level, #patches-source, #cli-source, #patches-version, #cli-version, #rv-brand, #arch, #riplib, #aapt2, #remove-checks")
                 .forEach((el) => {
                     el.addEventListener("input", updatePreview);
                     el.addEventListener("change", updatePreview);
                 });
-
             // Header action buttons
             document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
             document.getElementById("btn-download").addEventListener("click", downloadConfig);
             document.getElementById("btn-copy").addEventListener("click", copyConfig);
             document.getElementById("btn-example").addEventListener("click", loadExample);
-
             // Import
             const fileInput = document.getElementById("file-import");
             document.getElementById("btn-import").addEventListener("click", () => fileInput.click());
@@ -1080,11 +943,9 @@ rv-brand = "${g("rv-brand").value}"
                     e.target.value = "";
                 }
             });
-
             // Delegated clicks on dynamic content
             document.addEventListener("click", (e) => {
                 const target = e.target;
-
                 // Catalog card click
                 const catalogCard = target.closest(".catalog-card");
                 if (catalogCard) {
@@ -1098,21 +959,18 @@ rv-brand = "${g("rv-brand").value}"
                         return;
                     }
                 }
-
                 // Remove app button
                 const removeBtn = target.closest(".btn-remove-app");
                 if (removeBtn) {
                     removeApp(Number(removeBtn.dataset.appId));
                     return;
                 }
-
                 // Load patches button
                 const loadBtn = target.closest(".btn-load-patches");
                 if (loadBtn) {
                     loadPatches(Number(loadBtn.dataset.appId));
                     return;
                 }
-
                 // Close patches button
                 const closeBtn = target.closest(".btn-close-patches");
                 if (closeBtn) {
@@ -1120,7 +978,6 @@ rv-brand = "${g("rv-brand").value}"
                     if (sel) sel.style.display = "none";
                     return;
                 }
-
                 // Select/deselect all patches
                 const selectAllBtn = target.closest(".btn-select-all");
                 if (selectAllBtn) {
@@ -1133,7 +990,6 @@ rv-brand = "${g("rv-brand").value}"
                     }
                     return;
                 }
-
                 // Patch item click (toggle checkbox)
                 const patchItem = target.closest(".patch-item");
                 if (patchItem && !target.classList.contains("patch-checkbox")) {
@@ -1146,18 +1002,15 @@ rv-brand = "${g("rv-brand").value}"
                     return;
                 }
             });
-
             // Patch checkbox direct clicks
             document.addEventListener("change", (e) => {
                 if (e.target.classList.contains("patch-checkbox")) {
                     const appCard = e.target.closest(".app-card");
                     if (appCard) updatePatchSelection(Number(appCard.dataset.appId));
                 }
-
                 const appCard = e.target.closest(".app-card");
                 if (appCard) updatePreview();
             });
-
             // Input events on dynamic app fields
             document.addEventListener("input", (e) => {
                 const searchInput = e.target.closest(".patch-search");
@@ -1165,7 +1018,6 @@ rv-brand = "${g("rv-brand").value}"
                     filterPatches(Number(searchInput.dataset.appId), searchInput.value);
                     return;
                 }
-
                 if (e.target.classList.contains("app-excluded") || e.target.classList.contains("app-included")) {
                     const val = typeof e.target.value === "string" ? e.target.value : "";
                     if (val.trim() === "") {
@@ -1174,10 +1026,8 @@ rv-brand = "${g("rv-brand").value}"
                         e.target.dataset.manualEdit = "true";
                     }
                 }
-
                 if (e.target.closest(".app-card")) updatePreview();
             });
-
             // Keyboard shortcut: Ctrl+S to download
             document.addEventListener("keydown", (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === "s") {

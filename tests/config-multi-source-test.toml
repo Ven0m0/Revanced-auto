@@ -1,25 +1,20 @@
 # Test configuration for multi-source patch support
 # This config demonstrates applying patches from multiple GitHub repositories
-
 # Global settings
 parallel-jobs = 1
-
 # Multiple patch sources - patches are merged, later sources override earlier ones on conflicts
 patches-source = [
   "anddea/revanced-patches",
   "jkennethcarino/privacy-revanced-patches",
 ]
-
 cli-source = "inotia00/revanced-cli"
 patches-version = "dev"
 cli-version = "dev"
 rv-brand = "RVX"
-
 [YouTube-Extended]
 enabled = true
 version = "auto"                                                      # Auto-detect compatible version across all patch sources
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube/"
 arch = "arm64-v8a"
-
 # Example of per-app patch source override
 # patches-source = ["anddea/revanced-patches"]  # Override to use only one source for this app

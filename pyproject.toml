@@ -5,22 +5,16 @@ description = "ReVanced Builder: Automated APK patching and building system"
 requires-python = ">=3.11"
 readme = "README.md"
 license = { file = "LICENSE" }
-
 authors = [ { name = "ReVanced Builder Contributors" } ]
-
 dependencies = [ "lxml>=5.2.2,<7.0.0", "cssselect>=1.2.0,<2.0.0" ]
-
 [project.optional-dependencies]
-dev = [ "ruff>=0.8.0", "mypy>=1.0.0", "types-lxml>=2024.0.0" ]
-
+dev = [ "ruff>=0.8.0", "mypy>=1.15.0", "types-lxml>=2025.0.0" ]
 [build-system]
 requires = [ "setuptools>=68.0" ]
 build-backend = "setuptools.build_meta"
-
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-
 [tool.ruff.lint]
 select = [
   "E",   # pycodestyle errors
@@ -37,15 +31,12 @@ select = [
 ignore = [
   "E501", # line too long (handled by formatter)
 ]
-
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 line-ending = "lf"
-
 [tool.ruff.lint.isort]
 known-first-party = [ "scripts" ]
-
 [tool.mypy]
 python_version = "3.11"
 strict = true
@@ -59,7 +50,6 @@ warn_unused_ignores = true
 warn_no_return = true
 check_untyped_defs = true
 strict_equality = true
-
 [[tool.mypy.overrides]]
 module = "lxml.*"
 ignore_missing_imports = true

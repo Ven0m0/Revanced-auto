@@ -15,7 +15,6 @@
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
-
     <!-- Navigation -->
     <nav class="nav" id="main-nav">
         <div class="nav-container">
@@ -39,7 +38,6 @@
             </div>
         </div>
     </nav>
-
     <main id="main-content">
         <!-- Hero -->
         <section class="hero">
@@ -57,15 +55,12 @@
                 </div>
             </div>
         </section>
-
         <hr class="section-divider">
-
         <!-- Features -->
         <section class="features-section">
             <div class="container">
                 <h2 class="section-title">Features</h2>
                 <p class="section-subtitle">Everything you need to build patched APKs automatically</p>
-
                 <div class="feature-grid">
                     <a href="generator.html" class="feature-card" style="text-decoration:none;color:inherit">
                         <span class="feature-card-icon" aria-hidden="true">&#x2699;&#xFE0F;</span>
@@ -75,7 +70,6 @@
                         </p>
                         <span class="feature-card-link">Open Generator &rarr;</span>
                     </a>
-
                     <div class="feature-card">
                         <span class="feature-card-icon" aria-hidden="true">&#x1f4e6;</span>
                         <h3 class="feature-card-title">Multi-Source Patches</h3>
@@ -83,7 +77,6 @@
                             Combine patches from multiple GitHub repositories. Version detection uses union strategy &mdash; the highest version supported by at least one source.
                         </p>
                     </div>
-
                     <div class="feature-card">
                         <span class="feature-card-icon" aria-hidden="true">&#x26A1;</span>
                         <h3 class="feature-card-title">Build Cache</h3>
@@ -91,7 +84,6 @@
                             Smart TTL-based caching with SHA-256 integrity verification. Skip re-downloading unchanged files and reduce build times significantly.
                         </p>
                     </div>
-
                     <div class="feature-card">
                         <span class="feature-card-icon" aria-hidden="true">&#x1f4cb;</span>
                         <h3 class="feature-card-title">Changelog Automation</h3>
@@ -99,7 +91,6 @@
                             Generate comprehensive changelogs from git commits with conventional commit support. Includes patches changelog from GitHub releases.
                         </p>
                     </div>
-
                     <div class="feature-card">
                         <span class="feature-card-icon" aria-hidden="true">&#x1f50d;</span>
                         <h3 class="feature-card-title">Dependency Checker</h3>
@@ -107,7 +98,6 @@
                             Automated monitoring of CLI, patches, and APK versions. Daily GitHub Actions checks with automatic issue creation when updates are found.
                         </p>
                     </div>
-
                     <div class="feature-card">
                         <span class="feature-card-icon" aria-hidden="true">&#x1f680;</span>
                         <h3 class="feature-card-title">Parallel Builds</h3>
@@ -118,15 +108,12 @@
                 </div>
             </div>
         </section>
-
         <hr class="section-divider">
-
         <!-- Supported Apps -->
         <section class="app-showcase">
             <div class="container">
                 <h2 class="section-title">Supported Apps</h2>
                 <p class="section-subtitle">Pre-configured app profiles ready to use &mdash; or add any app with a custom configuration</p>
-
                 <div class="showcase-grid">
                     <div class="showcase-card">
                         <span class="showcase-icon" aria-hidden="true">&#x25B6;&#xFE0F;</span>
@@ -171,15 +158,12 @@
                 </div>
             </div>
         </section>
-
         <hr class="section-divider">
-
         <!-- Quick Start -->
         <section class="quickstart">
             <div class="container">
                 <h2 class="section-title">Quick Start</h2>
                 <p class="section-subtitle">Get up and running in four steps</p>
-
                 <div class="steps-grid">
                     <div class="step-card">
                         <span class="step-number">1</span>
@@ -205,7 +189,6 @@
             </div>
         </section>
     </main>
-
     <footer>
         <div class="container">
             <nav class="footer-links" aria-label="Footer navigation">
@@ -217,25 +200,19 @@
             <p>ReVanced Builder &mdash; Automated APK patching system</p>
         </div>
     </footer>
-
     <div class="toast-container" id="toast-container" aria-live="assertive" role="status"></div>
-
     <script>
         "use strict";
-
         // =====================================================================
         // Theme Management
         // =====================================================================
-
         function initTheme() {
             const savedTheme = localStorage.getItem("theme") || "dark";
             applyTheme(savedTheme);
         }
-
         function applyTheme(theme) {
             const icon = document.getElementById("theme-icon");
             const metaTheme = document.getElementById("meta-theme-color");
-
             if (theme === "light") {
                 document.documentElement.setAttribute("data-theme", "light");
                 icon.textContent = "\u{1F319}";
@@ -246,44 +223,36 @@
                 if (metaTheme) metaTheme.content = "#1e293b";
             }
         }
-
         function toggleTheme() {
             const current = document.documentElement.getAttribute("data-theme");
             const next = current === "light" ? "dark" : "light";
             localStorage.setItem("theme", next);
             applyTheme(next);
         }
-
         initTheme();
-
         // =====================================================================
         // Mobile Navigation
         // =====================================================================
-
         document.addEventListener("DOMContentLoaded", () => {
             const toggle = document.getElementById("nav-toggle");
             const menu = document.getElementById("nav-menu");
-
             toggle.addEventListener("click", () => {
                 const expanded = toggle.getAttribute("aria-expanded") === "true";
                 toggle.setAttribute("aria-expanded", String(!expanded));
                 menu.classList.toggle("nav-open");
             });
-
             menu.addEventListener("click", (e) => {
                 if (e.target.closest(".nav-link")) {
                     toggle.setAttribute("aria-expanded", "false");
                     menu.classList.remove("nav-open");
                 }
             });
-
             document.addEventListener("click", (e) => {
                 if (!e.target.closest(".nav") && menu.classList.contains("nav-open")) {
                     toggle.setAttribute("aria-expanded", "false");
                     menu.classList.remove("nav-open");
                 }
             });
-
             document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
         });
     </script>

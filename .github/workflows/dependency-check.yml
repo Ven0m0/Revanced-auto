@@ -1,196 +1,166 @@
 name: Dependency Update Check
-
 on:
   # Run daily at 00:00 UTC
   schedule:
-    - cron: '0 0 * * *'
-
+  - cron: 0 0 * * *
   # Allow manual trigger
   workflow_dispatch:
     inputs:
       check_mode:
-        description: 'What to check'
+        description: What to check
         required: false
-        default: 'all'
+        default: all
         type: choice
         options:
-          - all
-          - cli
-          - patches
-          - apks
+        - all
+        - cli
+        - patches
+        - apks
       create_issue:
-        description: 'Create GitHub issue if updates found'
+        description: Create GitHub issue if updates found
         required: false
         default: true
         type: boolean
-
 permissions:
   contents: read
   issues: write
-
 concurrency:
   group: dependency-check
   cancel-in-progress: true
-
 jobs:
   check-dependencies:
     name: Check for dependency updates
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-slim
     timeout-minutes: 15
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up environment
-        run: |
-          # Install required dependencies
-          sudo apt-get update
-          sudo apt-get install -y jq curl
-
-      - name: Run dependency checker
-        id: check
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CHECK_MODE: ${{ github.event.inputs.check_mode || 'all' }}
-          OUTPUT_FORMAT: 'markdown'
-        run: |
-          echo "Running dependency checks..."
-
-          # Run the checker and capture output
-          scripts/dependency-checker.sh config.toml > dependency-report.md 2>&1 || true
-
-          # Check if updates are available
-          if grep -q "UPDATE AVAILABLE\|🔄 \*\*Update Available\*\*" dependency-report.md; then
-            echo "updates_available=true" >> $GITHUB_OUTPUT
-            echo "::notice::Dependency updates are available"
-          else
-            echo "updates_available=false" >> $GITHUB_OUTPUT
-            echo "::notice::All dependencies are up to date"
-          fi
-
-          # Save report for artifact
-          cat dependency-report.md
-
-      - name: Upload dependency report
-        uses: actions/upload-artifact@v7
-        with:
-          name: dependency-report
-          path: dependency-report.md
-          retention-days: 30
-
-      - name: Create or update issue
-        if: steps.check.outputs.updates_available == 'true' && (github.event.inputs.create_issue != 'false' || github.event_name
-          == 'schedule')
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const report = fs.readFileSync('dependency-report.md', 'utf8');
-
-            // Look for existing open issue
-            const issues = await github.rest.issues.listForRepo({
+    - name: Checkout repository
+      uses: actions/checkout@v6.0.2
+    - name: Verify tools
+      run: |
+        # jq and curl are pre-installed on GitHub runners
+        command -v jq >/dev/null 2>&1 || { echo "jq not found"; exit 1; }
+        command -v curl >/dev/null 2>&1 || { echo "curl not found"; exit 1; }
+    - name: Run dependency checker
+      id: check
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CHECK_MODE: ${{ github.event.inputs.check_mode || 'all' }}
+        OUTPUT_FORMAT: markdown
+      run: |
+        echo "Running dependency checks..."
+        # Run the checker and capture output
+        scripts/dependency-checker.sh config.toml > dependency-report.md 2>&1 || true
+        # Check if updates are available
+        if grep -q "UPDATE AVAILABLE\|🔄 \*\*Update Available\*\*" dependency-report.md; then
+          echo "updates_available=true" >> $GITHUB_OUTPUT
+          echo "::notice::Dependency updates are available"
+        else
+          echo "updates_available=false" >> $GITHUB_OUTPUT
+          echo "::notice::All dependencies are up to date"
+        fi
+        # Save report for artifact
+        cat dependency-report.md
+    - name: Upload dependency report
+      uses: actions/upload-artifact@v7
+      with:
+        name: dependency-report
+        path: dependency-report.md
+        retention-days: 30
+    - name: Create or update issue
+      if: steps.check.outputs.updates_available == 'true' && (github.event.inputs.create_issue
+        != 'false' || github.event_name == 'schedule')
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('dependency-report.md', 'utf8');
+          // Look for existing open issue
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: 'dependencies',
+            creator: 'github-actions[bot]'
+          });
+          const title = '🔄 Dependency Updates Available';
+          const hrule = '---';
+          const body = `${report}
+          ${hrule}
+          _This issue was automatically generated by the dependency checker._
+          _To disable automatic issues, remove the \`dependency-check.yml\` workflow._`;
+          const existingIssue = issues.data.find(issue =>
+            issue.title.includes('Dependency Updates')
+          );
+          if (existingIssue) {
+            // Update existing issue
+            await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'open',
-              labels: 'dependencies',
-              creator: 'github-actions[bot]'
+              issue_number: existingIssue.number,
+              body: body
             });
-
-            const title = '🔄 Dependency Updates Available';
-            const hrule = '---';
-            const body = `${report}
-
-            ${hrule}
-
-            _This issue was automatically generated by the dependency checker._
-            _To disable automatic issues, remove the \`dependency-check.yml\` workflow._`;
-
-            const existingIssue = issues.data.find(issue =>
-              issue.title.includes('Dependency Updates')
+            // Add comment to notify
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: existingIssue.number,
+              body: `🔔 Dependency check completed on ${new Date().toISOString()}\n\nThe issue description has been updated with the latest information.`
+            });
+            console.log(`Updated existing issue #${existingIssue.number}`);
+          } else {
+            // Create new issue
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['dependencies', 'automated']
+            });
+            console.log(`Created new issue #${issue.data.number}`);
+          }
+    - name: Comment on existing PRs
+      if: steps.check.outputs.updates_available == 'true'
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('dependency-report.md', 'utf8');
+          // Find open PRs that might be related to dependencies
+          const prs = await github.rest.pulls.list({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open'
+          });
+          // Look for PRs with dependency-related titles
+          const relevantPRs = prs.data.filter(pr =>
+            pr.title.toLowerCase().includes('update') ||
+            pr.title.toLowerCase().includes('dependency') ||
+            pr.title.toLowerCase().includes('bump')
+          );
+          for (const pr of relevantPRs) {
+            // Check if we've already commented
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number
+            });
+            const hasComment = comments.data.some(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              comment.body.includes('Dependency Update Check')
             );
-
-            if (existingIssue) {
-              // Update existing issue
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existingIssue.number,
-                body: body
-              });
-
-              // Add comment to notify
+            if (!hasComment) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: existingIssue.number,
-                body: `🔔 Dependency check completed on ${new Date().toISOString()}\n\nThe issue description has been updated with the latest information.`
+                issue_number: pr.number,
+                body: `## 🔄 Dependency Update Check\n\n${report}\n\n_This PR may be related to dependency updates._`
               });
-
-              console.log(`Updated existing issue #${existingIssue.number}`);
-            } else {
-              // Create new issue
-              const issue = await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: title,
-                body: body,
-                labels: ['dependencies', 'automated']
-              });
-
-              console.log(`Created new issue #${issue.data.number}`);
+              console.log(`Commented on PR #${pr.number}`);
             }
-
-      - name: Comment on existing PRs
-        if: steps.check.outputs.updates_available == 'true'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const report = fs.readFileSync('dependency-report.md', 'utf8');
-
-            // Find open PRs that might be related to dependencies
-            const prs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open'
-            });
-
-            // Look for PRs with dependency-related titles
-            const relevantPRs = prs.data.filter(pr =>
-              pr.title.toLowerCase().includes('update') ||
-              pr.title.toLowerCase().includes('dependency') ||
-              pr.title.toLowerCase().includes('bump')
-            );
-
-            for (const pr of relevantPRs) {
-              // Check if we've already commented
-              const comments = await github.rest.issues.listComments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number
-              });
-
-              const hasComment = comments.data.some(comment =>
-                comment.user.login === 'github-actions[bot]' &&
-                comment.body.includes('Dependency Update Check')
-              );
-
-              if (!hasComment) {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: pr.number,
-                  body: `## 🔄 Dependency Update Check\n\n${report}\n\n_This PR may be related to dependency updates._`
-                });
-
-                console.log(`Commented on PR #${pr.number}`);
-              }
-            }
-
-      - name: Send summary
-        if: always()
-        run: |
-          echo "## Dependency Check Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          cat dependency-report.md >> $GITHUB_STEP_SUMMARY || echo "No report generated" >> $GITHUB_STEP_SUMMARY
+          }
+    - name: Send summary
+      if: always()
+      run: |
+        echo "## Dependency Check Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        cat dependency-report.md >> $GITHUB_STEP_SUMMARY || echo "No report generated" >> $GITHUB_STEP_SUMMARY
