@@ -152,7 +152,7 @@ _remove_integrations_checks() {
       "${file}-zip/extensions/shared.rve" || return 1
     rm "$file" || return 1
     cd "${file}-zip" || return 1
-    zip -0rq "${PROJECT_ROOT}/${file}" . || return 1
+    zip -0rq "${PROJECT_ROOT}/$(basename "${file}")" . || return 1
   ) >&2
   local ret=$?
   rm -rf "${file}-zip" 2> /dev/null || :
