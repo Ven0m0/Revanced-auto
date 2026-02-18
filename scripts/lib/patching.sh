@@ -333,8 +333,14 @@ get_cached_patches_list() {
   fi
   # Calculate cache key based on hashes of both jars
   local cli_hash patches_hash
-  cli_hash=$(get_file_hash "$cli_jar")
-  patches_hash=$(get_file_hash "$patches_jar")
+  if ! cli_hash=$(get_file_hash "$cli_jar"); then
+    log_warn "Failed to get hash for '$cli_jar'"
+    return 1
+  fi
+  if ! patches_hash=$(get_file_hash "$patches_jar"); then
+    log_warn "Failed to get hash for '$patches_jar'"
+    return 1
+  fi
   local cache_key="patches-list-${cli_hash}-${patches_hash}.txt"
   local cache_path
   cache_path=$(get_cache_path "$cache_key" "patches")
