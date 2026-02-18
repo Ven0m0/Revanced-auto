@@ -1,6 +1,8 @@
 #!/bin/bash
 set -u
 
+declare -A MY_ASSOC
+
 func() {
     MY_ASSOC["foo"]="bar"
 }
