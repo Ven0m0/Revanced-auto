@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import re
 import sys
+
+
 def parse_commits() -> None:
     # Regular expression for Conventional Commits
     # Format: type(scope): description
@@ -73,5 +75,7 @@ def parse_commits() -> None:
         except Exception as e:
             # Log error to stderr but don't crash
             sys.stderr.write(f"Error parsing line: {line[:50]}... - {e}\n")
+
+
 if __name__ == "__main__":
     parse_commits()
