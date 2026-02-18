@@ -56,7 +56,7 @@ get_apkmirror_vers() {
 apk_mirror_search() {
   local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
   # Delegate to Python script for efficient parsing
-  python3 "${CWD}/scripts/apkmirror_search.py" \
+  python3 "${PROJECT_ROOT}/scripts/apkmirror_search.py" \
     --apk-bundle "$apk_bundle" \
     --dpi "$dpi" \
     --arch "$arch" \
@@ -235,7 +235,7 @@ dl_uptodown() {
   data_version=$(scrape_attr '.button.variants' data-version <<< "$resp") || return 1
   if [[ "$data_version" ]]; then
     files=$(req "${uptodown_dlurl%/*}/app/${data_code}/version/${data_version}/files" - | jq -e -r .content) || return 1
-    if data_file_id=$(python3 "${CWD}/scripts/uptodown_search.py" "${apparch[@]}" <<< "$files"); then
+    if data_file_id=$(python3 "${PROJECT_ROOT}/scripts/uptodown_search.py" "${apparch[@]}" <<< "$files"); then
       resp=$(req "${uptodown_dlurl}/download/${data_file_id}-x" -)
     fi
   fi

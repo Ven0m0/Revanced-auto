@@ -60,41 +60,6 @@ skipped, so that processing of the remaining commits can continue.
 import re
 import sys
 
-# Regular expression for Conventional Commits
-# Format: type(scope): description
-CC_REGEX = re.compile(r"^([a-z]+)(\(([^)]+)\))?:\ (.+)$")
-
-# Mapping from commit type to category
-TYPE_MAP = {
-    "feat": "features",
-    "feature": "features",
-    "fix": "fixes",
-    "bugfix": "fixes",
-    "perf": "performance",
-    "performance": "performance",
-    "refactor": "refactor",
-    "style": "refactor",
-    "docs": "documentation",
-    "doc": "documentation",
-    "test": "tests",
-    "tests": "tests",
-    "build": "build",
-    "ci": "build",
-    "chore": "build",
-    "security": "security",
-    "sec": "security",
-}
-
-# Heuristic keywords for non-conventional commits
-HEURISTIC_MAP = [
-    (["add", "implement", "new", "create"], "features"),
-    (["fix", "resolve", "correct", "patch"], "fixes"),
-    (["update", "upgrade", "bump"], "updates"),
-    (["improve", "optimize", "enhance", "better"], "improvements"),
-    (["remove", "delete", "deprecate"], "removals"),
-    (["security", "vulnerability", "cve"], "security"),
-]
-
 
 def parse_commits() -> None:
     for line in sys.stdin:
