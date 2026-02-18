@@ -352,11 +352,11 @@ check_zip_safety() {
 
   # Use Python for reliable cross-platform verification
   if ! python3 -c "
-import sys, zipfile
+import sys, zipfile, os
 try:
     with zipfile.ZipFile(sys.argv[1], 'r') as zf:
         for name in zf.namelist():
-            if name.startswith('/') or '..' in name.split('/'):
+            if os.path.isabs(name) or '..' in name.split('/'):
                 print(f'Unsafe path detected: {name}')
                 sys.exit(1)
 except Exception as e:
