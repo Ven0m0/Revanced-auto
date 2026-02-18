@@ -1,39 +1,44 @@
 #!/usr/bin/env python3
 import re
 import sys
+
+# Regular expression for Conventional Commits
+# Format: type(scope): description
+CC_REGEX = re.compile(r"^([a-z]+)(\(([^)]+)\))?:\ (.+)$")
+
+# Mapping from commit type to category
+TYPE_MAP = {
+    "feat": "features",
+    "feature": "features",
+    "fix": "fixes",
+    "bugfix": "fixes",
+    "perf": "performance",
+    "performance": "performance",
+    "refactor": "refactor",
+    "style": "refactor",
+    "docs": "documentation",
+    "doc": "documentation",
+    "test": "tests",
+    "tests": "tests",
+    "build": "build",
+    "ci": "build",
+    "chore": "build",
+    "security": "security",
+    "sec": "security",
+}
+
+# Heuristic keywords for non-conventional commits
+HEURISTIC_MAP = [
+    (["add", "implement", "new", "create"], "features"),
+    (["fix", "resolve", "correct", "patch"], "fixes"),
+    (["update", "upgrade", "bump"], "updates"),
+    (["improve", "optimize", "enhance", "better"], "improvements"),
+    (["remove", "delete", "deprecate"], "removals"),
+    (["security", "vulnerability", "cve"], "security"),
+]
+
+
 def parse_commits() -> None:
-    # Regular expression for Conventional Commits
-    # Format: type(scope): description
-    cc_regex = re.compile(r"^([a-z]+)(\(([^)]+)\))?:\ (.+)$")
-    # Mapping from commit type to category
-    type_map = {
-        "feat": "features",
-        "feature": "features",
-        "fix": "fixes",
-        "bugfix": "fixes",
-        "perf": "performance",
-        "performance": "performance",
-        "refactor": "refactor",
-        "style": "refactor",
-        "docs": "documentation",
-        "doc": "documentation",
-        "test": "tests",
-        "tests": "tests",
-        "build": "build",
-        "ci": "build",
-        "chore": "build",
-        "security": "security",
-        "sec": "security",
-    }
-    # Heuristic keywords for non-conventional commits
-    heuristic_map = [
-        (["add", "implement", "new", "create"], "features"),
-        (["fix", "resolve", "correct", "patch"], "fixes"),
-        (["update", "upgrade", "bump"], "updates"),
-        (["improve", "optimize", "enhance", "better"], "improvements"),
-        (["remove", "delete", "deprecate"], "removals"),
-        (["security", "vulnerability", "cve"], "security"),
-    ]
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -55,16 +60,16 @@ def parse_commits() -> None:
             scope = ""
             description = subject
             # Try to match Conventional Commit format
-            match = cc_regex.match(subject)
+            match = CC_REGEX.match(subject)
             if match:
                 commit_type = match.group(1)
                 scope = match.group(3) if match.group(3) else ""
                 description = match.group(4)
-                category = type_map.get(commit_type, "other")
+                category = TYPE_MAP.get(commit_type, "other")
             else:
                 # Heuristic categorization
                 lower_subject = subject.lower()
-                for keywords, cat in heuristic_map:
+                for keywords, cat in HEURISTIC_MAP:
                     if any(kw in lower_subject for kw in keywords):
                         category = cat
                         break
@@ -73,5 +78,7 @@ def parse_commits() -> None:
         except Exception as e:
             # Log error to stderr but don't crash
             sys.stderr.write(f"Error parsing line: {line[:50]}... - {e}\n")
+
+
 if __name__ == "__main__":
     parse_commits()
