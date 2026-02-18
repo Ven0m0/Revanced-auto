@@ -78,7 +78,10 @@ assert_failure "1.2.3; rm -rf /" "Command injection attempt"
 assert_failure "1.2.3|ls" "Pipe injection attempt"
 assert_failure "1.2.3 & echo hello" "Background execution attempt"
 assert_failure "invalid/path" "Path separator"
-# assert_failure "ver(sion)" "Parentheses" # Removed as it might break shell parsing in call
+assert_failure "ver(sion)" "Parentheses"
+assert_failure "" "Empty string"
+assert_failure "   " "Whitespace only"
+assert_failure $'\n' "Newline control character"
 
 if [[ "$failed" -ne 0 ]]; then
   echo "Some tests failed."
