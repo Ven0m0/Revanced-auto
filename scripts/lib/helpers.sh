@@ -5,6 +5,35 @@ set -euo pipefail
 # =============================================================================
 # Common utility functions for validation, version comparison, and formatting
 # =============================================================================
+
+# Global hash cache for file checksums
+# This allows subshells to inherit cached hashes if populated in parent
+declare -gA __HASH_CACHE__
+
+# Calculate or retrieve SHA256 hash of a file
+# Args:
+#   $1: File path
+# Returns:
+#   SHA256 hash
+get_file_hash() {
+  local file="${1:-}"
+  if [[ -z "$file" || ! -f "$file" ]]; then
+    return 1
+  fi
+
+  # Check cache first
+  if [[ -v __HASH_CACHE__["$file"] ]]; then
+    echo "${__HASH_CACHE__["$file"]}"
+    return 0
+  fi
+
+  local hash
+  hash=$(sha256sum "$file" | cut -d" " -f1)
+
+  # Update cache
+  __HASH_CACHE__["$file"]="$hash"
+  echo "$hash"
+}
 # Check if a value is one of the provided options
 # Args:
 #   $1: Value to check
