@@ -37,6 +37,7 @@ _source_lib cache.sh
 _source_lib prebuilts.sh
 _source_lib download.sh
 _source_lib patching.sh
+_source_lib app_processor.sh
 _source_lib checks.sh
 unset -f _source_lib
 log_debug "All utility modules loaded successfully"
