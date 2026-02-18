@@ -15,8 +15,11 @@ Requirements:
 Author: ReVanced Builder
 License: Same as parent project
 """
+
 import argparse
 import sys
+from collections.abc import Callable
+
 try:
     from lxml import etree, html
 except ImportError:
@@ -25,6 +28,8 @@ except ImportError:
         file=sys.stderr,
     )
     sys.exit(1)
+
+
 def parse_html(html_content: str) -> html.HtmlElement:
     """
     Parse HTML content into an lxml tree.
@@ -40,27 +45,60 @@ def parse_html(html_content: str) -> html.HtmlElement:
     except etree.ParseError as e:
         print(f"Error parsing HTML: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+def _scrape(
+    tree: html.HtmlElement,
+    selector: str,
+    extractor: Callable[[html.HtmlElement], str | None],
+    error_context: str = "",
+) -> list[str]:
+    """
+    Helper function to extract data from elements matching a CSS selector.
+
+    Args:
+        tree: Parsed HTML tree
+        selector: CSS selector string
+        extractor: Function to extract value from an element. Should return None to skip.
+        error_context: Optional context string to append to error messages.
+
+    Returns:
+        List of extracted values.
+    """
+    try:
+        elements = tree.cssselect(selector)
+        results = []
+        for element in elements:
+            val = extractor(element)
+            if val is not None:
+                results.append(val)
+        return results
+    except Exception as e:
+        msg = f"Error with selector '{selector}'"
+        if error_context:
+            msg += f" {error_context}"
+        print(f"{msg}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def scrape_text(tree: html.HtmlElement, selector: str) -> list[str]:
     """
     Extract text content from elements matching CSS selector.
+
     Args:
         tree: Parsed HTML tree
         selector: CSS selector string
     Returns:
         List of text content from matching elements
     """
-    try:
-        elements = tree.cssselect(selector)
-        results = []
-        for element in elements:
-            # Get text content, stripping whitespace
-            text = element.text_content().strip()
-            if text:
-                results.append(text)
-        return results
-    except Exception as e:
-        print(f"Error with selector '{selector}': {e}", file=sys.stderr)
-        sys.exit(1)
+
+    def extract(element: html.HtmlElement) -> str | None:
+        text = element.text_content().strip()
+        return text if text else None
+
+    return _scrape(tree, selector, extract)
+
+
 def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> list[str]:
     """
     Extract attribute values from elements matching CSS selector.
@@ -71,21 +109,14 @@ def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> l
     Returns:
         List of attribute values from matching elements
     """
-    try:
-        elements = tree.cssselect(selector)
-        results = []
-        for element in elements:
-            # Get attribute value
-            value = element.get(attribute)
-            if value is not None:
-                results.append(value.strip())
-        return results
-    except Exception as e:
-        print(
-            f"Error with selector '{selector}' or attribute '{attribute}': {e}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+
+    def extract(element: html.HtmlElement) -> str | None:
+        value = element.get(attribute)
+        return value.strip() if value is not None else None
+
+    return _scrape(tree, selector, extract, error_context=f"or attribute '{attribute}'")
+
+
 def main() -> None:
     """
     Main entry point for HTML parser CLI.
@@ -107,6 +138,7 @@ def main() -> None:
         help="Extract attribute value from matching elements",
     )
     args = parser.parse_args()
+
     # Validate arguments
     if not args.text and not args.attribute:
         print("Error: Must specify either --text or --attribute", file=sys.stderr)
@@ -114,25 +146,33 @@ def main() -> None:
     if args.text and args.attribute:
         print("Error: Cannot use both --text and --attribute", file=sys.stderr)
         sys.exit(1)
+
     # Read HTML from stdin
     try:
         html_content = sys.stdin.read()
     except KeyboardInterrupt:
         sys.exit(130)
+
     if not html_content:
         print("Error: No HTML content received from stdin", file=sys.stderr)
         sys.exit(1)
+
     # Parse HTML
     tree = parse_html(html_content)
+
     # Extract data based on mode
     if args.text:
         results = scrape_text(tree, args.selector)
     else:
         results = scrape_attribute(tree, args.selector, args.attribute)
+
     # Output results (one per line, matching htmlq behavior)
     for result in results:
         print(result)
+
     # Exit with appropriate code
     sys.exit(0 if results else 1)
+
+
 if __name__ == "__main__":
     main()

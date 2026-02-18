@@ -24,44 +24,6 @@ from pathlib import Path
 from typing import Any
 
 
-def _read_and_parse(
-    file_path: Path,
-    parser: Callable[[Any], dict[str, Any]],
-    mode: str,
-    exc_class: type[Exception],
-    format_name: str,
-) -> dict[str, Any]:
-    """
-    Helper to read and parse a file.
-
-    Args:
-        file_path: Path to the file.
-        parser: Function to parse the file content.
-        mode: File open mode ('rb' or 'r').
-        exc_class: Exception class to catch for syntax errors.
-        format_name: Name of the format (for error messages).
-
-    Returns:
-        Dictionary representation of the data.
-
-    Raises:
-        SystemExit: On parsing errors or file access issues.
-    """
-    try:
-        if "b" in mode:
-            with open(file_path, mode) as f:
-                return parser(f)
-        else:
-            with open(file_path, mode, encoding="utf-8") as f:
-                return parser(f)
-    except exc_class as e:
-        print(f"Error: Invalid {format_name} syntax in {file_path}: {e}", file=sys.stderr)
-        sys.exit(2)
-    except Exception as e:
-        print(f"Error reading {format_name} file {file_path}: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
 def parse_toml(file_path: Path) -> dict[str, Any]:
     """
     Parse TOML file and return as dictionary.
@@ -77,10 +39,15 @@ def parse_toml(file_path: Path) -> dict[str, Any]:
     except ImportError:
         print("Error: tomllib not available (Python >= 3.11 required)", file=sys.stderr)
         sys.exit(2)
-
-    return _read_and_parse(
-        file_path, tomllib.load, "rb", tomllib.TOMLDecodeError, "TOML"
-    )
+    try:
+        with open(file_path, "rb") as f:
+            return tomllib.load(f)
+    except tomllib.TOMLDecodeError as e:
+        print(f"Error: Invalid TOML syntax in {file_path}: {e}", file=sys.stderr)
+        sys.exit(2)
+    except Exception as e:
+        print(f"Error reading TOML file {file_path}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def parse_json(file_path: Path) -> dict[str, Any]:
@@ -93,7 +60,15 @@ def parse_json(file_path: Path) -> dict[str, Any]:
     Raises:
         SystemExit: On parsing errors or file access issues
     """
-    return _read_and_parse(file_path, json.load, "r", json.JSONDecodeError, "JSON")
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            return json.load(f)  # type: ignore[no-any-return]
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON syntax in {file_path}: {e}", file=sys.stderr)
+        sys.exit(2)
+    except Exception as e:
+        print(f"Error reading JSON file {file_path}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main() -> None:
