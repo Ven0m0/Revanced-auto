@@ -15,8 +15,10 @@ Requirements:
 Author: ReVanced Builder
 License: Same as parent project
 """
+
 import argparse
 import sys
+
 try:
     from lxml import etree, html
 except ImportError:
@@ -25,6 +27,8 @@ except ImportError:
         file=sys.stderr,
     )
     sys.exit(1)
+
+
 def parse_html(html_content: str) -> html.HtmlElement:
     """
     Parse HTML content into an lxml tree.
@@ -40,6 +44,8 @@ def parse_html(html_content: str) -> html.HtmlElement:
     except etree.ParseError as e:
         print(f"Error parsing HTML: {e}", file=sys.stderr)
         sys.exit(1)
+
+
 def scrape_text(tree: html.HtmlElement, selector: str) -> list[str]:
     """
     Extract text content from elements matching CSS selector.
@@ -61,6 +67,8 @@ def scrape_text(tree: html.HtmlElement, selector: str) -> list[str]:
     except Exception as e:
         print(f"Error with selector '{selector}': {e}", file=sys.stderr)
         sys.exit(1)
+
+
 def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> list[str]:
     """
     Extract attribute values from elements matching CSS selector.
@@ -86,6 +94,8 @@ def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> l
             file=sys.stderr,
         )
         sys.exit(1)
+
+
 def main() -> None:
     """
     Main entry point for HTML parser CLI.
@@ -134,5 +144,7 @@ def main() -> None:
         print(result)
     # Exit with appropriate code
     sys.exit(0 if results else 1)
+
+
 if __name__ == "__main__":
     main()

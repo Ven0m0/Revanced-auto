@@ -50,6 +50,7 @@ _req() {
       # Output to stdout
       if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
         --connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
+        --proto-default https --proto-redir -all,https \
         --fail -s -S "$@" "$ip"; then
         success=true
         break
@@ -58,6 +59,7 @@ _req() {
       # Output to file
       if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
         --connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
+        --proto-default https --proto-redir -all,https \
         --fail -s -S "$@" "$ip" -o "$dlp"; then
         mv -f "$dlp" "$op"
         success=true
@@ -100,8 +102,11 @@ req() {
 # Args:
 #   $1: URL
 #   $2: Output file path or "-" for stdout
+#   $@: Additional headers or curl arguments
 gh_req() {
-  _req "$1" "$2" -H "$GH_HEADER"
+  local url="$1" op="$2"
+  shift 2
+  _req "$url" "$op" -H "$GH_HEADER" "$@"
 }
 # GitHub asset download
 # Args:

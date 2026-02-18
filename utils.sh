@@ -4,10 +4,16 @@ set -euo pipefail
 # Refactored for better maintainability and organization
 LC_ALL=C
 # Global constants
-export CWD=$PWD TEMP_DIR="temp" BIN_DIR="bin" BUILD_DIR="build"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PROJECT_ROOT
+export CWD="$PROJECT_ROOT"
+export TEMP_DIR="$PROJECT_ROOT/temp"
+export BIN_DIR="$PROJECT_ROOT/bin"
+export BUILD_DIR="$PROJECT_ROOT/build"
+
 # GitHub authentication header
 if [[ "${GITHUB_TOKEN-}" ]]; then
-  export GH_HEADER="Authorization: token ${GITHUB_TOKEN}"
+  export GH_HEADER="Authorization: Bearer ${GITHUB_TOKEN}"
 else
   export GH_HEADER=
 fi

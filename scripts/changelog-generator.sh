@@ -11,20 +11,40 @@ readonly BOLD='\033[1m'
 readonly NC='\033[0m'
 # Configuration
 GITHUB_API="${GITHUB_API_URL:-https://api.github.com}"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-# Logging functions
-log_info() { echo -e "${CYAN}ℹ${NC} $*" >&2; }
-log_success() { echo -e "${GREEN}✓${NC} $*" >&2; }
-log_warn() { echo -e "${YELLOW}⚠${NC} $*" >&2; }
-log_error() { echo -e "${RED}✗${NC} $*" >&2; }
-# Make authenticated GitHub API requests
+
+# Source utilities robustly
+UTILS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../utils.sh"
+if [[ -f "$UTILS_FILE" ]]; then
+  # shellcheck source=utils.sh
+  source "$UTILS_FILE"
+  # Map script-specific log functions to standardized ones
+  log_success() { pr "$*"; }
+  log_error() { epr "$*"; }
+else
+  # Fallback logging if utils.sh not found
+  log_info() { echo -e "${CYAN}ℹ${NC} $*" >&2; }
+  log_success() { echo -e "${GREEN}✓${NC} $*" >&2; }
+  log_warn() { echo -e "${YELLOW}⚠${NC} $*" >&2; }
+  log_error() { echo -e "${RED}✗${NC} $*" >&2; }
+fi
+
+# Make authenticated GitHub API requests using standardized wrapper
 gh_api_request() {
   local endpoint=$1
-  local headers=(-H "Accept: application/vnd.github.v3+json")
-  if [[ -n "$GITHUB_TOKEN" ]]; then
-    headers+=(-H "Authorization: token $GITHUB_TOKEN")
+  local url="$GITHUB_API/$endpoint"
+
+  if command -v gh_req &> /dev/null; then
+    gh_req "$url" "-" -H "Accept: application/vnd.github.v3+json"
+  else
+    # Fallback to curl with security flags if wrapper is not available
+    local headers=(-H "Accept: application/vnd.github.v3+json")
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+      headers+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+    fi
+    curl -sSL --fail --connect-timeout 10 --max-time 300 \
+      --proto-default https --proto-redir -all,https \
+      "${headers[@]}" "$url"
   fi
-  curl -sSL "${headers[@]}" "$GITHUB_API/$endpoint"
 }
 # Parse commits between two references (tags, commits, etc.)
 parse_commits() {
