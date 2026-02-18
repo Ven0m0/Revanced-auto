@@ -5,6 +5,38 @@ set -euo pipefail
 # =============================================================================
 # Common utility functions for validation, version comparison, and formatting
 # =============================================================================
+
+# Global hash cache for file checksums
+# This allows subshells to inherit cached hashes if populated in parent
+declare -gA __HASH_CACHE__
+
+# Calculate or retrieve SHA256 hash of a file
+# Args:
+#   $1: File path
+# Returns:
+#   SHA256 hash
+get_file_hash() {
+  local file="${1:-}"
+  if [[ -z "$file" || ! -f "$file" ]]; then
+    return 1
+  fi
+
+  # Check cache first
+  if [[ -v __HASH_CACHE__["$file"] ]]; then
+    echo "${__HASH_CACHE__["$file"]}"
+    return 0
+  fi
+
+  local hash_line
+  if ! hash_line=$(sha256sum "$file"); then
+    return 1
+  fi
+  local hash="${hash_line%% *}"
+
+  # Update cache
+  __HASH_CACHE__["$file"]="$hash"
+  echo "$hash"
+}
 # Check if a value is one of the provided options
 # Args:
 #   $1: Value to check
@@ -322,7 +354,7 @@ set_prebuilts() {
 # Note: Uses Python HTML parser (scripts/html_parser.py)
 scrape_text() {
   local selector=$1
-  python3 "${CWD}/scripts/html_parser.py" --text "$selector"
+  python3 "${PROJECT_ROOT}/scripts/html_parser.py" --text "$selector"
 }
 # Scrape attribute value from HTML using a CSS selector
 # Args:
@@ -335,5 +367,5 @@ scrape_text() {
 scrape_attr() {
   local selector=$1
   local attr=$2
-  python3 "${CWD}/scripts/html_parser.py" --attribute "$attr" "$selector"
+  python3 "${PROJECT_ROOT}/scripts/html_parser.py" --attribute "$attr" "$selector"
 }
