@@ -15,11 +15,14 @@ Requirements:
 Author: ReVanced Builder
 License: Same as parent project
 """
+
 import argparse
 import json
 import sys
 from pathlib import Path
 from typing import Any
+
+
 def parse_toml(file_path: Path) -> dict[str, Any]:
     """
     Parse TOML file and return as dictionary.
@@ -44,6 +47,8 @@ def parse_toml(file_path: Path) -> dict[str, Any]:
     except Exception as e:
         print(f"Error reading TOML file {file_path}: {e}", file=sys.stderr)
         sys.exit(1)
+
+
 def parse_json(file_path: Path) -> dict[str, Any]:
     """
     Parse and validate JSON file.
@@ -63,6 +68,8 @@ def parse_json(file_path: Path) -> dict[str, Any]:
     except Exception as e:
         print(f"Error reading JSON file {file_path}: {e}", file=sys.stderr)
         sys.exit(1)
+
+
 def main() -> None:
     """
     Main entry point for TOML/JSON converter CLI.
@@ -100,5 +107,7 @@ def main() -> None:
         print(json.dumps(data, indent=2, ensure_ascii=False))
     else:
         print(json.dumps(data, separators=(",", ":"), ensure_ascii=False))
+
+
 if __name__ == "__main__":
     main()

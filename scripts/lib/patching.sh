@@ -360,31 +360,28 @@ get_cached_patches_list() {
   cache_put "$cache_path"
   cat "$cache_path"
 }
-build_rv() {
+# Safely load build arguments from a file into the args associative array
+# Args:
+#   $1: Path to arguments file
+# Returns:
+#   None (modifies 'args' associative array in caller scope)
+_load_build_args() {
   local args_file=$1
-  declare -A args
-  # Safely load args from file
   while IFS='=' read -r key value; do
     [[ -n "$key" && "$key" != \#* ]] && args[$key]=$value
   done < "$args_file"
-  # Clean up temp file
   rm -f "$args_file"
-  local version="" pkg_name=""
-  local version_mode=${args[version]}
-  local app_name=${args[app_name]}
-  local app_name_l=${app_name,,}
-  app_name_l=${app_name_l// /-}
-  local table=${args[table]}
-  local dl_from=${args[dl_from]}
-  local arch=${args[arch]}
-  local arch_f="${arch// /}"
-  log_info "Building ${table} (${arch})"
-  # Build patcher arguments
-  _build_patcher_args
-  # Determine package name from download sources
-  local tried_dl=()
+}
+
+# Resolve package name and download source
+# Args:
+#   None (uses 'args' associative array)
+# Returns:
+#   None (modifies 'pkg_name', 'tried_dl' and 'dl_from' in caller scope)
+_resolve_package_name() {
+  pkg_name=""
   for dl_p in archive apkmirror uptodown; do
-    if [[ "${args[${dl_p}_dlurl]}" = "" ]]; then continue; fi
+    if [[ "${args[${dl_p}_dlurl]-}" = "" ]]; then continue; fi
     if ! get_"${dl_p}"_resp "${args[${dl_p}_dlurl]}" || ! pkg_name=$(get_"${dl_p}"_pkg_name); then
       args[${dl_p}_dlurl]=""
       epr "ERROR: Could not find ${table} in ${dl_p}"
@@ -394,17 +391,20 @@ build_rv() {
     dl_from=$dl_p
     break
   done
-  if [[ "$pkg_name" = "" ]]; then
-    epr "Empty package name, not building ${table}."
-    return 0
-  fi
-  log_info "Package name: $pkg_name"
-  # Get patch information from all patch sources (run in parallel for performance)
-  local list_patches="" source_idx=1
+}
+
+# Fetch patches from multiple sources in parallel
+# Args:
+#   None (uses 'args' associative array)
+# Returns:
+#   None (modifies 'list_patches' in caller scope)
+_fetch_patches_parallel() {
+  list_patches=""
+  local source_idx=1
   local -a patches_jars_array
   read -ra patches_jars_array <<< "${args[ptjars]}"
   log_debug "Listing patches from ${#patches_jars_array[@]} source(s)"
-  # Run list-patches commands in parallel to save time
+
   local -a temp_files=() pids=()
   for patches_jar in "${patches_jars_array[@]}"; do
     log_debug "Listing patches from source ${source_idx}/${#patches_jars_array[@]}: $patches_jar"
@@ -416,73 +416,60 @@ build_rv() {
     pids+=($!)
     source_idx=$((source_idx + 1))
   done
+
   # Wait for all background jobs and collect results
   for pid in "${pids[@]}"; do
     wait "$pid"
   done
+
   # Combine results from temp files
   for temp_file in "${temp_files[@]}"; do
     list_patches+="$(cat "$temp_file")"$'\n'
     rm -f "$temp_file"
   done
-  # Determine version to build
-  version=$(_determine_version "$version_mode" "$pkg_name" "$dl_from" "$list_patches" \
-    "${args[included_patches]}" "${args[excluded_patches]}" "${args[exclusive_patches]}")
-  if [[ "$version" = "" ]]; then
-    epr "Empty version, not building ${table}."
-    return 0
-  fi
-  # Handle force flag for non-auto versions
-  if ! [[ "$version_mode" == "auto" ]] || isoneof "$version_mode" latest beta; then
-    p_patcher_args+=("-f")
-  fi
-  pr "Choosing version '${version}' for ${table}"
-  # Download stock APK
-  local version_f
+}
+
+# Download stock APK and verify its signature
+# Args:
+#   $1: Package name
+#   $2: Version
+#   $3: Architecture
+#   $4: DPI
+# Returns:
+#   None (modifies 'stock_apk' and 'version_f' in caller scope)
+_prepare_stock_apk() {
+  local pkg_name=$1 version=$2 arch=$3 dpi=$4
+  local arch_f="${arch// /}"
   version_f=$(format_version "$version")
-  local stock_apk="${TEMP_DIR}/${pkg_name}-${version_f}-${arch_f}.apk"
+  stock_apk="${TEMP_DIR}/${pkg_name}-${version_f}-${arch_f}.apk"
+
   if [[ ! -f "$stock_apk" ]]; then
-    if ! _download_stock_apk "$stock_apk" "$version" "$arch" "${args[dpi]}"; then
+    if ! _download_stock_apk "$stock_apk" "$version" "$arch" "$dpi"; then
       epr "Failed to download stock APK"
-      return 0
+      return 1
     fi
   else
     log_info "Using cached stock APK: $stock_apk"
   fi
+
   # Verify signature (with version for caching)
+  local OP
   if ! OP=$(check_sig "$stock_apk" "$pkg_name" "$version_f" 2>&1) \
     && ! grep -qFx "ERROR: Missing META-INF/MANIFEST.MF" <<< "$OP"; then
     abort "APK signature mismatch '$stock_apk': $OP"
   fi
-  log "${table}: ${version}"
-  # Handle MicroG patch
-  local microg_patch
-  microg_patch=$(_handle_microg_patch "$list_patches")
-  # Build APK (Magisk module support removed)
-  local patcher_args patched_apk
-  local rv_brand_f=${args[rv_brand],,}
-  rv_brand_f=${rv_brand_f// /-}
-  patcher_args=("${p_patcher_args[@]}")
-  pr "Building '${table}' in APK mode"
-  # Set output filename
-  patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
-  if [[ "$microg_patch" != "" ]]; then
-    patcher_args+=("-e \"${microg_patch}\"")
-  fi
-  # Apply optimizations
-  _apply_riplib_optimization "$arch"
-  # Patch APK
-  if [[ "${NORB:-}" != true || ! -f "$patched_apk" ]]; then
-    # Convert space-separated patches jars to array for patch_apk
-    local -a patches_jars_array
-    read -ra patches_jars_array <<< "${args[ptjars]}"
-    if ! patch_apk "$stock_apk" "$patched_apk" "${patcher_args[*]}" "${args[cli]}" "${patches_jars_array[@]}"; then
-      epr "Building '${table}' failed!"
-      return 0
-    fi
-  else
-    log_info "Using existing patched APK: $patched_apk"
-  fi
+}
+
+# Apply post-patching optimizations and move to final destination
+# Args:
+#   $1: Patched APK path
+#   $2: Final output path
+#   $3: Architecture
+# Returns:
+#   None
+_optimize_and_move_apk() {
+  local patched_apk=$1 apk_output=$2 arch=$3
+
   # Zipalign the patched APK for optimization
   log_info "Applying zipalign to patched APK"
   local aligned_apk="${patched_apk%.apk}-aligned.apk"
@@ -497,8 +484,7 @@ build_rv() {
   else
     log_warn "zipalign not found in PATH, skipping alignment"
   fi
-  # Prepare APK output
-  local apk_output="${BUILD_DIR}/${app_name_l}-${rv_brand_f}-v${version_f}-${arch_f}.apk"
+
   # Apply aapt2 optimization if enabled and architecture is arm64-v8a
   local apk_to_move="$patched_apk"
   if [[ "${ENABLE_AAPT2_OPTIMIZE:-false}" = "true" && "$arch" = "arm64-v8a" ]]; then
@@ -514,6 +500,97 @@ build_rv() {
       log_info "aapt2-optimize.sh not found, skipping optimization"
     fi
   fi
+
   mv -f "$apk_to_move" "$apk_output"
+}
+
+build_rv() {
+  local args_file=$1
+  declare -A args
+  _load_build_args "$args_file"
+
+  local version="" pkg_name=""
+  local version_mode=${args[version]}
+  local app_name=${args[app_name]}
+  local app_name_l=${app_name,,}
+  app_name_l=${app_name_l// /-}
+  local table=${args[table]}
+  local dl_from=${args[dl_from]}
+  local arch=${args[arch]}
+  local arch_f="${arch// /}"
+  log_info "Building ${table} (${arch})"
+
+  # Build patcher arguments
+  _build_patcher_args
+
+  # Determine package name from download sources
+  local tried_dl=()
+  _resolve_package_name
+  if [[ -z "$pkg_name" ]]; then
+    epr "Empty package name, not building ${table}."
+    return 0
+  fi
+  log_info "Package name: $pkg_name"
+
+  # Get patch information from all patch sources in parallel
+  local list_patches=""
+  _fetch_patches_parallel
+
+  # Determine version to build
+  version=$(_determine_version "$version_mode" "$pkg_name" "$dl_from" "$list_patches" \
+    "${args[included_patches]}" "${args[excluded_patches]}" "${args[exclusive_patches]}")
+  if [[ "$version" = "" ]]; then
+    epr "Empty version, not building ${table}."
+    return 0
+  fi
+
+  # Handle force flag for non-auto versions
+  if ! [[ "$version_mode" == "auto" ]] || isoneof "$version_mode" latest beta; then
+    p_patcher_args+=("-f")
+  fi
+  pr "Choosing version '${version}' for ${table}"
+
+  # Download and verify stock APK
+  local stock_apk="" version_f=""
+  _prepare_stock_apk "$pkg_name" "$version" "$arch" "${args[dpi]}" || return 0
+
+  log "${table}: ${version}"
+
+  # Handle MicroG patch
+  local microg_patch
+  microg_patch=$(_handle_microg_patch "$list_patches")
+
+  # Build APK
+  local patcher_args patched_apk
+  local rv_brand_f=${args[rv_brand],,}
+  rv_brand_f=${rv_brand_f// /-}
+  patcher_args=("${p_patcher_args[@]}")
+  pr "Building '${table}' in APK mode"
+
+  # Set output filename
+  patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
+  if [[ "$microg_patch" != "" ]]; then
+    patcher_args+=("-e \"${microg_patch}\"")
+  fi
+
+  # Apply optimizations
+  _apply_riplib_optimization "$arch"
+
+  # Patch APK
+  if [[ "${NORB:-}" != true || ! -f "$patched_apk" ]]; then
+    # Convert space-separated patches jars to array for patch_apk
+    local -a patches_jars_array
+    read -ra patches_jars_array <<< "${args[ptjars]}"
+    if ! patch_apk "$stock_apk" "$patched_apk" "${patcher_args[*]}" "${args[cli]}" "${patches_jars_array[@]}"; then
+      epr "Building '${table}' failed!"
+      return 0
+    fi
+  else
+    log_info "Using existing patched APK: $patched_apk"
+  fi
+
+  # Apply post-patching optimizations and move to final destination
+  local apk_output="${BUILD_DIR}/${app_name_l}-${rv_brand_f}-v${version_f}-${arch_f}.apk"
+  _optimize_and_move_apk "$patched_apk" "$apk_output" "$arch"
   pr "Built ${table}: '${apk_output}'"
 }

@@ -4,13 +4,17 @@ APKMirror Search Parser
 Optimized replacement for bash-based HTML parsing loop.
 Extracts download URL for a specific APK variant from APKMirror release page.
 """
+
 import argparse
 import sys
+
 try:
     from lxml import html
 except ImportError:
     print("Error: lxml not installed", file=sys.stderr)
     sys.exit(1)
+
+
 def get_target_archs(arch: str) -> list[str]:
     """
     Get list of compatible architectures based on requested arch.
@@ -22,6 +26,8 @@ def get_target_archs(arch: str) -> list[str]:
         return base_archs
     # Prepend requested arch to fallbacks
     return [arch, *base_archs]
+
+
 def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
     """
     Search for matching APK variant in HTML content.
@@ -86,6 +92,8 @@ def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
                 print(f"https://www.apkmirror.com{href}")
                 return 0
     return 1
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Search APKMirror release page for specific variant"
@@ -103,5 +111,7 @@ def main() -> None:
         # Treat empty input as "no table found" so it falls back
         sys.exit(2)
     sys.exit(search(html_content, args.apk_bundle, args.dpi, args.arch))
+
+
 if __name__ == "__main__":
     main()
