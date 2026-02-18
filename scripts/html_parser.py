@@ -84,6 +84,7 @@ def _scrape(
 def scrape_text(tree: html.HtmlElement, selector: str) -> list[str]:
     """
     Extract text content from elements matching CSS selector.
+
     Args:
         tree: Parsed HTML tree
         selector: CSS selector string
