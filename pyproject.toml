@@ -2,43 +2,47 @@
 name = "revanced-auto"
 version = "1.0.0"
 description = "ReVanced Builder: Automated APK patching and building system"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [ { name = "ReVanced Builder Contributors" } ]
 dependencies = [ "lxml>=5.2.2,<7.0.0", "cssselect>=1.2.0,<2.0.0", "requests", "beautifulsoup4"]
+
 [project.optional-dependencies]
 dev = [ "ruff>=0.8.0", "mypy>=1.15.0", "types-lxml>=2025.0.0" ]
+
 [build-system]
 requires = [ "setuptools>=68.0" ]
 build-backend = "setuptools.build_meta"
+
 [tool.ruff]
-line-length = 100
-target-version = "py311"
+line-length = 120
+target-version = "py313"
+fix = true
 [tool.ruff.lint]
-select = [
-  "E",   # pycodestyle errors
-  "W",   # pycodestyle warnings
-  "F",   # pyflakes
-  "I",   # isort
-  "N",   # pep8-naming
-  "UP",  # pyupgrade
-  "B",   # flake8-bugbear
-  "C4",  # flake8-comprehensions
-  "SIM", # flake8-simplify
-  "RUF", # ruff-specific rules
-]
+select = [ "ALL"]
 ignore = [
   "E501", # line too long (handled by formatter)
 ]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 line-ending = "lf"
+
 [tool.ruff.lint.isort]
 known-first-party = [ "scripts" ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.docformatter]
+recursive = true
+wrap-summaries = 120
+wrap-descriptions = 120
+
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
@@ -50,6 +54,20 @@ warn_unused_ignores = true
 warn_no_return = true
 check_untyped_defs = true
 strict_equality = true
+ignore_missing_imports = true
+
 [[tool.mypy.overrides]]
 module = "lxml.*"
 ignore_missing_imports = true
+
+[tool.black]
+line-length = 120
+
+[pycodestyle]
+max-line-length = 120
+exclude = ["venv"]
+
+[tool.isort]
+line_length = 120
+skip = ["venv"]
+profile = "ruff"
