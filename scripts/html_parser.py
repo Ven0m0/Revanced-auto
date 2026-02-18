@@ -18,7 +18,6 @@ License: Same as parent project
 
 import argparse
 import sys
-from collections.abc import Callable
 
 try:
     from lxml import etree, html
@@ -47,12 +46,7 @@ def parse_html(html_content: str) -> html.HtmlElement:
         sys.exit(1)
 
 
-def _scrape(
-    tree: html.HtmlElement,
-    selector: str,
-    extractor: Callable[[html.HtmlElement], str | None],
-    error_context: str = "",
-) -> list[str]:
+def scrape_text(tree: html.HtmlElement, selector: str) -> list[str]:
     """
     Helper function to extract data from elements matching a CSS selector.
 
@@ -81,24 +75,6 @@ def _scrape(
         sys.exit(1)
 
 
-def scrape_text(tree: html.HtmlElement, selector: str) -> list[str]:
-    """
-    Extract text content from elements matching CSS selector.
-
-    Args:
-        tree: Parsed HTML tree
-        selector: CSS selector string
-    Returns:
-        List of text content from matching elements
-    """
-
-    def extract(element: html.HtmlElement) -> str | None:
-        text = element.text_content().strip()
-        return text if text else None
-
-    return _scrape(tree, selector, extract)
-
-
 def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> list[str]:
     """
     Extract attribute values from elements matching CSS selector.
@@ -109,12 +85,21 @@ def scrape_attribute(tree: html.HtmlElement, selector: str, attribute: str) -> l
     Returns:
         List of attribute values from matching elements
     """
-
-    def extract(element: html.HtmlElement) -> str | None:
-        value = element.get(attribute)
-        return value.strip() if value is not None else None
-
-    return _scrape(tree, selector, extract, error_context=f"or attribute '{attribute}'")
+    try:
+        elements = tree.cssselect(selector)
+        results = []
+        for element in elements:
+            # Get attribute value
+            value = element.get(attribute)
+            if value is not None:
+                results.append(value.strip())
+        return results
+    except Exception as e:
+        print(
+            f"Error with selector '{selector}' or attribute '{attribute}': {e}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 def main() -> None:

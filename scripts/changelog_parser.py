@@ -56,6 +56,7 @@ The script is intended to be used in a pipeline, for example::
 Any malformed lines or unexpected errors are reported to standard error and
 skipped, so that processing of the remaining commits can continue.
 """
+
 import re
 import sys
 
