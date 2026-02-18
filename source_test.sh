@@ -1,5 +1,5 @@
-#!/bin/bash
-set -u
+#!/usr/bin/env bash
+set -euo pipefail
 
 source_lib() {
     source lib.sh
