@@ -34,8 +34,9 @@ assert_version() {
   # Capture output, discard stderr
   # If format_version fails (returns non-zero), the if block is skipped
   if actual=$(format_version "$input" 2>/dev/null); then
-    # Trim whitespace
-    actual=$(echo "$actual" | xargs)
+    # Trim leading and trailing whitespace without altering internal whitespace
+    actual="${actual#"${actual%%[![:space:]]*}"}"
+    actual="${actual%"${actual##*[![:space:]]}"}"
     if [[ "$actual" == "$expected" ]]; then
       echo "[PASS] $desc: '$input' -> '$actual'"
     else
