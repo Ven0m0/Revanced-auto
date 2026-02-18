@@ -322,7 +322,7 @@ set_prebuilts() {
 # Note: Uses Python HTML parser (scripts/html_parser.py)
 scrape_text() {
   local selector=$1
-  python3 "${CWD}/scripts/html_parser.py" --text "$selector"
+  python3 "${PROJECT_ROOT}/scripts/html_parser.py" --text "$selector"
 }
 # Scrape attribute value from HTML using a CSS selector
 # Args:
@@ -335,5 +335,5 @@ scrape_text() {
 scrape_attr() {
   local selector=$1
   local attr=$2
-  python3 "${CWD}/scripts/html_parser.py" --attribute "$attr" "$selector"
+  python3 "${PROJECT_ROOT}/scripts/html_parser.py" --attribute "$attr" "$selector"
 }

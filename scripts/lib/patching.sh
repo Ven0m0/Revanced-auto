@@ -58,7 +58,7 @@ merge_splits() {
   unzip -qo "${bundle}.mzip" -d "${bundle}-zip" || return 1
   (
     cd "${bundle}-zip" || return 1
-    zip -0rq "${CWD}/${bundle}.zip" . || return 1
+    zip -0rq "${PROJECT_ROOT}/${bundle}.zip" . || return 1
   )
   # Copy merged APK (signing is done during patching step)
   cp "${bundle}.zip" "$output"
