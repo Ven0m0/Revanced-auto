@@ -27,8 +27,11 @@ get_file_hash() {
     return 0
   fi
 
-  local hash
-  hash=$(sha256sum "$file" | cut -d" " -f1)
+  local hash_line
+  if ! hash_line=$(sha256sum "$file"); then
+    return 1
+  fi
+  local hash="${hash_line%% *}"
 
   # Update cache
   __HASH_CACHE__["$file"]="$hash"
