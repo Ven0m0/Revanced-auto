@@ -113,6 +113,11 @@ format_version() {
   version="${version// /}"
   # Remove 'v' prefix
   version="${version#v}"
+  # Validate version string (allow alphanumeric, dot, hyphen, underscore, plus)
+  if [[ ! "$version" =~ ^[a-zA-Z0-9._+-]+$ ]]; then
+    epr "Invalid version string: '$version'"
+    return 1
+  fi
   echo "$version"
 }
 # Trim leading and trailing whitespace from string

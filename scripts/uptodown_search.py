@@ -4,9 +4,11 @@ Uptodown Search Script for ReVanced Builder
 Parses Uptodown version file list HTML and searches for a compatible architecture.
 Replaces the inefficient Bash loop that spawned multiple Python processes.
 """
+
 import argparse
 import sys
 from itertools import pairwise
+
 try:
     from lxml import etree, html
 except ImportError:
@@ -15,6 +17,8 @@ except ImportError:
         file=sys.stderr,
     )
     sys.exit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Search Uptodown HTML content for matching architecture"
@@ -53,5 +57,7 @@ def main() -> None:
                         sys.exit(0)
     # No matching architecture found
     sys.exit(1)
+
+
 if __name__ == "__main__":
     main()
