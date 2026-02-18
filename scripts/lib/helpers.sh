@@ -374,3 +374,34 @@ scrape_attr() {
   local attr=$2
   python3 "${PROJECT_ROOT}/scripts/html_parser.py" --attribute "$attr" "$selector"
 }
+
+# Check for Zip Slip vulnerability in an archive
+# Args:
+#   $1: Path to zip file
+# Returns:
+#   0 if safe, 1 if unsafe paths detected
+check_zip_safety() {
+  local zip_file=$1
+  if [[ ! -f "$zip_file" ]]; then
+    epr "check_zip_safety: file not found: $zip_file"
+    return 1
+  fi
+
+  # Use Python for reliable cross-platform verification
+  if ! python3 -c "
+import sys, zipfile, os
+try:
+    with zipfile.ZipFile(sys.argv[1], 'r') as zf:
+        for name in zf.namelist():
+            if os.path.isabs(name) or '..' in name.split('/'):
+                print(f'Unsafe path detected: {name}')
+                sys.exit(1)
+except Exception as e:
+    print(f'Error verification failed: {e}')
+    sys.exit(1)
+" "$zip_file"; then
+    epr "Security check failed for $zip_file"
+    return 1
+  fi
+  return 0
+}

@@ -2,7 +2,7 @@
 set -euo pipefail
 # APK patching and building functions
 # Cache for signature verification (format: "pkg:version" -> signature)
-declare -A __SIG_CACHE__
+declare -gA __SIG_CACHE__
 # Check APK signature against known signatures
 # Args:
 #   $1: APK file path
@@ -55,6 +55,7 @@ merge_splits() {
   fi
   # Repackage using zip (required for apksig compatibility)
   mkdir "${bundle}-zip" || return 1
+  check_zip_safety "${bundle}.mzip" || return 1
   unzip -qo "${bundle}.mzip" -d "${bundle}-zip" || return 1
   (
     cd "${bundle}-zip" || return 1
