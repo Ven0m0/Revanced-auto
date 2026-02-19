@@ -57,7 +57,6 @@ Any malformed lines or unexpected errors are reported to standard error and
 skipped, so that processing of the remaining commits can continue.
 """
 
-import re
 import sys
 
 
@@ -72,7 +71,7 @@ def parse_commits() -> None:
             if len(parts) != 5:
                 # Fallback if split fails or data is incomplete
                 sys.stderr.write(
-                    f"Warning: expected 5 fields but got {len(parts)}; skipping line: {line[:50]}...\n"
+                    f"Warning: expected 5 fields but got {len(parts)}; skipping line: {line[:50]}...\n",
                 )
                 continue
             commit_hash = parts[0]

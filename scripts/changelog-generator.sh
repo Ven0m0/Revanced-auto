@@ -48,7 +48,7 @@ parse_commits() {
   # Parse commits using Python script for performance
   # Use Unit Separator (0x1F) as delimiter
   local separator=$'\x1f'
-  git log "$range" --pretty=format:"%H${separator}%s${separator}%an${separator}%ae${separator}%ai" --no-merges | python3 "$(dirname "$0")/changelog_parser.py"
+  git log "$range" --pretty=format:"%H${separator}%s${separator}%an${separator}%ae${separator}%ai" --no-merges | uv run "$(dirname "$0")/changelog_parser.py"
 }
 # Get ReVanced patches changelog for a repository
 get_patches_changelog() {

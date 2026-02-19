@@ -6,23 +6,24 @@ requires-python = ">=3.13"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [ { name = "ReVanced Builder Contributors" } ]
-dependencies = [ "lxml>=5.2.2,<7.0.0", "cssselect>=1.2.0,<2.0.0", "requests", "beautifulsoup4"]
+dependencies = [ "selectolax>=0.3.21" ]
 
-[project.optional-dependencies]
-dev = [ "ruff>=0.8.0", "mypy>=1.15.0", "types-lxml>=2025.0.0" ]
+[dependency-groups]
+dev = [ "ruff>=0.9.0", "mypy>=1.15.0" ]
 
-[build-system]
-requires = [ "setuptools>=68.0" ]
-build-backend = "setuptools.build_meta"
+[tool.uv]
+package = false
 
 [tool.ruff]
-line-length = 120
+line-length = 100
 target-version = "py313"
 fix = true
 [tool.ruff.lint]
 select = [ "ALL"]
 ignore = [
-  "E501", # line too long (handled by formatter)
+  "E501",   # line too long (handled by formatter)
+  "T201",   # print() in CLI scripts is intentional
+  "BLE001", # broad exception in CLI error handlers is acceptable
 ]
 
 [tool.ruff.format]
@@ -34,12 +35,7 @@ line-ending = "lf"
 known-first-party = [ "scripts" ]
 
 [tool.ruff.lint.pydocstyle]
-convention = "numpy"
-
-[tool.docformatter]
-recursive = true
-wrap-summaries = 120
-wrap-descriptions = 120
+convention = "google"
 
 [tool.mypy]
 python_version = "3.13"
@@ -55,19 +51,3 @@ warn_no_return = true
 check_untyped_defs = true
 strict_equality = true
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "lxml.*"
-ignore_missing_imports = true
-
-[tool.black]
-line-length = 120
-
-[pycodestyle]
-max-line-length = 120
-exclude = ["venv"]
-
-[tool.isort]
-line_length = 120
-skip = ["venv"]
-profile = "ruff"

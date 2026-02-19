@@ -359,7 +359,7 @@ set_prebuilts() {
 # Note: Uses Python HTML parser (scripts/html_parser.py)
 scrape_text() {
   local selector=$1
-  python3 "${PROJECT_ROOT}/scripts/html_parser.py" --text "$selector"
+  uv run "${PROJECT_ROOT}/scripts/html_parser.py" --text "$selector"
 }
 # Scrape attribute value from HTML using a CSS selector
 # Args:
@@ -372,7 +372,7 @@ scrape_text() {
 scrape_attr() {
   local selector=$1
   local attr=$2
-  python3 "${PROJECT_ROOT}/scripts/html_parser.py" --attribute "$attr" "$selector"
+  uv run "${PROJECT_ROOT}/scripts/html_parser.py" --attribute "$attr" "$selector"
 }
 
 # Check for Zip Slip vulnerability in an archive
@@ -388,7 +388,7 @@ check_zip_safety() {
   fi
 
   # Use Python for reliable cross-platform verification
-  if ! python3 -c "
+  if ! uv run python3 -c "
 import sys, zipfile, os
 try:
     with zipfile.ZipFile(sys.argv[1], 'r') as zf:

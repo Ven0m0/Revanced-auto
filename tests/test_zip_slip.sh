@@ -9,7 +9,7 @@ cd "$WORK_DIR"
 export CWD="$WORK_DIR"
 export TEMP_DIR="$WORK_DIR/temp"
 mkdir -p "$TEMP_DIR"
-python3 "$ROOT_DIR/tests/security_repro_zip_slip.py" "malicious.mzip"
+uv run "$ROOT_DIR/tests/security_repro_zip_slip.py" "malicious.mzip"
 if merge_splits "malicious" "output.apk"; then
     echo "FAIL: merge_splits succeeded on malicious zip (Vulnerable)"
 ls -R "$WORK_DIR"
