@@ -25,7 +25,11 @@ gh_api() {
   if [[ -n "$GITHUB_TOKEN" ]]; then
     headers+=(-H "Authorization: token $GITHUB_TOKEN")
   fi
-  curl -sSL "${headers[@]}" "$GITHUB_API/$endpoint"
+  if command -v gh_req &> /dev/null; then
+    gh_req "$GITHUB_API/$endpoint" "-"
+  else
+    curl -sSL --fail --connect-timeout 10 --max-time 300 "${headers[@]}" "$GITHUB_API/$endpoint"
+  fi
 }
 # Compare two semantic versions
 # Returns: 0 if v1 < v2, 1 if v1 >= v2
