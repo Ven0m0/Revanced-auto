@@ -1,0 +1,15 @@
+Name: patch-A
+Description: ...
+Compatible versions:
+  1.0.0
+  2.0.0
+
+Name: patch-B
+Description: ...
+Compatible versions:
+  1.0.0
+
+Name: patch-C
+Description: ...
+Compatible versions:
+  3.0.0

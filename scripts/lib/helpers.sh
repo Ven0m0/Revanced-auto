@@ -166,19 +166,19 @@ trim_whitespace() {
   echo "$value"
 }
 # Get last supported version for a patch
+# Get last supported version for a patch
 # Args:
 #   $1: list_patches output
 #   $2: Package name
 #   $3: Included patches selection
-#   $4: (unused, kept for call-site compat)
-#   $5: (unused, kept for call-site compat)
+#   $4: Excluded patches selection
+#   $5: Exclusive patches selection
 #   $6: CLI jar path (optional, uses $rv_cli_jar if not provided)
 #   $7+: Patches jar path(s) - supports multiple jars for multi-source
 # Returns:
 #   Highest supported version (union across all patch sources)
 get_patch_last_supported_ver() {
-  local list_patches=$1 pkg_name=$2 inc_sel=$3
-  # $4 and $5 are unused but accepted for call-site compatibility
+  local list_patches=$1 pkg_name=$2 inc_sel=$3 exc_sel=$4 exclusive=$5
   local cli_jar=${6:-$rv_cli_jar}
   shift 6
   local -a patches_jars=("$@")
@@ -186,124 +186,147 @@ get_patch_last_supported_ver() {
   if [[ ${#patches_jars[@]} -eq 0 ]]; then
     patches_jars=("${rv_patches_jar:-}")
   fi
-  local op
-  if [[ "$inc_sel" ]]; then
+
+  local awk_script='
+    BEGIN {
+        # Build inclusion map
+        has_inc = 0
+        if (inc_patches != "") {
+            split(inc_patches, p_arr, /[ \n]+/)
+            for (i in p_arr) {
+                gsub(/^"|"$/, "", p_arr[i])
+                if (p_arr[i] != "") {
+                    inc_map[p_arr[i]] = 1
+                    has_inc = 1
+                }
+            }
+        }
+
+        # Build exclusion map
+        if (exc_patches != "") {
+            split(exc_patches, e_arr, /[ \n]+/)
+            for (i in e_arr) {
+                gsub(/^"|"$/, "", e_arr[i])
+                if (e_arr[i] != "") {
+                    exc_map[e_arr[i]] = 1
+                }
+            }
+        }
+
+        in_vers = 0
+    }
+    /^Name:/ {
+        current_name = $2
+        in_vers = 0
+    }
+    /^Compatible versions:/ {
+        is_included = 0
+        if (has_inc) {
+            if (current_name in inc_map) is_included = 1
+        } else {
+            is_included = 1
+        }
+
+        if (current_name in exc_map) is_included = 0
+
+        if (is_included) {
+            in_vers = 1
+            next
+        }
+    }
+    in_vers && /^$/ {
+        in_vers = 0
+    }
+    in_vers {
+        gsub(/^[ \t]+|[ \t]+$/, "", $0)
+        if ($0 != "") {
+           count[$0]++
+        }
+    }
+    END {
+        max_c = 0
+        for (v in count) {
+            if (count[v] > max_c) max_c = count[v]
+        }
+        for (v in count) {
+            if (count[v] == max_c) print v
+        }
+    }
+  '
+
+  local vers=""
+  if [[ -n "$inc_sel" ]]; then
+    # If patches are explicitly included, use the provided list_patches output ($1)
     if ! op=$(awk '{$1=$1}1' <<< "$list_patches"); then
       epr "list-patches: '$op'"
       return 1
     fi
-    # Use single awk invocation instead of multiple sed calls in a loop
-    local vers
-    vers=$(awk -v patches="$(list_args "$inc_sel")" '
-			BEGIN {
-				# Build array of patch names
-				split(patches, p_arr, "\n")
-				for (i in p_arr) {
-					# Remove quotes from patch names
-					gsub(/^"|"$/, "", p_arr[i])
-					patches_map[p_arr[i]] = 1
-				}
-				in_vers = 0
-			}
-			/^Name:/ {
-				current_name = $2
-				in_vers = 0
-			}
-			/^Compatible versions:/ && (current_name in patches_map) {
-				in_vers = 1
-				next
-			}
-			in_vers && /^$/ {
-				in_vers = 0
-			}
-			in_vers {
-				print
-			}
-		' <<< "$op")
-    vers=$(awk '{$1=$1}1' <<< "$vers")
-    if [[ "$vers" ]]; then
-      get_highest_ver <<< "$vers"
-      return
-    fi
-  fi
-  # Collect versions from all patch sources (union approach)
-  local all_versions="" source_idx=1
-  # Create temp dir for parallel processing
-  local temp_dir
-  temp_dir=$(mktemp -d)
-  local pids=()
-  local i=0
-  # Launch all jobs in parallel
-  for patches_jar in "${patches_jars[@]}"; do
-    log_debug "Checking compatible versions from patch source $((i + 1))/${#patches_jars[@]}"
-    (
-      local op
-      if ! op=$(java -jar "$cli_jar" list-versions "$patches_jar" -f "$pkg_name" 2>&1 | tail -n +3); then
-        # Write error to file
-        echo "$op" > "${temp_dir}/${i}.err"
-        exit 1
+    vers=$(awk -v inc_patches="$(list_args "$inc_sel")" -v exc_patches="$(list_args "$exc_sel")" "$awk_script" <<< "$op")
+  else
+    # Auto mode: Determine applicable patches for this package
+    # We must fetch the list of patches filtered by package name to support exclusion correctly
+    local all_vers_output=""
+    local source_idx=1
+
+    # Run list-patches for each jar in parallel
+    local -a pids=()
+    local temp_dir
+    temp_dir=$(mktemp -d)
+    trap 'rm -rf "$temp_dir"' RETURN
+
+    local i=0
+    for patches_jar in "${patches_jars[@]}"; do
+      log_debug "Listing patches for package '$pkg_name' from source $((i + 1))/${#patches_jars[@]}"
+      (
+        # Invoke CLI to get patches specific to this package
+        # Note: We use list-patches instead of list-versions to get patch names for exclusion filtering
+        local op
+        if ! op=$(java -jar "$cli_jar" list-patches "$patches_jar" -f "$pkg_name" 2>&1); then
+             # Write error to file
+             echo "$op" > "${temp_dir}/${i}.err"
+        else
+             echo "$op" > "${temp_dir}/${i}.out"
+        fi
+      ) &
+      pids+=($!)
+      i=$((i + 1))
+    done
+
+    # Wait for jobs
+    for pid in "${pids[@]}"; do
+      wait "$pid" || true
+    done
+
+    # Collect outputs
+    i=0
+    for patches_jar in "${patches_jars[@]}"; do
+      source_idx=$((i + 1))
+      if [[ -f "${temp_dir}/${i}.err" ]]; then
+        local err_msg
+        err_msg=$(cat "${temp_dir}/${i}.err")
+        log_warn "Failed to list patches from source ${source_idx}: $err_msg"
+      elif [[ -f "${temp_dir}/${i}.out" ]]; then
+        all_vers_output+="$(cat "${temp_dir}/${i}.out")"$'\n'
+      else
+        log_warn "Failed to get patches from source ${source_idx}: No output"
       fi
-      echo "$op" > "${temp_dir}/${i}.out"
-    ) &
-    pids+=($!)
-    i=$((i + 1))
-  done
-  # Wait for all jobs to complete
-  for pid in "${pids[@]}"; do
-    wait "$pid" || true
-  done
-  # Process results
-  i=0
-  for patches_jar in "${patches_jars[@]}"; do
-    source_idx=$((i + 1))
-    if [[ -f "${temp_dir}/${i}.err" ]]; then
-      local err_msg
-      err_msg=$(cat "${temp_dir}/${i}.err")
-      log_warn "Failed to get versions from patch source ${source_idx}: $err_msg"
       i=$((i + 1))
-      continue
-    fi
-    if [[ ! -f "${temp_dir}/${i}.out" ]]; then
-      # Should not happen if err file not present, but safety check
-      log_warn "Failed to get versions from patch source ${source_idx}: No output"
-      i=$((i + 1))
-      continue
-    fi
-    local op
-    op=$(cat "${temp_dir}/${i}.out")
-    if [[ "$op" = "Any" ]]; then
-      # This source supports any version - skip to next
-      i=$((i + 1))
-      continue
-    fi
-    local pcount
-    pcount=$(head -1 <<< "$op")
-    pcount=${pcount#*(}
-    pcount=${pcount% *}
-    if [[ "$pcount" = "" ]]; then
-      log_warn "Could not determine patch count for source ${source_idx}"
-      i=$((i + 1))
-      continue
-    fi
-    # Extract versions supported by this source
-    local source_versions
-    source_versions=$(grep -F "($pcount patch" <<< "$op" | sed 's/ (.* patch.*//')
-    if [[ "$source_versions" ]]; then
-      all_versions+="$source_versions"$'\n'
-      log_debug "Source ${source_idx} supports $(echo "$source_versions" | wc -l) version(s)"
-    fi
-    i=$((i + 1))
-  done
-  rm -rf "$temp_dir"
-  if [[ -z "$all_versions" ]]; then
-    log_warn "No compatible versions found across ${#patches_jars[@]} patch source(s)"
-    return 1
+    done
+
+    # Process combined output with AWK script (Counting logic + Exclusion)
+    vers=$(awk -v inc_patches="" -v exc_patches="$(list_args "$exc_sel")" "$awk_script" <<< "$all_vers_output")
   fi
-  # Union: remove duplicates and get highest version
-  local highest_version
-  highest_version=$(echo "$all_versions" | sort -u -V | tail -1)
-  log_debug "Highest compatible version (union): $highest_version"
-  echo "$highest_version"
+
+  if [[ "$vers" ]]; then
+    local highest
+    highest=$(get_highest_ver <<< "$vers")
+    log_debug "Highest compatible version (max compatibility): $highest"
+    echo "$highest"
+    return 0
+  fi
+
+  log_warn "No compatible versions found"
+  return 1
 }
 # Set prebuilt binary paths based on architecture
 set_prebuilts() {

@@ -3,13 +3,13 @@ import zipfile
 
 
 def create_zip(filename):
-    with zipfile.ZipFile(filename, 'w') as zf:
+    with zipfile.ZipFile(filename, "w") as zf:
         # Standard zip slip
-        zf.writestr('../evil.txt', 'evil content')
+        zf.writestr("../evil.txt", "evil content")
         # Absolute path
          # zf.writestr('/tmp/evil_abs.txt', 'evil abs content')
         # Normal file
-        zf.writestr('good.txt', 'good content')
+        zf.writestr("good.txt", "good content")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     create_zip(sys.argv[1])
