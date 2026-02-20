@@ -128,7 +128,14 @@ get_uptodown_resp() {
 }
 # Get package name from Uptodown
 get_uptodown_pkg_name() {
-  scrape_text "tr.full:nth-child(1) > td:nth-child(3)" <<< "$__UPTODOWN_RESP_PKG__"
+  local pkg_name
+  pkg_name=$(scrape_text "tr.full:nth-child(1) > td:nth-child(3)" <<< "$__UPTODOWN_RESP_PKG__")
+
+  if [[ ! "$pkg_name" =~ ^[a-zA-Z0-9._]+$ ]]; then
+    epr "Invalid package name from Uptodown: $pkg_name"
+    return 1
+  fi
+  echo "$pkg_name"
 }
 # Get available versions from Uptodown
 get_uptodown_vers() {
