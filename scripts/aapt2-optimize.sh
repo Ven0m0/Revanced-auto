@@ -61,7 +61,7 @@ find_aapt2() {
   # Try to find aapt2 in Android SDK
   if [[ -n "${ANDROID_HOME:-}" ]]; then
     local aapt2_path
-    aapt2_path=$(find "${ANDROID_HOME}/build-tools/" -name "aapt2" -type f 2> /dev/null | sort -V | tail -1)
+    aapt2_path=$(find "${ANDROID_HOME}/build-tools/" -maxdepth 3 -name "aapt2" -type f 2> /dev/null | sort -V | tail -1)
     if [[ -n "$aapt2_path" ]] && [[ -x "$aapt2_path" ]]; then
       echo "$aapt2_path"
       return 0
