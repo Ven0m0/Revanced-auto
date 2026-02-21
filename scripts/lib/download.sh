@@ -263,8 +263,7 @@ get_archive_resp() {
   else
     __ARCHIVE_RESP__=$(sed -n 's;^<a href="\(.*\)"[^"]*;\1;p' <<< "$r")
   fi
-  local pkg_name
-  pkg_name=$(awk -F/ '{print $NF}' <<< "$1")
+  local pkg_name="${1##*/}"
   if [[ ! "$pkg_name" =~ ^[a-zA-Z0-9._-]+$ ]]; then
     epr "Invalid package name from Archive.org URL: $pkg_name"
     return 1
