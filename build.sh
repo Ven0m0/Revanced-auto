@@ -129,11 +129,11 @@ declare -a failed_apps=()
 declare -a succeeded_apps=()
 for pid in "${JOB_PIDS[@]}"; do
   if ! wait "$pid"; then
-    local app_name="${JOB_NAMES[$pid]:-$pid}"
+    app_name="${JOB_NAMES[$pid]:-$pid}"
     failed_apps+=("$app_name")
     BUILD_STATUS["${app_name}"]="failed"
   else
-    local app_name="${JOB_NAMES[$pid]:-$pid}"
+    app_name="${JOB_NAMES[$pid]:-$pid}"
     succeeded_apps+=("$app_name")
     BUILD_STATUS["${app_name}"]="success"
   fi
@@ -145,8 +145,8 @@ fi
 # Print build status summary
 log_info "Build status summary:"
 for app in "${!BUILD_STATUS[@]}"; do
-  local status="${BUILD_STATUS[$app]}"
-  local emoji=""
+  status="${BUILD_STATUS[$app]}"
+  emoji=""
   case "$status" in
     success) emoji="✅" ;;
     failed) emoji="❌" ;;
