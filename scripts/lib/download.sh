@@ -105,8 +105,8 @@ dl_apkmirror() {
         fi
       fi
     fi
-    url=$(echo "$resp" | scrape_attr "a.btn" href --base https://www.apkmirror.com) || return 1
-    url=$(req "$url" - | scrape_attr "span > a[rel = nofollow]" href --base https://www.apkmirror.com) || return 1
+    url=$(echo "$resp" | scrape_attr "a.btn" href) || return 1
+    url=$(req "$url" - | scrape_attr "span > a[rel = nofollow]" href) || return 1
   fi
   if [[ "$is_bundle" = true ]]; then
     log_info "Downloading APK bundle from APKMirror"
