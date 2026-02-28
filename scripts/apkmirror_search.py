@@ -40,8 +40,8 @@ def _row_text_nodes(row: Node) -> list[str]:
     texts: list[str] = []
     for node in row.css("*"):
         t = node.text(deep=False)
-        if t and t.strip():
-            texts.append(t.strip())
+        if t and (s := t.strip()):
+            texts.append(s)
     return texts
 
 
@@ -67,8 +67,6 @@ def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
 
     for row in rows:
         text_nodes = _row_text_nodes(row)
-        # Index mapping (same as original bash sed -n Np approach):
-        # 0: version, 1: size, 2: bundle type, 3: arch, 4: android ver, 5: dpi
         if len(text_nodes) < _MIN_ROW_FIELDS:
             continue
 
