@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""
-TOML/JSON to JSON converter for ReVanced Builder
+"""TOML/JSON to JSON converter for ReVanced Builder.
+
 Converts TOML files to JSON using Python's stdlib tomllib (requires Python >= 3.11).
 Also validates and reformats JSON files.
 Usage:
@@ -15,14 +15,18 @@ Requirements:
 Author: ReVanced Builder
 License: Same as parent project
 """
+
 import argparse
 import json
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
+
+
 def parse_toml(file_path: Path) -> dict[str, Any]:
-    """
-    Parse TOML file and return as dictionary.
+    """Parse TOML file and return as dictionary.
+
     Args:
         file_path: Path to TOML file
     Returns:
@@ -31,12 +35,7 @@ def parse_toml(file_path: Path) -> dict[str, Any]:
         SystemExit: On parsing errors or file access issues
     """
     try:
-        import tomllib
-    except ImportError:
-        print("Error: tomllib not available (Python >= 3.11 required)", file=sys.stderr)
-        sys.exit(2)
-    try:
-        with open(file_path, "rb") as f:
+        with file_path.open("rb") as f:
             return tomllib.load(f)
     except tomllib.TOMLDecodeError as e:
         print(f"Error: Invalid TOML syntax in {file_path}: {e}", file=sys.stderr)
@@ -44,9 +43,11 @@ def parse_toml(file_path: Path) -> dict[str, Any]:
     except Exception as e:
         print(f"Error reading TOML file {file_path}: {e}", file=sys.stderr)
         sys.exit(1)
+
+
 def parse_json(file_path: Path) -> dict[str, Any]:
-    """
-    Parse and validate JSON file.
+    """Parse and validate JSON file.
+
     Args:
         file_path: Path to JSON file
     Returns:
@@ -55,7 +56,7 @@ def parse_json(file_path: Path) -> dict[str, Any]:
         SystemExit: On parsing errors or file access issues
     """
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with file_path.open(encoding="utf-8") as f:
             return json.load(f)  # type: ignore[no-any-return]
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON syntax in {file_path}: {e}", file=sys.stderr)
@@ -63,9 +64,11 @@ def parse_json(file_path: Path) -> dict[str, Any]:
     except Exception as e:
         print(f"Error reading JSON file {file_path}: {e}", file=sys.stderr)
         sys.exit(1)
+
+
 def main() -> None:
-    """
-    Main entry point for TOML/JSON converter CLI.
+    """Main entry point for TOML/JSON converter CLI.
+
     Parses command-line arguments, reads input file, and outputs JSON.
     """
     parser = argparse.ArgumentParser(description="Convert TOML or JSON file to JSON output")
@@ -100,5 +103,7 @@ def main() -> None:
         print(json.dumps(data, indent=2, ensure_ascii=False))
     else:
         print(json.dumps(data, separators=(",", ":"), ensure_ascii=False))
+
+
 if __name__ == "__main__":
     main()

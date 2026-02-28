@@ -6,7 +6,7 @@ set -euo pipefail
 # Returns 1 if any tool is missing
 check_system_tools() {
   local missing=()
-  for tool in jq java zip python3; do
+  for tool in jq java zip uv; do
     if ! command -v "$tool" &> /dev/null; then
       missing+=("$tool")
     fi
@@ -70,17 +70,17 @@ check_optional_tools() {
     log_debug "All optional tools found"
   fi
 }
-# Check Python version (>= 3.11 for tomllib)
+# Check uv and Python version (>= 3.11 for tomllib)
 check_python_version() {
-  if ! command -v python3 &> /dev/null; then
-    epr "python3 not found"
+  if ! command -v uv &> /dev/null; then
+    epr "uv not found (install: curl -LsSf https://astral.sh/uv/install.sh | sh)"
     return 1
   fi
-  if python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2> /dev/null; then
-    log_debug "Python version >= 3.11"
+  if uv run python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2> /dev/null; then
+    log_debug "uv python >= 3.11"
     return 0
   else
-    epr "Python version < 3.11 (tomllib requires >= 3.11)"
+    epr "uv python < 3.11 (requires >= 3.11)"
     return 1
   fi
 }
@@ -104,8 +104,8 @@ check_config_file() {
     log_warn "config.toml not found"
     return 0
   fi
-  if command -v python3 &> /dev/null; then
-    if python3 scripts/toml_get.py --file config.toml > /dev/null 2>&1; then
+  if command -v uv &> /dev/null; then
+    if uv run scripts/toml_get.py --file config.toml > /dev/null 2>&1; then
       log_debug "config.toml syntax valid"
     else
       epr "config.toml syntax invalid"

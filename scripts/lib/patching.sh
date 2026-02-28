@@ -2,7 +2,7 @@
 set -euo pipefail
 # APK patching and building functions
 # Cache for signature verification (format: "pkg:version" -> signature)
-declare -A __SIG_CACHE__
+declare -gA __SIG_CACHE__
 # Check APK signature against known signatures
 # Args:
 #   $1: APK file path
@@ -55,10 +55,11 @@ merge_splits() {
   fi
   # Repackage using zip (required for apksig compatibility)
   mkdir "${bundle}-zip" || return 1
+  check_zip_safety "${bundle}.mzip" || return 1
   unzip -qo "${bundle}.mzip" -d "${bundle}-zip" || return 1
   (
     cd "${bundle}-zip" || return 1
-    zip -0rq "${CWD}/${bundle}.zip" . || return 1
+    zip -0rq "${bundle}.zip" . || return 1
   )
   # Copy merged APK (signing is done during patching step)
   cp "${bundle}.zip" "$output"
@@ -333,8 +334,14 @@ get_cached_patches_list() {
   fi
   # Calculate cache key based on hashes of both jars
   local cli_hash patches_hash
-  cli_hash=$(sha256sum "$cli_jar" | cut -d" " -f1)
-  patches_hash=$(sha256sum "$patches_jar" | cut -d" " -f1)
+  if ! cli_hash=$(get_file_hash "$cli_jar"); then
+    log_warn "Failed to get hash for '$cli_jar'"
+    return 1
+  fi
+  if ! patches_hash=$(get_file_hash "$patches_jar"); then
+    log_warn "Failed to get hash for '$patches_jar'"
+    return 1
+  fi
   local cache_key="patches-list-${cli_hash}-${patches_hash}.txt"
   local cache_path
   cache_path=$(get_cache_path "$cache_key" "patches")
@@ -404,6 +411,12 @@ build_rv() {
   local -a patches_jars_array
   read -ra patches_jars_array <<< "${args[ptjars]}"
   log_debug "Listing patches from ${#patches_jars_array[@]} source(s)"
+
+  # Pre-calculate hashes to populate global cache for parallel subshells
+  get_file_hash "${args[cli]}" > /dev/null || :
+  for jar in "${patches_jars_array[@]}"; do
+    get_file_hash "$jar" > /dev/null || :
+  done
   # Run list-patches commands in parallel to save time
   local -a temp_files=() pids=()
   for patches_jar in "${patches_jars_array[@]}"; do
