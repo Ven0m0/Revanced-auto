@@ -13,7 +13,28 @@ Usage:
 import argparse
 import sys
 
-from selectolax.parser import HTMLParser
+try:
+    from selectolax.parser import HTMLParser
+except ImportError:
+    print(
+        "Error: selectolax not installed. Install with: pip install selectolax cssselect",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+def parse_html(html_content: str) -> HTMLParser:
+    """Parse HTML content into an lxml tree (actually selectolax tree).
+
+    Args:
+        html_content: Raw HTML string.
+
+    Returns:
+        Parsed HTML tree.
+    """
+    if not html_content:
+        raise ValueError("No HTML content provided")
+    return HTMLParser(html_content)
 
 
 def scrape_text(tree: HTMLParser, selector: str) -> list[str]:
@@ -25,16 +46,24 @@ def scrape_text(tree: HTMLParser, selector: str) -> list[str]:
 
     Returns:
         List of stripped text values from matching elements.
+
+    Raises:
+        ValueError: If selector is invalid or parsing fails.
     """
     results = []
     try:
-        for node in tree.css(selector):
+        # Check if selector is valid by trying to use it.
+        # selectolax doesn't raise on empty result, but might on invalid syntax.
+        # Note: selectolax uses cssselect under the hood for some things or its own parser.
+        # Simple test: just run it.
+        nodes = tree.css(selector)
+        for node in nodes:
             text = node.text(deep=True, strip=True)
             if text:
                 results.append(text)
     except Exception as e:
-        print(f"Error with selector '{selector}': {e}", file=sys.stderr)
-        sys.exit(1)
+        # Re-raise as ValueError for consistent error handling in main
+        raise ValueError(f"Error with selector '{selector}': {e}") from e
     return results
 
 
@@ -48,16 +77,19 @@ def scrape_attribute(tree: HTMLParser, selector: str, attribute: str) -> list[st
 
     Returns:
         List of attribute values from matching elements.
+
+    Raises:
+        ValueError: If selector is invalid or parsing fails.
     """
     results = []
     try:
-        for node in tree.css(selector):
+        nodes = tree.css(selector)
+        for node in nodes:
             val = node.attrs.get(attribute)
             if val is not None:
                 results.append(val.strip())
     except Exception as e:
-        print(f"Error with selector '{selector}' or attribute '{attribute}': {e}", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError(f"Error with selector '{selector}' or attribute '{attribute}': {e}") from e
     return results
 
 
@@ -83,21 +115,25 @@ def main() -> None:
     except KeyboardInterrupt:
         sys.exit(130)
 
-    if not html_content:
-        print("Error: No HTML content received from stdin", file=sys.stderr)
+    try:
+        tree = parse_html(html_content)
+
+        if args.text:
+            results = scrape_text(tree, args.selector)
+        else:
+            results = scrape_attribute(tree, args.selector, args.attribute)
+
+        for result in results:
+            print(result)
+
+        sys.exit(0 if results else 1)
+
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
-    tree = HTMLParser(html_content)
-
-    if args.text:
-        results = scrape_text(tree, args.selector)
-    else:
-        results = scrape_attribute(tree, args.selector, args.attribute)
-
-    for result in results:
-        print(result)
-
-    sys.exit(0 if results else 1)
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
