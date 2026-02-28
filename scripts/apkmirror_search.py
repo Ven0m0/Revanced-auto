@@ -57,7 +57,7 @@ def search(html_content: str, apk_bundle: str, dpi: str, arch: str) -> int:
     for row in rows:
         # Extract all text nodes from the row, stripping whitespace
         # This matches the behavior of scrape_text in the bash script
-        text_nodes = [stripped for t in row.itertext() if (stripped := t.strip())]
+        text_nodes = list(filter(None, (t.strip() for t in row.itertext())))
         # We need at least 6 text nodes to check the conditions
         # Index mapping based on 'sed -n Np':
         # 3p -> index 2 (Bundle type)
