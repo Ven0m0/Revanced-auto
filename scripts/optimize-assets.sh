@@ -10,7 +10,7 @@ set -euo pipefail
 NPROC=$(nproc 2>/dev/null || echo 1)
 
 # Find and optimize all PNG files
-PNG_COUNT=$(find . -type f -iname '*.png' | wc -l)
+PNG_COUNT=$(find . -type f -iname '*.png' -print0 | grep -zc .)
 
 if [ "$PNG_COUNT" -eq 0 ]; then
   echo "[INFO] No PNG files found to optimize"
