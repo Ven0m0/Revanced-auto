@@ -65,7 +65,15 @@ def main() -> None:
         sys.exit(130)
 
     if not content:
-        sys.exit(1)
+        result = None
+    else:
+        result = search(content, args.archs)
+
+    if result:
+        print(result)
+        sys.exit(0)
+
+    sys.exit(1)
 
     result = search(content, args.archs)
     if result:
