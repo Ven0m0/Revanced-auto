@@ -5,6 +5,10 @@ set -euo pipefail
 # Source utilities if available
 if [[ -f "utils.sh" ]]; then
   source utils.sh
+  # Shim log_error if missing
+  if ! command -v log_error &> /dev/null; then
+    log_error() { epr "$@" 2>/dev/null || echo "[ERROR] $*" >&2; }
+  fi
 else
   # Standalone mode - define basic functions
   log_info() { echo "[INFO] $*"; }
@@ -25,7 +29,11 @@ gh_api() {
   if [[ -n "$GITHUB_TOKEN" ]]; then
     headers+=(-H "Authorization: token $GITHUB_TOKEN")
   fi
-  curl -sSL "${headers[@]}" "$GITHUB_API/$endpoint"
+  if command -v gh_req &> /dev/null; then
+    gh_req "$GITHUB_API/$endpoint" "-"
+  else
+    curl -sSL --fail --connect-timeout 10 --max-time 300 "${headers[@]}" "$GITHUB_API/$endpoint"
+  fi
 }
 # Compare two semantic versions
 # Returns: 0 if v1 < v2, 1 if v1 >= v2
@@ -171,7 +179,10 @@ check_all_dependencies() {
   # Initialize results array
   local results=()
   # Check CLI
+  local cli_pid=""
+  local cli_temp=""
   if [[ "$CHECK_MODE" == "all" || "$CHECK_MODE" == "cli" ]]; then
+    cli_temp=$(mktemp)
     local cli_source cli_version
     # Try to extract from config.toml
     if command -v grep &> /dev/null; then
@@ -181,12 +192,16 @@ check_all_dependencies() {
       cli_source="inotia00/revanced-cli"
       cli_version="latest"
     fi
-    local cli_result
-    cli_result=$(check_cli_updates "$cli_source" "$cli_version")
-    results+=("$cli_result")
+    # Run in background
+    check_cli_updates "$cli_source" "$cli_version" > "$cli_temp" &
+    cli_pid=$!
   fi
+
   # Check patches
+  local patches_pid=""
+  local patches_temp=""
   if [[ "$CHECK_MODE" == "all" || "$CHECK_MODE" == "patches" ]]; then
+    patches_temp=$(mktemp)
     local patches_source patches_version
     if command -v grep &> /dev/null; then
       # Handle both array and string formats
@@ -197,9 +212,34 @@ check_all_dependencies() {
       patches_source="anddea/revanced-patches"
       patches_version="latest"
     fi
-    local patches_result
-    patches_result=$(check_patches_updates "$patches_source" "$patches_version")
-    results+=("$patches_result")
+    # Run in background
+    check_patches_updates "$patches_source" "$patches_version" > "$patches_temp" &
+    patches_pid=$!
+  fi
+
+  # Wait for results
+  if [[ -n "$cli_pid" ]]; then
+    wait "$cli_pid"
+    if [[ -f "$cli_temp" ]]; then
+      local content
+      content=$(cat "$cli_temp")
+      if [[ -n "$content" ]]; then
+        results+=("$content")
+      fi
+      rm "$cli_temp"
+    fi
+  fi
+
+  if [[ -n "$patches_pid" ]]; then
+    wait "$patches_pid"
+    if [[ -f "$patches_temp" ]]; then
+      local content
+      content=$(cat "$patches_temp")
+      if [[ -n "$content" ]]; then
+        results+=("$content")
+      fi
+      rm "$patches_temp"
+    fi
   fi
   # Check APKs (if requested)
   if [[ "$CHECK_MODE" == "apks" ]]; then

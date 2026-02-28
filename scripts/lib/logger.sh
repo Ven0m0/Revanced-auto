@@ -2,10 +2,10 @@
 set -euo pipefail
 # Logging and messaging functions
 # Log levels
-declare -r LOG_LEVEL_DEBUG=0
-declare -r LOG_LEVEL_INFO=1
-declare -r LOG_LEVEL_WARN=2
-declare -r LOG_LEVEL_ERROR=3
+declare -gr LOG_LEVEL_DEBUG=0
+declare -gr LOG_LEVEL_INFO=1
+declare -gr LOG_LEVEL_WARN=2
+declare -gr LOG_LEVEL_ERROR=3
 # Current log level (default: INFO)
 LOG_LEVEL=${LOG_LEVEL:-$LOG_LEVEL_INFO}
 # Build log file (can be overridden per-app)

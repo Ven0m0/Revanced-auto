@@ -32,7 +32,7 @@ toml_prep() {
   case "$ext" in
     toml)
       # Parse TOML to JSON using Python
-      if ! __TOML__=$(python3 scripts/toml_get.py --file "$config_file" 2>&1); then
+      if ! __TOML__=$(uv run scripts/toml_get.py --file "$config_file" 2>&1); then
         epr "Failed to parse TOML config: $config_file"
         epr "Parser output: $__TOML__"
         return 1
