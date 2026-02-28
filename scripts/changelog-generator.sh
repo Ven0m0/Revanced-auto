@@ -18,8 +18,8 @@ if [[ -f "$UTILS_FILE" ]]; then
   # shellcheck source=utils.sh
   source "$UTILS_FILE"
   # Map script-specific log functions to standardized ones
-  log_success() { pr "$*"; }
-  log_error() { epr "$*"; }
+  log_success() { pr "$@" >&2; }
+  log_error() { epr "$@" >&2; }
 else
   # Fallback logging if utils.sh not found
   log_info() { echo -e "${CYAN}ℹ${NC} $*" >&2; }
