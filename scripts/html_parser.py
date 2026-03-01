@@ -33,7 +33,8 @@ def parse_html(html_content: str) -> HTMLParser:
         Parsed HTML tree.
     """
     if not html_content:
-        raise ValueError("No HTML content provided")
+        msg = "No HTML content provided"
+        raise ValueError(msg)
     return HTMLParser(html_content)
 
 
@@ -63,7 +64,8 @@ def scrape_text(tree: HTMLParser, selector: str) -> list[str]:
                 results.append(text)
     except Exception as e:
         # Re-raise as ValueError for consistent error handling in main
-        raise ValueError(f"Error with selector '{selector}': {e}") from e
+        msg = f"Error with selector '{selector}': {e}"
+        raise ValueError(msg) from e
     return results
 
 
@@ -89,7 +91,8 @@ def scrape_attribute(tree: HTMLParser, selector: str, attribute: str) -> list[st
             if val is not None:
                 results.append(val.strip())
     except Exception as e:
-        raise ValueError(f"Error with selector '{selector}' or attribute '{attribute}': {e}") from e
+        msg = f"Error with selector '{selector}' or attribute '{attribute}': {e}"
+        raise ValueError(msg) from e
     return results
 
 

@@ -9,7 +9,11 @@ authors = [ { name = "ReVanced Builder Contributors" } ]
 dependencies = [ "selectolax>=0.3.21", "requests", "orjson", "httpx[http2]", "asyncpraw", "uvloop", "aiofiles"]
 
 [dependency-groups]
-dev = [ "ruff>=0.9.0", "mypy>=1.15.0" ]
+dev = [
+ "ruff>=0.9.0",
+ "mypy>=1.15.0",
+ "pytest>=9.0.2",
+]
 
 [tool.uv]
 package = false
@@ -35,6 +39,7 @@ ignore = [
   "E501",   # line too long (handled by formatter)
   "T201",   # print() in CLI scripts is intentional
   "BLE001", # broad exception in CLI error handlers is acceptable
+  "COM812", # trailing comma conflicts with formatter
 ]
 
 [tool.ruff.format]
