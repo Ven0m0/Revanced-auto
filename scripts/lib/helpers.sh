@@ -91,14 +91,17 @@ semver_validate() {
   if [[ -z "$version" ]]; then
     return 1
   fi
-  # Remove metadata suffix (everything after -)
-  version="${version%-*}"
+
   # Remove 'v' prefix if present
   version="${version#v}"
-  # Remove all digits and dots - if anything remains, it's not semver
-  local cleaned="${version//[.0-9]/}"
-  # Valid semver should have nothing left after removing digits and dots
-  [[ ${#cleaned} -eq 0 ]]
+
+  # Strict Semantic Versioning regex (Major.Minor.Patch[-Prerelease][+Build])
+  local semver_regex="^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$"
+
+  if [[ "$version" =~ $semver_regex ]]; then
+    return 0
+  fi
+  return 1
 }
 # Convert space-separated list to newline-separated
 # Args:
