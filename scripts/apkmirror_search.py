@@ -11,6 +11,7 @@ import sys
 from selectolax.parser import HTMLParser, Node
 
 _MIN_ROW_FIELDS = 6  # version, size, bundle, arch, android_ver, dpi
+BASE_ARCHS = ["universal", "noarch", "arm64-v8a + armeabi-v7a"]
 
 
 def get_target_archs(arch: str) -> list[str]:
@@ -22,10 +23,9 @@ def get_target_archs(arch: str) -> list[str]:
     Returns:
         Ordered list of acceptable architectures including fallbacks.
     """
-    base_archs = ["universal", "noarch", "arm64-v8a + armeabi-v7a"]
     if arch == "all":
-        return base_archs
-    return [arch, *base_archs]
+        return BASE_ARCHS
+    return [arch, *BASE_ARCHS]
 
 
 def _row_text_nodes(row: Node) -> list[str]:
