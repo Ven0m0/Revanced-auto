@@ -27,18 +27,7 @@ cd <extracted-apk-directory>
 ```
 **Requirements:**
 - `optipng` must be installed
-### unused-strings.sh
-Removes unused string resources from Android XML files to reduce APK size.
-**Source:** [brave-oled-dark/scripts/unused-strings.sh](https://github.com/Ven0m0/brave-oled-dark/blob/main/scripts/unused-strings.sh)
-**Usage:**
-```bash
-cd <decompiled-apk-directory>
-/path/to/unused-strings.sh
-```
-**How it works:**
-1. Scans all XML and smali files for string references
-2. Compares with defined strings in strings.xml
-3. Removes strings that are never referenced
+
 ## Additional Resources
 ### Enhancify
 For advanced APK patching features, check out [Enhancify](https://github.com/Graywizard888/Enhancify), a custom Revancify fork with extra features including:
@@ -50,4 +39,4 @@ For advanced APK patching features, check out [Enhancify](https://github.com/Gra
 ## Notes
 - All optimization scripts are optional and can be run manually
 - The aapt2 optimization is integrated into the build pipeline when enabled
-- optimize-assets.sh and unused-strings.sh are standalone utilities for manual optimization
+- optimize-assets.sh is a standalone utility for manual optimization

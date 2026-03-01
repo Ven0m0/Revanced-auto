@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [ { name = "ReVanced Builder Contributors" } ]
-dependencies = [ "selectolax>=0.3.21", "requests", "orjson", "httpx[http2]", "asyncpraw", "uvloop", "aiofiles"]
+dependencies = ["selectolax>=0.3.21"]
 
 [dependency-groups]
 dev = [
