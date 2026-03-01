@@ -183,7 +183,7 @@ jobs:
     - name: Commit build state
       if: steps.check_artifacts.outputs.has_artifacts == 'true'
       continue-on-error: true
-      uses: stefanzweifel/git-auto-commit-action@v5
+      uses: stefanzweifel/git-auto-commit-action@v7
       with:
         commit_message: "chore: update build versions state [skip ci]"
         file_pattern: .github/last_built_versions.json
