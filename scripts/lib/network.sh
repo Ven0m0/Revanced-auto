@@ -26,7 +26,8 @@ _req() {
   # Handle temporary file for downloads with proper locking
   local dlp="" lock_fd
   if [[ "$op" != "-" ]]; then
-    # Secure temp path: hash of destination path prevents path traversal
+    # Deterministic hash-based temp path (not mktemp) so concurrent downloads
+    # of the same destination share one temp file and correctly serialize on the lock
     mkdir -p "$TEMP_DIR"
     chmod 700 "$TEMP_DIR"
     dlp="${TEMP_DIR}/tmp.$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)"
