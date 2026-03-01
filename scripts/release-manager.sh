@@ -214,6 +214,71 @@ manage_release() {
   log_success "Release management complete!"
   log_success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
+# Delete old releases matching a tag prefix, keeping the latest N
+# Args:
+#   $1: Tag prefix to match (e.g., "revanced-apps-v", "26.")
+#   $2: Number of recent releases to keep (default: 1)
+cleanup_old_releases() {
+  local prefix=${1:-""}
+  local keep=${2:-1}
+  if [[ -z "$prefix" ]]; then
+    log_error "Tag prefix required for cleanup"
+    return 1
+  fi
+  log_info "Cleaning up releases with prefix: $prefix (keeping latest $keep)"
+  local tags
+  tags=$(gh release list --json tagName -q ".[].tagName" 2>/dev/null || echo "")
+  if [[ -z "$tags" ]]; then
+    log_info "No releases found"
+    return 0
+  fi
+  local matching
+  matching=$(grep "^${prefix}" <<< "$tags" | sort -rV || true)
+  if [[ -z "$matching" ]]; then
+    log_info "No releases matching prefix: $prefix"
+    return 0
+  fi
+  local count=0
+  local deleted=0
+  while IFS= read -r tag; do
+    count=$((count + 1))
+    if ((count > keep)); then
+      log_warn "Deleting old release: $tag"
+      if gh release delete "$tag" --yes --cleanup-tag 2>/dev/null; then
+        log_success "Deleted: $tag"
+        deleted=$((deleted + 1))
+      else
+        log_warn "Failed to delete: $tag"
+      fi
+    else
+      log_info "Keeping release: $tag"
+    fi
+  done <<< "$matching"
+  log_success "Cleaned up $deleted old release(s)"
+}
+# Commit state file after successful build
+# Args:
+#   $1: State file path (default: .github/last_built_versions.json)
+#   $2: Commit message (default: auto-generated)
+commit_build_state() {
+  local state_file=${1:-".github/last_built_versions.json"}
+  local message=${2:-"chore: update build versions state [skip ci]"}
+  if [[ ! -f "$state_file" ]]; then
+    log_warn "State file not found: $state_file"
+    return 0
+  fi
+  log_info "Committing build state: $state_file"
+  git add "$state_file"
+  if git diff --cached --quiet "$state_file" 2>/dev/null; then
+    log_info "No changes to commit"
+    return 0
+  fi
+  git commit -m "$message" -- "$state_file" || {
+    log_warn "Failed to commit state file"
+    return 1
+  }
+  log_success "State file committed"
+}
 # Usage information
 show_usage() {
   cat << EOF
@@ -237,6 +302,14 @@ Commands:
     notes [logs_dir]
         Generate release notes from build logs
         Default: logs_dir=build-logs
+
+    cleanup <tag_prefix> [keep_count]
+        Delete old releases matching tag prefix, keeping latest N
+        Default: keep_count=1
+
+    commit-state [state_file] [message]
+        Commit the build state file after successful build
+        Default: state_file=.github/last_built_versions.json
 Examples:
     # Full workflow (daily builds)
     $0 manage latest build build-logs false
@@ -269,6 +342,13 @@ main() {
       ;;
     notes)
       generate_release_notes "${2:-build-logs}"
+      ;;
+    cleanup)
+      check_gh_cli
+      cleanup_old_releases "${2:-}" "${3:-1}"
+      ;;
+    commit-state)
+      commit_build_state "${2:-.github/last_built_versions.json}" "${3:-chore: update build versions state [skip ci]}"
       ;;
     help | --help | -h)
       show_usage

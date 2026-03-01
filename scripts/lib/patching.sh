@@ -269,7 +269,7 @@ _build_patcher_args() {
 _download_stock_apk() {
   local stock_apk=$1 version=$2 arch=$3 dpi=$4
   local table=${args[table]}
-  for dl_p in archive apkmirror uptodown; do
+  for dl_p in archive apkmirror uptodown apkpure aptoide; do
     if [[ "${args[${dl_p}_dlurl]}" = "" ]]; then continue; fi
     pr "Downloading '${table}' from ${dl_p}"
     if ! isoneof "$dl_p" "${tried_dl[@]}"; then
@@ -390,7 +390,7 @@ build_rv() {
   _build_patcher_args
   # Determine package name from download sources
   local tried_dl=()
-  for dl_p in archive apkmirror uptodown; do
+  for dl_p in archive apkmirror uptodown apkpure aptoide; do
     if [[ "${args[${dl_p}_dlurl]}" = "" ]]; then continue; fi
     if ! get_"${dl_p}"_resp "${args[${dl_p}_dlurl]}" || ! pkg_name=$(get_"${dl_p}"_pkg_name); then
       args[${dl_p}_dlurl]=""
