@@ -44,6 +44,19 @@ version = "auto"
 # - Only applies to arm64-v8a APK builds
 # Default: true
 enable-aapt2-optimize = true
+
+# AAPT2 Binary Source
+# GitHub repository to fetch custom aapt2 binary from (dynamically downloaded)
+# The binary is cached locally for 7 days to avoid redundant downloads
+# Set to "" to disable dynamic fetching and use only system/bundled aapt2
+# Default: "Graywizard888/Custom-Enhancify-aapt2-binary"
+aapt2-source = "Graywizard888/Custom-Enhancify-aapt2-binary"
+
+# Custom AAPT2 for ReVanced CLI
+# Pass --custom-aapt2-binary flag to ReVanced/Morphe CLI during patching
+# Ensures the dynamically fetched aapt2 is used for resource processing
+# Default: true
+use-custom-aapt2 = true
 # =============================================================================
 # APP CONFIGURATIONS
 # =============================================================================

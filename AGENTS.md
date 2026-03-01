@@ -85,7 +85,7 @@ shellharden, shellcheck are installed as standalone binaries.
 │   └── renovate.json                 Renovate bot config
 │
 ├── @/bin/                  Bundled binary tools
-│   ├── aapt2/aapt2-arm64   Android Asset Packaging Tool (ARM64)
+│   ├── aapt2/               aapt2 cache dir (binaries fetched dynamically from GitHub)
 │   ├── apksigner.jar       APK signing tool
 │   ├── dexlib2.jar         DEX manipulation library
 │   └── paccer.jar          ReVanced CLI helper
