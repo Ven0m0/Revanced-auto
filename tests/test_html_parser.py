@@ -1,10 +1,14 @@
-import os
+"""Test suite for HTML parser utility."""
+
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock
 
-# Ensure scripts module can be imported
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pytest
+
+# Add the project root to sys.path to ensure we can import scripts
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from selectolax.parser import HTMLParser
 
@@ -12,7 +16,10 @@ from scripts.html_parser import parse_html, scrape_attribute, scrape_text
 
 
 class TestHtmlParser(unittest.TestCase):
-    def setUp(self):
+    """Test suite for HTML parser utility."""
+
+    def setUp(self) -> None:
+        """Set up shared HTML fixture."""
         self.html_content = """
         <html>
             <body>
@@ -31,77 +38,76 @@ class TestHtmlParser(unittest.TestCase):
         """
         self.tree = parse_html(self.html_content)
 
-    def test_parse_html_valid(self):
+    def test_parse_html_valid(self) -> None:
         """Test parsing valid HTML."""
         tree = parse_html("<div>test</div>")
-        self.assertIsInstance(tree, HTMLParser)
-        self.assertEqual(tree.body.child.text(), "test")
+        assert isinstance(tree, HTMLParser)  # noqa: S101
+        assert tree.body.child.text() == "test"  # noqa: S101
 
-    def test_parse_html_empty(self):
+    def test_parse_html_empty(self) -> None:
         """Test parsing empty HTML raises ValueError."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError, match="No HTML content provided"):
             parse_html("")
 
-    def test_scrape_text_valid(self):
+    def test_scrape_text_valid(self) -> None:
         """Test scraping text with valid selector."""
         results = scrape_text(self.tree, "p.special")
-        self.assertEqual(results, ["Paragraph 2"])
+        assert results == ["Paragraph 2"]  # noqa: S101
 
-    def test_scrape_text_multiple(self):
+    def test_scrape_text_multiple(self) -> None:
         """Test scraping text with multiple matches."""
         results = scrape_text(self.tree, "p")
-        self.assertEqual(results, ["Paragraph 1", "Paragraph 2"])
+        assert results == ["Paragraph 1", "Paragraph 2"]  # noqa: S101
 
-    def test_scrape_text_nested(self):
+    def test_scrape_text_nested(self) -> None:
         """Test scraping nested text."""
         results = scrape_text(self.tree, "div.nested")
-        self.assertEqual(results, ["Nested Text"])
+        assert results == ["Nested Text"]  # noqa: S101
 
-    def test_scrape_text_no_match(self):
+    def test_scrape_text_no_match(self) -> None:
         """Test scraping text with no matches returns empty list."""
         results = scrape_text(self.tree, "div.nonexistent")
-        self.assertEqual(results, [])
+        assert results == []  # noqa: S101
 
-    def test_scrape_text_exception(self):
+    def test_scrape_text_exception(self) -> None:
         """Test scraping text handles exceptions by raising ValueError."""
-        # Mock tree.css to raise an exception
         mock_tree = MagicMock(spec=HTMLParser)
         mock_tree.css.side_effect = Exception("Simulated error")
 
-        with self.assertRaises(ValueError) as cm:
+        with pytest.raises(ValueError, match="Error with selector 'div': Simulated error"):
             scrape_text(mock_tree, "div")
-        self.assertIn("Error with selector 'div': Simulated error", str(cm.exception))
 
-    def test_scrape_attribute_valid(self):
+    def test_scrape_attribute_valid(self) -> None:
         """Test scraping attribute with valid selector."""
         results = scrape_attribute(self.tree, "a#link2", "href")
-        self.assertEqual(results, ["https://test.com"])
+        assert results == ["https://test.com"]  # noqa: S101
 
-    def test_scrape_attribute_multiple(self):
+    def test_scrape_attribute_multiple(self) -> None:
         """Test scraping attribute with multiple matches."""
         results = scrape_attribute(self.tree, "a.link", "href")
-        self.assertEqual(results, ["https://example.com", "https://test.com"])
+        assert results == ["https://example.com", "https://test.com"]  # noqa: S101
 
-    def test_scrape_attribute_missing_attr(self):
+    def test_scrape_attribute_missing_attr(self) -> None:
         """Test scraping attribute where some elements miss the attribute."""
-        # Link 1 doesn't have id, Link 2 does
         results = scrape_attribute(self.tree, "a.link", "id")
-        self.assertEqual(results, ["link2"])
+        assert results == ["link2"]  # noqa: S101
 
-    def test_scrape_attribute_no_match(self):
+    def test_scrape_attribute_no_match(self) -> None:
         """Test scraping attribute with no matches returns empty list."""
         results = scrape_attribute(self.tree, "a.nonexistent", "href")
-        self.assertEqual(results, [])
+        assert results == []  # noqa: S101
 
-    def test_scrape_attribute_exception(self):
+    def test_scrape_attribute_exception(self) -> None:
         """Test scraping attribute handles exceptions by raising ValueError."""
-        # Mock tree.css to raise an exception
         mock_tree = MagicMock(spec=HTMLParser)
         mock_tree.css.side_effect = Exception("Simulated error")
 
-        with self.assertRaises(ValueError) as cm:
+        with pytest.raises(
+            ValueError,
+            match="Error with selector 'div' or attribute 'class': Simulated error",
+        ):
             scrape_attribute(mock_tree, "div", "class")
-        self.assertIn("Error with selector 'div' or attribute 'class': Simulated error", str(cm.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
