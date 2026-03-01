@@ -30,7 +30,7 @@ concurrency:
 jobs:
   check-dependencies:
     name: Check for dependency updates
-    runs-on: ubuntu-latest-slim
+    runs-on: ubuntu-slim
     timeout-minutes: 15
     steps:
     - name: Checkout repository
