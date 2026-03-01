@@ -31,23 +31,35 @@ jobs:
       uses: actions/checkout@v6.0.2
       with:
         fetch-depth: 0
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
     - name: Should build?
       id: should_build
       shell: bash
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        if ! git checkout origin/update build.md 2>/dev/null; then
-          echo "First time building!"
+        # Primary check: version tracker (config-aware change detection)
+        NEEDS_BUILD=$(python3 scripts/version_tracker.py check --config config.toml 2>&1 | tail -1)
+        if [ "$NEEDS_BUILD" = "true" ]; then
+          echo "Version tracker: changes detected — build needed"
           echo "SHOULD_BUILD=1" >> $GITHUB_OUTPUT
         else
-          UPDATE_CFG=$(./build.sh config.toml --config-update)
-          if [ "$UPDATE_CFG" ]; then
-            echo "Updates available: $UPDATE_CFG"
+          # Fallback: also check upstream via build.sh --config-update
+          if ! git checkout origin/update build.md 2>/dev/null; then
+            echo "First time building!"
             echo "SHOULD_BUILD=1" >> $GITHUB_OUTPUT
           else
-            echo "No updates needed"
-            echo "SHOULD_BUILD=0" >> $GITHUB_OUTPUT
+            UPDATE_CFG=$(./build.sh config.toml --config-update 2>/dev/null || true)
+            if [ "$UPDATE_CFG" ]; then
+              echo "Updates available: $UPDATE_CFG"
+              echo "SHOULD_BUILD=1" >> $GITHUB_OUTPUT
+            else
+              echo "No updates needed"
+              echo "SHOULD_BUILD=0" >> $GITHUB_OUTPUT
+            fi
           fi
         fi
     - name: Clear older runs

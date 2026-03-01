@@ -146,6 +146,23 @@ jobs:
         echo "BUILD_LOG<<${DELIM}" >> "$GITHUB_OUTPUT"
         ./extras.sh combine-logs build-logs >> "$GITHUB_OUTPUT"
         echo "${DELIM}" >> "$GITHUB_OUTPUT"
+    - name: Cleanup old releases
+      if: steps.check_artifacts.outputs.has_artifacts == 'true'
+      continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        VERSION_PREFIX="${{ steps.version.outputs.version }}"
+        # Extract year-month prefix for cleanup (e.g., "26.03.")
+        YM_PREFIX=$(echo "$VERSION_PREFIX" | cut -d. -f1-2)
+        # Delete releases from previous months, keep latest 3
+        gh release list --json tagName -q ".[].tagName" | \
+          grep -v "^${YM_PREFIX}\." | \
+          head -n 20 | \
+          while read -r tag; do
+            echo "Cleaning old release: $tag"
+            gh release delete "$tag" -y --cleanup-tag 2>/dev/null || true
+          done
     - name: Upload APKs to release
       if: steps.check_artifacts.outputs.has_artifacts == 'true'
       uses: svenstaro/upload-release-action@2.11.4
@@ -158,3 +175,15 @@ jobs:
         prerelease: ${{ inputs.build_mode == 'dev' }}
         file_glob: true
         overwrite: true
+    - name: Save build state
+      if: steps.check_artifacts.outputs.has_artifacts == 'true'
+      continue-on-error: true
+      run: |
+        python3 scripts/version_tracker.py save --config config.toml
+    - name: Commit build state
+      if: steps.check_artifacts.outputs.has_artifacts == 'true'
+      continue-on-error: true
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "chore: update build versions state [skip ci]"
+        file_pattern: .github/last_built_versions.json
