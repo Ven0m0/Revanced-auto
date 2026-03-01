@@ -8,6 +8,10 @@ __UPTODOWN_RESP__=""
 __UPTODOWN_RESP_PKG__=""
 __ARCHIVE_RESP__=""
 __ARCHIVE_PKG_NAME__=""
+__APKPURE_RESP__=""
+__APKPURE_PKG_NAME__=""
+__APTOIDE_RESP__=""
+__APTOIDE_PKG_NAME__=""
 __AAV__="false" # Allow Alpha/Beta Versions
 # ==================== APKMirror ====================
 # Get APKMirror page response
@@ -269,6 +273,135 @@ dl_uptodown() {
     log_info "Downloading APK from Uptodown"
     req "https://dw.uptodown.com/dwn/${data_url}" "$output"
   fi
+}
+# ==================== APKPure ====================
+# Get APKPure page response
+# Args:
+#   $1: APKPure URL (e.g., https://apkpure.net/youtube/com.google.android.youtube)
+get_apkpure_resp() {
+  log_info "Fetching APKPure page: $1"
+  local base_url="${1%/}"
+  __APKPURE_RESP__=$(req "${base_url}/versions" -)
+  # Extract package name from URL (last path segment)
+  __APKPURE_PKG_NAME__="${base_url##*/}"
+}
+# Get package name from APKPure
+get_apkpure_pkg_name() {
+  echo "$__APKPURE_PKG_NAME__"
+}
+# Get available versions from APKPure
+get_apkpure_vers() {
+  local vers
+  vers=$(uv run "${PROJECT_ROOT}/scripts/apkpure_search.py" \
+    --versions --name "" --package "" <<< "$__APKPURE_RESP__")
+  if [[ "$__AAV__" = false ]]; then
+    vers=$(grep -iv "\(beta\|alpha\)" <<< "$vers" || echo "$vers")
+  fi
+  echo "$vers"
+}
+# Download APK from APKPure
+# Args:
+#   $1: Base URL
+#   $2: Version
+#   $3: Output file path
+#   $4: Architecture (unused by APKPure)
+#   $5: DPI (unused)
+dl_apkpure() {
+  local base_url=$1 version=$2 output=$3 _arch=$4 _dpi=$5
+  local name pkg_name
+  # Parse name and package from URL: https://apkpure.net/{name}/{package}
+  base_url="${base_url%/}"
+  pkg_name="${base_url##*/}"
+  name="${base_url%/*}"
+  name="${name##*/}"
+  log_info "Searching APKPure for version: $version"
+  local dl_page_url
+  dl_page_url=$(uv run "${PROJECT_ROOT}/scripts/apkpure_search.py" \
+    --download --name "$name" --package "$pkg_name" --version "$version" --url-only)
+  local dl_page_resp
+  dl_page_resp=$(req "$dl_page_url" -) || return 1
+  local dl_url
+  dl_url=$(uv run "${PROJECT_ROOT}/scripts/apkpure_search.py" \
+    --download --name "$name" --package "$pkg_name" --version "$version" <<< "$dl_page_resp") || return 1
+  if [[ -z "$dl_url" ]]; then
+    epr "APKPure: No download link found for $pkg_name v$version"
+    return 1
+  fi
+  log_info "Downloading APK from APKPure"
+  req "$dl_url" "$output"
+}
+# ==================== Aptoide ====================
+# Get Aptoide page response
+# Args:
+#   $1: Aptoide package name (e.g., com.google.android.youtube)
+get_aptoide_resp() {
+  log_info "Fetching Aptoide data: $1"
+  local pkg_name="$1"
+  local search_url
+  search_url=$(uv run "${PROJECT_ROOT}/scripts/aptoide_search.py" \
+    --url --package "$pkg_name")
+  __APTOIDE_RESP__=$(req "$search_url" -)
+  __APTOIDE_PKG_NAME__="$pkg_name"
+}
+# Get package name from Aptoide
+get_aptoide_pkg_name() {
+  echo "$__APTOIDE_PKG_NAME__"
+}
+# Get available versions from Aptoide
+get_aptoide_vers() {
+  local vers_url
+  vers_url=$(uv run "${PROJECT_ROOT}/scripts/aptoide_search.py" \
+    --url --package "$__APTOIDE_PKG_NAME__" --version dummy)
+  local vers_resp
+  vers_resp=$(req "$vers_url" -)
+  uv run "${PROJECT_ROOT}/scripts/aptoide_search.py" \
+    --versions --package "$__APTOIDE_PKG_NAME__" <<< "$vers_resp"
+}
+# Download APK from Aptoide
+# Args:
+#   $1: Package name (used as Aptoide identifier)
+#   $2: Version
+#   $3: Output file path
+#   $4: Architecture
+#   $5: DPI (unused)
+dl_aptoide() {
+  local pkg_name=$1 version=$2 output=$3 arch=$4 _dpi=$5
+  arch=$(normalize_arch "$arch")
+  log_info "Searching Aptoide for version: $version"
+  local dl_url
+  if [[ "$version" = "latest" ]]; then
+    dl_url=$(uv run "${PROJECT_ROOT}/scripts/aptoide_search.py" \
+      --download --package "$pkg_name" --version "latest" --arch "$arch" <<< "$__APTOIDE_RESP__")
+  else
+    # Find vercode first via versions list
+    local vers_url
+    vers_url=$(uv run "${PROJECT_ROOT}/scripts/aptoide_search.py" \
+      --url --package "$pkg_name" --version dummy --arch "$arch")
+    local vers_resp
+    vers_resp=$(req "$vers_url" -) || return 1
+    local vercode
+    vercode=$(uv run "${PROJECT_ROOT}/scripts/aptoide_search.py" \
+      --find-vercode --package "$pkg_name" --version "$version" --arch "$arch" <<< "$vers_resp") || return 1
+    # Get meta with download path
+    local meta_url
+    meta_url="https://ws75.aptoide.com/api/7/getAppMeta?package_name=${pkg_name}&vercode=${vercode}"
+    local arch_q
+    arch_q=$(uv run "${PROJECT_ROOT}/scripts/aptoide_search.py" \
+      --url --package "$pkg_name" --arch "$arch" | sed 's/.*\(&q=.*\)/\1/' || true)
+    if [[ -n "$arch_q" && "$arch_q" == "&q="* ]]; then
+      meta_url="${meta_url}${arch_q}"
+    fi
+    local meta_resp
+    meta_resp=$(req "$meta_url" -) || return 1
+    dl_url=$(uv run "${PROJECT_ROOT}/scripts/aptoide_search.py" \
+      --parse-meta --package "$pkg_name" <<< "$meta_resp") || return 1
+  fi
+  if [[ -z "$dl_url" ]]; then
+    epr "Aptoide: No download link found for $pkg_name v$version"
+    return 1
+  fi
+  log_info "Downloading APK from Aptoide"
+  req "$dl_url" "$output"
 }
 # ==================== Archive.org ====================
 # Get Archive.org page response

@@ -218,9 +218,21 @@ _app_build_arguments() {
     __aba_args[dl_from]=archive
   fi
 
+  __aba_args[apkpure_dlurl]=$(_app_get_config_value __aba_cfg "apkpure-dlurl" "")
+  if [[ "${__aba_args[apkpure_dlurl]}" != "" ]]; then
+    __aba_args[apkpure_dlurl]=${__aba_args[apkpure_dlurl]%/}
+    __aba_args[dl_from]=apkpure
+  fi
+
+  __aba_args[aptoide_dlurl]=$(_app_get_config_value __aba_cfg "aptoide-dlurl" "")
+  if [[ "${__aba_args[aptoide_dlurl]}" != "" ]]; then
+    __aba_args[aptoide_dlurl]=${__aba_args[aptoide_dlurl]%/}
+    __aba_args[dl_from]=aptoide
+  fi
+
   # Validate at least one download source
   if [[ ${__aba_args[dl_from]-} == "" ]]; then
-    abort "ERROR: no 'apkmirror_dlurl', 'uptodown_dlurl' or 'archive_dlurl' option was set for '${table_name}'."
+    abort "ERROR: no download URL option was set for '${table_name}'. Set at least one of: apkmirror-dlurl, uptodown-dlurl, archive-dlurl, apkpure-dlurl, aptoide-dlurl"
   fi
 
   # Parse architecture
