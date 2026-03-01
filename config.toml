@@ -48,7 +48,7 @@ enable-aapt2-optimize = true
 # APP CONFIGURATIONS
 # =============================================================================
 # Each app section can override global settings
-# Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, or archive-dlurl)
+# Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, archive-dlurl, apkpure-dlurl, or aptoide-dlurl)
 # Optional fields: All global settings can be overridden per-app
 # =============================================================================
 # YouTube Music Extended (RVX)
@@ -73,6 +73,7 @@ excluded-patches = "'Enable debug logging'"
 uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
+apkpure-dlurl = "https://apkpure.net/youtube-music/com.google.android.apps.youtube.music"
 # YouTube Extended (RVX)
 [YouTube-Extended]
 enabled = true
@@ -95,11 +96,13 @@ excluded-patches = "'Enable debug logging'"
 uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
+apkpure-dlurl = "https://apkpure.net/youtube/com.google.android.youtube"
 # Spotify
 [Spotify]
 enabled = false
 uptodown-dlurl = "https://spotify.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.spotify.music"
+apkpure-dlurl = "https://apkpure.net/spotify-music-and-podcasts/com.spotify.music"
 included-patches = "'Custom theme'"
 patcher-args = [
   "-e",
@@ -111,6 +114,7 @@ patcher-args = [
 enabled = false
 uptodown-dlurl = "https://reddit-official-app.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
+apkpure-dlurl = "https://apkpure.net/reddit/com.reddit.frontpage"
 patcher-args = [
   "-e",
   "Custom branding name for Reddit",
@@ -140,3 +144,4 @@ version = "auto"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/photos/"
 uptodown-dlurl = "https://google-photos.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.photos"
+apkpure-dlurl = "https://apkpure.net/google-photos/com.google.android.apps.photos"
