@@ -119,8 +119,7 @@ The project is organized into modular components:
 │   │   └── patching.sh   # APK patching and building
 │   ├── html_parser.py    # Python HTML parser (replaces htmlq)
 │   ├── aapt2-optimize.sh # Resource optimization
-│   ├── optimize-assets.sh # PNG optimization
-│   └── unused-strings.sh # Remove unused resources
+│   └── optimize-assets.sh # PNG optimization
 ├── assets/
 │   └── sig.txt          # Known APK signatures
 └── ks.keystore          # Default keystore for signing

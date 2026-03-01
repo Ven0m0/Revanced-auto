@@ -26,9 +26,10 @@ _req() {
   # Handle temporary file for downloads with proper locking
   local dlp="" lock_fd
   if [[ "$op" != "-" ]]; then
-    # Secure temp path calculation
+    # Secure temp path: hash of destination path prevents path traversal
     mkdir -p "$TEMP_DIR"
     chmod 700 "$TEMP_DIR"
+    dlp="${TEMP_DIR}/tmp.$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)"
     local lock_file="${dlp}.lock"
     # Try to acquire exclusive lock (create lock file atomically)
     exec {lock_fd}> "$lock_file" || {

@@ -197,20 +197,6 @@ _app_build_arguments() {
     vtf "${__aba_args[exclusive_patches]}" "exclusive-patches"
   fi
 
-  # Parse build mode (only 'apk' supported, Magisk module support removed)
-  __aba_args[build_mode]=$(_app_get_config_value __aba_cfg "build-mode" "apk")
-
-  # Override with BUILD_MODE environment variable if set
-  if [[ ${BUILD_MODE:-} == "dev" || ${BUILD_MODE:-} == "stable" ]]; then
-    # For dev/stable builds, force apk mode only
-    __aba_args[build_mode]=apk
-    log_info "BUILD_MODE=${BUILD_MODE}: forcing build-mode=apk for ${table_name}"
-  fi
-
-  if [[ "${__aba_args[build_mode]}" != "apk" ]]; then
-    abort "ERROR: build-mode '${__aba_args[build_mode]}' is not valid for '${table_name}': only 'apk' is allowed (Magisk module support removed)"
-  fi
-
   # Parse download URLs
   __aba_args[uptodown_dlurl]=$(_app_get_config_value __aba_cfg "uptodown-dlurl" "")
   if [[ "${__aba_args[uptodown_dlurl]}" != "" ]]; then
