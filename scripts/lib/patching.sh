@@ -132,8 +132,11 @@ patch_apk() {
       [[ -n "$arg" ]] && cmd+=("$arg")
     done < <(xargs -n1 <<< "$patcher_args")
   fi
-  # Add Android-specific AAPT2 if needed
-  if [[ "$OS" = "Android" ]]; then
+  # Pass custom aapt2 binary to ReVanced/Morphe CLI
+  if [[ "${USE_CUSTOM_AAPT2:-true}" == "true" && -n "${AAPT2:-}" && -x "${AAPT2:-}" ]]; then
+    cmd+=("--custom-aapt2-binary=${AAPT2}")
+    log_debug "Using custom aapt2 binary: ${AAPT2}"
+  elif [[ "$OS" = "Android" && -n "${AAPT2:-}" ]]; then
     cmd+=("--custom-aapt2-binary=${AAPT2}")
   fi
   # Log command with secrets redacted

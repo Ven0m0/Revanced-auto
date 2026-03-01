@@ -3,4 +3,3 @@
 *.jar binary
 *.apk binary
 *.keystore binary
-bin/aapt2/* binary

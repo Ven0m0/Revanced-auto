@@ -47,16 +47,28 @@ log_info "Input:  $INPUT_APK"
 log_info "Output: $OUTPUT_APK"
 log_info "Optimization: Keep only en, xxhdpi, arm64-v8a"
 # Detect and configure aapt2
+# Resolution: AAPT2 env var -> PATH -> cached dynamic binary -> Android SDK -> common paths
 find_aapt2() {
+  # Check if AAPT2 environment variable is set (from set_prebuilts / dynamic fetch)
+  if [[ -n "${AAPT2:-}" ]] && [[ -x "$AAPT2" ]]; then
+    echo "$AAPT2"
+    return 0
+  fi
   # Check if aapt2 is in PATH
   if command -v aapt2 &> /dev/null; then
     echo "aapt2"
     return 0
   fi
-  # Check if AAPT2 environment variable is set
-  if [[ -n "${AAPT2:-}" ]] && [[ -x "$AAPT2" ]]; then
-    echo "$AAPT2"
-    return 0
+  # Check for dynamically fetched aapt2 in cache
+  local cache_dir="${SCRIPT_DIR}/../temp/aapt2-cache"
+  if [[ -d "$cache_dir" ]]; then
+    local cached
+    for cached in "${cache_dir}"/aapt2-*; do
+      if [[ -f "$cached" ]] && [[ -x "$cached" ]] && [[ "$cached" != *.meta ]]; then
+        echo "$cached"
+        return 0
+      fi
+    done
   fi
   # Try to find aapt2 in Android SDK
   if [[ -n "${ANDROID_HOME:-}" ]]; then
