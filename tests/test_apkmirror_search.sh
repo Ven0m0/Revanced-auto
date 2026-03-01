@@ -17,7 +17,7 @@ run_test() {
   local expected=$5
   echo -n "Test: $name ... "
   local output
-  output=$(python3 "$SCRIPT" --apk-bundle "$bundle" --dpi "$dpi" --arch "$arch" < "$FIXTURE" || true)
+  output=$(uv run "$SCRIPT" --apk-bundle "$bundle" --dpi "$dpi" --arch "$arch" < "$FIXTURE" || true)
   if [[ "$expected" == "NONE" ]]; then
     if [[ -z "$output" ]]; then
       echo "PASS"

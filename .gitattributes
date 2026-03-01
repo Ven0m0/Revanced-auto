@@ -1,0 +1,6 @@
+* text eol=lf
+*.png binary
+*.jar binary
+*.apk binary
+*.keystore binary
+bin/aapt2/* binary

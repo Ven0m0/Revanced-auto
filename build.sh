@@ -116,223 +116,6 @@ declare -A JOB_NAMES=()
 declare -a JOB_PIDS=()
 declare -A BUILD_STATUS=()
 idx=0
-process_app_config() {
-  local table_name=$1
-  local t=$2
-  log_info "Processing app: ${table_name}"
-  # Load table into associative array (safe - no eval of user input)
-  declare -A t_cfg
-  toml_load_table_safe "t_cfg" "$t"
-  # Helper to get value with default
-  t_get() {
-    local key=$1 default=$2
-    if [[ -v t_cfg[${key}] && ${t_cfg[${key}]} != "null" ]]; then
-      echo "${t_cfg[${key}]}"
-    else
-      echo "$default"
-    fi
-  }
-  # Check if enabled
-  local enabled
-  enabled=$(t_get "enabled" "true")
-  vtf "$enabled" "enabled"
-  if [[ $enabled == false ]]; then
-    log_info "Skipping disabled app: ${table_name}"
-    return
-  fi
-  # Wait for available job slot
-  if ((idx >= PARALLEL_JOBS)); then
-    log_debug "Waiting for job slot..."
-    wait -n
-    idx=$((idx - 1))
-  fi
-  # Build app configuration
-  declare -A app_args
-  # Get source configuration
-  local -a patches_srcs
-  local cli_src patches_ver cli_ver
-  # Get patches-source as array (supports both string and array formats for backwards compatibility)
-  toml_get_array_or_string patches_srcs "$t" "patches-source" "$DEF_PATCHES_SRC"
-  patches_ver=$(t_get "patches-version" "$DEF_PATCHES_VER")
-  cli_src=$(t_get "cli-source" "$DEF_CLI_SRC")
-  cli_ver=$(t_get "cli-version" "$DEF_CLI_VER")
-  log_debug "Patches sources (${#patches_srcs[@]}): ${patches_srcs[*]}"
-  # Download prebuilts
-  local -a rv_prebuilts rv_patches_jars
-  local rv_cli_jar
-  # Override patches version for dev builds
-  if [[ ${BUILD_MODE:-} == "dev" ]]; then
-    patches_ver="dev"
-    log_info "BUILD_MODE=dev: using dev patches version"
-  fi
-  # Export patches_ver for get_rv_prebuilts_multi
-  export PATCHES_VER="$patches_ver"
-  # Download CLI and all patch sources
-  mapfile -t rv_prebuilts < <(get_rv_prebuilts_multi "$cli_src" "$cli_ver" "${patches_srcs[@]}")
-  if [[ ${#rv_prebuilts[@]} -eq 0 ]]; then
-    abort "Could not download ReVanced prebuilts for ${table_name}"
-  fi
-  # First element is CLI jar, rest are patches jars
-  rv_cli_jar="${rv_prebuilts[0]}"
-  rv_patches_jars=("${rv_prebuilts[@]:1}")
-  app_args[cli]=${rv_cli_jar}
-  # Store patches jars as array (will be used in patching)
-  app_args[ptjars]="${rv_patches_jars[*]}"
-  log_debug "CLI: ${rv_cli_jar}"
-  log_debug "Patches jars (${#rv_patches_jars[@]}): ${rv_patches_jars[*]}"
-  # Export for use in patching functions
-  export rv_cli_jar
-  # Detect riplib capability
-  if [[ -v cliriplib[${app_args[cli]}] ]]; then
-    app_args[riplib]=${cliriplib[${app_args[cli]}]}
-  else
-    if [[ $(java -jar "${app_args[cli]}" patch 2>&1) == *rip-lib* ]]; then
-      cliriplib["${app_args[cli]}"]=true
-      app_args[riplib]=true
-      log_debug "CLI supports riplib"
-    else
-      cliriplib["${app_args[cli]}"]=false
-      app_args[riplib]=false
-      log_debug "CLI does not support riplib"
-    fi
-  fi
-  # Override riplib based on config (app-specific takes precedence over global)
-  local app_riplib
-  app_riplib=$(t_get "riplib" "$DEF_RIPLIB")
-  if [[ $app_riplib == "false" ]]; then
-    app_args[riplib]=false
-    log_debug "Riplib disabled by config"
-  elif [[ $app_riplib == "true" && ${app_args[riplib]} == "false" ]]; then
-    log_warn "Config enables riplib but CLI doesn't support it"
-  fi
-  # Parse app-specific configuration
-  app_args[rv_brand]=$(t_get "rv-brand" "$DEF_RV_BRAND")
-  app_args[excluded_patches]=$(t_get "excluded-patches" "")
-  app_args[included_patches]=$(t_get "included-patches" "")
-  app_args[exclusive_patches]=$(t_get "exclusive-patches" "false")
-  app_args[version]=$(t_get "version" "auto")
-  app_args[app_name]=$(t_get "app-name" "$table_name")
-  # Load patcher-args as an array if present
-  local -a patcher_args_array=()
-  if toml_get_array "patcher_args_array" "$t" "patcher-args" 2> /dev/null; then
-    # Convert array to space-separated string for passing to build_rv
-    # The actual array will be reconstructed in patching.sh
-    app_args[patcher_args]="${patcher_args_array[*]}"
-  else
-    app_args[patcher_args]=""
-  fi
-  app_args[table]=${table_name}
-  # Validate patch quotes
-  if [[ ${app_args[excluded_patches]} != "" && ${app_args[excluded_patches]} != *'"'* ]]; then
-    abort "Patch names inside excluded-patches must be quoted"
-  fi
-  if [[ ${app_args[included_patches]} != "" && ${app_args[included_patches]} != *'"'* ]]; then
-    abort "Patch names inside included-patches must be quoted"
-  fi
-  # Validate exclusive patches
-  if [[ ${app_args[exclusive_patches]} != "false" ]]; then
-    vtf "${app_args[exclusive_patches]}" "exclusive-patches"
-  fi
-  # Parse build mode (only 'apk' supported, Magisk module support removed)
-  app_args[build_mode]=$(t_get "build-mode" "apk")
-  # Override with BUILD_MODE environment variable if set
-  if [[ ${BUILD_MODE:-} == "dev" || ${BUILD_MODE:-} == "stable" ]]; then
-    # For dev/stable builds, force apk mode only
-    app_args[build_mode]=apk
-    log_info "BUILD_MODE=${BUILD_MODE}: forcing build-mode=apk for ${table_name}"
-  fi
-  if [[ ${app_args[build_mode]} != "apk" ]]; then
-    abort "ERROR: build-mode '${app_args[build_mode]}' is not valid for '${table_name}': only 'apk' is allowed (Magisk module support removed)"
-  fi
-  # Parse download URLs
-  app_args[uptodown_dlurl]=$(t_get "uptodown-dlurl" "")
-  if [[ ${app_args[uptodown_dlurl]} != "" ]]; then
-    app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%/}
-    app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%download}
-    app_args[uptodown_dlurl]=${app_args[uptodown_dlurl]%/}
-    app_args[dl_from]=uptodown
-  fi
-  app_args[apkmirror_dlurl]=$(t_get "apkmirror-dlurl" "")
-  if [[ ${app_args[apkmirror_dlurl]} != "" ]]; then
-    app_args[apkmirror_dlurl]=${app_args[apkmirror_dlurl]%/}
-    app_args[dl_from]=apkmirror
-  fi
-  app_args[archive_dlurl]=$(t_get "archive-dlurl" "")
-  if [[ ${app_args[archive_dlurl]} != "" ]]; then
-    app_args[archive_dlurl]=${app_args[archive_dlurl]%/}
-    app_args[dl_from]=archive
-  fi
-  # Validate at least one download source
-  if [[ ${app_args[dl_from]-} == "" ]]; then
-    abort "ERROR: no 'apkmirror_dlurl', 'uptodown_dlurl' or 'archive_dlurl' option was set for '${table_name}'."
-  fi
-  # Parse architecture
-  app_args[arch]=$(t_get "arch" "$DEF_ARCH")
-  if [[ ${app_args[arch]} != "both" && ${app_args[arch]} != "all" &&
-    ${app_args[arch]} != "arm64-v8a"* && ${app_args[arch]} != "arm-v7a"* ]]; then
-    abort "Wrong arch '${app_args[arch]}' for '${table_name}'"
-  fi
-  app_args[dpi]=$(t_get "apkmirror-dpi" "nodpi")
-  # Handle dual architecture builds
-  if [[ ${app_args[arch]} == both ]]; then
-    # Build arm64-v8a
-    app_args[table]="${table_name} (arm64-v8a)"
-    app_args[arch]="arm64-v8a"
-    idx=$((idx + 1))
-    # Serialize args to temp file
-    local args_file
-    args_file=$(mktemp)
-    for key in "${!app_args[@]}"; do
-      printf '%s=%s\n' "$key" "${app_args[${key}]}" >> "$args_file"
-    done
-    (
-      export BUILD_LOG_FILE="build/${table_name}-arm64-v8a.md"
-      build_rv "$args_file"
-    ) &
-    local pid=$!
-    JOB_PIDS+=("$pid")
-    JOB_NAMES[$pid]="${table_name} (arm64-v8a)"
-    BUILD_STATUS["${table_name} (arm64-v8a)"]="building"
-    # Build arm-v7a
-    app_args[table]="${table_name} (arm-v7a)"
-    app_args[arch]="arm-v7a"
-    if ((idx >= PARALLEL_JOBS)); then
-      wait -n
-      idx=$((idx - 1))
-    fi
-    idx=$((idx + 1))
-    # Serialize args to temp file
-    args_file=$(mktemp)
-    for key in "${!app_args[@]}"; do
-      printf '%s=%s\n' "$key" "${app_args[${key}]}" >> "$args_file"
-    done
-    (
-      export BUILD_LOG_FILE="build/${table_name}-arm-v7a.md"
-      build_rv "$args_file"
-    ) &
-    local pid=$!
-    JOB_PIDS+=("$pid")
-    JOB_NAMES[$pid]="${table_name} (arm-v7a)"
-    BUILD_STATUS["${table_name} (arm-v7a)"]="building"
-  else
-    # Single architecture build
-    idx=$((idx + 1))
-    # Serialize args to temp file
-    local args_file
-    args_file=$(mktemp)
-    for key in "${!app_args[@]}"; do
-      printf '%s=%s\n' "$key" "${app_args[${key}]}" >> "$args_file"
-    done
-    (
-      export BUILD_LOG_FILE="build/${table_name}.md"
-      build_rv "$args_file"
-    ) &
-    local pid=$!
-    JOB_PIDS+=("$pid")
-    JOB_NAMES[$pid]="${table_name}"
-    BUILD_STATUS["${table_name}"]="building"
-  fi
-}
 # Process all app configurations
 log_info "Starting build process..."
 while read -r table_name; do
@@ -346,11 +129,11 @@ declare -a failed_apps=()
 declare -a succeeded_apps=()
 for pid in "${JOB_PIDS[@]}"; do
   if ! wait "$pid"; then
-    local app_name="${JOB_NAMES[$pid]:-$pid}"
+    app_name="${JOB_NAMES[$pid]:-$pid}"
     failed_apps+=("$app_name")
     BUILD_STATUS["${app_name}"]="failed"
   else
-    local app_name="${JOB_NAMES[$pid]:-$pid}"
+    app_name="${JOB_NAMES[$pid]:-$pid}"
     succeeded_apps+=("$app_name")
     BUILD_STATUS["${app_name}"]="success"
   fi
@@ -362,8 +145,8 @@ fi
 # Print build status summary
 log_info "Build status summary:"
 for app in "${!BUILD_STATUS[@]}"; do
-  local status="${BUILD_STATUS[$app]}"
-  local emoji=""
+  status="${BUILD_STATUS[$app]}"
+  emoji=""
   case "$status" in
     success) emoji="✅" ;;
     failed) emoji="❌" ;;

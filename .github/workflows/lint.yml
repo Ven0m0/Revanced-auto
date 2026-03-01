@@ -33,25 +33,20 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v6.0.2
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
     - name: Set up Python
-      uses: actions/setup-python@v6.2.0
-      with:
-        python-version: '3.14'
-        cache: pip
-    - name: Cache Ruff
-      uses: actions/cache@v5
-      with:
-        path: ~/.cache/ruff
-        key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-ruff-
-    - name: Install Ruff
-      run: pip install ruff
+      run: uv python install 3.13
+    - name: Install dependencies
+      run: uv sync --locked
     - name: Run Ruff Linter
-      run: ruff check --output-format=github .
+      run: uv run ruff check --output-format=github .
       continue-on-error: true
     - name: Run Ruff Formatter Check
-      run: ruff format --check .
+      run: uv run ruff format --check .
       continue-on-error: true
   lint-shell:
     name: Shell Scripts
@@ -108,11 +103,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v6.0.2
-    - name: Set up Python
-      uses: actions/setup-python@v6.2.0
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
       with:
-        python-version: '3.14'
-        cache: pip
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+    - name: Set up Python
+      run: uv python install 3.13
     - name: Setup local bin
       run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
     - name: Cache yamlfmt
@@ -122,7 +119,7 @@ jobs:
         path: ~/.local/bin/yamlfmt
         key: ${{ runner.os }}-yamlfmt-v0.14.0
     - name: Install yamllint
-      run: pip install yamllint
+      run: uv sync --locked
     - name: Install yamlfmt
       if: steps.cache-yamlfmt.outputs.cache-hit != 'true'
       run: |
@@ -132,7 +129,7 @@ jobs:
     - name: Run yamllint
       run: |
         find . \( -name "*.yml" -o -name "*.yaml" \) -not -path "./.git/*" -not -path "./build/*" \
-          | xargs yamllint
+          | xargs uv run yamllint
       continue-on-error: true
     - name: Run yamlfmt
       run: yamlfmt -dry .

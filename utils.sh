@@ -4,7 +4,8 @@ set -euo pipefail
 # Refactored for better maintainability and organization
 LC_ALL=C
 # Global constants
-export CWD=$PWD TEMP_DIR="temp" BIN_DIR="bin" BUILD_DIR="build"
+export PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CWD="$PROJECT_ROOT" TEMP_DIR="${PROJECT_ROOT}/temp" BIN_DIR="${PROJECT_ROOT}/bin" BUILD_DIR="${PROJECT_ROOT}/build"
 # GitHub authentication header
 if [[ "${GITHUB_TOKEN-}" ]]; then
   export GH_HEADER="Authorization: token ${GITHUB_TOKEN}"
@@ -16,7 +17,7 @@ export NEXT_VER_CODE=${NEXT_VER_CODE:-$(date +'%Y%m%d')}
 # Operating system detection
 export OS=$(uname -o)
 # Source all library modules
-LIB_DIR="${CWD}/scripts/lib"
+LIB_DIR="${PROJECT_ROOT}/scripts/lib"
 if [[ ! -d "$LIB_DIR" ]]; then
   echo "ERROR: Library directory not found: $LIB_DIR"
   exit 1
@@ -36,6 +37,7 @@ _source_lib cache.sh
 _source_lib prebuilts.sh
 _source_lib download.sh
 _source_lib patching.sh
+_source_lib app_processor.sh
 _source_lib checks.sh
 unset -f _source_lib
 log_debug "All utility modules loaded successfully"

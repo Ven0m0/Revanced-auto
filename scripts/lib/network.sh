@@ -26,7 +26,9 @@ _req() {
   # Handle temporary file for downloads with proper locking
   local dlp="" lock_fd
   if [[ "$op" != "-" ]]; then
-    dlp="$(dirname "$op")/tmp.$(basename "$op")"
+    # Secure temp path calculation
+    mkdir -p "$TEMP_DIR"
+    chmod 700 "$TEMP_DIR"
     local lock_file="${dlp}.lock"
     # Try to acquire exclusive lock (create lock file atomically)
     exec {lock_fd}> "$lock_file" || {
@@ -37,10 +39,18 @@ _req() {
       # Another process is downloading - wait for lock
       log_info "Waiting for concurrent download: $dlp"
       flock "$lock_fd"  # Block until lock is available
-      exec {lock_fd}>&- # Close lock file descriptor
-      rm -f "$lock_file"
-      # File was downloaded by other process
-      return 0
+
+      # Check if the other process actually succeeded
+      if [[ -f "$op" ]]; then
+        exec {lock_fd}>&- # Close lock file descriptor
+        rm -f "$lock_file"
+        log_debug "File was downloaded by other process: $op"
+        return 0
+      fi
+
+      # If file doesn't exist, the other process failed
+      # We now hold the lock and should proceed with download
+      log_warn "Concurrent download failed, taking over: $dlp"
     fi
     # Lock acquired - we will download
   fi
