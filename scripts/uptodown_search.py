@@ -7,7 +7,6 @@ Replaces the inefficient Bash loop that spawned multiple Python processes.
 
 import argparse
 import sys
-from typing import cast
 
 from selectolax.parser import HTMLParser
 
@@ -46,7 +45,7 @@ def search(content: str, allowed_archs_list: list[str]) -> str | None:
             continue
         file_id = v_report.attrs.get("data-file-id")
         if file_id:
-            return cast("str", file_id)
+            return file_id
 
     return None
 
@@ -64,18 +63,8 @@ def main() -> None:
     except KeyboardInterrupt:
         sys.exit(130)
 
-    if not content:
-        result = None
-    else:
-        result = search(content, args.archs)
+    result = None if not content else search(content, args.archs)
 
-    if result:
-        print(result)
-        sys.exit(0)
-
-    sys.exit(1)
-
-    result = search(content, args.archs)
     if result:
         print(result)
         sys.exit(0)
