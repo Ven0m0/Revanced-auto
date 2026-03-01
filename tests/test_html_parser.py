@@ -1,13 +1,15 @@
-import unittest
-import sys
 import os
-from unittest.mock import MagicMock, patch
+import sys
+import unittest
+from unittest.mock import MagicMock
 
 # Ensure scripts module can be imported
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.html_parser import parse_html, scrape_text, scrape_attribute
 from selectolax.parser import HTMLParser
+
+from scripts.html_parser import parse_html, scrape_attribute, scrape_text
+
 
 class TestHtmlParser(unittest.TestCase):
     def setUp(self):
