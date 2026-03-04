@@ -16,139 +16,277 @@ Usage:
     python3 apkpure_search.py --versions --name youtube --package com.google.android.youtube
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
+from dataclasses import dataclass
+from enum import Enum, auto
 
 from selectolax.parser import HTMLParser
 
-APKPURE_BASE = "https://apkpure.net"
+APKPURE_BASE: str = "https://apkpure.net"
+
+# Type aliases
+type VersionList = list[str]
+type CommandResult = str | VersionList | None
 
 
-def parse_latest_version(html_content: str) -> str | None:
+class Command(Enum):
+    """Available CLI commands."""
+
+    LATEST = auto()
+    VERSIONS = auto()
+    DOWNLOAD = auto()
+    URL_ONLY = auto()
+
+
+@dataclass(frozen=True, slots=True)
+class URLBuilder:
+    """Builder for APKPure URLs.
+
+    Attributes:
+        name: App name slug on APKPure.
+        package: Android package name.
+
+    """
+
+    name: str
+    package: str
+
+    @property
+    def base_path(self) -> str:
+        """Return the base URL path for this app."""
+        return f"{APKPURE_BASE}/{self.name}/{self.package}"
+
+    def build_versions_url(self) -> str:
+        """Build APKPure versions page URL.
+
+        Returns:
+            Full URL to versions page.
+
+        """
+        return f"{self.base_path}/versions"
+
+    def build_download_url(self, version: str) -> str:
+        """Build APKPure download page URL.
+
+        Args:
+            version: Version string.
+
+        Returns:
+            Full URL to download page.
+
+        """
+        return f"{self.base_path}/download/{version}"
+
+
+@dataclass(frozen=True, slots=True)
+class ParseResult:
+    """Result of a parsing operation.
+
+    Attributes:
+        success: Whether parsing was successful.
+        data: The parsed data if successful.
+        error: Error message if unsuccessful.
+
+    """
+
+    success: bool
+    data: str | list[str] | None
+    error: str | None = None
+
+    @classmethod
+    def ok(cls, data: str | list[str]) -> ParseResult:
+        """Create a successful parse result."""
+        return cls(success=True, data=data, error=None)
+
+    @classmethod
+    def err(cls, error: str) -> ParseResult:
+        """Create a failed parse result."""
+        return cls(success=False, data=None, error=error)
+
+
+@dataclass(frozen=True, slots=True)
+class AppConfig:
+    """Configuration for APKPure operations.
+
+    Attributes:
+        name: App name slug.
+        package: Android package name.
+        version: Optional version string for download.
+
+    """
+
+    name: str
+    package: str
+    version: str | None = None
+
+
+def parse_latest_version(html_content: str) -> ParseResult:
     """Extract latest version from APKPure versions page.
 
     Args:
         html_content: HTML of the APKPure versions page.
 
     Returns:
-        Latest version string, or None if not found.
+        ParseResult with version string or error.
+
     """
     tree = HTMLParser(html_content)
+
+    # Try primary selector
     ver_top = tree.css_first("div.ver-top-down")
     if ver_top is not None:
         dt_version = ver_top.attrs.get("data-dt-version")
-        if dt_version:
-            return dt_version.strip()
+        if dt_version and (version := dt_version.strip()):
+            return ParseResult.ok(version)
 
+    # Fallback selector
     ver_item = tree.css_first("div.ver-item a span.ver-item-n")
     if ver_item is not None:
         text = ver_item.text(strip=True)
         if text:
-            return text
+            return ParseResult.ok(text)
 
-    return None
+    return ParseResult.err("latest version not found")
 
 
-def parse_versions(html_content: str) -> list[str]:
+def parse_versions(html_content: str) -> ParseResult:
     """Extract available versions from APKPure versions page.
 
     Args:
         html_content: HTML of the APKPure versions page.
 
     Returns:
-        List of version strings.
+        ParseResult with list of version strings.
+
     """
     tree = HTMLParser(html_content)
-    versions: list[str] = []
+    versions: VersionList = []
 
     for item in tree.css("div.ver-item a span.ver-item-n"):
         text = item.text(strip=True)
         if text and text not in versions:
             versions.append(text)
 
-    return versions
+    if versions:
+        return ParseResult.ok(versions)
+
+    return ParseResult.err("no versions found")
 
 
-def parse_download_link(html_content: str) -> str | None:
+def parse_download_link(html_content: str) -> ParseResult:
     """Extract download URL from APKPure download page.
 
     Args:
         html_content: HTML of the APKPure download page.
 
     Returns:
-        Download URL, or None if not found.
+        ParseResult with download URL.
+
     """
     tree = HTMLParser(html_content)
+
+    # Try primary selector
     link = tree.css_first("a#download_link")
     if link is not None:
         href = link.attrs.get("href")
-        if href:
-            return href.strip()
+        if href and (url := href.strip()):
+            return ParseResult.ok(url)
 
+    # Fallback selector
     link = tree.css_first("a.da")
     if link is not None:
         href = link.attrs.get("href")
-        if href:
-            return href.strip()
+        if href and (url := href.strip()):
+            return ParseResult.ok(url)
 
-    return None
-
-
-def build_versions_url(name: str, package: str) -> str:
-    """Build APKPure versions page URL.
-
-    Args:
-        name: App name slug on APKPure.
-        package: Android package name.
-
-    Returns:
-        Full URL to versions page.
-    """
-    return f"{APKPURE_BASE}/{name}/{package}/versions"
+    return ParseResult.err("download link not found")
 
 
-def build_download_url(name: str, package: str, version: str) -> str:
-    """Build APKPure download page URL.
+def determine_command(args: argparse.Namespace) -> Command:
+    """Determine which command to execute based on CLI arguments.
 
     Args:
-        name: App name slug on APKPure.
-        package: Android package name.
-        version: Version string.
+        args: Parsed CLI arguments.
 
     Returns:
-        Full URL to download page.
+        The command to execute.
+
     """
-    return f"{APKPURE_BASE}/{name}/{package}/download/{version}"
-
-
-def _handle_url_only(args: argparse.Namespace) -> None:
-    if args.latest or args.versions:
-        print(build_versions_url(args.name, args.package))
-    elif args.download:
-        print(build_download_url(args.name, args.package, args.version))
-    sys.exit(0)
-
-
-def _dispatch_command(args: argparse.Namespace, html_content: str) -> None:
+    if args.url_only:
+        return Command.URL_ONLY
     if args.latest:
-        result = parse_latest_version(html_content)
-        sys.exit(0 if result and print(result) is None else 1)
-
+        return Command.LATEST
     if args.versions:
-        versions = parse_versions(html_content)
-        for v in versions:
-            print(v)
-        sys.exit(0 if versions else 1)
-
+        return Command.VERSIONS
     if args.download:
-        link = parse_download_link(html_content)
-        sys.exit(0 if link and print(link) is None else 1)
+        return Command.DOWNLOAD
 
-    sys.exit(1)
+    # Should never reach here due to required mutually exclusive group
+    raise ValueError("no command specified")
 
 
-def main() -> None:
-    """CLI entry point."""
+def execute_command(
+    command: Command,
+    config: AppConfig,
+    html_content: str,
+) -> tuple[CommandResult, int]:
+    """Execute the determined command.
+
+    Args:
+        command: Command to execute.
+        config: App configuration.
+        html_content: HTML content from stdin.
+
+    Returns:
+        Tuple of (result data, exit code).
+
+    """
+    builder = URLBuilder(config.name, config.package)
+
+    match command:
+        case Command.URL_ONLY:
+            if args.latest or args.versions:
+                return (builder.build_versions_url(), 0)
+            if args.download:
+                if not config.version:
+                    return (None, 1)
+                return (builder.build_download_url(config.version), 0)
+            return (None, 1)
+
+        case Command.LATEST:
+            result = parse_latest_version(html_content)
+            if result.success and isinstance(result.data, str):
+                return (result.data, 0)
+            return (None, 1)
+
+        case Command.VERSIONS:
+            result = parse_versions(html_content)
+            if result.success and isinstance(result.data, list):
+                for v in result.data:
+                    print(v)
+                return (result.data, 0 if result.data else 1)
+            return (None, 1)
+
+        case Command.DOWNLOAD:
+            result = parse_download_link(html_content)
+            if result.success and isinstance(result.data, str):
+                return (result.data, 0)
+            return (None, 1)
+
+        case _:
+            return (None, 1)
+
+
+def main() -> int:
+    """CLI entry point.
+
+    Returns:
+        Exit code: 0 on success, 1 on failure, 130 on interrupt.
+
+    """
     parser = argparse.ArgumentParser(
         description="Parse APKPure pages for version info and download links",
     )
@@ -167,25 +305,41 @@ def main() -> None:
         help="Output only the constructed URL (no parsing)",
     )
 
+    global args  # noqa: PLW0603  # Needed for execute_command access
     args = parser.parse_args()
 
     if args.download and not args.version:
         print("Error: --version is required with --download", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
-    if args.url_only:
-        _handle_url_only(args)
+    config = AppConfig(name=args.name, package=args.package, version=args.version)
 
+    command = determine_command(args)
+
+    # URL-only mode doesn't need HTML input
+    if command == Command.URL_ONLY:
+        result, code = execute_command(command, config, "")
+        if result and isinstance(result, str):
+            print(result)
+        return code
+
+    # All other modes need HTML content
     try:
         html_content = sys.stdin.read()
     except KeyboardInterrupt:
-        sys.exit(130)
+        return 130
 
     if not html_content:
-        sys.exit(2)
+        return 2
 
-    _dispatch_command(args, html_content)
+    result, code = execute_command(command, config, html_content)
+
+    # Single value output (not list)
+    if result and not isinstance(result, list):
+        print(result)
+
+    return code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
