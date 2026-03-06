@@ -32,6 +32,9 @@ prek = "latest"
 "shfmt" = "latest"
 taplo = "latest"
 "npm:prettier" = "latest"
+node = "{{ env['NODE_VERSION'] | default(value='latest') }}"
+uv = "latest"
+ruff = "latest"
 
 [env]
 _.file = { path = ".env", tools = true }
