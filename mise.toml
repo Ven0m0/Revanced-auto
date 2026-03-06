@@ -1,0 +1,42 @@
+[settings]
+gix = true
+experimental = true
+color = true
+yes = true
+auto_install = true
+lockfile = true
+env_shell_expand = true
+
+[settings.python]
+uv_venv_auto = "create|source"
+uv_venv_create_args = ["--system-site-packages", "--seed"]
+precompiled_os = "x86_64_v3"
+
+[settings.cargo]
+binstall = true
+
+[settings.pipx]
+uvx = true
+
+[settings.node]
+ninja = true
+
+[settings.npm]
+package_manager = "bun"
+
+[tools]
+"actionlint" = "latest"
+action-validator = "latest"
+prek = "latest"
+"shellcheck" = "latest"
+"shfmt" = "latest"
+taplo = "latest"
+"npm:prettier" = "latest"
+
+[env]
+_.file = { path = ".env", tools = true }
+_.path = ['{{config_root}}/node_modules/.bin']
+_.python.venv = ".venv"
+NODE_ENV = "{{ env.NODE_ENV | default(value='production') }}"
+MISE_NPM_PACKAGE_MANAGER = "bun"
+PYTHONOPTIMIZE = "1"
