@@ -20,17 +20,92 @@ Usage:
     python3 version_tracker.py reset
 """
 
+from __future__ import annotations
+
 import argparse
-import json
 import os
 import sys
 import tomllib
+from dataclasses import dataclass
+from enum import Enum, auto
+from functools import lru_cache
 from pathlib import Path
+from typing import Final, TypedDict
 
-STATE_FILE = Path(".github/last_built_versions.json")
+import orjson
+
+STATE_FILE: Final[Path] = Path(".github/last_built_versions.json")
 
 
-def load_state(state_path: Path | None = None) -> dict[str, str]:
+class VersionState(TypedDict):
+    """State dictionary for version tracking."""
+
+    component: str
+    version: str
+
+
+class AppVersionInfo(TypedDict, total=False):
+    """App version information from config."""
+
+    patches_source: str
+    cli_source: str
+    version: str
+
+
+class StateDict(TypedDict, total=False):
+    """State file structure."""
+
+    global_cli_version: str
+    global_patches_version: str
+    global_patches_source: str
+
+
+class Command(Enum):
+    """Available CLI commands."""
+
+    CHECK = auto()
+    SAVE = auto()
+    SHOW = auto()
+    RESET = auto()
+
+
+@dataclass(frozen=True, slots=True)
+class VersionDiff:
+    """Represents a version difference.
+
+    Attributes:
+        key: Component key.
+        old: Old version value.
+        new: New version value.
+        change_type: Type of change.
+
+    """
+
+    key: str
+    old: str
+    new: str
+    change_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class CheckResult:
+    """Result of a build check operation.
+
+    Attributes:
+        needs_build: Whether a rebuild is needed.
+        changes: List of version changes detected.
+
+    """
+
+    needs_build: bool
+    changes: list[VersionDiff]
+
+
+type VersionMap = dict[str, str]
+
+
+@lru_cache(maxsize=1)
+def load_state(state_path: Path | None = None) -> VersionMap:
     """Load the persisted build state from the JSON file.
 
     Args:
@@ -38,29 +113,35 @@ def load_state(state_path: Path | None = None) -> dict[str, str]:
 
     Returns:
         Dictionary of component -> version mappings.
+
     """
     path = state_path or STATE_FILE
     if path.exists():
         try:
-            return dict(json.loads(path.read_text(encoding="utf-8")))
-        except (json.JSONDecodeError, OSError) as e:
+            content = path.read_bytes()
+            return dict(orjson.loads(content))
+        except (orjson.JSONDecodeError, OSError) as e:
             print(f"Warning: Could not read state file: {e}", file=sys.stderr)
     return {}
 
 
-def save_state(versions: dict[str, str], state_path: Path | None = None) -> None:
+def save_state(versions: VersionMap, state_path: Path | None = None) -> None:
     """Save current build state to the JSON file.
 
     Args:
         versions: Dictionary of component -> version mappings.
         state_path: Path to the state file. Defaults to STATE_FILE.
+
     """
     path = state_path or STATE_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(versions, indent=2) + "\n", encoding="utf-8")
+
+    json_bytes: bytes = orjson.dumps(versions, option=orjson.OPT_INDENT_2)
+    path.write_bytes(json_bytes + b"\n")
     print(f"State saved to {path}", file=sys.stderr)
 
 
+@lru_cache(maxsize=4)
 def load_config(config_path: str) -> dict[str, object]:
     """Load and parse a TOML config file.
 
@@ -72,16 +153,37 @@ def load_config(config_path: str) -> dict[str, object]:
 
     Raises:
         SystemExit: If the file cannot be read or parsed.
+
     """
+    path = Path(config_path)
     try:
-        with Path(config_path).open("rb") as f:
+        with path.open("rb") as f:
             return dict(tomllib.load(f))
     except (OSError, tomllib.TOMLDecodeError) as e:
         print(f"Error reading config: {e}", file=sys.stderr)
         sys.exit(1)
 
 
-def extract_current_versions(config: dict[str, object]) -> dict[str, str]:
+def _normalize_patches_source(value: object) -> str | None:
+    """Normalize patches source to string.
+
+    Args:
+        value: Raw patches source (str or list).
+
+    Returns:
+        Normalized string or None.
+
+    """
+    match value:
+        case str(s):
+            return s
+        case list():
+            return ",".join(str(s) for s in value)
+        case _:
+            return None
+
+
+def extract_current_versions(config: dict[str, object]) -> VersionMap:
     """Extract version identifiers from config for comparison.
 
     Tracks:
@@ -93,21 +195,23 @@ def extract_current_versions(config: dict[str, object]) -> dict[str, str]:
 
     Returns:
         Flat dictionary of trackable version keys.
-    """
-    versions: dict[str, str] = {}
 
+    """
+    versions: VersionMap = {}
+
+    # Global versions
     global_cli_ver = str(config.get("cli-version", "latest"))
     global_patches_ver = str(config.get("patches-version", "latest"))
     global_patches_src = config.get("patches-source", "")
 
     versions["global_cli_version"] = global_cli_ver
     versions["global_patches_version"] = global_patches_ver
-    if global_patches_src:
-        if isinstance(global_patches_src, list):
-            versions["global_patches_source"] = ",".join(str(s) for s in global_patches_src)
-        else:
-            versions["global_patches_source"] = str(global_patches_src)
 
+    normalized = _normalize_patches_source(global_patches_src)
+    if normalized:
+        versions["global_patches_source"] = normalized
+
+    # Per-app versions
     for key, value in config.items():
         if not isinstance(value, dict):
             continue
@@ -118,26 +222,57 @@ def extract_current_versions(config: dict[str, object]) -> dict[str, str]:
 
         app_key = key.lower().replace(" ", "-")
 
+        # Patches source
         patches_src = value.get("patches-source", global_patches_src)
-        if isinstance(patches_src, list):
-            versions[f"app_{app_key}_patches_source"] = ",".join(str(s) for s in patches_src)
-        elif patches_src:
-            versions[f"app_{app_key}_patches_source"] = str(patches_src)
+        patches_normalized = _normalize_patches_source(patches_src)
+        if patches_normalized:
+            versions[f"app_{app_key}_patches_source"] = patches_normalized
 
+        # CLI source
         cli_src = value.get("cli-source", "")
         if cli_src:
             versions[f"app_{app_key}_cli_source"] = str(cli_src)
 
+        # App version
         app_ver = value.get("version", "auto")
         versions[f"app_{app_key}_version"] = str(app_ver)
 
     return versions
 
 
+def detect_changes(current: VersionMap, saved: VersionMap) -> list[VersionDiff]:
+    """Detect version changes between current and saved state.
+
+    Args:
+        current: Current version state.
+        saved: Saved version state.
+
+    Returns:
+        List of version differences.
+
+    """
+    changes: list[VersionDiff] = []
+
+    # Detect modified and added keys
+    for key, cur_val in current.items():
+        saved_val = saved.get(key)
+        if saved_val is None:
+            changes.append(VersionDiff(key, "", cur_val, "added"))
+        elif cur_val != saved_val:
+            changes.append(VersionDiff(key, saved_val, cur_val, "modified"))
+
+    # Detect removed keys
+    for key in saved:
+        if key not in current:
+            changes.append(VersionDiff(key, saved[key], "", "removed"))
+
+    return changes
+
+
 def check_needs_build(
     config_path: str,
     state_path: Path | None = None,
-) -> bool:
+) -> CheckResult:
     """Compare current config against saved state to detect changes.
 
     Args:
@@ -145,7 +280,8 @@ def check_needs_build(
         state_path: Path to the state file.
 
     Returns:
-        True if a rebuild is needed.
+        CheckResult with needs_build flag and list of changes.
+
     """
     config = load_config(config_path)
     current = extract_current_versions(config)
@@ -153,24 +289,25 @@ def check_needs_build(
 
     if not saved:
         print("No previous build state found — build needed", file=sys.stderr)
-        return True
+        return CheckResult(needs_build=True, changes=[])
 
-    changes: list[str] = []
-    for key, cur_val in current.items():
-        saved_val = saved.get(key, "")
-        if cur_val != saved_val:
-            changes.append(f"  {key}: {saved_val!r} -> {cur_val!r}")
-
-    changes.extend(f"  {key}: removed" for key in saved if key not in current)
+    changes = detect_changes(current, saved)
 
     if changes:
         print("Changes detected:", file=sys.stderr)
         for change in changes:
-            print(change, file=sys.stderr)
-        return True
+            match change.change_type:
+                case "modified":
+                    print(f"  {change.key}: {change.old!r} -> {change.new!r}", file=sys.stderr)
+                case "added":
+                    print(f"  {change.key}: added -> {change.new!r}", file=sys.stderr)
+                case "removed":
+                    print(f"  {change.key}: {change.old!r} -> removed", file=sys.stderr)
 
-    print("No changes detected", file=sys.stderr)
-    return False
+    else:
+        print("No changes detected", file=sys.stderr)
+
+    return CheckResult(needs_build=bool(changes), changes=changes)
 
 
 def set_github_output(key: str, value: str) -> None:
@@ -179,16 +316,111 @@ def set_github_output(key: str, value: str) -> None:
     Args:
         key: Output key name.
         value: Output value.
+
     """
     gh_output = os.environ.get("GITHUB_OUTPUT")
     if gh_output:
-        with Path(gh_output).open("a", encoding="utf-8") as f:
-            f.write(f"{key}={value}\n")
+        Path(gh_output).open("a", encoding="utf-8").write(f"{key}={value}\n")
     print(f"  {key}={value}", file=sys.stderr)
 
 
-def main() -> None:
-    """CLI entry point."""
+def execute_check_command(config_path: str, state_path: Path | None) -> int:
+    """Execute the check command.
+
+    Args:
+        config_path: Path to config.toml.
+        state_path: Optional path to state file.
+
+    Returns:
+        Exit code.
+
+    """
+    result = check_needs_build(config_path, state_path)
+    set_github_output("needs_build", str(result.needs_build).lower())
+    print("true" if result.needs_build else "false")
+    return 0
+
+
+def execute_save_command(config_path: str, state_path: Path | None) -> int:
+    """Execute the save command.
+
+    Args:
+        config_path: Path to config.toml.
+        state_path: Optional path to state file.
+
+    Returns:
+        Exit code.
+
+    """
+    config = load_config(config_path)
+    current = extract_current_versions(config)
+    save_state(current, state_path)
+    return 0
+
+
+def execute_show_command(state_path: Path | None) -> int:
+    """Execute the show command.
+
+    Args:
+        state_path: Optional path to state file.
+
+    Returns:
+        Exit code.
+
+    """
+    state = load_state(state_path)
+    if state:
+        print(orjson.dumps(state, option=orjson.OPT_INDENT_2).decode("utf-8"))
+    else:
+        print("{}")
+    return 0
+
+
+def execute_reset_command(state_path: Path | None) -> int:
+    """Execute the reset command.
+
+    Args:
+        state_path: Optional path to state file.
+
+    Returns:
+        Exit code.
+
+    """
+    save_state({}, state_path)
+    print("State reset")
+    return 0
+
+
+def determine_command(args: argparse.Namespace) -> Command:
+    """Determine command from CLI arguments.
+
+    Args:
+        args: Parsed CLI arguments.
+
+    Returns:
+        Command to execute.
+
+    """
+    match args.command:
+        case "check":
+            return Command.CHECK
+        case "save":
+            return Command.SAVE
+        case "show":
+            return Command.SHOW
+        case "reset":
+            return Command.RESET
+        case _:
+            raise ValueError(f"unknown command: {args.command}")
+
+
+def main() -> int:
+    """CLI entry point.
+
+    Returns:
+        Exit code: 0 on success, 1 on error.
+
+    """
     parser = argparse.ArgumentParser(
         description="Track build versions for smart rebuild detection",
     )
@@ -196,9 +428,7 @@ def main() -> None:
 
     check_parser = subparsers.add_parser("check", help="Check if build is needed")
     check_parser.add_argument("--config", required=True, help="Path to config.toml")
-    check_parser.add_argument(
-        "--state-file", help="Path to state file (default: .github/last_built_versions.json)"
-    )
+    check_parser.add_argument("--state-file", help="Path to state file (default: .github/last_built_versions.json)")
 
     save_parser = subparsers.add_parser("save", help="Save current state after successful build")
     save_parser.add_argument("--config", required=True, help="Path to config.toml")
@@ -209,35 +439,26 @@ def main() -> None:
     subparsers.add_parser("reset", help="Reset state file")
 
     args = parser.parse_args()
-    state_path = Path(args.state_file) if hasattr(args, "state_file") and args.state_file else None
 
-    if args.command == "check":
-        needs_build = check_needs_build(args.config, state_path)
-        set_github_output("needs_build", str(needs_build).lower())
-        print("true" if needs_build else "false")
-        sys.exit(0)
+    state_path: Path | None = Path(args.state_file) if hasattr(args, "state_file") and args.state_file else None
 
-    if args.command == "save":
-        config = load_config(args.config)
-        current = extract_current_versions(config)
-        save_state(current, state_path)
-        sys.exit(0)
+    command = determine_command(args)
 
-    if args.command == "show":
-        state = load_state(state_path)
-        if state:
-            print(json.dumps(state, indent=2))
-        else:
-            print("{}")
-        sys.exit(0)
-
-    if args.command == "reset":
-        save_state({}, state_path)
-        print("State reset")
-        sys.exit(0)
-
-    sys.exit(1)
+    try:
+        match command:
+            case Command.CHECK:
+                return execute_check_command(args.config, state_path)
+            case Command.SAVE:
+                return execute_save_command(args.config, state_path)
+            case Command.SHOW:
+                return execute_show_command(state_path)
+            case Command.RESET:
+                return execute_reset_command(state_path)
+            case _:
+                return 1
+    except KeyboardInterrupt:
+        return 130
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
