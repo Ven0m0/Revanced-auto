@@ -12,7 +12,7 @@
 - **Errors:** Suffix `grep` with `|| true` if empty is expected.
 - **Logging:** `log_info`, `log_warn`, `epr`, `pr`, `abort`. NO raw `echo`/`printf`.
 - **Network:** `req "URL" "out"`, `gh_req "API"`. Max retries=4. NO raw `curl`/`wget`.
-- **Temp/Cache:** `make_temp_file`/`make_temp_dir` with `trap ... RETURN`/`EXIT`. `cache_is_valid "key" <ttl>`.
+- **Temp/Cache:** Use deterministic temp paths under `$TEMP_DIR` (see `scripts/lib/network.sh`) with `trap ... RETURN`/`EXIT`. Use `get_cache_path` + `cache_is_valid "$cache_path" <ttl>`.
 - **Security:** NO `eval`. Use regex for input validation (prevent path traversal). v1+v2 APK signing only.
 
 ## Python
