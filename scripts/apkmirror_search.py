@@ -11,11 +11,9 @@ import argparse
 import sys
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, TypeVar
+from typing import Literal
 
 from selectolax.parser import HTMLParser, Node
-
-T = TypeVar("T")
 
 # Type aliases
 type ArchType = Literal["universal", "noarch", "arm64-v8a", "armeabi-v7a", "arm64-v8a + armeabi-v7a"]
