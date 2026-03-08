@@ -44,7 +44,7 @@ package = false
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py313"
 fix = true
 exclude = [
   ".git",
