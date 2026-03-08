@@ -1,0 +1,90 @@
+name: Telegram Notify
+# Sends a Telegram message after a successful release.
+# Triggered by the completion of the "Build" workflow on the default branch.
+# Required secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+on:
+  workflow_run:
+    workflows:
+  - Build
+    types:
+  - completed
+    branches:
+  - master
+  - main
+
+jobs:
+  notify:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+    - name: Check required secrets
+      id: check_secrets
+      run: |
+        if [[ -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" || -z "${{ secrets.TELEGRAM_CHAT_ID }}" ]]; then
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          echo "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set — skipping notification"
+        else
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Get latest release info
+      if: steps.check_secrets.outputs.skip == 'false'
+      id: release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        RELEASE=$(gh api repos/${{ github.repository }}/releases/latest)
+        TAG=$(echo "$RELEASE" | jq -r '.tag_name')
+        URL=$(echo "$RELEASE" | jq -r '.html_url')
+        PRERELEASE=$(echo "$RELEASE" | jq -r '.prerelease')
+        echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+        echo "url=${URL}" >> "$GITHUB_OUTPUT"
+        echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+        # Extract APK asset names
+        APKS=$(echo "$RELEASE" | jq -r '[.assets[] | select(.name | endswith(".apk")) | "• " + .name] | join("\n")' | head -20)
+        # Use heredoc-safe delimiter for multiline output
+        DELIM="$(openssl rand -hex 8)"
+        echo "apks<<${DELIM}" >> "$GITHUB_OUTPUT"
+        echo "$APKS" >> "$GITHUB_OUTPUT"
+        echo "${DELIM}" >> "$GITHUB_OUTPUT"
+
+    - name: Send Telegram message
+      if: steps.check_secrets.outputs.skip == 'false'
+      env:
+        BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        TAG="${{ steps.release.outputs.tag }}"
+        URL="${{ steps.release.outputs.url }}"
+        APKS="${{ steps.release.outputs.apks }}"
+        PRERELEASE="${{ steps.release.outputs.prerelease }}"
+
+        if [[ "$PRERELEASE" == "true" ]]; then
+          LABEL="Pre-release"
+        else
+          LABEL="Release"
+        fi
+
+        # Build message (MarkdownV2 requires escaping special chars)
+        _esc() { echo "$1" | sed 's/[_*[\]()~`>#+=|{}.!-]/\\&/g'; }
+
+        MSG="*ReVanced Auto Build*
+        ${LABEL}: $(_esc "$TAG")
+
+        ${APKS}
+
+        [View Release]($(_esc "$URL"))"
+
+        curl -s -X POST \
+          "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+          -d chat_id="${CHAT_ID}" \
+          -d parse_mode="MarkdownV2" \
+          -d disable_web_page_preview="true" \
+          -d text="$MSG" \
+          -o /dev/null \
+          -w "%{http_code}" | grep -q "^200$" \
+          && echo "Telegram notification sent" \
+          || echo "Warning: Telegram notification may have failed (non-200 response)"
