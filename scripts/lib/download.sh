@@ -403,6 +403,58 @@ dl_aptoide() {
   log_info "Downloading APK from Aptoide"
   req "$dl_url" "$output"
 }
+# ==================== APKMonk ====================
+# Global variables for APKMonk caching
+__APKMONK_RESP__=""
+__APKMONK_PKG_NAME__=""
+# Get APKMonk page response
+# Args:
+#   $1: APKMonk URL (e.g., https://www.apkmonk.com/app/com.google.android.youtube/)
+get_apkmonk_resp() {
+  log_info "Fetching APKMonk page: $1"
+  local base_url="${1%/}"
+  __APKMONK_RESP__=$(req "${base_url}" -)
+  __APKMONK_PKG_NAME__="${base_url##*/}"
+}
+# Get package name from APKMonk
+get_apkmonk_pkg_name() {
+  echo "$__APKMONK_PKG_NAME__"
+}
+# Get available versions from APKMonk
+get_apkmonk_vers() {
+  uv run "${PROJECT_ROOT}/scripts/apkmonk_search.py" \
+    --versions <<< "$__APKMONK_RESP__"
+}
+# Download APK from APKMonk
+# Args:
+#   $1: Base URL (e.g., https://www.apkmonk.com/app/com.google.android.youtube/)
+#   $2: Version
+#   $3: Output file path
+#   $4: Architecture (unused — APKMonk does not filter by arch)
+#   $5: DPI (unused)
+dl_apkmonk() {
+  local base_url=$1 version=$2 output=$3 _arch=$4 _dpi=$5
+  log_info "Searching APKMonk for version: $version"
+  local ver_page_url
+  ver_page_url=$(uv run "${PROJECT_ROOT}/scripts/apkmonk_search.py" \
+    --version-url --version "$version" <<< "$__APKMONK_RESP__") || return 1
+  local ver_page_resp
+  ver_page_resp=$(req "$ver_page_url" -) || return 1
+  local dl_key
+  dl_key=$(uv run "${PROJECT_ROOT}/scripts/apkmonk_search.py" \
+    --dl-key <<< "$ver_page_resp") || return 1
+  local pkg_val="${dl_key%%:*}" key_val="${dl_key#*:}"
+  local api_resp
+  api_resp=$(req "https://www.apkmonk.com/down_file?pkg=${pkg_val}&key=${key_val}" -) || return 1
+  local dl_url
+  dl_url=$(jq -r '.url' <<< "$api_resp") || return 1
+  if [[ -z "$dl_url" || "$dl_url" == "null" ]]; then
+    epr "APKMonk: no download URL in API response for $pkg_val v$version"
+    return 1
+  fi
+  log_info "Downloading APK from APKMonk"
+  req "$dl_url" "$output"
+}
 # ==================== Archive.org ====================
 # Get Archive.org page response
 # Args:

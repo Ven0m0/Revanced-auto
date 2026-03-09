@@ -230,9 +230,15 @@ _app_build_arguments() {
     __aba_args[dl_from]=aptoide
   fi
 
+  __aba_args[apkmonk_dlurl]=$(_app_get_config_value __aba_cfg "apkmonk-dlurl" "")
+  if [[ "${__aba_args[apkmonk_dlurl]}" != "" ]]; then
+    __aba_args[apkmonk_dlurl]=${__aba_args[apkmonk_dlurl]%/}
+    __aba_args[dl_from]=apkmonk
+  fi
+
   # Validate at least one download source
   if [[ ${__aba_args[dl_from]-} == "" ]]; then
-    abort "ERROR: no download URL option was set for '${table_name}'. Set at least one of: apkmirror-dlurl, uptodown-dlurl, archive-dlurl, apkpure-dlurl, aptoide-dlurl"
+    abort "ERROR: no download URL option was set for '${table_name}'. Set at least one of: apkmirror-dlurl, uptodown-dlurl, archive-dlurl, apkpure-dlurl, aptoide-dlurl, apkmonk-dlurl"
   fi
 
   # Parse architecture
