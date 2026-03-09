@@ -1,109 +1,30 @@
-# GitHub Copilot Instructions
+# AI Agent Instructions
 
-This repository is an automated APK patching system for ReVanced / RVX.
-Primary languages: **Bash 4.0+** and **Python 3.13+**.
-Full agent guidance: see [`AGENTS.md`](../AGENTS.md).
+- **Context:** Automated APK patching (ReVanced/RVX) via TOML.
+- **Stack:** Bash 4.0+, Python 3.13+, Java 21+, Android SDK 34.0.0, uv, jq.
 
----
+## Bash
+- **Header:** `#!/usr/bin/env bash`, `set -euo pipefail`. 2 spaces indent.
+- **Sourcing:** `source utils.sh` ONLY. Never direct `scripts/lib/*.sh`.
+- **Variables:** Quote `"${var}"`. `UPPER_SNAKE` globals (`declare -g`/`-gr`). `lower_snake` locals. `_private_func`.
+- **Arrays/Dicts:** `mapfile -t arr < <(cmd)`. Access dict keys safely in `set -u` via `"${dict[key]-}"`. No backticks.
+- **Execution/Math:** `VAR=$((VAR + 1))` (avoid `((VAR++))` with `set -e`). Single-quote `awk` scripts (`'{print $NF}'`).
+- **Errors:** Suffix `grep` with `|| true` if empty is expected.
+- **Logging:** `log_info`, `log_warn`, `epr`, `pr`, `abort`. NO raw `echo`/`printf`.
+- **Network:** `req "URL" "out"`, `gh_req "API"`. Max retries=4. NO raw `curl`/`wget`.
+- **Temp/Cache:** Use deterministic temp paths under `$TEMP_DIR` (see `scripts/lib/network.sh`) with `trap ... RETURN`/`EXIT`. Use `get_cache_path` + `cache_is_valid "$cache_path" <ttl>`.
+- **Security:** NO `eval`. Use regex for input validation (prevent path traversal). v1+v2 APK signing only.
 
-## Essential Commands
+## Python
+- **Core:** Python 3.13+. Managed via `uv`. Exit codes: 0 (success), 1 (error), 2 (parse/version-check failure).
+- **Lint/Type:** Ruff (`select=["ALL"]`), MyPy `--strict`. Google docstrings. 4 spaces.
+- **Design:** Keep `sys.exit` in `main()`. Extract core logic for tests. Use walrus operator (`:=`).
+- **Parsing:** `selectolax` (HTML), `tomllib` (TOML), `json`/`orjson` (JSON).
 
-```bash
-./build.sh config.toml          # Build all enabled apps
-./build.sh clean                # Remove temp/, build/, logs/, build.md
-./check-env.sh                  # Validate prerequisites
-./scripts/lint.sh               # Run all linters (check mode)
-./scripts/lint.sh --fix         # Run all linters with auto-fix
-bash -n <file.sh>               # Syntax check after editing shell scripts
-```
-
-Required env vars: `KEYSTORE_PASSWORD`, `KEYSTORE_ENTRY_PASSWORD`
-
-Python setup: `uv python install 3.14 && uv sync --locked`
-
----
-
-## Bash Conventions
-
-- Header: `#!/usr/bin/env bash` + `set -euo pipefail`
-- Indent: 2 spaces (shfmt enforced)
-- Tests: `[[ ... ]]` not `[ ... ]`; quotes: always `"${var}"`
-- Command substitution: `$( )` not backticks
-- Arrays: `mapfile -t arr < <(cmd)` and `read -ra arr <<< "$str"`
-- Globals: `UPPER_SNAKE_CASE`; locals: `lower_snake_case` + `local`
-- Public functions: `snake_case`; private: `_leading_underscore`
-- **Never** `eval`, unquoted expansions, or pipe curl to shell
-- **Always** `source utils.sh` — never source `scripts/lib/*.sh` directly
-
-### Logging
-
-```bash
-abort "fatal"      # Red, exits 1
-epr "error"        # Red to stderr, continues
-log_warn "warn"    # Yellow
-log_info "info"    # Cyan (default)
-log_debug "debug"  # Gray (LOG_LEVEL=0)
-pr "success"       # Green
-log "build note"   # Appended to build.md
-```
-
-### HTTP Requests
-
-```bash
-req "URL" "output"     # Auto-retry (0s/2s/4s/8s/16s backoff)
-gh_req "API URL"       # GitHub API with token auth
-```
-
-Never call `curl`/`wget` directly — always use `req`.
-
-### Config Access
-
-```bash
-source utils.sh
-toml_prep "config.toml"
-local val=$(toml_get "$table" "key")
-local arr=$(toml_get_array_or_string "$table" "patches-source")
-```
-
----
-
-## Python Conventions
-
-- Python 3.13+ (`target-version = "py313"` in pyproject.toml; 3.14 pinned locally)
-- Ruff with `select = ["ALL"]`; line length 100; double quotes, 4-space indent
-- MyPy `--strict` — all functions need full type annotations
-- Docstrings: Google style with `Args:`, `Returns:`, `Raises:`
-- Use `selectolax` for HTML, stdlib `tomllib` for TOML, `orjson` for JSON
-
----
-
-## Module Map
-
-| File | Purpose |
-|------|---------|
-| `utils.sh` | Module loader — always source this |
-| `scripts/lib/logger.sh` | Logging functions |
-| `scripts/lib/config.sh` | TOML/JSON config parsing |
-| `scripts/lib/network.sh` | HTTP with retry backoff |
-| `scripts/lib/cache.sh` | File cache with TTL |
-| `scripts/lib/download.sh` | APK sources (APKMirror → Uptodown → Archive.org) |
-| `scripts/lib/patching.sh` | APK patching orchestration |
-| `scripts/lib/app_processor.sh` | Per-app config + build dispatch |
-| `scripts/lib/checks.sh` | Prerequisite validation |
-| `scripts/apkmirror_search.py` | APKMirror HTML parser (selectolax) |
-| `scripts/toml_get.py` | TOML → JSON converter |
-
----
-
-## Key Rules
-
-1. `source utils.sh` — never source lib files directly
-2. Logging functions only — never raw `echo`/`printf` for messages
-3. `./scripts/lint.sh` before every commit
-4. `bash -n <file>` after every shell edit
-5. `req` for all HTTP — never raw curl/wget
-6. Check `cache_is_valid` before downloading
-7. No secrets in code — env vars and GitHub secrets only
-8. APK signing: v1+v2 only (v3/v4 disabled)
-9. Python: type everything, Google docstrings, ruff + mypy clean
-10. `jq` for JSON, `toml_get` for TOML, `selectolax` for HTML
+## Workflow & Commands
+- **Git:** Branch naming: `feature/desc`, `fix/desc`, `agent/desc`. Never commit secrets.
+- **Build:** `./build.sh config.toml` (all) | `./build.sh clean` (clean).
+- **Lint:** `./scripts/lint.sh` | `./scripts/lint.sh --fix`. (Mandatory pre-commit).
+- **Verify:** `bash -n <file.sh>` (Mandatory after edits).
+- **Test:** `./tests/test_*.sh` (Bash, no external frameworks) | `uv run python -m pytest tests/<test_file>.py -v` (Python).
+- **Deps:** `uv add <pkg>`, then `uv lock` & `uv sync --locked`.
