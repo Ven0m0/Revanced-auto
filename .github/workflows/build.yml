@@ -165,7 +165,7 @@ jobs:
           done
     - name: Upload APKs to release
       if: steps.check_artifacts.outputs.has_artifacts == 'true'
-      uses: svenstaro/upload-release-action@2.11.4
+      uses: svenstaro/upload-release-action@2.11.5
       with:
         body: ${{ steps.get_output.outputs.BUILD_LOG }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
