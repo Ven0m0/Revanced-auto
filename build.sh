@@ -174,7 +174,12 @@ done
 shopt -u nullglob
 # Add build notes
 echo "" >> build.md
-echo "Install [Microg](https://github.com/ReVanced/GmsCore/releases) for non-root YouTube and YT Music APKs  " >> build.md
+echo "### MicroG / GmsCore (Required for YouTube & YT Music)" >> build.md
+echo "Download and install one of the following GmsCore providers:" >> build.md
+echo "- [ReVanced GmsCore](https://github.com/ReVanced/GmsCore/releases/latest)" >> build.md
+echo "- [Wst_Xda GmsCore (Morphe)](https://github.com/MorpheApp/MicroG-RE/releases/latest)" >> build.md
+echo "- [YT-Advanced GmsCore (Rex)](https://github.com/YT-Advanced/GmsCore/releases/latest)" >> build.md
+echo "" >> build.md
 cat "$TEMP_DIR"/*-rv/changelog.md 2> /dev/null || : >> build.md
 # Add skipped builds info
 SKIPPED=$(cat "$TEMP_DIR"/skipped 2> /dev/null || :)

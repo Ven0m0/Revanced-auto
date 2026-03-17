@@ -42,5 +42,6 @@ _source_lib download.sh
 _source_lib patching.sh
 _source_lib app_processor.sh
 _source_lib checks.sh
+_source_lib gmscore.sh
 unset -f _source_lib
 log_debug "All utility modules loaded successfully"

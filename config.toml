@@ -36,6 +36,16 @@ cli-version = "dev"
 # - beta: Use latest beta version
 # - Specific version: e.g., "18.48.39"
 version = "auto"
+
+# Alternative Patch Sources (for patches-source):
+# - ReVanced: ReVanced/revanced-patches
+# - ReVanced Extended (anddea): anddea/revanced-patches
+# - ReVanced Extended (inotia00): inotia00/revanced-patches
+# - De-ReVanced: RookieEnough/De-ReVanced
+# - Morphe: MorpheApp/morphe-patches
+# - Piko (Twitter): crimera/piko
+# - Patcheddit (Reddit): wchill/patcheddit
+
 # AAPT2 Optimization
 # Enable Android Asset Packaging Tool optimization
 # - Reduces APK size by optimizing resources
@@ -158,3 +168,28 @@ apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/photos/"
 uptodown-dlurl = "https://google-photos.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.photos"
 apkpure-dlurl = "https://apkpure.net/google-photos/com.google.android.apps.photos"
+
+# YouTube Morphed
+[YouTube-Morphed]
+enabled = false
+app-name = "YouTube"
+patches-source = "MorpheApp/morphe-patches"
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
+
+# YouTube Legacy (Android 6-7)
+[YouTube-Legacy]
+enabled = false
+app-name = "YouTube"
+patches-source = "kitadai31/revanced-patches-android6-7"
+rv-brand = "RVX-Legacy"
+apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
+
+# Reddit Patcheddit
+[Reddit-Patcheddit]
+enabled = false
+app-name = "Reddit"
+patches-source = "wchill/patcheddit"
+rv-brand = "Patcheddit"
+apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
