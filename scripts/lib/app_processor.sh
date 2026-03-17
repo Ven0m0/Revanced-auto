@@ -135,7 +135,7 @@ _app_configure_riplib() {
   if [[ -v cliriplib[${cli_jar}] ]]; then
     __acr_args[riplib]=${cliriplib[${cli_jar}]}
   else
-    if [[ $(java -jar "${cli_jar}" patch 2>&1) == *rip-lib* ]]; then
+    if [[ $(java "${JAVA_ARGS[@]}" -jar "${cli_jar}" patch 2>&1) == *rip-lib* ]]; then
       cliriplib["${cli_jar}"]=true
       __acr_args[riplib]=true
       log_debug "CLI supports riplib"

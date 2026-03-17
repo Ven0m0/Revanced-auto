@@ -286,7 +286,7 @@ _remove_integrations_checks() {
   (
     mkdir -p "${file}-zip" || return 1
     unzip -qo "$file" -d "${file}-zip" || return 1
-    java -cp "${BIN_DIR}/paccer.jar:${BIN_DIR}/dexlib2.jar" com.jhc.Main \
+    java "${JAVA_ARGS[@]}" -cp "${BIN_DIR}/paccer.jar:${BIN_DIR}/dexlib2.jar" com.jhc.Main \
       "${file}-zip/extensions/shared.rve" \
       "${file}-zip/extensions/shared-patched.rve" || return 1
     mv -f "${file}-zip/extensions/shared-patched.rve" \

@@ -284,7 +284,7 @@ get_patch_last_supported_ver() {
         # Invoke CLI to get patches specific to this package
         # Note: We use list-patches instead of list-versions to get patch names for exclusion filtering
         local op
-        if ! op=$(java -jar "$cli_jar" list-patches "$patches_jar" -f "$pkg_name" 2>&1); then
+        if ! op=$(java "${JAVA_ARGS[@]}" -jar "$cli_jar" list-patches "$patches_jar" -f "$pkg_name" 2>&1); then
              # Write error to file
              echo "$op" > "${temp_dir}/${i}.err"
         else
