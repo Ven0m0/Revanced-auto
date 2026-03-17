@@ -7,7 +7,7 @@ LC_ALL=C
 export PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export CWD="$PROJECT_ROOT" TEMP_DIR="${PROJECT_ROOT}/temp" BIN_DIR="${PROJECT_ROOT}/bin" BUILD_DIR="${PROJECT_ROOT}/build"
 # JVM optimization arguments
-declare -ga JAVA_ARGS=("-Djava.awt.headless=true" "-Dfile.encoding=UTF-8" "-XX:+UseParallelGC" "-XX:+UseCompressedClassPointers" "-XX:+UseCompressedOops" "-XX:+UseTLAB" "-XX:+ParallelRefProcEnabled" "-XX:+ScavengeBeforeFullGC" "-XX:+DisableExplicitGC" "-XX:+TieredCompilation" "-XX:+OptimizeStringConcat" "-XX:-UsePerfData" "-XX:+UseStringDeduplication")
+declare -gra JAVA_ARGS=C("-Djava.awt.headless=true" "-Dfile.encoding=UTF-8" "-XX:+UseParallelGC" "-XX:+UseCompressedClassPointers" "-XX:+UseCompressedOops" "-XX:+UseTLAB" "-XX:+ParallelRefProcEnabled" "-XX:+ScavengeBeforeFullGC" "-XX:+DisableExplicitGC" "-XX:+TieredCompilation" "-XX:+OptimizeStringConcat" "-XX:-UsePerfData")
 
 # GitHub authentication header
 if [[ "${GITHUB_TOKEN-}" ]]; then
