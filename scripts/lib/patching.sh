@@ -24,7 +24,7 @@ check_sig() {
     log_debug "Using cached signature for $cache_key"
   else
     log_info "Verifying APK signature for $pkg_name"
-    sig=$(java -jar "$APKSIGNER" verify --print-certs "$file" | grep ^Signer | grep SHA-256 | tail -1 | awk '{print $NF}')
+    sig=$(java "${JAVA_ARGS[@]}" -jar "$APKSIGNER" verify --print-certs "$file" | grep ^Signer | grep SHA-256 | tail -1 | awk '{print $NF}')
     # Cache the signature
     if [[ -n "$version" ]]; then
       __SIG_CACHE__[$cache_key]="$sig"
@@ -49,7 +49,7 @@ merge_splits() {
   pr "Merging splits"
   gh_dl "$TEMP_DIR/apkeditor.jar" \
     "https://github.com/REAndroid/APKEditor/releases/download/V1.4.2/APKEditor-1.4.2.jar" > /dev/null || return 1
-  if ! OP=$(java -jar "$TEMP_DIR/apkeditor.jar" merge -i "$bundle" -o "${bundle}.mzip" -clean-meta -f 2>&1); then
+  if ! OP=$(java "${JAVA_ARGS[@]}" -jar "$TEMP_DIR/apkeditor.jar" merge -i "$bundle" -o "${bundle}.mzip" -clean-meta -f 2>&1); then
     epr "APKEditor ERROR: $OP"
     return 1
   fi
@@ -104,6 +104,7 @@ patch_apk() {
     env
     -u GITHUB_REPOSITORY
     java
+    "${JAVA_ARGS[@]}"
     -jar "$rv_cli_jar"
     patch
     "$stock_input"
@@ -163,6 +164,7 @@ patch_apk() {
   # Use environment variables for passwords (already exported above)
   local -a sign_cmd=(
     java
+    "${JAVA_ARGS[@]}"
     -jar "$APKSIGNER"
     sign
     --ks "$keystore"
@@ -360,7 +362,7 @@ get_cached_patches_list() {
   # Run list-patches without -f pkg_name to get full list
   local temp_file
   temp_file=$(mktemp)
-  if ! java -jar "$cli_jar" list-patches "$patches_jar" -v -p > "$temp_file" 2>&1; then
+  if ! java "${JAVA_ARGS[@]}" -jar "$cli_jar" list-patches "$patches_jar" -v -p > "$temp_file" 2>&1; then
     rm -f "$temp_file"
     log_warn "Failed to list patches"
     return 1
