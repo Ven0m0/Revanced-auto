@@ -242,10 +242,38 @@ check_all_dependencies() {
     fi
   fi
   # Check APKs (if requested)
-  if [[ "$CHECK_MODE" == "apks" ]]; then
-    log_info "APK update checking is not yet fully implemented"
-    # Placeholder for future APK checking
-    # Would parse enabled apps from config and check each
+  if [[ "$CHECK_MODE" == "all" || "$CHECK_MODE" == "apks" ]]; then
+    local apk_pids=()
+    local apk_temps=()
+    if command -v toml_prep &> /dev/null && toml_prep "$CONFIG_FILE"; then
+      while read -r app_name; do
+        if [[ -z "$app_name" ]]; then continue; fi
+        local t enabled version temp_file
+        t=$(toml_get_table "$app_name")
+        enabled=$(toml_get "$t" "enabled") || enabled="true"
+        if [[ "$enabled" == "true" ]]; then
+          version=$(toml_get "$t" "version") || version="auto"
+          temp_file=$(mktemp)
+          check_apk_updates "$app_name" "$version" > "$temp_file" &
+          apk_pids+=($!)
+          apk_temps+=("$temp_file")
+        fi
+      done < <(toml_get_table_names)
+
+      for i in "${!apk_pids[@]}"; do
+        wait "${apk_pids[$i]}"
+        if [[ -f "${apk_temps[$i]}" ]]; then
+          local content
+          content=$(cat "${apk_temps[$i]}")
+          if [[ -n "$content" ]]; then
+            results+=("$content")
+          fi
+          rm "${apk_temps[$i]}"
+        fi
+      done
+    else
+      log_warn "Config parsing utilities not available. Skipping APK checks."
+    fi
   fi
   # Format output
   format_results "${results[@]}"
