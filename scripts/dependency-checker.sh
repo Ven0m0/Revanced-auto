@@ -315,21 +315,14 @@ check_all_dependencies() {
       apps_json=$(python3 "${PROJECT_ROOT:-.}/scripts/toml_get.py" --file "$CONFIG_FILE" | jq -c 'to_entries | map(select(.value | type == "object")) | map(select(.value.enabled == true)) | map({app: .key, version: (.value.version // "'"$global_version"'"), urls: [.value."uptodown-dlurl", .value."apkmirror-dlurl", .value."apkpure-dlurl", .value."archive-dlurl", .value."aptoide-dlurl"] | map(select(. != null))})')
 
       if [[ -n "$apps_json" && "$apps_json" != "[]" ]]; then
-        local num_apps
-        num_apps=$(echo "$apps_json" | jq '. | length')
-
-        for ((i=0; i<num_apps; i++)); do
-          local app_name
-          app_name=$(echo "$apps_json" | jq -r ".[$i].app")
-          local app_version
-          app_version=$(echo "$apps_json" | jq -r ".[$i].version")
-
+        # Use jq to create a null-byte separated stream for efficient processing in a while-read loop.
+        echo "$apps_json" | jq -r '.[] | .app + "\u0000" + .version + "\u0000" + (.urls | join("\u0001"))' |
+        while IFS=$'\0' read -r app_name app_version urls_str; do
+          # Split the URL string (separated by \u0001) into an array.
           local urls=()
-          local num_urls
-          num_urls=$(echo "$apps_json" | jq -r ".[$i].urls | length")
-          for ((j=0; j<num_urls; j++)); do
-            urls+=("$(echo "$apps_json" | jq -r ".[$i].urls[$j]")")
-          done
+          if [[ -n "$urls_str" ]]; then
+            mapfile -t urls < <(tr '\1' '\n' <<< "$urls_str")
+          fi
 
           local apk_temp
           apk_temp=$(mktemp)
