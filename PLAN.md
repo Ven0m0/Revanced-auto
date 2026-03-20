@@ -20,7 +20,7 @@ This document outlines the strategic plan to integrate advanced features and log
 *Source: nikhilbadyal/docker-py-revanced*
 - **Action**: Update `scripts/lib/patching.sh` to support "CLI Profiles".
 - **Logic**: Define argument maps for different CLI versions (e.g., v6 requires `-b` for integrations, Morphe CLI uses different flags). Allow multiple `-p` flags to merge patches from different sources (e.g., official + indrastorm).
-- **Config**: `cli-profile = "revanced-v6"` in `config.toml`.
+- **Config**: `cli-profile = "v6"` in `config.toml`.
 
 ### C. Smart Delta Monitoring
 *Source: X-Abhishek-X/ReVanced-Automated-Build-Scripts*
