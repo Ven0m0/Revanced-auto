@@ -62,7 +62,7 @@ This document outlines the strategic plan to integrate advanced features and log
 
 ### Phase 4: Performance & Refinement (Week 4)
 - Network acceleration with `aria2c`.
-- Advanced AAPT2 optimizations.
+- Refine and extend existing AAPT2 optimizations (`scripts/aapt2-optimize.sh`, dynamic AAPT2 fetch/caching in `set_prebuilts`).
 - Comprehensive unit testing and documentation updates.
 
 ## 4. Configuration Schema Updates (Proposed)
