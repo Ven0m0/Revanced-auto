@@ -247,6 +247,11 @@ check_all_dependencies() {
     local apk_temps=()
     trap 'rm -f "${apk_temps[@]}"' EXIT
     if command -v toml_prep &> /dev/null && toml_prep "$CONFIG_FILE"; then
+      local max_parallel
+      max_parallel="${PARALLEL_JOBS-4}"
+      if ! [[ "$max_parallel" =~ ^[0-9]+$ ]] || (( max_parallel < 1 )); then
+        max_parallel=4
+      fi
       while read -r app_name; do
         if [[ -z "$app_name" ]]; then continue; fi
         local t enabled version temp_file
@@ -256,8 +261,13 @@ check_all_dependencies() {
           version=$(toml_get "$t" "version") || version="auto"
           temp_file=$(mktemp "${TEMP_DIR}/apk-check.XXXXXX")
           check_apk_updates "$app_name" "$version" > "$temp_file" &
-          apk_pids+=($!)
+          apk_pids+=("$!")
           apk_temps+=("$temp_file")
+          if (( ${#apk_pids[@]} >= max_parallel )); then
+            # Throttle concurrent APK checks to avoid overwhelming the system or remote services.
+            # Individual job results are still collected in the loop below.
+            wait -n || true
+          fi
         fi
       done < <(toml_get_table_names)
 
