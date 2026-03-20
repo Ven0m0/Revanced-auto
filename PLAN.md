@@ -24,8 +24,8 @@ This document outlines the strategic plan to integrate advanced features and log
 
 ### C. Smart Delta Monitoring
 *Source: X-Abhishek-X/ReVanced-Automated-Build-Scripts*
-- **Action**: Create `scripts/lib/delta_checker.sh`.
-- **Logic**: Maintain a `last_build.json` state. Before building, query GitHub APIs for the latest versions of patches, integrations, and target apps. Skip build if no changes are detected.
+- **Action**: Extend `scripts/version_tracker.py` (and its default `.github/last_built_versions.json` state) and, if needed, add a thin Bash wrapper in `scripts/lib` to integrate it with `build.sh`.
+- **Logic**: Reuse and, if necessary, expand the existing JSON state to track the last built versions of patches, integrations, and target apps. Before building, query GitHub APIs for the latest versions and skip the build if no relevant changes are detected.
 - **Efficiency**: Significantly reduces GitHub Actions runner usage.
 
 ### D. Advanced Split APK & Multi-Arch Handling
@@ -56,7 +56,7 @@ This document outlines the strategic plan to integrate advanced features and log
 - Add Obtainium metadata generation.
 
 ### Phase 3: Automation & Notifications (Week 3)
-- Implement the Delta Checker.
+- Integrate and wire `scripts/version_tracker.py` into the build workflow for delta-based builds.
 - Integrate Telegram and Apprise notification systems.
 - Automate release management (cleaning old releases).
 
