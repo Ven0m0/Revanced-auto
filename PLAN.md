@@ -69,7 +69,7 @@ This document outlines the strategic plan to integrate advanced features and log
 
 ```toml
 [global]
-output-mode = "apk" # apk, module, both
+build-mode = "apk" # apk, module, both
 notification-provider = "telegram" # telegram, apprise, none
 cli-profile = "auto" # auto, v4, v5, v6, morphe
 
