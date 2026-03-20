@@ -46,9 +46,9 @@ This document outlines the strategic plan to integrate advanced features and log
 ## 3. Implementation Roadmap
 
 ### Phase 1: Core Engine & Multi-Source (Week 1)
-- Refactor `patching.sh` for CLI Profiles.
-- Implement multi-patcher JAR support.
-- Expand `config.toml` schema.
+- Refactor `patching.sh` for CLI Profiles and per-CLI argument maps.
+- Formalize and document multi-patcher JAR support (already available via multiple `-p` flags and array `patches-source`) and add tests.
+- Expand `config.toml` schema for CLI profiles, notification settings, and module output.
 
 ### Phase 2: Output Expansion (Week 2)
 - Implement Magisk/KernelSU module generation.
