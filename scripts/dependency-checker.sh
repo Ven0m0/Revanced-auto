@@ -166,29 +166,22 @@ check_apk_updates() {
       if [[ -z "$url" ]]; then continue; fi
 
       local vers=""
-      if [[ "$url" == *"uptodown"* ]]; then
-        if get_uptodown_resp "$url" >/dev/null 2>&1; then
-          vers=$(get_uptodown_vers 2>/dev/null | head -n 1)
-        fi
-      elif [[ "$url" == *"apkmirror"* ]]; then
-        if get_apkmirror_resp "$url" >/dev/null 2>&1; then
-          vers=$(get_apkmirror_vers 2>/dev/null | head -n 1)
-        fi
-      elif [[ "$url" == *"apkpure"* ]]; then
-        if get_apkpure_resp "$url" >/dev/null 2>&1; then
-          vers=$(get_apkpure_vers 2>/dev/null | head -n 1)
-        fi
-      elif [[ "$url" == *"archive.org"* ]]; then
-        if get_archive_resp "$url" >/dev/null 2>&1; then
-          vers=$(get_archive_vers 2>/dev/null | head -n 1)
-        fi
-      elif [[ "$url" == *"aptoide"* ]]; then
-        if get_aptoide_resp "$url" >/dev/null 2>&1; then
-          vers=$(get_aptoide_vers 2>/dev/null | head -n 1)
-        fi
-      elif [[ "$url" == *"apkmonk"* ]]; then
-        if get_apkmonk_resp "$url" >/dev/null 2>&1; then
-          vers=$(get_apkmonk_vers 2>/dev/null | head -n 1)
+      local provider
+      case "$url" in
+        *uptodown*)   provider="uptodown" ;;
+        *apkmirror*)  provider="apkmirror" ;;
+        *apkpure*)    provider="apkpure" ;;
+        *archive.org*) provider="archive" ;;
+        *aptoide*)    provider="aptoide" ;;
+        *apkmonk*)    provider="apkmonk" ;;
+        *)            provider="" ;;
+      esac
+
+      if [[ -n "$provider" ]]; then
+        local get_resp_func="get_${provider}_resp"
+        local get_vers_func="get_${provider}_vers"
+        if "$get_resp_func" "$url" >/dev/null 2>&1; then
+          vers=$("$get_vers_func" 2>/dev/null | head -n 1)
         fi
       fi
 
