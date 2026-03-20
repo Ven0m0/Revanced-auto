@@ -2,6 +2,11 @@
 # Dependency update checker for ReVanced Builder
 # Monitors ReVanced CLI, patches, and APK versions for updates
 set -euo pipefail
+
+# Determine script and repository root directories
+declare -gr SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+declare -gr REPO_ROOT="${PROJECT_ROOT:-${SCRIPT_DIR%/scripts}}"
+
 # Source utilities if available
 if [[ -f "utils.sh" ]]; then
   source utils.sh
@@ -149,24 +154,74 @@ check_patches_updates() {
 			update_available: ($update_available == "true")
 		}'
 }
-# Check APK version updates (placeholder - requires integration with download sources)
+# Check APK version updates
 check_apk_updates() {
   local app_name=$1
   local current_version=$2
+  shift 2
+  local urls=("$@")
+
   log_info "APK version check for $app_name: $current_version"
-  # This is a placeholder - actual implementation would require
-  # integration with APKMirror, Uptodown, etc.
-  # For now, just return a basic structure
-  jq -n \
-    --arg app "$app_name" \
-    --arg current "$current_version" \
-    '{
+
+  local latest_version="unknown"
+  local update_available=false
+
+  if command -v get_uptodown_resp &> /dev/null; then
+    for url in "${urls[@]}"; do
+      if [[ -z "$url" ]]; then continue; fi
+
+      local vers=""
+      local provider
+      case "$url" in
+        *uptodown*)   provider="uptodown" ;;
+        *apkmirror*)  provider="apkmirror" ;;
+        *apkpure*)    provider="apkpure" ;;
+        *archive.org*) provider="archive" ;;
+        *aptoide*)    provider="aptoide" ;;
+        *apkmonk*)    provider="apkmonk" ;;
+        *)            provider="" ;;
+      esac
+
+      if [[ -n "$provider" ]]; then
+        local get_resp_func="get_${provider}_resp"
+        local get_vers_func="get_${provider}_vers"
+        if "$get_resp_func" "$url" >/dev/null 2>&1; then
+          vers=$("$get_vers_func" 2>/dev/null | head -n 1)
+        fi
+      fi
+
+      if [[ -n "$vers" && "$vers" != "unknown" ]]; then
+        latest_version="$vers"
+        break
+      fi
+    done
+  else
+    log_error "Scraping functions not available. Are you running standalone without utils.sh?"
+  fi
+
+  local current_normalized="${current_version#v}"
+  local latest_normalized="${latest_version#v}"
+
+  if [[ "$latest_version" != "unknown" ]]; then
+    if [[ "$current_version" == "auto" || "$current_version" == "latest" || "$current_version" == "beta" ]]; then
+      update_available=false
+      log_info "APK version ($app_name): $current_version (latest: $latest_version)"
+    elif version_less_than "$current_normalized" "$latest_normalized"; then
+      update_available=true
+      log_warn "APK update available ($app_name): $current_version → $latest_version"
+    else
+      log_success "APK is up to date ($app_name): $current_version"
+    fi
+  else
+    log_error "Could not determine latest APK version for $app_name"
+  fi
+
+  jq -n     --arg app "$app_name"     --arg current "$current_version"     --arg latest "$latest_version"     --arg update_available "$update_available"     '{
 			component: "apk",
 			app_name: $app,
 			current_version: $current,
-			latest_version: "unknown",
-			update_available: false,
-			note: "APK version checking requires manual verification"
+			latest_version: $latest,
+			update_available: ($update_available == "true")
 		}'
 }
 # Parse config.toml and check all dependencies
@@ -242,46 +297,57 @@ check_all_dependencies() {
     fi
   fi
   # Check APKs (if requested)
-  if [[ "$CHECK_MODE" == "all" || "$CHECK_MODE" == "apks" ]]; then
-    local apk_pids=()
-    local apk_temps=()
-    trap 'rm -f "${apk_temps[@]}"' EXIT
-    if command -v toml_prep &> /dev/null && toml_prep "$CONFIG_FILE"; then
-      local max_parallel
-      max_parallel="${PARALLEL_JOBS-4}"
-      if ! [[ "$max_parallel" =~ ^[0-9]+$ ]] || (( max_parallel < 1 )); then
-        max_parallel=4
-local config_file="${CONFIG_FILE:-config.toml}"
-if command -v toml_prep &> /dev/null && toml_prep "$config_file"; then
-        if [[ "$enabled" == "true" ]]; then
-          version=$(toml_get "$t" "version") || version="auto"
-          temp_file=$(mktemp "${TEMP_DIR}/apk-check.XXXXXX")
-          check_apk_updates "$app_name" "$version" > "$temp_file" &
-          apk_pids+=("$!")
-          apk_temps+=("$temp_file")
-          if (( ${#apk_pids[@]} >= max_parallel )); then
-            # Throttle concurrent APK checks to avoid overwhelming the system or remote services.
-            # Individual job results are still collected in the loop below.
-            wait -n || true
-          fi
-        fi
-      done < <(toml_get_table_names)
+  local apk_pids=()
+  local apk_temps=()
 
-      for i in "${!apk_pids[@]}"; do
-        wait "${apk_pids[$i]}"
-        if [[ -f "${apk_temps[$i]}" ]]; then
-          local content
-          content=$(cat "${apk_temps[$i]}")
-          if [[ -n "$content" ]]; then
-            results+=("$content")
+  if [[ "$CHECK_MODE" == "all" || "$CHECK_MODE" == "apks" ]]; then
+    log_info "Checking APK versions from $CONFIG_FILE"
+
+    if command -v python3 &> /dev/null && command -v jq &> /dev/null; then
+      local global_version="auto"
+      if command -v grep &> /dev/null; then
+        global_version=$(grep -m 1 -Po '(?<=^version = [\"\x27]).*(?=[\"\x27])' "$CONFIG_FILE" 2> /dev/null || echo "auto")
+      fi
+
+      local apps_json
+      apps_json=$(python3 "${REPO_ROOT}/scripts/toml_get.py" --file "$CONFIG_FILE" | jq -c 'to_entries | map(select(.value | type == "object")) | map(select(.value.enabled == true)) | map({app: .key, version: (.value.version // "'"$global_version"'"), urls: [.value."uptodown-dlurl", .value."apkmirror-dlurl", .value."apkpure-dlurl", .value."archive-dlurl", .value."aptoide-dlurl"] | map(select(. != null))})')
+
+      if [[ -n "$apps_json" && "$apps_json" != "[]" ]]; then
+        # Use jq to create a null-byte separated stream for efficient processing in a while-read loop.
+        echo "$apps_json" | jq -r '.[] | .app + "\u0000" + .version + "\u0000" + (.urls | join("\u0001"))' |
+        while IFS=$'\0' read -r app_name app_version urls_str; do
+          # Split the URL string (separated by \u0001) into an array.
+          local urls=()
+          if [[ -n "$urls_str" ]]; then
+            mapfile -t urls < <(tr '\1' '\n' <<< "$urls_str")
           fi
-          rm "${apk_temps[$i]}"
-        fi
-      done
+
+          local apk_temp
+          apk_temp=$(mktemp)
+          apk_temps+=("$apk_temp")
+
+          check_apk_updates "$app_name" "$app_version" "${urls[@]}" > "$apk_temp" &
+          apk_pids+=("$!")
+        done
+      fi
     else
-      log_warn "Config parsing utilities not available. Skipping APK checks."
+      log_warn "Python3 or jq not found. Skipping APK checks."
     fi
   fi
+
+  # Wait for APK results
+  for i in "${!apk_pids[@]}"; do
+    wait "${apk_pids[$i]}"
+    local temp_file="${apk_temps[$i]}"
+    if [[ -f "$temp_file" ]]; then
+      local content
+      content=$(cat "$temp_file")
+      if [[ -n "$content" ]]; then
+        results+=("$content")
+      fi
+      rm -f "$temp_file"
+    fi
+  done
   # Format output
   format_results "${results[@]}"
 }
