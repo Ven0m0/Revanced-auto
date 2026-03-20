@@ -245,6 +245,7 @@ check_all_dependencies() {
   if [[ "$CHECK_MODE" == "all" || "$CHECK_MODE" == "apks" ]]; then
     local apk_pids=()
     local apk_temps=()
+    trap 'rm -f "${apk_temps[@]}"' EXIT
     if command -v toml_prep &> /dev/null && toml_prep "$CONFIG_FILE"; then
       while read -r app_name; do
         if [[ -z "$app_name" ]]; then continue; fi
