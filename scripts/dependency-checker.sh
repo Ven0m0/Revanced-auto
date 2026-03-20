@@ -253,7 +253,7 @@ check_all_dependencies() {
         enabled=$(toml_get "$t" "enabled") || enabled="true"
         if [[ "$enabled" == "true" ]]; then
           version=$(toml_get "$t" "version") || version="auto"
-          temp_file=$(mktemp)
+          temp_file=$(mktemp "${TEMP_DIR}/apk-check.XXXXXX")
           check_apk_updates "$app_name" "$version" > "$temp_file" &
           apk_pids+=($!)
           apk_temps+=("$temp_file")
