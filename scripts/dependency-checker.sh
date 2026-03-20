@@ -327,7 +327,7 @@ check_all_dependencies() {
           apk_temps+=("$apk_temp")
 
           check_apk_updates "$app_name" "$app_version" "${urls[@]}" > "$apk_temp" &
-          apk_pids+=($!)
+          apk_pids+=("$!")
         done
       fi
     else
