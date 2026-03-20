@@ -251,12 +251,8 @@ check_all_dependencies() {
       max_parallel="${PARALLEL_JOBS-4}"
       if ! [[ "$max_parallel" =~ ^[0-9]+$ ]] || (( max_parallel < 1 )); then
         max_parallel=4
-      fi
-      while read -r app_name; do
-        if [[ -z "$app_name" ]]; then continue; fi
-        local t enabled version temp_file
-        t=$(toml_get_table "$app_name")
-        enabled=$(toml_get "$t" "enabled") || enabled="true"
+local config_file="${CONFIG_FILE:-config.toml}"
+if command -v toml_prep &> /dev/null && toml_prep "$config_file"; then
         if [[ "$enabled" == "true" ]]; then
           version=$(toml_get "$t" "version") || version="auto"
           temp_file=$(mktemp "${TEMP_DIR}/apk-check.XXXXXX")
