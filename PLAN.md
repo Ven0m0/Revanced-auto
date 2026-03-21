@@ -31,7 +31,7 @@ scripts/
 ├── builder/
 │   ├── __init__.py
 │   ├── config.py               # TOML/JSON config parsing (replace config.sh)
-│   ├── downloader.py            # Multi-source APK downloading (replace download.sh)
+│   ├── downloader.py           # Multi-source APK downloading (replace download.sh)
 │   ├── patcher.py              # ReVanced CLI patching logic (replace patching.sh)
 │   ├── module_gen.py           # Magisk/KernelSU module generation
 │   ├── version_tracker.py      # Delta build detection (enhance existing)
