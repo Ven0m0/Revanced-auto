@@ -115,12 +115,11 @@ def parse_versions(html: str) -> ParseResult:
     versions: list[str] = []
     seen: set[str] = set()
 
-    for table in tree.css(".striped"):
-        for link in table.css("a"):
-            text = link.text(strip=True)
-            if text and text not in seen:
-                seen.add(text)
-                versions.append(text)
+    for link in tree.css(".striped a"):
+        text = link.text(strip=True)
+        if text and text not in seen:
+            seen.add(text)
+            versions.append(text)
 
     if versions:
         return ParseResult.ok(versions)
@@ -143,13 +142,12 @@ def parse_version_url(html: str, version: str) -> ParseResult:
     """
     tree = HTMLParser(html)
 
-    for table in tree.css(".striped"):
-        for link in table.css("a"):
-            if link.text(strip=True) == version:
-                href = link.attributes.get("href", "")
-                if href:
-                    url = href if href.startswith("http") else APKMONK_BASE_URL + href
-                    return ParseResult.ok(url)
+    for link in tree.css(".striped a"):
+        if link.text(strip=True) == version:
+            href = link.attributes.get("href", "")
+            if href:
+                url = href if href.startswith("http") else APKMONK_BASE_URL + href
+                return ParseResult.ok(url)
 
     return ParseResult.err(f"version {version!r} not found on APKMonk page")
 
