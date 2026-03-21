@@ -49,8 +49,8 @@ scripts/
 │   ├── apkmirror.py            # APKMirror scraping (enhance existing)
 │   ├── uptodown.py             # Uptodown scraping (enhance existing)
 │   ├── apkpure.py              # APKPure scraping (enhance existing)
-│   ├── aptoide.py             # Aptoide scraping (enhance existing)
-│   └── apkmonk.py             # APKMonk scraping (enhance existing)
+│   ├── aptoide.py              # Aptoide scraping (enhance existing)
+│   └── apkmonk.py              # APKMonk scraping (enhance existing)
 └── search/
     ├── __init__.py
     └── version_resolver.py     # Version detection and compatibility
