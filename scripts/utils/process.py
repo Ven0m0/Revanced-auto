@@ -10,7 +10,7 @@ from dataclasses import datacaclass, field
 from typing import Any, Callable, Generic, TypeVar
 
 if sys.version_info < (3, 13):
-    raise SystemExit(2)
+    raise RuntimeError("This module requires Python 3.13 or higher.")
 
 T = TypeVar("T")
 
