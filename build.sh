@@ -4,7 +4,7 @@ export LC_ALL=C
 
 check_python() {
     if command -v python3 &> /dev/null; then
-        if python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+        if python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 13) else 1)' 2>/dev/null; then
             echo "python"
             return 0
         fi
