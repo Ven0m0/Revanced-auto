@@ -310,7 +310,7 @@ check_all_dependencies() {
       fi
 
       local apps_json
-      apps_json=$(python3 "${REPO_ROOT}/scripts/toml_get.py" --file "$CONFIG_FILE" | jq -c 'to_entries | map(select(.value | type == "object")) | map(select(.value.enabled == true)) | map({app: .key, version: (.value.version // "'"$global_version"'"), urls: [.value."uptodown-dlurl", .value."apkmirror-dlurl", .value."apkpure-dlurl", .value."archive-dlurl", .value."aptoide-dlurl"] | map(select(. != null))})')
+      apps_json=$(python3 -c "import tomllib, sys, json; d=tomllib.load(open(sys.argv[1],'rb')); print(json.dumps(d))" "$CONFIG_FILE" | jq -c 'to_entries | map(select(.value | type == "object")) | map(select(.value.enabled == true)) | map({app: .key, version: (.value.version // "'"$global_version"'"), urls: [.value."uptodown-dlurl", .value."apkmirror-dlurl", .value."apkpure-dlurl", .value."archive-dlurl", .value."aptoide-dlurl"] | map(select(. != null))})')
 
       if [[ -n "$apps_json" && "$apps_json" != "[]" ]]; then
         # Use jq to create a null-byte separated stream for efficient processing in a while-read loop.
