@@ -9,7 +9,7 @@ import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, TypedDict
 
 
 class CLIProfileType(Enum):
