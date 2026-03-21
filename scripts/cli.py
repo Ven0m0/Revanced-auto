@@ -105,7 +105,7 @@ def run_version_tracker(args: argparse.Namespace) -> int:
         log.abort(f"Failed to load config: {e}")
 
     version_tracker = VersionTracker(config)
-    subcommand = args.version_tracker_subcommand
+    subcommand = args.version_tracker_command
 
     if subcommand == "check":
         log.info("Checking versions...")
