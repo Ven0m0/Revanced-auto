@@ -7,7 +7,7 @@ set -euo pipefail
 check_system_tools() {
   local missing=()
   for tool in jq java zip uv; do
-    if ! command -v "$tool" &> /dev/null; then
+    if ! command -v "$tool" &>/dev/null; then
       missing+=("$tool")
     fi
   done
@@ -53,13 +53,13 @@ check_assets() {
 # Check optional tools
 check_optional_tools() {
   local warnings=()
-  if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
+  if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
     warnings+=("curl or wget (for downloads)")
   fi
-  if ! command -v zipalign &> /dev/null; then
+  if ! command -v zipalign &>/dev/null; then
     warnings+=("zipalign (for APK optimization)")
   fi
-  if ! command -v optipng &> /dev/null; then
+  if ! command -v optipng &>/dev/null; then
     warnings+=("optipng (for asset optimization)")
   fi
   if [[ ${#warnings[@]} -gt 0 ]]; then
@@ -72,11 +72,11 @@ check_optional_tools() {
 }
 # Check uv and Python version (>= 3.11 for tomllib)
 check_python_version() {
-  if ! command -v uv &> /dev/null; then
+  if ! command -v uv &>/dev/null; then
     epr "uv not found (install: curl -LsSf https://astral.sh/uv/install.sh | sh)"
     return 1
   fi
-  if uv run python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2> /dev/null; then
+  if uv run python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2>/dev/null; then
     log_debug "uv python >= 3.11"
     return 0
   else
@@ -104,8 +104,8 @@ check_config_file() {
     log_warn "config.toml not found"
     return 0
   fi
-  if command -v uv &> /dev/null; then
-    if uv run scripts/toml_get.py --file config.toml > /dev/null 2>&1; then
+  if command -v uv &>/dev/null; then
+    if uv run scripts/toml_get.py --file config.toml >/dev/null 2>&1; then
       log_debug "config.toml syntax valid"
     else
       epr "config.toml syntax invalid"

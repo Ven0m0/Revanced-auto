@@ -33,14 +33,14 @@ _req() {
     dlp="${TEMP_DIR}/tmp.$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)"
     local lock_file="${dlp}.lock"
     # Try to acquire exclusive lock (create lock file atomically)
-    exec {lock_fd}> "$lock_file" || {
+    exec {lock_fd}>"$lock_file" || {
       epr "Failed to create lock file: $lock_file"
       return 1
     }
     if ! flock -n "$lock_fd"; then
       # Another process is downloading - wait for lock
       log_info "Waiting for concurrent download: $dlp"
-      flock "$lock_fd"  # Block until lock is available
+      flock "$lock_fd" # Block until lock is available
 
       # Check if the other process actually succeeded
       if [[ -f "$op" ]]; then
@@ -85,7 +85,7 @@ _req() {
   done
   # Clean up temporary file and lock on failure
   if [[ "$success" = false ]]; then
-    rm -f "$dlp" 2> /dev/null
+    rm -f "$dlp" 2>/dev/null
     if [[ -n "${lock_fd:-}" ]]; then
       exec {lock_fd}>&- # Close lock file descriptor
       rm -f "${lock_file:-}"

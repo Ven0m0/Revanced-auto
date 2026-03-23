@@ -38,9 +38,9 @@ test_2() {
   main_table=$(toml_get_table_main)
   declare -a sources
   toml_get_array_or_string sources "$main_table" "patches-source" ""
-  [[ ${#sources[@]} -eq 2 ]] && \
-  [[ "${sources[0]}" == "anddea/revanced-patches" ]] && \
-  [[ "${sources[1]}" == "jkennethcarino/privacy-revanced-patches" ]]
+  [[ ${#sources[@]} -eq 2 ]] &&
+    [[ "${sources[0]}" == "anddea/revanced-patches" ]] &&
+    [[ "${sources[1]}" == "jkennethcarino/privacy-revanced-patches" ]]
 }
 run_test "Extract multi-source array" test_2
 
@@ -59,8 +59,8 @@ test_4() {
   main_table=$(toml_get_table_main)
   declare -a sources
   toml_get_array_or_string sources "$main_table" "patches-source" ""
-  [[ ${#sources[@]} -eq 1 ]] && \
-  [[ "${sources[0]}" == "anddea/revanced-patches" ]]
+  [[ ${#sources[@]} -eq 1 ]] &&
+    [[ "${sources[0]}" == "anddea/revanced-patches" ]]
 }
 run_test "Normalize single-source to array" test_4
 
@@ -70,8 +70,8 @@ test_5() {
   main_table=$(toml_get_table_main)
   declare -a sources
   toml_get_array_or_string sources "$main_table" "nonexistent-key" "default/value"
-  [[ ${#sources[@]} -eq 1 ]] && \
-  [[ "${sources[0]}" == "default/value" ]]
+  [[ ${#sources[@]} -eq 1 ]] &&
+    [[ "${sources[0]}" == "default/value" ]]
 }
 run_test "Handle missing key with default" test_5
 
@@ -81,15 +81,15 @@ test_6() {
   app_table=$(toml_get_table "YouTube-Extended")
   enabled=$(toml_get "$app_table" "enabled")
   version=$(toml_get "$app_table" "version")
-  [[ "$enabled" == "true" ]] && \
-  [[ "$version" == "auto" ]]
+  [[ "$enabled" == "true" ]] &&
+    [[ "$version" == "auto" ]]
 }
 run_test "Parse per-app table" test_6
 
 # Test 7: Function exists check
 test_7() {
-  type -t toml_get_array_or_string >/dev/null && \
-  type -t get_rv_prebuilts_multi >/dev/null
+  type -t toml_get_array_or_string >/dev/null &&
+    type -t get_rv_prebuilts_multi >/dev/null
 }
 run_test "Verify new functions exist" test_7
 

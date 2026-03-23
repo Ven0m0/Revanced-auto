@@ -41,7 +41,7 @@ setup() {
   rm -rf "$TEST_BUILD_DIR" "$TEST_TEMP_DIR"
   mkdir -p "$TEST_BUILD_DIR" "$TEST_TEMP_DIR"
   # Create test config with 2+ apps enabled
-  cat > "$TEST_CONFIG" << 'EOF'
+  cat >"$TEST_CONFIG" <<'EOF'
 parallel-jobs = 2
 patches-version = "dev"
 cli-version = "dev"

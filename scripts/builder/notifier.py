@@ -42,7 +42,7 @@ class NotificationConfig:
 
     def _substitute_env_vars(self, value: str) -> str:
         """Replace ${VAR} or $VAR patterns with environment variable values."""
-        pattern = r'\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)'
+        pattern = r"\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)"
 
         def replacer(match: re.Match) -> str:
             var_name = match.group(1) or match.group(2)
@@ -179,8 +179,7 @@ class TelegramNotifier(BaseNotifier):
             import warnings
 
             warnings.warn(
-                "Synchronous send() called in async context. "
-                "Use 'await telegram_notifier.send(notification)' instead.",
+                "Synchronous send() called in async context. Use 'await telegram_notifier.send(notification)' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -276,9 +275,7 @@ class GitHubReleaseNotifier(BaseNotifier):
             response = httpx.post(url, headers=headers, json=payload, timeout=30.0)
             if response.status_code == 201:
                 release_data = response.json()
-                upload_url = release_data.get("upload_url", "").replace(
-                    "{?name,label}", ""
-                )
+                upload_url = release_data.get("upload_url", "").replace("{?name,label}", "")
 
                 for artifact in artifacts:
                     if artifact.exists():
@@ -376,9 +373,7 @@ class NotifierFactory:
                 bot_token = config.telegram_bot_token
                 chat_id = config.telegram_chat_id
                 if not bot_token or not chat_id:
-                    raise ValueError(
-                        "Telegram notifier requires 'telegram_bot_token' and 'telegram_chat_id'"
-                    )
+                    raise ValueError("Telegram notifier requires 'telegram_bot_token' and 'telegram_chat_id'")
                 return TelegramNotifier(bot_token, chat_id)
             case "apprise":
                 apprise_url = config.apprise_url
@@ -389,9 +384,7 @@ class NotifierFactory:
                 repo = config.github_repo
                 token = config.github_token
                 if not repo or not token:
-                    raise ValueError(
-                        "GitHub notifier requires 'github_repo' and 'github_token'"
-                    )
+                    raise ValueError("GitHub notifier requires 'github_repo' and 'github_token'")
                 return GitHubReleaseNotifier(repo, token)
             case _:
                 raise ValueError(f"Unknown notifier type: {notifier_type}")

@@ -78,11 +78,13 @@ class AptoideScraper(ScraperBase):
             apk_files = item.get("file", {})
             path = apk_files.get("path")
             arch = item.get("architecture")
-            versions.append(VersionInfo(
-                version=version,
-                url=path,
-                arch=arch,
-            ))
+            versions.append(
+                VersionInfo(
+                    version=version,
+                    url=path,
+                    arch=arch,
+                )
+            )
         return versions
 
     def _filter_by_architecture(
@@ -166,9 +168,7 @@ class AptoideScraper(ScraperBase):
 
         loop = asyncio.get_event_loop()
         try:
-            dl_response = await loop.run_in_executor(
-                None, self._request_with_retry, target_version.url, "GET"
-            )
+            dl_response = await loop.run_in_executor(None, self._request_with_retry, target_version.url, "GET")
 
             content_type = dl_response.headers.get("content-type", "")
             if "text/html" in content_type.lower():

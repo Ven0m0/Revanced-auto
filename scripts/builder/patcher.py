@@ -386,13 +386,18 @@ class ReVancedPatcher:
         for jar in merge_jars:
             args.extend(["-m", str(jar)])
 
-        args.extend([
-            "--keystore", str(self.patcher_config.keystore_path),
-            "--keystore-password=env:RV_KEYSTORE_PASSWORD",
-            "--keystore-entry-password=env:RV_KEYSTORE_ENTRY_PASSWORD",
-            "--signer", self.patcher_config.key_alias,
-            "--keystore-entry-alias", self.patcher_config.key_alias,
-        ])
+        args.extend(
+            [
+                "--keystore",
+                str(self.patcher_config.keystore_path),
+                "--keystore-password=env:RV_KEYSTORE_PASSWORD",
+                "--keystore-entry-password=env:RV_KEYSTORE_ENTRY_PASSWORD",
+                "--signer",
+                self.patcher_config.key_alias,
+                "--keystore-entry-alias",
+                self.patcher_config.key_alias,
+            ]
+        )
 
         if force:
             args.append("-f")
@@ -413,9 +418,7 @@ class ReVancedPatcher:
         Returns:
             Output from list-patches command.
         """
-        cmd = ["java"] + self.java_runner.java_args + [
-            "-jar", str(cli_jar), "list-patches", str(patches_jar), "-v"
-        ]
+        cmd = ["java"] + self.java_runner.java_args + ["-jar", str(cli_jar), "list-patches", str(patches_jar), "-v"]
 
         try:
             result = subprocess.run(
@@ -569,9 +572,7 @@ class ReVancedPatcher:
 
         temp_file = cache_path.parent / f"tmp.{cache_path.name}"
         try:
-            cmd = ["java"] + self.java_runner.java_args + [
-                "-jar", str(cli_jar), "list-patches"
-            ]
+            cmd = ["java"] + self.java_runner.java_args + ["-jar", str(cli_jar), "list-patches"]
             for jar in patches_jars:
                 cmd.extend(["-p", str(jar)])
             cmd.append("-v")
@@ -790,10 +791,11 @@ def main(argv: list[str]) -> int:
         print(f"Successfully patched APK: {result.output_apk}")
         return 0
     else:
-        print(f"Error: {result.error}", file=__import__('sys').stderr)
+        print(f"Error: {result.error}", file=__import__("sys").stderr)
         return 1
 
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main(sys.argv))

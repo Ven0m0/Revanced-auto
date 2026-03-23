@@ -302,9 +302,7 @@ class HttpClient:
         """
         return self._do_request("GET", url, output, **kwargs)
 
-    def post(
-        self, url: str, output: str | Path | None = None, **kwargs: Any
-    ) -> str | bytes:
+    def post(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
         """Perform POST request.
 
         Args:
@@ -319,9 +317,7 @@ class HttpClient:
         """
         return self._do_request("POST", url, output, **kwargs)
 
-    def put(
-        self, url: str, output: str | Path | None = None, **kwargs: Any
-    ) -> str | bytes:
+    def put(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
         """Perform PUT request.
 
         Args:
@@ -336,9 +332,7 @@ class HttpClient:
         """
         return self._do_request("PUT", url, output, **kwargs)
 
-    def delete(
-        self, url: str, output: str | Path | None = None, **kwargs: Any
-    ) -> str | bytes:
+    def delete(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
         """Perform DELETE request.
 
         Args:
@@ -353,9 +347,7 @@ class HttpClient:
         """
         return self._do_request("DELETE", url, output, **kwargs)
 
-    async def async_get(
-        self, url: str, output: str | Path | None = None, **kwargs: Any
-    ) -> str | bytes:
+    async def async_get(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
         """Perform async GET request.
 
         Args:
@@ -370,9 +362,7 @@ class HttpClient:
         """
         return await self._async_do_request("GET", url, output, **kwargs)
 
-    async def async_post(
-        self, url: str, output: str | Path | None = None, **kwargs: Any
-    ) -> str | bytes:
+    async def async_post(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
         """Perform async POST request.
 
         Args:
@@ -392,6 +382,7 @@ class HttpClient:
         self._sync_client.close()
         if self._async_client:
             import asyncio
+
             asyncio.get_event_loop().run_until_complete(self._async_client.aclose())
 
 

@@ -10,10 +10,10 @@ set -euo pipefail
 _get_gmscore_repo() {
   local provider=$1
   case "$provider" in
-    revanced) echo "ReVanced/GmsCore" ;;
-    morphe) echo "MorpheApp/MicroG-RE" ;;
-    rex) echo "YT-Advanced/GmsCore" ;;
-    *) abort "Unknown GmsCore provider: $provider" ;;
+  revanced) echo "ReVanced/GmsCore" ;;
+  morphe) echo "MorpheApp/MicroG-RE" ;;
+  rex) echo "YT-Advanced/GmsCore" ;;
+  *) abort "Unknown GmsCore provider: $provider" ;;
   esac
 }
 
@@ -37,7 +37,7 @@ fetch_gmscore() {
   fi
 
   local tag_name
-  tag_name=$(jq -r '.tag_name' <<< "$release_json")
+  tag_name=$(jq -r '.tag_name' <<<"$release_json")
 
   local asset_info
   asset_info=$(jq -r '
@@ -45,7 +45,7 @@ fetch_gmscore() {
     | select(.name | endswith(".apk"))
     | [.browser_download_url, .name]
     | @tsv
-  ' <<< "$release_json" | head -n1)
+  ' <<<"$release_json" | head -n1)
 
   if [[ -z "$asset_info" ]]; then
     epr "No APK assets found for $provider GmsCore"
@@ -53,7 +53,7 @@ fetch_gmscore() {
   fi
 
   local url name
-  IFS=$'\t' read -r url name <<< "$asset_info"
+  IFS=$'\t' read -r url name <<<"$asset_info"
 
   local output_dir="${BUILD_DIR}/GmsCore"
   mkdir -p "$output_dir"
