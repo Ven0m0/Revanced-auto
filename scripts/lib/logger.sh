@@ -48,5 +48,5 @@ abort() {
 log() {
   local log_file="${BUILD_LOG_FILE:-build.md}"
   mkdir -p "$(dirname "$log_file")"
-  echo -e "$1  " >> "$log_file"
+  echo -e "$1  " >>"$log_file"
 }

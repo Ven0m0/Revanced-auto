@@ -276,9 +276,7 @@ class ConfigLoader:
 
         return self._parse(merged_data, source_files)
 
-    def _deep_merge(
-        self, base: dict[str, Any], override: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _deep_merge(self, base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
         """Merge two dictionaries recursively.
 
         Args:
@@ -290,11 +288,7 @@ class ConfigLoader:
         """
         result = base.copy()
         for key, value in override.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -331,9 +325,7 @@ class ConfigLoader:
         if self.strict_env:
             pattern = self.STRICT_ENV_PATTERN
         else:
-            pattern = re.compile(
-                r"(?:\{)?" + re.escape('ENV:') + r"([A-Z_][A-Z0-9_]*)(?:\})?"
-            )
+            pattern = re.compile(r"(?:\{)?" + re.escape("ENV:") + r"([A-Z_][A-Z0-9_]*)(?:\})?")
 
         def replace_env(match: re.Match[str]) -> str:
             var_name = match.group(1)
@@ -341,9 +333,7 @@ class ConfigLoader:
 
         return pattern.sub(replace_env, value)
 
-    def _parse(
-        self, data: dict[str, Any], source_files: list[Path]
-    ) -> Config:
+    def _parse(self, data: dict[str, Any], source_files: list[Path]) -> Config:
         """Parse loaded data into Config dataclass.
 
         Args:
@@ -394,9 +384,7 @@ class ConfigLoader:
                     except ConfigError:
                         raise
                     except (TypeError, ValueError) as e:
-                        raise ConfigError(
-                            f"Invalid config for app '{app_name}': {e}"
-                        ) from e
+                        raise ConfigError(f"Invalid config for app '{app_name}': {e}") from e
             else:
                 if app_name not in apps:
                     apps[app_name] = AppConfig(name=app_name)
@@ -409,9 +397,7 @@ class ConfigLoader:
             loaded_at=datetime.now(timezone.utc),
         )
 
-    def _parse_modules(
-        self, app_name: str, data: dict[str, Any]
-    ) -> dict[str, ModuleConfig]:
+    def _parse_modules(self, app_name: str, data: dict[str, Any]) -> dict[str, ModuleConfig]:
         """Parse module configurations for an app.
 
         Args:
@@ -428,9 +414,7 @@ class ConfigLoader:
             for module_name, module_config in module_data.items():
                 if isinstance(module_config, dict):
                     try:
-                        modules[module_name] = ModuleConfig.from_dict(
-                            module_name, module_config
-                        )
+                        modules[module_name] = ModuleConfig.from_dict(module_name, module_config)
                     except (TypeError, ValueError):
                         continue
 

@@ -155,18 +155,14 @@ class APKMonkScraper(ScraperBase):
             if download_url is None:
                 return DownloadResult(success=False, error="Download link not found")
 
-            dl_response = await loop.run_in_executor(
-                None, self._request_with_retry, download_url, "GET"
-            )
+            dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
 
             content_type = dl_response.headers.get("content-type", "")
             if "text/html" in content_type.lower():
                 download_url = self._parse_download_link(dl_response.text)
                 if download_url is None:
                     return DownloadResult(success=False, error="Download link not found")
-                dl_response = await loop.run_in_executor(
-                    None, self._request_with_retry, download_url, "GET"
-                )
+                dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, "wb") as f:

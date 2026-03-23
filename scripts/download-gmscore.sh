@@ -22,10 +22,10 @@ fi
 
 provider=$1
 case "$provider" in
-  revanced|morphe|rex)
-    fetch_gmscore "$provider" > /dev/null
-    ;;
-  *)
-    usage
-    ;;
+revanced | morphe | rex)
+  fetch_gmscore "$provider" >/dev/null
+  ;;
+*)
+  usage
+  ;;
 esac

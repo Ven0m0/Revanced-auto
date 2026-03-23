@@ -10,11 +10,11 @@ _app_get_config_value() {
   local default="${3:-}"
 
   if [[ -v __agcv_cfg["$key"] ]]; then
-     local val="${__agcv_cfg["$key"]}"
-     if [[ "$val" != "null" ]]; then
-       echo "$val"
-       return
-     fi
+    local val="${__agcv_cfg["$key"]}"
+    if [[ "$val" != "null" ]]; then
+      echo "$val"
+      return
+    fi
   fi
   echo "$default"
 }
@@ -174,7 +174,7 @@ _app_build_arguments() {
 
   # Load patcher-args as an array if present
   local -a patcher_args_array=()
-  if toml_get_array "patcher_args_array" "$t" "patcher-args" 2> /dev/null; then
+  if toml_get_array "patcher_args_array" "$t" "patcher-args" 2>/dev/null; then
     # Convert array to space-separated string for passing to build_rv
     # The actual array will be reconstructed in patching.sh
     __aba_args[patcher_args]="${patcher_args_array[*]}"
@@ -267,7 +267,7 @@ _app_execute_build() {
     local args_file
     args_file=$(mktemp)
     for key in "${!__aeb_args[@]}"; do
-      printf '%s=%s\n' "$key" "${__aeb_args[${key}]}" >> "$args_file"
+      printf '%s=%s\n' "$key" "${__aeb_args[${key}]}" >>"$args_file"
     done
 
     (
@@ -293,7 +293,7 @@ _app_execute_build() {
     # Serialize args to temp file
     args_file=$(mktemp)
     for key in "${!__aeb_args[@]}"; do
-      printf '%s=%s\n' "$key" "${__aeb_args[${key}]}" >> "$args_file"
+      printf '%s=%s\n' "$key" "${__aeb_args[${key}]}" >>"$args_file"
     done
 
     (
@@ -313,7 +313,7 @@ _app_execute_build() {
     local args_file
     args_file=$(mktemp)
     for key in "${!__aeb_args[@]}"; do
-      printf '%s=%s\n' "$key" "${__aeb_args[${key}]}" >> "$args_file"
+      printf '%s=%s\n' "$key" "${__aeb_args[${key}]}" >>"$args_file"
     done
 
     (

@@ -30,7 +30,7 @@ if [[ ! -f "$marker" ]]; then
     -o Dpkg::Options::="--force-confold"
   pkg install -y git curl jq openjdk-21 zip python
   pip install uv --quiet
-  : > "$marker"
+  : >"$marker"
 fi
 
 mkdir -p "$OUTPUT_DIR"

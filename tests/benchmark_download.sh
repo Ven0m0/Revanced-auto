@@ -30,10 +30,10 @@ original_logic() {
   local __AAV__=false
   if [[ "$__AAV__" = false ]]; then
     local IFS=$'\n'
-    vers=$(grep -iv "\(beta\|alpha\)" <<< "$vers")
+    vers=$(grep -iv "\(beta\|alpha\)" <<<"$vers")
     local v r_vers=()
     for v in "${vers[@]}"; do
-      grep -iq "${v} \(beta\|alpha\)" <<< "$apkm_resp" || r_vers+=("$v")
+      grep -iq "${v} \(beta\|alpha\)" <<<"$apkm_resp" || r_vers+=("$v")
     done
     echo "${r_vers[*]}"
   else
@@ -46,10 +46,10 @@ corrected_loop_logic() {
   local __AAV__=false
   if [[ "$__AAV__" = false ]]; then
     local -a vers_arr=()
-    mapfile -t vers_arr < <(grep -iv "\(beta\|alpha\)" <<< "$vers")
+    mapfile -t vers_arr < <(grep -iv "\(beta\|alpha\)" <<<"$vers")
     local v r_vers=()
     for v in "${vers_arr[@]}"; do
-      grep -iq "${v} \(beta\|alpha\)" <<< "$apkm_resp" || r_vers+=("$v")
+      grep -iq "${v} \(beta\|alpha\)" <<<"$apkm_resp" || r_vers+=("$v")
     done
     echo "${r_vers[*]}"
   else
@@ -61,7 +61,7 @@ optimized_logic() {
   local apkm_resp="$2"
   local __AAV__=false
   if [[ "$__AAV__" = false ]]; then
-    vers=$(grep -iv "\(beta\|alpha\)" <<< "$vers")
+    vers=$(grep -iv "\(beta\|alpha\)" <<<"$vers")
     if [[ -n "$vers" ]]; then
       local pattern
       # Escape dots
@@ -71,11 +71,11 @@ optimized_logic() {
       # echo "Pattern: $pattern" >&2
       local bad_vers
       # Use grep to find matches
-      bad_vers=$(grep -Eoi "(${pattern})[[:space:]]+(beta|alpha)" <<< "$apkm_resp" | awk '{print tolower($1)}' | sort -u)
+      bad_vers=$(grep -Eoi "(${pattern})[[:space:]]+(beta|alpha)" <<<"$apkm_resp" | awk '{print tolower($1)}' | sort -u)
       # Debug: print bad_vers
       # echo "Bad vers: $bad_vers" >&2
       if [[ -n "$bad_vers" ]]; then
-        vers=$(grep -vxFf <(echo "$bad_vers") <<< "$vers" || true)
+        vers=$(grep -vxFf <(echo "$bad_vers") <<<"$vers" || true)
       fi
     fi
     echo "$vers"
@@ -85,7 +85,7 @@ optimized_logic() {
 }
 measure_time() {
   local start
-  start=$(date +%s%N 2> /dev/null || date +%s)
+  start=$(date +%s%N 2>/dev/null || date +%s)
   # Return start time
   echo "$start"
 }

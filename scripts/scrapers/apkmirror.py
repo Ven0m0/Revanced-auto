@@ -364,9 +364,7 @@ class APKMirror(ScraperBase):
             version_text = link.css_first("span")
             version = version_text.text() if version_text else ""
 
-            if exclude_alpha_beta and (
-                "alpha" in version.lower() or "beta" in version.lower()
-            ):
+            if exclude_alpha_beta and ("alpha" in version.lower() or "beta" in version.lower()):
                 continue
 
             variant_url = f"{self.BASE_URL}{href}"
@@ -535,9 +533,7 @@ class APKMirror(ScraperBase):
                     if version_str.strip() != version:
                         continue
 
-                    if exclude_alpha_beta and (
-                        "alpha" in version_str.lower() or "beta" in version_str.lower()
-                    ):
+                    if exclude_alpha_beta and ("alpha" in version_str.lower() or "beta" in version_str.lower()):
                         continue
 
                     variant_url = f"{self.BASE_URL}{href}"

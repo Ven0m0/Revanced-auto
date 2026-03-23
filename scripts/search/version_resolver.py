@@ -15,9 +15,7 @@ if TYPE_CHECKING:
 class VersionResolver:
     """Resolves compatible app versions for ReVanced builds."""
 
-    _version_pattern: re.Pattern[str] = field(
-        default_factory=lambda: re.compile(r"\d+\.\d+(?:\.\d+)?(?:\-\w+)?")
-    )
+    _version_pattern: re.Pattern[str] = field(default_factory=lambda: re.compile(r"\d+\.\d+(?:\.\d+)?(?:\-\w+)?"))
 
     def get_version(
         self,

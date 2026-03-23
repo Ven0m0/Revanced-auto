@@ -48,7 +48,7 @@ merge_splits() {
   local bundle=$1 output=$2
   pr "Merging splits"
   gh_dl "$TEMP_DIR/apkeditor.jar" \
-    "https://github.com/REAndroid/APKEditor/releases/download/V1.4.2/APKEditor-1.4.2.jar" > /dev/null || return 1
+    "https://github.com/REAndroid/APKEditor/releases/download/V1.4.2/APKEditor-1.4.2.jar" >/dev/null || return 1
   if ! OP=$(java "${JAVA_ARGS[@]}" -jar "$TEMP_DIR/apkeditor.jar" merge -i "$bundle" -o "${bundle}.mzip" -clean-meta -f 2>&1); then
     epr "APKEditor ERROR: $OP"
     return 1
@@ -64,7 +64,7 @@ merge_splits() {
   # Copy merged APK (signing is done during patching step)
   cp "${bundle}.zip" "$output"
   local ret=$?
-  rm -r "${bundle}-zip" "${bundle}.zip" "${bundle}.mzip" 2> /dev/null || :
+  rm -r "${bundle}-zip" "${bundle}.zip" "${bundle}.mzip" 2>/dev/null || :
   return "$ret"
 }
 # Patch APK using ReVanced CLI
@@ -131,7 +131,7 @@ patch_apk() {
     local arg
     while IFS= read -r arg; do
       [[ -n "$arg" ]] && cmd+=("$arg")
-    done < <(xargs -n1 <<< "$patcher_args")
+    done < <(xargs -n1 <<<"$patcher_args")
   fi
   # Pass custom aapt2 binary to ReVanced/Morphe CLI
   if [[ "${USE_CUSTOM_AAPT2:-true}" == "true" && -n "${AAPT2:-}" && -x "${AAPT2:-}" ]]; then
@@ -150,7 +150,7 @@ patch_apk() {
   pr "Executing: ${redacted_cmd[*]}"
   # Execute command (no eval - direct array expansion)
   if ! "${cmd[@]}"; then
-    rm -f "$patched_apk" 2> /dev/null
+    rm -f "$patched_apk" 2>/dev/null
     epr "Patching failed for APK"
     return 1
   fi
@@ -185,7 +185,7 @@ patch_apk() {
     log_info "APK re-signed successfully with v1+v2 only"
     return 0
   else
-    rm -f "$temp_signed" 2> /dev/null
+    rm -f "$temp_signed" 2>/dev/null
     epr "Re-signing with apksigner failed"
     return 1
   fi
@@ -209,7 +209,7 @@ _determine_version() {
     log_info "Auto-detecting compatible version"
     # Convert space-separated string to array for version detection
     local -a patches_jars_array
-    read -ra patches_jars_array <<< "${args[ptjars]}"
+    read -ra patches_jars_array <<<"${args[ptjars]}"
     if ! version=$(get_patch_last_supported_ver "$list_patches" "$pkg_name" \
       "$inc_patches" "$exc_patches" "$exclusive" "${args[cli]}" "${patches_jars_array[@]}"); then
       return 1
@@ -229,7 +229,7 @@ _determine_version() {
     fi
     local pkgvers
     pkgvers=$(get_"${dl_from}"_vers)
-    version=$(get_highest_ver <<< "$pkgvers") || version=$(head -1 <<< "$pkgvers")
+    version=$(get_highest_ver <<<"$pkgvers") || version=$(head -1 <<<"$pkgvers")
   elif [[ "$version_mode" != "auto" ]]; then
     version=$version_mode
   fi
@@ -260,7 +260,7 @@ _build_patcher_args() {
     local arg
     while IFS= read -r arg; do
       [[ "$arg" != "" ]] && p_patcher_args+=("$arg")
-    done < <(xargs -n1 <<< "${args[patcher_args]}")
+    done < <(xargs -n1 <<<"${args[patcher_args]}")
   fi
 }
 # Download stock APK from available sources
@@ -296,7 +296,7 @@ _download_stock_apk() {
 _handle_microg_patch() {
   local list_patches=$1
   local microg_patch
-  microg_patch=$(grep "^Name: " <<< "$list_patches" | grep -i "gmscore\|microg" || :)
+  microg_patch=$(grep "^Name: " <<<"$list_patches" | grep -i "gmscore\|microg" || :)
   microg_patch=${microg_patch#*: }
   if [[ "$microg_patch" != "" && "${p_patcher_args[*]}" =~ ${microg_patch} ]]; then
     epr "You can't include/exclude microg patch as that's done by rvmm builder automatically."
@@ -362,7 +362,7 @@ get_cached_patches_list() {
   # Run list-patches without -f pkg_name to get full list
   local temp_file
   temp_file=$(mktemp)
-  if ! java "${JAVA_ARGS[@]}" -jar "$cli_jar" list-patches "$patches_jar" -v -p > "$temp_file" 2>&1; then
+  if ! java "${JAVA_ARGS[@]}" -jar "$cli_jar" list-patches "$patches_jar" -v -p >"$temp_file" 2>&1; then
     rm -f "$temp_file"
     log_warn "Failed to list patches"
     return 1
@@ -378,7 +378,7 @@ build_rv() {
   # Safely load args from file
   while IFS='=' read -r key value; do
     [[ -n "$key" && "$key" != \#* ]] && args[$key]=$value
-  done < "$args_file"
+  done <"$args_file"
   # Clean up temp file
   rm -f "$args_file"
   local version="" pkg_name=""
@@ -414,13 +414,13 @@ build_rv() {
   # Get patch information from all patch sources (run in parallel for performance)
   local list_patches="" source_idx=1
   local -a patches_jars_array
-  read -ra patches_jars_array <<< "${args[ptjars]}"
+  read -ra patches_jars_array <<<"${args[ptjars]}"
   log_debug "Listing patches from ${#patches_jars_array[@]} source(s)"
 
   # Pre-calculate hashes to populate global cache for parallel subshells
-  get_file_hash "${args[cli]}" > /dev/null || :
+  get_file_hash "${args[cli]}" >/dev/null || :
   for jar in "${patches_jars_array[@]}"; do
-    get_file_hash "$jar" > /dev/null || :
+    get_file_hash "$jar" >/dev/null || :
   done
   # Run list-patches commands in parallel to save time
   local -a temp_files=() pids=()
@@ -430,7 +430,7 @@ build_rv() {
     temp_file=$(mktemp)
     temp_files+=("$temp_file")
     # Run in background
-    (get_cached_patches_list "${args[cli]}" "$patches_jar" > "$temp_file") &
+    (get_cached_patches_list "${args[cli]}" "$patches_jar" >"$temp_file") &
     pids+=($!)
     source_idx=$((source_idx + 1))
   done
@@ -468,8 +468,8 @@ build_rv() {
     log_info "Using cached stock APK: $stock_apk"
   fi
   # Verify signature (with version for caching)
-  if ! OP=$(check_sig "$stock_apk" "$pkg_name" "$version_f" 2>&1) \
-    && ! grep -qFx "ERROR: Missing META-INF/MANIFEST.MF" <<< "$OP"; then
+  if ! OP=$(check_sig "$stock_apk" "$pkg_name" "$version_f" 2>&1) &&
+    ! grep -qFx "ERROR: Missing META-INF/MANIFEST.MF" <<<"$OP"; then
     abort "APK signature mismatch '$stock_apk': $OP"
   fi
   log "${table}: ${version}"
@@ -493,7 +493,7 @@ build_rv() {
   if [[ "${NORB:-}" != true || ! -f "$patched_apk" ]]; then
     # Convert space-separated patches jars to array for patch_apk
     local -a patches_jars_array
-    read -ra patches_jars_array <<< "${args[ptjars]}"
+    read -ra patches_jars_array <<<"${args[ptjars]}"
     if ! patch_apk "$stock_apk" "$patched_apk" "${patcher_args[*]}" "${args[cli]}" "${patches_jars_array[@]}"; then
       epr "Building '${table}' failed!"
       return 0
@@ -504,13 +504,13 @@ build_rv() {
   # Zipalign the patched APK for optimization
   log_info "Applying zipalign to patched APK"
   local aligned_apk="${patched_apk%.apk}-aligned.apk"
-  if command -v zipalign &> /dev/null; then
+  if command -v zipalign &>/dev/null; then
     if zipalign -f -p 4 "$patched_apk" "$aligned_apk"; then
       log_info "APK successfully zipaligned"
       mv -f "$aligned_apk" "$patched_apk"
     else
       log_warn "zipalign failed, continuing with unaligned APK"
-      rm -f "$aligned_apk" 2> /dev/null || :
+      rm -f "$aligned_apk" 2>/dev/null || :
     fi
   else
     log_warn "zipalign not found in PATH, skipping alignment"

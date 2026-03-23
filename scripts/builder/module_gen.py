@@ -172,40 +172,44 @@ class ModuleGenerator:
             "",
             "MODDIR=${0%/*}",
             "",
-            f"APK_DIR=\"$MODDIR/system/app/{app_name}\"",
-            f"APK_PATH=\"$APK_DIR/{apk_name}\"",
+            f'APK_DIR="$MODDIR/system/app/{app_name}"',
+            f'APK_PATH="$APK_DIR/{apk_name}"',
             "",
             "# Ensure APK directory exists",
-            "[ -f \"$APK_PATH\" ] || exit 1",
+            '[ -f "$APK_PATH" ] || exit 1',
             "",
             "# Try rvmm-zygisk-mount first for better compatibility",
-            "if [ -f \"$MODDIR/rvmm-zygisk-mount\" ]; then",
-            "    mv \"$MODDIR/rvmm-zygisk-mount\" \"$APK_DIR/rvmm-zygisk-mount\"",
-            "    chmod 644 \"$APK_DIR/rvmm-zygisk-mount\"",
+            'if [ -f "$MODDIR/rvmm-zygisk-mount" ]; then',
+            '    mv "$MODDIR/rvmm-zygisk-mount" "$APK_DIR/rvmm-zygisk-mount"',
+            '    chmod 644 "$APK_DIR/rvmm-zygisk-mount"',
             "fi",
             "",
             "# Set permissions",
-            "chmod 644 \"$APK_PATH\"",
+            'chmod 644 "$APK_PATH"',
             "",
             "# For Zygisk-based mounting (Magisk)",
         ]
 
         if self.module_type == ModuleType.MAGISK:
-            lines.extend([
-                "",
-                "# Check if ZYSK is available for mounting",
-                "if [ -x \"$MODDIRZYSK\" ] || [ -x \"$MODDIR/zygiskZYSK\" ]; then",
-                "    ZYSK=\"$MODDIRZYSK\"",
-                "    [ -x \"$MODDIR/zygiskZYSK\" ] && ZYSK=\"$MODDIR/zygiskZYSK\"",
-                "    \"$ZYSK\" mount \"$APK_PATH\"",
-                "fi",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "# Check if ZYSK is available for mounting",
+                    'if [ -x "$MODDIRZYSK" ] || [ -x "$MODDIR/zygiskZYSK" ]; then',
+                    '    ZYSK="$MODDIRZYSK"',
+                    '    [ -x "$MODDIR/zygiskZYSK" ] && ZYSK="$MODDIR/zygiskZYSK"',
+                    '    "$ZYSK" mount "$APK_PATH"',
+                    "fi",
+                ]
+            )
         elif self.module_type == ModuleType.KERNSU:
-            lines.extend([
-                "",
-                "# KernelSU handles APK mounting natively",
-                "# Additional KernelSU-specific logic can be added here",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "# KernelSU handles APK mounting natively",
+                    "# Additional KernelSU-specific logic can be added here",
+                ]
+            )
 
         return "\n".join(lines) + "\n"
 
@@ -218,19 +222,19 @@ class ModuleGenerator:
         lines = [
             "#MAGISK",
             "",
-            "if [ -f \"/data/adb/RVMM-MAGISK/migrate.sh\" ]; then",
+            'if [ -f "/data/adb/RVMM-MAGISK/migrate.sh" ]; then',
             "    sh /data/adb/RVMM-MAGISK/migrate.sh",
             "fi",
             "",
             "mount_all() {",
             "    sys_app_mounted=false",
-            "    if [ \"$(getprop sys.checkfs)\" != \"true\" ]; then",
+            '    if [ "$(getprop sys.checkfs)" != "true" ]; then',
             "        mount_all /system",
             "        sys_app_mounted=true",
             "    fi",
             "}",
             "",
-            "REPLACE=\"/system/app/*\"",
+            'REPLACE="/system/app/*"',
             "",
             "mkdir /system/app",
             "cp -a /data/adb/modules/$MODNAME/system/app/* /system/app/ 2>/dev/null || true",
@@ -239,11 +243,13 @@ class ModuleGenerator:
         ]
 
         if self.module_type == ModuleType.KERNSU:
-            lines.extend([
-                "",
-                "# KernelSU specific",
-                "touch /data/adb/ksu/$MODNAME/auto_mount",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "# KernelSU specific",
+                    "touch /data/adb/ksu/$MODNAME/auto_mount",
+                ]
+            )
 
         return "\n".join(lines) + "\n"
 

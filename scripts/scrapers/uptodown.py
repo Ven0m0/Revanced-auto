@@ -16,11 +16,13 @@ from scripts.scrapers.base import DownloadResult, ScraperBase, VersionInfo
 
 SUPPORTED_ARCHS = frozenset({"arm64-v8a", "armeabi-v7a", "x86", "x86_64"})
 
-XAPK_MIME_TYPES = frozenset({
-    "application/vnd.android.package-archive",
-    "application/xapk",
-    "application/octet-stream",
-})
+XAPK_MIME_TYPES = frozenset(
+    {
+        "application/vnd.android.package-archive",
+        "application/xapk",
+        "application/octet-stream",
+    }
+)
 
 
 @dataclass
@@ -64,6 +66,7 @@ class UptodownScraper(ScraperBase):
     def __init__(self) -> None:
         """Initialize Uptodown scraper."""
         from scripts.scrapers.base import DownloadSource
+
         super().__init__(DownloadSource.UPTODOWN)
         self.base_url = "https://{app}.en.uptodown.com/android"
         self.max_pages = 5
@@ -164,7 +167,9 @@ class UptodownScraper(ScraperBase):
 
             return UptodownVersion(
                 version=version,
-                url=href if href.startswith("http") else f"https://{self.get_package_name(self._build_app_url('')).lower()}.en.uptodown.com{href}",
+                url=href
+                if href.startswith("http")
+                else f"https://{self.get_package_name(self._build_app_url('')).lower()}.en.uptodown.com{href}",
                 arch=arch,
                 file_id=file_id,
                 is_xapk=is_xapk,
@@ -234,11 +239,13 @@ class UptodownScraper(ScraperBase):
             if v.version in seen:
                 continue
             seen.add(v.version)
-            result.append(VersionInfo(
-                version=v.version,
-                url=v.url,
-                arch=v.arch,
-            ))
+            result.append(
+                VersionInfo(
+                    version=v.version,
+                    url=v.url,
+                    arch=v.arch,
+                )
+            )
 
         return result
 
@@ -439,6 +446,7 @@ class UptodownScraper(ScraperBase):
 
         """
         import time
+
         delay = self.BASE_DELAY
         last_error: Exception | None = None
 

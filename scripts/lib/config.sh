@@ -30,28 +30,28 @@ toml_prep() {
   log_debug "Loading config file: $config_file (format: $ext)"
   # Parse based on file extension
   case "$ext" in
-    toml)
-      # Parse TOML to JSON using Python
-      if ! __TOML__=$(uv run scripts/toml_get.py --file "$config_file" 2>&1); then
-        epr "Failed to parse TOML config: $config_file"
-        epr "Parser output: $__TOML__"
-        return 1
-      fi
-      ;;
-    json)
-      # Validate JSON syntax before loading
-      if ! __TOML__=$(jq -e . "$config_file" 2>&1); then
-        epr "Invalid JSON in config file: $config_file"
-        epr "JSON error: $__TOML__"
-        return 1
-      fi
-      ;;
-    *)
-      abort "Unsupported config file extension: .$ext (only .toml and .json are supported)"
-      ;;
+  toml)
+    # Parse TOML to JSON using Python
+    if ! __TOML__=$(uv run scripts/toml_get.py --file "$config_file" 2>&1); then
+      epr "Failed to parse TOML config: $config_file"
+      epr "Parser output: $__TOML__"
+      return 1
+    fi
+    ;;
+  json)
+    # Validate JSON syntax before loading
+    if ! __TOML__=$(jq -e . "$config_file" 2>&1); then
+      epr "Invalid JSON in config file: $config_file"
+      epr "JSON error: $__TOML__"
+      return 1
+    fi
+    ;;
+  *)
+    abort "Unsupported config file extension: .$ext (only .toml and .json are supported)"
+    ;;
   esac
   # Verify we got valid JSON output
-  if [[ -z "$__TOML__" ]] || ! jq -e . <<< "$__TOML__" &> /dev/null; then
+  if [[ -z "$__TOML__" ]] || ! jq -e . <<<"$__TOML__" &>/dev/null; then
     epr "Config parsing produced invalid JSON"
     return 1
   fi
@@ -66,7 +66,7 @@ toml_get_table_names() {
     log_warn "Config not loaded - call toml_prep first"
     return 1
   fi
-  jq -r -e 'to_entries[] | select(.value | type == "object") | .key' <<< "$__TOML__" 2> /dev/null || true
+  jq -r -e 'to_entries[] | select(.value | type == "object") | .key' <<<"$__TOML__" 2>/dev/null || true
 }
 # Get main config (non-object entries)
 # Returns: JSON object containing only primitive (non-table) values
@@ -75,7 +75,7 @@ toml_get_table_main() {
     log_warn "Config not loaded - call toml_prep first"
     return 1
   fi
-  jq -r -e 'to_entries | map(select(.value | type != "object")) | from_entries' <<< "$__TOML__" 2> /dev/null || echo "{}"
+  jq -r -e 'to_entries | map(select(.value | type != "object")) | from_entries' <<<"$__TOML__" 2>/dev/null || echo "{}"
 }
 # Get a specific table from config
 # Args:
@@ -91,7 +91,7 @@ toml_get_table() {
     log_warn "Config not loaded - call toml_prep first"
     return 1
   fi
-  jq -r -e ".\"${table_name}\"" <<< "$__TOML__" 2> /dev/null || {
+  jq -r -e ".\"${table_name}\"" <<<"$__TOML__" 2>/dev/null || {
     log_debug "Table not found: $table_name"
     return 1
   }
@@ -111,7 +111,7 @@ toml_get() {
     return 1
   fi
   local value
-  if ! value=$(jq -r ".\"${key}\" | values" <<< "$table_json" 2> /dev/null); then
+  if ! value=$(jq -r ".\"${key}\" | values" <<<"$table_json" 2>/dev/null); then
     return 1
   fi
   if [[ -z "$value" ]] || [[ "$value" == "null" ]]; then
@@ -149,11 +149,11 @@ toml_load_table_safe() {
     # Handle arrays: convert to newline-separated string for Bash
     if [[ "$value" == "["* ]]; then
       # Parse JSON array into Bash-friendly format
-      value=$(jq -r '.[]' <<< "$value" 2> /dev/null | tr '\n' ' ' | sed 's/ $//')
+      value=$(jq -r '.[]' <<<"$value" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
     fi
     # Safe assignment using nameref (no eval needed)
     _target_array[$key]=$value
-  done < <(jq -j 'to_entries[] | .key, "\u0000", (.value | tostring), "\u0000"' <<< "$table_json" 2> /dev/null)
+  done < <(jq -j 'to_entries[] | .key, "\u0000", (.value | tostring), "\u0000"' <<<"$table_json" 2>/dev/null)
 }
 # Get array from table as a Bash array
 # Args:
@@ -167,7 +167,7 @@ toml_get_array() {
   local table_json="$2"
   local key="$3"
   local json_array
-  if ! json_array=$(jq -e ".\"${key}\"" <<< "$table_json" 2> /dev/null); then
+  if ! json_array=$(jq -e ".\"${key}\"" <<<"$table_json" 2>/dev/null); then
     return 1
   fi
   if [[ "$json_array" == "null" ]]; then
@@ -177,7 +177,7 @@ toml_get_array() {
   local -a elements=()
   while IFS= read -r element; do
     elements+=("$element")
-  done < <(jq -r '.[]' <<< "$json_array" 2> /dev/null)
+  done < <(jq -r '.[]' <<<"$json_array" 2>/dev/null)
   # Use nameref to populate caller's array safely
   declare -n _target_array="$var_name"
   _target_array=("${elements[@]}")
@@ -201,7 +201,7 @@ toml_get_array_or_string() {
   local default="${4:-}"
   local json_value
   declare -n _target_array="$var_name"
-  if ! json_value=$(jq -e ".\"${key}\"" <<< "$table_json" 2> /dev/null); then
+  if ! json_value=$(jq -e ".\"${key}\"" <<<"$table_json" 2>/dev/null); then
     # Key not found - use default if provided
     if [[ -n "$default" ]]; then
       _target_array=("$default")
@@ -219,27 +219,27 @@ toml_get_array_or_string() {
   fi
   # Check if value is array or string
   local value_type
-  value_type=$(jq -r 'type' <<< "$json_value" 2> /dev/null)
+  value_type=$(jq -r 'type' <<<"$json_value" 2>/dev/null)
   local -a elements=()
   case "$value_type" in
-    array)
-      # Already an array - extract elements
-      while IFS= read -r element; do
-        elements+=("$element")
-      done < <(jq -r '.[]' <<< "$json_value" 2> /dev/null)
-      # Handle empty array - use default if provided
-      if [[ ${#elements[@]} -eq 0 ]] && [[ -n "$default" ]]; then
-        elements=("$default")
-      fi
-      ;;
-    string)
-      # Single string - convert to array with one element
-      elements=("$(jq -r '.' <<< "$json_value" 2> /dev/null)")
-      ;;
-    *)
-      # Unexpected type - treat as string
-      elements=("$(jq -r 'tostring' <<< "$json_value" 2> /dev/null)")
-      ;;
+  array)
+    # Already an array - extract elements
+    while IFS= read -r element; do
+      elements+=("$element")
+    done < <(jq -r '.[]' <<<"$json_value" 2>/dev/null)
+    # Handle empty array - use default if provided
+    if [[ ${#elements[@]} -eq 0 ]] && [[ -n "$default" ]]; then
+      elements=("$default")
+    fi
+    ;;
+  string)
+    # Single string - convert to array with one element
+    elements=("$(jq -r '.' <<<"$json_value" 2>/dev/null)")
+    ;;
+  *)
+    # Unexpected type - treat as string
+    elements=("$(jq -r 'tostring' <<<"$json_value" 2>/dev/null)")
+    ;;
   esac
   # Use nameref to populate caller's array safely
   _target_array=("${elements[@]}")
@@ -261,7 +261,7 @@ config_update() {
     abort "build.md not available"
   fi
   declare -A sources
-  : > "$TEMP_DIR"/skipped
+  : >"$TEMP_DIR"/skipped
   local upped=()
   local prcfg=false
   while read -r table_name; do
@@ -285,7 +285,7 @@ config_update() {
       else
         last_patches=$(gh_req "$rv_rel/tags/${PATCHES_VER}" -)
       fi
-      if ! last_patches=$(jq -e -r '.assets[] | select(.name | (endswith("rvp") or endswith("mpp"))) | .name' <<< "$last_patches"); then
+      if ! last_patches=$(jq -e -r '.assets[] | select(.name | (endswith("rvp") or endswith("mpp"))) | .name' <<<"$last_patches"); then
         abort "Failed to get patches version"
       fi
       if [[ "$last_patches" ]]; then
@@ -294,7 +294,7 @@ config_update() {
           prcfg=true
           upped+=("$table_name")
         else
-          echo "$OP" >> "$TEMP_DIR"/skipped
+          echo "$OP" >>"$TEMP_DIR"/skipped
         fi
       fi
     fi
@@ -305,6 +305,6 @@ config_update() {
       if [[ "$query" != "" ]]; then query+=" or "; fi
       query+=".key == \"$table\""
     done
-    jq "to_entries | map(select(${query} or (.value | type != \"object\"))) | from_entries" <<< "$__TOML__"
+    jq "to_entries | map(select(${query} or (.value | type != \"object\"))) | from_entries" <<<"$__TOML__"
   fi
 }

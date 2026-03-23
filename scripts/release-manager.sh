@@ -23,12 +23,12 @@ log_error() {
 }
 # Check if gh CLI is available
 check_gh_cli() {
-  if ! command -v gh &> /dev/null; then
+  if ! command -v gh &>/dev/null; then
     log_error "GitHub CLI (gh) is not installed or not in PATH"
     exit 1
   fi
   # Check authentication
-  if ! gh auth status &> /dev/null; then
+  if ! gh auth status &>/dev/null; then
     log_error "GitHub CLI is not authenticated. Run: gh auth login"
     exit 1
   fi
@@ -38,7 +38,7 @@ check_gh_cli() {
 delete_release() {
   local tag=$1
   log_info "Checking for existing release: $tag"
-  if gh release view "$tag" &> /dev/null; then
+  if gh release view "$tag" &>/dev/null; then
     log_warn "Deleting existing release: $tag"
     if gh release delete "$tag" --yes --cleanup-tag 2>&1; then
       log_success "Release deleted: $tag"
@@ -49,10 +49,10 @@ delete_release() {
     log_info "No existing release found: $tag"
   fi
   # Also try to delete the tag directly if it exists
-  if git rev-parse "$tag" &> /dev/null; then
+  if git rev-parse "$tag" &>/dev/null; then
     log_warn "Deleting git tag: $tag"
-    git tag -d "$tag" 2> /dev/null || true
-    git push origin --delete "$tag" 2> /dev/null || true
+    git tag -d "$tag" 2>/dev/null || true
+    git push origin --delete "$tag" 2>/dev/null || true
   fi
 }
 # Create new release
@@ -114,7 +114,7 @@ generate_release_notes() {
   local build_logs_dir=${1:-"build-logs"}
   local use_enhanced_changelog=${2:-true}
   local build_date=$(date +"%Y-%m-%d")
-  cat << EOF
+  cat <<EOF
 # ReVanced Builds - $build_date
 Automated daily build of ReVanced applications.
 ## 📦 Included Apps
@@ -128,7 +128,7 @@ EOF
       fi
     done
   fi
-  cat << EOF
+  cat <<EOF
 ## 📥 Installation
 1. Download the APK for your device architecture:
    - **arm64-v8a**: Modern 64-bit devices (recommended)
@@ -142,12 +142,12 @@ EOF
     log_info "Generating enhanced changelog..."
     # Get commits since last release
     local last_release_tag
-    last_release_tag=$(git describe --tags --abbrev=0 2> /dev/null || echo "")
+    last_release_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
     if [[ -n "$last_release_tag" ]]; then
       log_info "Generating changelog from $last_release_tag to HEAD"
       echo "## 📝 Changes Since Last Release"
       echo ""
-      scripts/changelog-generator.sh --from "$last_release_tag" --to HEAD 2> /dev/null || {
+      scripts/changelog-generator.sh --from "$last_release_tag" --to HEAD 2>/dev/null || {
         log_warn "Failed to generate enhanced changelog, skipping"
       }
       echo ""
@@ -155,13 +155,13 @@ EOF
       log_info "Generating changelog for all commits"
       echo "## 📝 Recent Changes"
       echo ""
-      scripts/changelog-generator.sh 2> /dev/null || {
+      scripts/changelog-generator.sh 2>/dev/null || {
         log_warn "Failed to generate enhanced changelog, skipping"
       }
       echo ""
     fi
   fi
-  cat << EOF
+  cat <<EOF
 ## ⚙️ Build Information
 - **Build Date**: $build_date
 - **Build System**: [ReVanced Builder](https://github.com/$GITHUB_REPOSITORY)
@@ -233,7 +233,7 @@ cleanup_old_releases() {
     return 0
   fi
   local matching
-  matching=$(grep "^${prefix}" <<< "$tags" | sort -rV || true)
+  matching=$(grep "^${prefix}" <<<"$tags" | sort -rV || true)
   if [[ -z "$matching" ]]; then
     log_info "No releases matching prefix: $prefix"
     return 0
@@ -253,7 +253,7 @@ cleanup_old_releases() {
     else
       log_info "Keeping release: $tag"
     fi
-  done <<< "$matching"
+  done <<<"$matching"
   log_success "Cleaned up $deleted old release(s)"
 }
 # Commit state file after successful build
@@ -281,7 +281,7 @@ commit_build_state() {
 }
 # Usage information
 show_usage() {
-  cat << EOF
+  cat <<EOF
 Usage: $0 [COMMAND] [OPTIONS]
 Commands:
     manage <tag> <apk_dir> <logs_dir> [prerelease]
@@ -325,46 +325,46 @@ EOF
 main() {
   local command=${1:-""}
   case "$command" in
-    manage)
-      manage_release "${2:-latest}" "${3:-build}" "${4:-build-logs}" "${5:-false}"
-      ;;
-    delete)
-      check_gh_cli
-      delete_release "${2:-latest}"
-      ;;
-    create)
-      check_gh_cli
-      create_release "${2:-latest}" "${3:-Latest Builds}" "${4:-Automated builds}" "${5:-false}"
-      ;;
-    upload)
-      check_gh_cli
-      upload_apks "${2:-latest}" "${3:-build}"
-      ;;
-    notes)
-      generate_release_notes "${2:-build-logs}"
-      ;;
-    cleanup)
-      check_gh_cli
-      cleanup_old_releases "${2:-}" "${3:-1}"
-      ;;
-    commit-state)
-      commit_build_state "${2:-.github/last_built_versions.json}" "${3:-chore: update build versions state [skip ci]}"
-      ;;
-    help | --help | -h)
-      show_usage
-      ;;
-    "")
-      log_error "No command specified"
-      echo ""
-      show_usage
-      exit 1
-      ;;
-    *)
-      log_error "Unknown command: $command"
-      echo ""
-      show_usage
-      exit 1
-      ;;
+  manage)
+    manage_release "${2:-latest}" "${3:-build}" "${4:-build-logs}" "${5:-false}"
+    ;;
+  delete)
+    check_gh_cli
+    delete_release "${2:-latest}"
+    ;;
+  create)
+    check_gh_cli
+    create_release "${2:-latest}" "${3:-Latest Builds}" "${4:-Automated builds}" "${5:-false}"
+    ;;
+  upload)
+    check_gh_cli
+    upload_apks "${2:-latest}" "${3:-build}"
+    ;;
+  notes)
+    generate_release_notes "${2:-build-logs}"
+    ;;
+  cleanup)
+    check_gh_cli
+    cleanup_old_releases "${2:-}" "${3:-1}"
+    ;;
+  commit-state)
+    commit_build_state "${2:-.github/last_built_versions.json}" "${3:-chore: update build versions state [skip ci]}"
+    ;;
+  help | --help | -h)
+    show_usage
+    ;;
+  "")
+    log_error "No command specified"
+    echo ""
+    show_usage
+    exit 1
+    ;;
+  *)
+    log_error "Unknown command: $command"
+    echo ""
+    show_usage
+    exit 1
+    ;;
   esac
 }
 # Run main function

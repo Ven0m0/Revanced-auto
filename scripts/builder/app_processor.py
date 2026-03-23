@@ -470,9 +470,7 @@ class AppProcessor:
 
         logger.info("Processing all enabled apps")
 
-        enabled_apps = [
-            app for app in self.config.apps.values() if app.enabled
-        ]
+        enabled_apps = [app for app in self.config.apps.values() if app.enabled]
 
         if not enabled_apps:
             logger.info("No enabled apps to process")
@@ -737,9 +735,7 @@ class AppProcessor:
                 raise RuntimeError(f"Failed to download CLI from {cli_url}")
 
         patches_sources = (
-            [context.patches_source]
-            if isinstance(context.patches_source, str)
-            else context.patches_source
+            [context.patches_source] if isinstance(context.patches_source, str) else context.patches_source
         )
 
         for idx, patches_src in enumerate(patches_sources):
@@ -810,8 +806,10 @@ class AppProcessor:
             return context.output_path
 
         patch_args = [
-            "-i", str(stock_apk),
-            "-o", str(context.output_path),
+            "-i",
+            str(stock_apk),
+            "-o",
+            str(context.output_path),
         ]
 
         for patches_jar in context.patches_jars:
@@ -973,10 +971,7 @@ class AppProcessor:
             return
 
         title = f"Build {'Succeeded' if summary.failure_count == 0 else 'Failed'}"
-        message = (
-            f"Built {summary.success_count}/{summary.total} apps "
-            f"in {summary.duration:.1f}s"
-        )
+        message = f"Built {summary.success_count}/{summary.total} apps in {summary.duration:.1f}s"
 
         self.notifier.notify(
             title,
