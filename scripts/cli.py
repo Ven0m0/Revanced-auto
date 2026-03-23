@@ -2,14 +2,14 @@
 """CLI entry point for ReVanced Builder."""
 
 import argparse
-import os
 import signal
 import sys
+from pathlib import Path
 from typing import Optional
 
 # Allow running as a direct script: `python scripts/cli.py`
 # Inserts the project root so `scripts.*` imports resolve correctly.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts.lib import logging as log
 from scripts.lib.args import (
