@@ -6,7 +6,7 @@ import asyncio
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from dataclasses import datacaclass, field
+from dataclasses import dataclass, field
 from typing import Any, Callable, Generic, TypeVar
 
 if sys.version_info < (3, 13):

@@ -61,6 +61,16 @@ class PatchArgs(TypedDict, total=False):
     PATCHES_POST: ArgMapping | None
 
 
+def _list_patches_args_default() -> ListPatchesArgs:
+    """Default list-patches arguments mapping."""
+    return ListPatchesArgs()
+
+
+def _patch_args_default() -> PatchArgs:
+    """Default patch arguments mapping."""
+    return PatchArgs()
+
+
 @dataclass(frozen=True)
 class CLIProfile:
     """CLI argument compatibility profile for different ReVanced CLI versions.
@@ -74,18 +84,8 @@ class CLIProfile:
 
     name: str
     profile_type: CLIProfileType
-    list_patches_args: ListPatchesArgs = field(default_factory=list_patches_args_default)
-    patch_args: PatchArgs = field(default_factory=patch_args_default)
-
-    @staticmethod
-    def list_patches_args_default() -> ListPatchesArgs:
-        """Default list-patches arguments mapping."""
-        return ListPatchesArgs()
-
-    @staticmethod
-    def patch_args_default() -> PatchArgs:
-        """Default patch arguments mapping."""
-        return PatchArgs()
+    list_patches_args: ListPatchesArgs = field(default_factory=_list_patches_args_default)
+    patch_args: PatchArgs = field(default_factory=_patch_args_default)
 
 
 def _v5_list_patches_args() -> ListPatchesArgs:

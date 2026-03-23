@@ -8,8 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from scripts.scrapers.apkmirror import APKMirrorScraper
+from scripts.scrapers.apkmirror import APKMirror
+from scripts.scrapers.apkmonk import APKMonkScraper
 from scripts.scrapers.apkpure import APKPureScraper
+from scripts.scrapers.aptoide import AptoideScraper
+from scripts.scrapers.archive import ArchiveScraper
 from scripts.scrapers.base import DownloadResult, DownloadSource, ScraperBase
 from scripts.scrapers.uptodown import UptodownScraper
 from scripts.utils.network import HttpClient
@@ -66,11 +69,17 @@ class DownloadManager:
         if source not in self._scrapers:
             match source:
                 case DownloadSource.APKMIRROR:
-                    self._scrapers[source] = APKMirrorScraper()
+                    self._scrapers[source] = APKMirror()
+                case DownloadSource.APKMONK:
+                    self._scrapers[source] = APKMonkScraper()
                 case DownloadSource.UPTODOWN:
                     self._scrapers[source] = UptodownScraper()
                 case DownloadSource.APKPURE:
                     self._scrapers[source] = APKPureScraper()
+                case DownloadSource.APTOIDE:
+                    self._scrapers[source] = AptoideScraper()
+                case DownloadSource.ARCHIVE:
+                    self._scrapers[source] = ArchiveScraper()
                 case _:
                     msg = f"Unsupported download source: {source}"
                     raise ValueError(msg)

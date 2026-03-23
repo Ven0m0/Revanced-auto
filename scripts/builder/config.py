@@ -332,7 +332,7 @@ class ConfigLoader:
             pattern = self.STRICT_ENV_PATTERN
         else:
             pattern = re.compile(
-                rf"(?:\{)?{re.escape('ENV:')}([A-Z_][A-Z0-9_]*)(?:\})?"
+                r"(?:\{)?" + re.escape('ENV:') + r"([A-Z_][A-Z0-9_]*)(?:\})?"
             )
 
         def replace_env(match: re.Match[str]) -> str:
