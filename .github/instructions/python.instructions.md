@@ -4,10 +4,6 @@ applyTo: "**/{*.py,pyproject.toml}"
 
 # Python Standards
 
-## Before Any Python Work
-
-**READ**: `.github/skills/python-patterns/SKILL.md`
-
 ## Toolchain
 
 - **Lint/Fmt**: `ruff check --fix && ruff format` (PEP 8, 4-space, 80 chars)
