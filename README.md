@@ -49,18 +49,33 @@ cd <repository-directory>
 chmod +x build.sh utils.sh extras.sh scripts/*.sh
 ```
 ### Basic Usage
-Build all enabled apps from `config.toml`:
+Build all enabled apps from `config.toml` with the Python CLI:
+```bash
+python -m scripts.cli build --config config.toml
+```
+Or use the legacy wrapper:
 ```bash
 ./build.sh config.toml
+```
+Manage the cache with the Python CLI:
+```bash
+python -m scripts.cli cache init
+python -m scripts.cli cache stats
+python -m scripts.cli cache cleanup --force
+python -m scripts.cli cache clean '.*\.apk'
+```
+The legacy wrapper forwards to the same cache subcommands when Python 3.13+ is available:
+```bash
+./build.sh cache stats
 ```
 Build a specific app:
 ```bash
 # Edit config.toml and set enabled = true for your desired app
-./build.sh config.toml
+python -m scripts.cli build --config config.toml
 ```
 Clean build artifacts:
 ```bash
-./build.sh clean
+python -m scripts.cli build --config config.toml --clean
 ```
 ## Configuration
 The `config.toml` file controls all build settings. You can create this file in two ways:
@@ -186,6 +201,15 @@ Main build script. Usage:
 ```bash
 ./build.sh [config.toml] [--config-update]
 ./build.sh clean
+./build.sh cache {stats|cleanup|clean|init}
+```
+### Python cache CLI
+Preferred cache management commands:
+```bash
+python -m scripts.cli cache init
+python -m scripts.cli cache stats
+python -m scripts.cli cache cleanup [--force]
+python -m scripts.cli cache clean [--pattern '.*\\.apk']
 ```
 ### extras.sh
 Utility functions for CI/CD workflows:

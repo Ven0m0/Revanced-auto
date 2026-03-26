@@ -2,10 +2,10 @@
 """CLI entry point for ReVanced Builder."""
 
 import argparse
+import re
 import signal
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Allow running as a direct script: `python scripts/cli.py`
 # Inserts the project root so `scripts.*` imports resolve correctly.
@@ -14,11 +14,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from scripts.lib import logging as log
 from scripts.lib.args import (
     build_parser,
+    cache_parser,
     check_parser,
     version_tracker_parser,
 )
-from scripts.lib.config import Config
-from scripts.lib.version_tracker import VersionTracker
+from scripts.lib.cache import (
+    CacheError,
+    CacheManager,
+    format_cache_size,
+)
 
 
 def _signal_handler(signum: int, frame) -> None:
@@ -30,6 +34,8 @@ def _signal_handler(signum: int, frame) -> None:
 def run_build(args: argparse.Namespace) -> int:
     """Execute the build command."""
     config_path = args.config
+    from scripts.lib.config import Config
+    from scripts.lib.version_tracker import VersionTracker
 
     try:
         config = Config.from_file(config_path)
@@ -77,6 +83,8 @@ def run_build(args: argparse.Namespace) -> int:
 def run_check(args: argparse.Namespace) -> int:
     """Execute the check command."""
     config_path = args.config
+    from scripts.lib.config import Config
+    from scripts.lib.version_tracker import VersionTracker
 
     try:
         config = Config.from_file(config_path)
@@ -101,6 +109,8 @@ def run_check(args: argparse.Namespace) -> int:
 def run_version_tracker(args: argparse.Namespace) -> int:
     """Execute version tracker subcommands."""
     config_path = args.config
+    from scripts.lib.config import Config
+    from scripts.lib.version_tracker import VersionTracker
 
     try:
         config = Config.from_file(config_path)
@@ -147,6 +157,54 @@ def run_version_tracker(args: argparse.Namespace) -> int:
         log.abort(f"Unknown subcommand: {subcommand}")
 
 
+def run_cache(args: argparse.Namespace) -> int:
+    """Execute cache subcommands."""
+    manager = CacheManager()
+    subcommand = args.cache_command
+
+    try:
+        if subcommand == "stats":
+            stats = manager.cache_stats()
+            log.pr("Cache Statistics:")
+            log.pr(f"  Total entries: {stats.total_entries}")
+            log.pr(f"  Total size: {format_cache_size(stats.total_size)}")
+            log.pr(f"  Expired entries: {stats.expired_entries}")
+            log.pr(f"  Cache directory: {stats.cache_directory}")
+            return 0
+
+        if subcommand == "init":
+            manager.cache_init()
+            log.pr("Cache initialized")
+            return 0
+
+        if subcommand == "cleanup":
+            force = args.force or args.force_arg == "force"
+            result = manager.cache_cleanup(force=force)
+            if result.removed_entries > 0:
+                log.pr(f"Removed {result.removed_entries} expired cache entries")
+            else:
+                log.info("No expired entries to remove")
+
+            if force and result.orphaned_entries > 0:
+                log.pr(f"Removed {result.orphaned_entries} orphaned index entries")
+            elif force:
+                log.info("No orphaned index entries to remove")
+            return 0
+
+        if subcommand == "clean":
+            pattern = args.pattern or args.pattern_arg or ".*"
+            removed_entries = manager.cache_clean_pattern(pattern)
+            if removed_entries > 0:
+                log.pr(f"Removed {removed_entries} cache entries")
+            else:
+                log.info("No matching entries found")
+            return 0
+
+        log.abort(f"Unknown cache subcommand: {subcommand}")
+    except (CacheError, OSError, re.error) as exc:
+        log.abort(f"Cache command failed: {exc}")
+
+
 def main() -> int:
     """Main entry point."""
     signal.signal(signal.SIGINT, _signal_handler)
@@ -161,6 +219,7 @@ def main() -> int:
     build_parser(subparsers)
     check_parser(subparsers)
     version_tracker_parser(subparsers)
+    cache_parser(subparsers)
 
     args = parser.parse_args()
 
@@ -171,6 +230,8 @@ def main() -> int:
             return run_check(args)
         elif args.command == "version-tracker":
             return run_version_tracker(args)
+        elif args.command == "cache":
+            return run_cache(args)
         else:
             parser.print_help()
             return 1
