@@ -10,6 +10,7 @@ from scripts.apkpure_search import (
     APKPURE_BASE,
     AppConfig,
     Command,
+    CommandError,
     ParseResult,
     URLBuilder,
     determine_command,
@@ -200,6 +201,17 @@ class TestDetermineCommand:
             url_only=True,
         )
         assert determine_command(args) == Command.URL_ONLY
+
+    def test_raises_command_error_when_no_command(self) -> None:
+        """Test that CommandError is raised when no command is specified."""
+        args = argparse.Namespace(
+            latest=False,
+            versions=False,
+            download=False,
+            url_only=False,
+        )
+        with pytest.raises(CommandError, match="no command specified"):
+            determine_command(args)
 
 
 @pytest.mark.parametrize(

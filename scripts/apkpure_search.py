@@ -41,6 +41,14 @@ class Command(Enum):
     URL_ONLY = auto()
 
 
+class CommandError(Exception):
+    """Exception raised when an invalid command is specified."""
+
+    def __init__(self, message: str = "no command specified") -> None:
+        """Initialize the exception with a default message."""
+        super().__init__(message)
+
+
 @dataclass(frozen=True, slots=True)
 class URLBuilder:
     """Builder for APKPure URLs.
@@ -225,13 +233,14 @@ def determine_command(args: argparse.Namespace) -> Command:
         return Command.DOWNLOAD
 
     # Should never reach here due to required mutually exclusive group
-    raise ValueError("no command specified")
+    raise CommandError
 
 
 def execute_command(
     command: Command,
     config: AppConfig,
     html_content: str,
+    args: argparse.Namespace,
 ) -> tuple[CommandResult, int]:
     """Execute the determined command.
 
@@ -239,6 +248,7 @@ def execute_command(
         command: Command to execute.
         config: App configuration.
         html_content: HTML content from stdin.
+        args: Parsed CLI arguments.
 
     Returns:
         Tuple of (result data, exit code).
@@ -305,7 +315,6 @@ def main() -> int:
         help="Output only the constructed URL (no parsing)",
     )
 
-    global args  # noqa: PLW0603  # Needed for execute_command access
     args = parser.parse_args()
 
     if args.download and not args.version:
@@ -318,7 +327,7 @@ def main() -> int:
 
     # URL-only mode doesn't need HTML input
     if command == Command.URL_ONLY:
-        result, code = execute_command(command, config, "")
+        result, code = execute_command(command, config, "", args)
         if result and isinstance(result, str):
             print(result)
         return code
@@ -332,7 +341,7 @@ def main() -> int:
     if not html_content:
         return 2
 
-    result, code = execute_command(command, config, html_content)
+    result, code = execute_command(command, config, html_content, args)
 
     # Single value output (not list)
     if result and not isinstance(result, list):

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
 import base64
 
+import orjson
 import pytest
 
 from scripts.aptoide_search import (
@@ -11,8 +13,11 @@ from scripts.aptoide_search import (
     AptoideMetaResponse,
     AptoideResponse,
     Arch,
+    Command,
+    CommandError,
     DownloadInfo,
     QueryBuilder,
+    determine_command,
     find_vercode,
     is_valid_aptoide_response,
     is_valid_meta_response,
@@ -152,8 +157,6 @@ class TestParseSearchVersion:
 
     def test_extracts_version(self) -> None:
         """Test extracting version from search response."""
-        import orjson
-
         data: AptoideResponse = {
             "datalist": {
                 "list": [{"file": {"vername": "19.16.39", "vercode": 12345}}],
@@ -169,8 +172,6 @@ class TestParseSearchVersion:
 
     def test_returns_none_on_empty_list(self) -> None:
         """Test returns None when list is empty."""
-        import orjson
-
         data: AptoideResponse = {"datalist": {"list": []}}
         result = parse_search_version(orjson.dumps(data))
         assert result is None
@@ -181,8 +182,6 @@ class TestParseSearchDownload:
 
     def test_extracts_download_url(self) -> None:
         """Test extracting download URL from search response."""
-        import orjson
-
         data: AptoideResponse = {
             "datalist": {
                 "list": [{"file": {"path": "https://example.com/app.apk", "vername": "1.0"}}],
@@ -193,8 +192,6 @@ class TestParseSearchDownload:
 
     def test_returns_none_when_no_path(self) -> None:
         """Test returns None when path not in response."""
-        import orjson
-
         data: AptoideResponse = {
             "datalist": {"list": [{"file": {"vername": "1.0"}}]},
         }
@@ -207,8 +204,6 @@ class TestParseVersionsList:
 
     def test_extracts_versions(self) -> None:
         """Test extracting versions list."""
-        import orjson
-
         data: AptoideResponse = {
             "datalist": {
                 "list": [
@@ -223,8 +218,6 @@ class TestParseVersionsList:
 
     def test_deduplicates_versions(self) -> None:
         """Test that duplicate versions are deduplicated."""
-        import orjson
-
         data: AptoideResponse = {
             "datalist": {
                 "list": [
@@ -247,8 +240,6 @@ class TestFindVercode:
 
     def test_finds_vercode(self) -> None:
         """Test finding vercode for version."""
-        import orjson
-
         data: AptoideResponse = {
             "datalist": {
                 "list": [
@@ -262,8 +253,6 @@ class TestFindVercode:
 
     def test_returns_none_when_not_found(self) -> None:
         """Test returns None when version not found."""
-        import orjson
-
         data: AptoideResponse = {
             "datalist": {"list": [{"file": {"vername": "19.16.39", "vercode": 12345}}]},
         }
@@ -281,8 +270,6 @@ class TestParseMetaDownload:
 
     def test_extracts_url(self) -> None:
         """Test extracting URL from meta response."""
-        import orjson
-
         data: AptoideMetaResponse = {
             "data": {"file": {"path": "https://example.com/app.apk", "vername": "1.0"}},
         }
@@ -291,8 +278,6 @@ class TestParseMetaDownload:
 
     def test_returns_none_when_no_path(self) -> None:
         """Test returns None when path not present."""
-        import orjson
-
         data: AptoideMetaResponse = {"data": {"file": {"vername": "1.0"}}}
         result = parse_meta_download(orjson.dumps(data))
         assert result is None
@@ -339,3 +324,32 @@ def test_query_builder_variations(package: str, arch: str, limit: int) -> None:
     assert builder.package == package
     assert builder.arch == arch
     assert builder.limit == limit
+
+
+class TestDetermineCommand:
+    """Tests for determine_command function."""
+
+    def test_determines_latest(self) -> None:
+        """Test determining LATEST command."""
+        args = argparse.Namespace(
+            latest=True,
+            versions=False,
+            download=False,
+            url=False,
+            find_vercode=False,
+            parse_meta=False,
+        )
+        assert determine_command(args) == Command.LATEST
+
+    def test_raises_command_error_when_no_command(self) -> None:
+        """Test that CommandError is raised when no command is specified."""
+        args = argparse.Namespace(
+            latest=False,
+            versions=False,
+            download=False,
+            url=False,
+            find_vercode=False,
+            parse_meta=False,
+        )
+        with pytest.raises(CommandError, match="no command specified"):
+            determine_command(args)

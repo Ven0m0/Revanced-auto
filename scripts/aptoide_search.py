@@ -127,6 +127,14 @@ class Command(Enum):
     PARSE_META = auto()
 
 
+class CommandError(Exception):
+    """Exception raised when an invalid command is specified."""
+
+    def __init__(self, message: str = "no command specified") -> None:
+        """Initialize the exception with a default message."""
+        super().__init__(message)
+
+
 @dataclass(frozen=True, slots=True)
 class QueryBuilder:
     """Builder for Aptoide API URLs.
@@ -428,7 +436,7 @@ def determine_command(args: argparse.Namespace) -> Command:
     if args.parse_meta:
         return Command.PARSE_META
 
-    raise ValueError("no command specified")
+    raise CommandError
 
 
 def execute_url_command(config: AppConfig) -> int:
