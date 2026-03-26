@@ -402,7 +402,8 @@ def set_github_output(key: str, value: str) -> None:
     """
     gh_output = os.environ.get("GITHUB_OUTPUT")
     if gh_output:
-        Path(gh_output).open("a", encoding="utf-8").write(f"{key}={value}\n")
+        with Path(gh_output).open("a", encoding="utf-8") as f:
+            f.write(f"{key}={value}\n")
     print(f"  {key}={value}", file=sys.stderr)
 
 
