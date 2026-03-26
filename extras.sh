@@ -20,7 +20,7 @@ separate_config() {
   main_config=$(toml_get_table_main)
   # Get the specific app table
   local app_table
-  if ! app_table=$(toml_get_table "$app_name" 2>/dev/null); then
+  if ! app_table=$(toml_get_table "$app_name" 2> /dev/null); then
     abort "App '$app_name' not found in config"
   fi
   # Create a new config with just the main config and the specific app
@@ -35,10 +35,10 @@ separate_config() {
     # For TOML output, we need to use a tool or write manually
     # Since we don't have a JSON->TOML converter, we'll output JSON with .toml extension
     # The build.sh accepts both .json and .toml
-    echo "$new_config" >"$output_config"
+    echo "$new_config" > "$output_config"
     log_info "Separated config saved to: $output_config (JSON format)"
   else
-    echo "$new_config" >"$output_config"
+    echo "$new_config" > "$output_config"
     log_info "Separated config saved to: $output_config"
   fi
 }
@@ -52,7 +52,7 @@ combine_logs() {
   fi
   # Find all build.md files and combine them
   local log_files
-  log_files=$(find "$logs_dir" -name "build.md" -type f 2>/dev/null | sort)
+  log_files=$(find "$logs_dir" -name "build.md" -type f 2> /dev/null | sort)
   if [[ "$log_files" = "" ]]; then
     log_warn "No build.md files found in $logs_dir"
     echo "No builds completed"
@@ -69,33 +69,33 @@ combine_logs() {
       echo ""
     fi
     cat "$log_file"
-  done <<<"$log_files"
+  done <<< "$log_files"
 }
 # Main command dispatcher
 case "${1:-}" in
-separate-config)
-  if [[ $# -ne 4 ]]; then
-    echo "Usage: $0 separate-config <config.toml> <app_name> <output.toml>"
+  separate-config)
+    if [[ $# -ne 4 ]]; then
+      echo "Usage: $0 separate-config <config.toml> <app_name> <output.toml>"
+      exit 1
+    fi
+    separate_config "$2" "$3" "$4"
+    ;;
+  combine-logs)
+    if [[ $# -ne 2 ]]; then
+      echo "Usage: $0 combine-logs <logs_directory>"
+      exit 1
+    fi
+    combine_logs "$2"
+    ;;
+  *)
+    echo "Usage: $0 {separate-config|combine-logs} [args...]"
+    echo ""
+    echo "Commands:"
+    echo "  separate-config <config.toml> <app_name> <output.toml>"
+    echo "      Extract configuration for a specific app"
+    echo ""
+    echo "  combine-logs <logs_directory>"
+    echo "      Combine build.md files from directory"
     exit 1
-  fi
-  separate_config "$2" "$3" "$4"
-  ;;
-combine-logs)
-  if [[ $# -ne 2 ]]; then
-    echo "Usage: $0 combine-logs <logs_directory>"
-    exit 1
-  fi
-  combine_logs "$2"
-  ;;
-*)
-  echo "Usage: $0 {separate-config|combine-logs} [args...]"
-  echo ""
-  echo "Commands:"
-  echo "  separate-config <config.toml> <app_name> <output.toml>"
-  echo "      Extract configuration for a specific app"
-  echo ""
-  echo "  combine-logs <logs_directory>"
-  echo "      Combine build.md files from directory"
-  exit 1
-  ;;
+    ;;
 esac

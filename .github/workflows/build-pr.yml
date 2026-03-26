@@ -111,7 +111,7 @@ jobs:
         fi
     - name: Setup Android SDK
       if: success()
-      uses: android-actions/setup-android@v4.0.0
+      uses: android-actions/setup-android@v3.2.2
     - name: Setup build environment
       if: success()
       uses: ./.github/actions/setup-environment

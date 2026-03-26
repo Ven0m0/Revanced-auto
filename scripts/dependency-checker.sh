@@ -2,16 +2,11 @@
 # Dependency update checker for ReVanced Builder
 # Monitors ReVanced CLI, patches, and APK versions for updates
 set -euo pipefail
-
-# Determine script and repository root directories
-declare -gr SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-declare -gr REPO_ROOT="${PROJECT_ROOT:-${SCRIPT_DIR%/scripts}}"
-
 # Source utilities if available
 if [[ -f "utils.sh" ]]; then
   source utils.sh
   # Shim log_error if missing
-  if ! command -v log_error &>/dev/null; then
+  if ! command -v log_error &> /dev/null; then
     log_error() { epr "$@" 2>/dev/null || echo "[ERROR] $*" >&2; }
   fi
 else
@@ -34,7 +29,7 @@ gh_api() {
   if [[ -n "$GITHUB_TOKEN" ]]; then
     headers+=(-H "Authorization: token $GITHUB_TOKEN")
   fi
-  if command -v gh_req &>/dev/null; then
+  if command -v gh_req &> /dev/null; then
     gh_req "$GITHUB_API/$endpoint" "-"
   else
     curl -sSL --fail --connect-timeout 10 --max-time 300 "${headers[@]}" "$GITHUB_API/$endpoint"
@@ -61,16 +56,16 @@ get_latest_release() {
   log_info "Checking latest release for $repo"
   if [[ "$version_filter" == "latest" ]]; then
     local release
-    release=$(gh_api "repos/$repo/releases/latest" 2>/dev/null || echo "{}")
+    release=$(gh_api "repos/$repo/releases/latest" 2> /dev/null || echo "{}")
     echo "$release" | jq -r '.tag_name // "unknown"'
   elif [[ "$version_filter" == "dev" ]]; then
     local releases
-    releases=$(gh_api "repos/$repo/releases" 2>/dev/null || echo "[]")
+    releases=$(gh_api "repos/$repo/releases" 2> /dev/null || echo "[]")
     echo "$releases" | jq -r '.[0].tag_name // "unknown"'
   else
     # Specific version - just verify it exists
     local release
-    release=$(gh_api "repos/$repo/releases/tags/$version_filter" 2>/dev/null || echo "{}")
+    release=$(gh_api "repos/$repo/releases/tags/$version_filter" 2> /dev/null || echo "{}")
     if [[ "$(echo "$release" | jq -r '.tag_name // "unknown"')" != "unknown" ]]; then
       echo "$version_filter"
     else
@@ -154,74 +149,24 @@ check_patches_updates() {
 			update_available: ($update_available == "true")
 		}'
 }
-# Check APK version updates
+# Check APK version updates (placeholder - requires integration with download sources)
 check_apk_updates() {
   local app_name=$1
   local current_version=$2
-  shift 2
-  local urls=("$@")
-
   log_info "APK version check for $app_name: $current_version"
-
-  local latest_version="unknown"
-  local update_available=false
-
-  if command -v get_uptodown_resp &>/dev/null; then
-    for url in "${urls[@]}"; do
-      if [[ -z "$url" ]]; then continue; fi
-
-      local vers=""
-      local provider
-      case "$url" in
-      *uptodown*) provider="uptodown" ;;
-      *apkmirror*) provider="apkmirror" ;;
-      *apkpure*) provider="apkpure" ;;
-      *archive.org*) provider="archive" ;;
-      *aptoide*) provider="aptoide" ;;
-      *apkmonk*) provider="apkmonk" ;;
-      *) provider="" ;;
-      esac
-
-      if [[ -n "$provider" ]]; then
-        local get_resp_func="get_${provider}_resp"
-        local get_vers_func="get_${provider}_vers"
-        if "$get_resp_func" "$url" >/dev/null 2>&1; then
-          vers=$("$get_vers_func" 2>/dev/null | head -n 1)
-        fi
-      fi
-
-      if [[ -n "$vers" && "$vers" != "unknown" ]]; then
-        latest_version="$vers"
-        break
-      fi
-    done
-  else
-    log_error "Scraping functions not available. Are you running standalone without utils.sh?"
-  fi
-
-  local current_normalized="${current_version#v}"
-  local latest_normalized="${latest_version#v}"
-
-  if [[ "$latest_version" != "unknown" ]]; then
-    if [[ "$current_version" == "auto" || "$current_version" == "latest" || "$current_version" == "beta" ]]; then
-      update_available=false
-      log_info "APK version ($app_name): $current_version (latest: $latest_version)"
-    elif version_less_than "$current_normalized" "$latest_normalized"; then
-      update_available=true
-      log_warn "APK update available ($app_name): $current_version → $latest_version"
-    else
-      log_success "APK is up to date ($app_name): $current_version"
-    fi
-  else
-    log_error "Could not determine latest APK version for $app_name"
-  fi
-
-  jq -n --arg app "$app_name" --arg current "$current_version" --arg latest "$latest_version" --arg update_available "$update_available" '{
+  # This is a placeholder - actual implementation would require
+  # integration with APKMirror, Uptodown, etc.
+  # For now, just return a basic structure
+  jq -n \
+    --arg app "$app_name" \
+    --arg current "$current_version" \
+    '{
 			component: "apk",
 			app_name: $app,
 			current_version: $current,
-			latest_version: $latest,
-			update_available: ($update_available == "true")
+			latest_version: "unknown",
+			update_available: false,
+			note: "APK version checking requires manual verification"
 		}'
 }
 # Parse config.toml and check all dependencies
@@ -240,15 +185,15 @@ check_all_dependencies() {
     cli_temp=$(mktemp)
     local cli_source cli_version
     # Try to extract from config.toml
-    if command -v grep &>/dev/null; then
-      cli_source=$(grep -Po '(?<=cli-source = ["\x27]).*(?=["\x27])' "$CONFIG_FILE" 2>/dev/null || echo "inotia00/revanced-cli")
-      cli_version=$(grep -Po '(?<=cli-version = ["\x27]).*(?=["\x27])' "$CONFIG_FILE" 2>/dev/null || echo "latest")
+    if command -v grep &> /dev/null; then
+      cli_source=$(grep -Po '(?<=cli-source = ["\x27]).*(?=["\x27])' "$CONFIG_FILE" 2> /dev/null || echo "inotia00/revanced-cli")
+      cli_version=$(grep -Po '(?<=cli-version = ["\x27]).*(?=["\x27])' "$CONFIG_FILE" 2> /dev/null || echo "latest")
     else
       cli_source="inotia00/revanced-cli"
       cli_version="latest"
     fi
     # Run in background
-    check_cli_updates "$cli_source" "$cli_version" >"$cli_temp" &
+    check_cli_updates "$cli_source" "$cli_version" > "$cli_temp" &
     cli_pid=$!
   fi
 
@@ -258,17 +203,17 @@ check_all_dependencies() {
   if [[ "$CHECK_MODE" == "all" || "$CHECK_MODE" == "patches" ]]; then
     patches_temp=$(mktemp)
     local patches_source patches_version
-    if command -v grep &>/dev/null; then
+    if command -v grep &> /dev/null; then
       # Handle both array and string formats
-      patches_source=$(grep -Po '(?<=patches-source = ).*' "$CONFIG_FILE" 2>/dev/null | head -1 || echo "anddea/revanced-patches")
+      patches_source=$(grep -Po '(?<=patches-source = ).*' "$CONFIG_FILE" 2> /dev/null | head -1 || echo "anddea/revanced-patches")
       patches_source=$(echo "$patches_source" | tr -d '"' | tr -d "'" | tr -d '[' | tr -d ']' | cut -d',' -f1 | xargs)
-      patches_version=$(grep -Po '(?<=patches-version = ["\x27]).*(?=["\x27])' "$CONFIG_FILE" 2>/dev/null || echo "latest")
+      patches_version=$(grep -Po '(?<=patches-version = ["\x27]).*(?=["\x27])' "$CONFIG_FILE" 2> /dev/null || echo "latest")
     else
       patches_source="anddea/revanced-patches"
       patches_version="latest"
     fi
     # Run in background
-    check_patches_updates "$patches_source" "$patches_version" >"$patches_temp" &
+    check_patches_updates "$patches_source" "$patches_version" > "$patches_temp" &
     patches_pid=$!
   fi
 
@@ -297,57 +242,11 @@ check_all_dependencies() {
     fi
   fi
   # Check APKs (if requested)
-  local apk_pids=()
-  local apk_temps=()
-
-  if [[ "$CHECK_MODE" == "all" || "$CHECK_MODE" == "apks" ]]; then
-    log_info "Checking APK versions from $CONFIG_FILE"
-
-    if command -v python3 &>/dev/null && command -v jq &>/dev/null; then
-      local global_version="auto"
-      if command -v grep &>/dev/null; then
-        global_version=$(grep -m 1 -Po '(?<=^version = [\"\x27]).*(?=[\"\x27])' "$CONFIG_FILE" 2>/dev/null || echo "auto")
-      fi
-
-      local apps_json
-      apps_json=$(python3 -c "import tomllib, sys, json; d=tomllib.load(open(sys.argv[1],'rb')); print(json.dumps(d))" "$CONFIG_FILE" | jq -c 'to_entries | map(select(.value | type == "object")) | map(select(.value.enabled == true)) | map({app: .key, version: (.value.version // "'"$global_version"'"), urls: [.value."uptodown-dlurl", .value."apkmirror-dlurl", .value."apkpure-dlurl", .value."archive-dlurl", .value."aptoide-dlurl"] | map(select(. != null))})')
-
-      if [[ -n "$apps_json" && "$apps_json" != "[]" ]]; then
-        # Use jq to create a null-byte separated stream for efficient processing in a while-read loop.
-        echo "$apps_json" | jq -r '.[] | .app + "\u0000" + .version + "\u0000" + (.urls | join("\u0001"))' |
-          while IFS=$'\0' read -r app_name app_version urls_str; do
-            # Split the URL string (separated by \u0001) into an array.
-            local urls=()
-            if [[ -n "$urls_str" ]]; then
-              mapfile -t urls < <(tr '\1' '\n' <<<"$urls_str")
-            fi
-
-            local apk_temp
-            apk_temp=$(mktemp)
-            apk_temps+=("$apk_temp")
-
-            check_apk_updates "$app_name" "$app_version" "${urls[@]}" >"$apk_temp" &
-            apk_pids+=("$!")
-          done
-      fi
-    else
-      log_warn "Python3 or jq not found. Skipping APK checks."
-    fi
+  if [[ "$CHECK_MODE" == "apks" ]]; then
+    log_info "APK update checking is not yet fully implemented"
+    # Placeholder for future APK checking
+    # Would parse enabled apps from config and check each
   fi
-
-  # Wait for APK results
-  for i in "${!apk_pids[@]}"; do
-    wait "${apk_pids[$i]}"
-    local temp_file="${apk_temps[$i]}"
-    if [[ -f "$temp_file" ]]; then
-      local content
-      content=$(cat "$temp_file")
-      if [[ -n "$content" ]]; then
-        results+=("$content")
-      fi
-      rm -f "$temp_file"
-    fi
-  done
   # Format output
   format_results "${results[@]}"
 }
@@ -355,99 +254,99 @@ check_all_dependencies() {
 format_results() {
   local results=("$@")
   case "$OUTPUT_FORMAT" in
-  json)
-    # Combine all results into JSON array
-    local json_array="["
-    local first=true
-    for result in "${results[@]}"; do
-      if [[ "$first" != "true" ]]; then
-        json_array+=","
-      fi
-      first=false
-      json_array+="$result"
-    done
-    json_array+="]"
-    echo "$json_array" | jq '.'
-    ;;
-  markdown)
-    echo "# Dependency Update Report"
-    echo ""
-    echo "**Generated**: $(date '+%Y-%m-%d %H:%M:%S')"
-    echo ""
-    echo "## Summary"
-    echo ""
-    local updates_available=false
-    for result in "${results[@]}"; do
-      local component
-      component=$(echo "$result" | jq -r '.component')
-      local source
-      source=$(echo "$result" | jq -r '.source // .app_name')
-      local current
-      current=$(echo "$result" | jq -r '.current_version')
-      local latest
-      latest=$(echo "$result" | jq -r '.latest_version')
-      local update
-      update=$(echo "$result" | jq -r '.update_available')
-      echo "### $component: $source"
+    json)
+      # Combine all results into JSON array
+      local json_array="["
+      local first=true
+      for result in "${results[@]}"; do
+        if [[ "$first" != "true" ]]; then
+          json_array+=","
+        fi
+        first=false
+        json_array+="$result"
+      done
+      json_array+="]"
+      echo "$json_array" | jq '.'
+      ;;
+    markdown)
+      echo "# Dependency Update Report"
       echo ""
-      echo "- **Current Version**: \`$current\`"
-      echo "- **Latest Version**: \`$latest\`"
-      if [[ "$update" == "true" ]]; then
-        echo "- **Status**: 🔄 **Update Available**"
-        updates_available=true
+      echo "**Generated**: $(date '+%Y-%m-%d %H:%M:%S')"
+      echo ""
+      echo "## Summary"
+      echo ""
+      local updates_available=false
+      for result in "${results[@]}"; do
+        local component
+        component=$(echo "$result" | jq -r '.component')
+        local source
+        source=$(echo "$result" | jq -r '.source // .app_name')
+        local current
+        current=$(echo "$result" | jq -r '.current_version')
+        local latest
+        latest=$(echo "$result" | jq -r '.latest_version')
+        local update
+        update=$(echo "$result" | jq -r '.update_available')
+        echo "### $component: $source"
+        echo ""
+        echo "- **Current Version**: \`$current\`"
+        echo "- **Latest Version**: \`$latest\`"
+        if [[ "$update" == "true" ]]; then
+          echo "- **Status**: 🔄 **Update Available**"
+          updates_available=true
+        else
+          echo "- **Status**: ✅ Up to date"
+        fi
+        echo ""
+      done
+      if [[ "$updates_available" == "true" ]]; then
+        echo "## 🔔 Action Required"
+        echo ""
+        echo "Updates are available. Consider updating your configuration."
       else
-        echo "- **Status**: ✅ Up to date"
+        echo "## ✅ All dependencies are up to date"
       fi
+      ;;
+    text | *)
+      echo "Dependency Update Report"
+      echo "========================"
       echo ""
-    done
-    if [[ "$updates_available" == "true" ]]; then
-      echo "## 🔔 Action Required"
+      echo "Generated: $(date '+%Y-%m-%d %H:%M:%S')"
       echo ""
-      echo "Updates are available. Consider updating your configuration."
-    else
-      echo "## ✅ All dependencies are up to date"
-    fi
-    ;;
-  text | *)
-    echo "Dependency Update Report"
-    echo "========================"
-    echo ""
-    echo "Generated: $(date '+%Y-%m-%d %H:%M:%S')"
-    echo ""
-    local updates_available=false
-    for result in "${results[@]}"; do
-      local component
-      component=$(echo "$result" | jq -r '.component')
-      local source
-      source=$(echo "$result" | jq -r '.source // .app_name')
-      local current
-      current=$(echo "$result" | jq -r '.current_version')
-      local latest
-      latest=$(echo "$result" | jq -r '.latest_version')
-      local update
-      update=$(echo "$result" | jq -r '.update_available')
-      echo "[$component] $source"
-      echo "  Current: $current"
-      echo "  Latest:  $latest"
-      if [[ "$update" == "true" ]]; then
-        echo "  Status:  UPDATE AVAILABLE"
-        updates_available=true
+      local updates_available=false
+      for result in "${results[@]}"; do
+        local component
+        component=$(echo "$result" | jq -r '.component')
+        local source
+        source=$(echo "$result" | jq -r '.source // .app_name')
+        local current
+        current=$(echo "$result" | jq -r '.current_version')
+        local latest
+        latest=$(echo "$result" | jq -r '.latest_version')
+        local update
+        update=$(echo "$result" | jq -r '.update_available')
+        echo "[$component] $source"
+        echo "  Current: $current"
+        echo "  Latest:  $latest"
+        if [[ "$update" == "true" ]]; then
+          echo "  Status:  UPDATE AVAILABLE"
+          updates_available=true
+        else
+          echo "  Status:  Up to date"
+        fi
+        echo ""
+      done
+      if [[ "$updates_available" == "true" ]]; then
+        echo "⚠ Updates are available!"
       else
-        echo "  Status:  Up to date"
+        echo "✓ All dependencies are up to date"
       fi
-      echo ""
-    done
-    if [[ "$updates_available" == "true" ]]; then
-      echo "⚠ Updates are available!"
-    else
-      echo "✓ All dependencies are up to date"
-    fi
-    ;;
+      ;;
   esac
 }
 # Show usage
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: $0 [CONFIG_FILE] [OPTIONS]
 Check for updates to ReVanced CLI, patches, and APK versions.
 Arguments:

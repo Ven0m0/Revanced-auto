@@ -26,7 +26,7 @@ import argparse
 import os
 import sys
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from functools import lru_cache
 from pathlib import Path
@@ -67,42 +67,6 @@ class Command(Enum):
     SAVE = auto()
     SHOW = auto()
     RESET = auto()
-
-
-@dataclass(frozen=True, slots=True)
-class AppVersionState:
-    """Per-app version tracking state.
-
-    Attributes:
-        patches_source: Source repository for patches.
-        cli_source: Source repository for CLI.
-        version: App version.
-        integrations_version: Optional integrations version.
-
-    """
-
-    patches_source: str
-    cli_source: str
-    version: str
-    integrations_version: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class BuildState:
-    """Tracks version state for smart rebuild detection.
-
-    Attributes:
-        global_cli_version: Global CLI version.
-        global_patches_version: Global patches version.
-        global_patches_source: Global patches source repository.
-        app_versions: Per-app version tracking dictionary.
-
-    """
-
-    global_cli_version: str
-    global_patches_version: str
-    global_patches_source: str
-    app_versions: dict[str, AppVersionState] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,7 +188,7 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
 
     Tracks:
     - Global cli-version and patches-version
-    - Per-app: patches-source, cli-source, version, integrations, enabled status
+    - Per-app: patches-source, cli-source, version, enabled status
 
     Args:
         config: Parsed TOML configuration.
@@ -235,6 +199,7 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
     """
     versions: VersionMap = {}
 
+    # Global versions
     global_cli_ver = str(config.get("cli-version", "latest"))
     global_patches_ver = str(config.get("patches-version", "latest"))
     global_patches_src = config.get("patches-source", "")
@@ -246,6 +211,7 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
     if normalized:
         versions["global_patches_source"] = normalized
 
+    # Per-app versions
     for key, value in config.items():
         if not isinstance(value, dict):
             continue
@@ -256,74 +222,22 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
 
         app_key = key.lower().replace(" ", "-")
 
+        # Patches source
         patches_src = value.get("patches-source", global_patches_src)
         patches_normalized = _normalize_patches_source(patches_src)
         if patches_normalized:
             versions[f"app_{app_key}_patches_source"] = patches_normalized
 
+        # CLI source
         cli_src = value.get("cli-source", "")
         if cli_src:
             versions[f"app_{app_key}_cli_source"] = str(cli_src)
 
+        # App version
         app_ver = value.get("version", "auto")
         versions[f"app_{app_key}_version"] = str(app_ver)
 
-        integrations_ver = value.get("integrations-version")
-        if integrations_ver:
-            versions[f"app_{app_key}_integrations_version"] = str(integrations_ver)
-
     return versions
-
-
-def extract_build_state(config: dict[str, object]) -> BuildState:
-    """Extract build state from config in structured format.
-
-    Args:
-        config: Parsed TOML configuration.
-
-    Returns:
-        BuildState with global and per-app version tracking.
-
-    """
-    global_cli_ver = str(config.get("cli-version", "latest"))
-    global_patches_ver = str(config.get("patches-version", "latest"))
-    global_patches_src = config.get("patches-source", "")
-    normalized_global_patches = _normalize_patches_source(global_patches_src) or ""
-
-    app_versions: dict[str, AppVersionState] = {}
-
-    for key, value in config.items():
-        if not isinstance(value, dict):
-            continue
-
-        enabled = value.get("enabled", True)
-        if not enabled:
-            continue
-
-        app_key = key.lower().replace(" ", "-")
-
-        patches_src = value.get("patches-source", global_patches_src)
-        patches_normalized = _normalize_patches_source(patches_src) or ""
-
-        cli_src = value.get("cli-source", "")
-
-        app_ver = value.get("version", "auto")
-
-        integrations_ver = value.get("integrations-version")
-
-        app_versions[app_key] = AppVersionState(
-            patches_source=patches_normalized,
-            cli_source=str(cli_src) if cli_src else "",
-            version=str(app_ver),
-            integrations_version=str(integrations_ver) if integrations_ver else None,
-        )
-
-    return BuildState(
-        global_cli_version=global_cli_ver,
-        global_patches_version=global_patches_ver,
-        global_patches_source=normalized_global_patches,
-        app_versions=app_versions,
-    )
 
 
 def detect_changes(current: VersionMap, saved: VersionMap) -> list[VersionDiff]:
@@ -339,6 +253,7 @@ def detect_changes(current: VersionMap, saved: VersionMap) -> list[VersionDiff]:
     """
     changes: list[VersionDiff] = []
 
+    # Detect modified and added keys
     for key, cur_val in current.items():
         saved_val = saved.get(key)
         if saved_val is None:
@@ -346,6 +261,7 @@ def detect_changes(current: VersionMap, saved: VersionMap) -> list[VersionDiff]:
         elif cur_val != saved_val:
             changes.append(VersionDiff(key, saved_val, cur_val, "modified"))
 
+    # Detect removed keys
     for key in saved:
         if key not in current:
             changes.append(VersionDiff(key, saved[key], "", "removed"))
@@ -408,22 +324,6 @@ def set_github_output(key: str, value: str) -> None:
     print(f"  {key}={value}", file=sys.stderr)
 
 
-def format_changes_for_github_output(changes: list[VersionDiff]) -> str:
-    """Format changes list for GitHub Actions workflow command.
-
-    Args:
-        changes: List of version differences.
-
-    Returns:
-        Formatted string for workflow commands.
-
-    """
-    lines = []
-    for change in changes:
-        lines.append(f"::notice title={change.key}::{change.change_type}: {change.old} -> {change.new}")
-    return "\n".join(lines)
-
-
 def execute_check_command(config_path: str, state_path: Path | None) -> int:
     """Execute the check command.
 
@@ -437,11 +337,6 @@ def execute_check_command(config_path: str, state_path: Path | None) -> int:
     """
     result = check_needs_build(config_path, state_path)
     set_github_output("needs_build", str(result.needs_build).lower())
-
-    if result.changes:
-        github_output = format_changes_for_github_output(result.changes)
-        set_github_output("changes", github_output)
-
     print("true" if result.needs_build else "false")
     return 0
 
