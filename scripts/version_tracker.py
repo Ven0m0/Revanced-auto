@@ -346,9 +346,7 @@ def detect_changes(current: VersionMap, saved: VersionMap) -> list[VersionDiff]:
         elif cur_val != saved_val:
             changes.append(VersionDiff(key, saved_val, cur_val, "modified"))
 
-    for key in saved:
-        if key not in current:
-            changes.append(VersionDiff(key, saved[key], "", "removed"))
+    changes.extend(VersionDiff(key, saved[key], "", "removed") for key in saved if key not in current)
 
     return changes
 
