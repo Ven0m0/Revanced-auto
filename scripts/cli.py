@@ -2,7 +2,6 @@
 """CLI entry point for ReVanced Builder."""
 
 import argparse
-import re
 import signal
 import sys
 from pathlib import Path
@@ -158,7 +157,9 @@ def run_version_tracker(args: argparse.Namespace) -> int:
 
 
 def run_cache(args: argparse.Namespace) -> int:
-    """Execute cache subcommands."""
+    """Execute cache subcommands and return a process exit code."""
+    import re
+
     manager = CacheManager()
     subcommand = args.cache_command
 

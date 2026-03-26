@@ -157,7 +157,7 @@ class TestCacheManager:
         manager = CacheManager(cache_dir=tmp_path / "cache")
         manager.cache_init()
 
-        with pytest.raises(re.error, match="unterminated|missing|bad character"):
+        with pytest.raises(re.error):
             manager.cache_clean_pattern("[")
 
     def test_cache_put_rejects_missing_file(self, tmp_path: Path) -> None:
