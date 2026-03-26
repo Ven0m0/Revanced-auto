@@ -58,10 +58,12 @@ class APKPureScraper(ScraperBase):
         """
         tree = HTMLParser(html_content)
         versions: list[VersionInfo] = []
+        seen: set[str] = set()
 
         for item in tree.css("div.ver-item a span.ver-item-n"):
             text = item.text(strip=True)
-            if text:
+            if text and text not in seen:
+                seen.add(text)
                 versions.append(VersionInfo(version=text))
 
         if not versions:
