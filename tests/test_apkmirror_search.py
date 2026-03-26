@@ -49,6 +49,35 @@ class TestGetTargetArchs:
         assert result[0] == "unknown-arch"
         assert "universal" in result
 
+    def test_arch_input_normalization(self) -> None:
+        """Test 'all' and specific archs are case-insensitive and normalized."""
+        expected_all = ["universal", "noarch", "arm64-v8a + armeabi-v7a"]
+        assert get_target_archs("ALL") == expected_all
+        assert get_target_archs("  all  ") == expected_all
+
+        # Specific arch case-insensitivity and fallback
+        result = get_target_archs("ARM64-v8a")
+        assert result[0] == "arm64-v8a"
+        assert "armeabi-v7a" in result
+
+    def test_no_duplicates_in_output(self) -> None:
+        """Test the returned list contains unique architectures."""
+        result = get_target_archs("universal")
+        assert result.count("universal") == 1
+        assert result == ["universal", "noarch", "arm64-v8a + armeabi-v7a"]
+
+    def test_arm64_v8a_fallback_to_v7a(self) -> None:
+        """Test arm64-v8a includes armeabi-v7a fallback."""
+        result = get_target_archs("arm64-v8a")
+        assert "armeabi-v7a" in result
+        assert result.index("arm64-v8a") < result.index("armeabi-v7a")
+
+    @pytest.mark.parametrize("invalid_input", ["", "  ", "\t\n"])
+    def test_invalid_input_still_has_fallbacks(self, invalid_input: str) -> None:
+        """Test empty or whitespace input still returns fallbacks."""
+        result = get_target_archs(invalid_input)
+        assert "universal" in result
+
 
 class TestSearchConfig:
     """Tests for SearchConfig dataclass."""

@@ -95,12 +95,23 @@ def get_target_archs(arch: str) -> list[str]:
 
     """
     base_archs: list[str] = ["universal", "noarch", "arm64-v8a + armeabi-v7a"]
+    arch_lower = arch.strip().lower()
 
-    match arch:
-        case "all":
-            return base_archs
-        case _:
-            return [arch, *base_archs]
+    if arch_lower == "all":
+        return base_archs
+
+    # Specific fallbacks
+    fallbacks = {
+        "arm64-v8a": ["armeabi-v7a"],
+    }
+
+    # Build prioritized list using lower case for consistency
+    target_archs = [arch_lower]
+    target_archs.extend(fallbacks.get(arch_lower, []))
+    target_archs.extend(base_archs)
+
+    # Return unique values while preserving order
+    return list(dict.fromkeys(target_archs))
 
 
 def is_valid_row_node(node: object) -> bool:
@@ -203,7 +214,8 @@ def _parse_rows(tree: HTMLParser) -> list[Node]:
         List of row nodes matching the expected structure.
 
     """
-    return tree.css("div.table-row.headerFont")
+    rows = tree.css("div.table-row.headerFont")
+    return [row for row in rows]
 
 
 def search(html_content: str, config: SearchConfig) -> SearchResult:
