@@ -10,6 +10,7 @@ This document outlines the strategic plan to **convert the ReVanced Builder code
 - [nikhilbadyal/docker-py-revanced](https://github.com/nikhilbadyal/docker-py-revanced)
 - [Graywizard888/Enhancify](https://github.com/Graywizard888/Enhancify)
 - [crimera/twitter-apk](https://github.com/crimera/twitter-apk)
+- https://github.com/shomykohai/luniume
 
 ### Goals
 1. **Python-First Architecture**: Replace Bash orchestration with Python for better testability, cross-platform support, and maintainability
