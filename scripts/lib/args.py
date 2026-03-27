@@ -86,3 +86,39 @@ def version_tracker_parser(subparsers: argparse._SubParsersAction) -> None:
         default="config.toml",
         help="Path to config TOML file (default: config.toml)",
     )
+
+
+def cache_parser(subparsers: argparse._SubParsersAction) -> None:
+    """Add 'cache' subcommand with sub-subcommands."""
+    parser = subparsers.add_parser(
+        "cache",
+        help="Manage the build cache",
+    )
+    sub = parser.add_subparsers(dest="cache_command", required=True)
+
+    sub.add_parser("stats", help="Show cache statistics")
+    sub.add_parser("init", help="Initialize the cache")
+
+    cleanup = sub.add_parser("cleanup", help="Remove expired cache entries")
+    cleanup.add_argument(
+        "force_arg",
+        nargs="?",
+        choices=["force"],
+        help="Legacy positional force flag",
+    )
+    cleanup.add_argument(
+        "--force",
+        action="store_true",
+        help="Also remove orphaned index entries",
+    )
+
+    clean = sub.add_parser("clean", help="Remove cache entries matching a regex pattern")
+    clean.add_argument(
+        "pattern_arg",
+        nargs="?",
+        help="Legacy positional pattern (default: .*)",
+    )
+    clean.add_argument(
+        "--pattern",
+        help="Regex pattern to match cache entries",
+    )

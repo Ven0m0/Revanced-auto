@@ -26,12 +26,16 @@ print_deprecation_warning() {
 }
 
 if [[ ${1-} == "cache" ]]; then
-  source utils.sh
   cache_command=${2:-stats}
+  if check_python; then
+    print_deprecation_warning
+    if [[ $# -ge 2 ]]; then
+      exec python -m scripts.cli cache "${@:2}"
+    fi
+    exec python -m scripts.cli cache stats
+  fi
 
-  # NOTE: The Python CLI currently does not implement a "cache" subcommand.
-  # Always use the Bash-based cache implementation until that is available.
-  # This avoids calling "python -m scripts.cli cache", which would fail.
+  source utils.sh
   case "$cache_command" in
   stats)
     cache_stats

@@ -122,7 +122,7 @@ python -m scripts.cli build [--config config.toml] [--build-mode apk|module|both
 python -m scripts.cli check
 python -m scripts.cli version-tracker {check|save|show|reset}
 
-# LEGACY (deprecated except for cache)
+# LEGACY (deprecated wrapper)
 ./build.sh [config.toml]
 ./build.sh cache {stats|cleanup|clean|init}
 

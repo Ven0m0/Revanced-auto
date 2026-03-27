@@ -183,12 +183,23 @@ The cache system uses a JSON index file (`.cache-index.json`) to track:
 - Source URL
 - Custom TTL per entry
 ### Usage
+#### Preferred Python CLI
+```bash
+python -m scripts.cli cache init
+python -m scripts.cli cache stats
+python -m scripts.cli cache cleanup --force
+python -m scripts.cli cache clean '.*\.apk'
+```
+The legacy `./build.sh cache ...` wrapper remains available and forwards to the
+same cache subcommands when Python 3.13+ is available.
 #### Initialize Cache
 ```bash
+python -m scripts.cli cache init
 ./build.sh cache init
 ```
 #### View Cache Statistics
 ```bash
+python -m scripts.cli cache stats
 ./build.sh cache stats
 ```
 **Example output:**
@@ -202,17 +213,23 @@ Cache Statistics:
 #### Clean Expired Entries
 ```bash
 # Remove only expired entries
+python -m scripts.cli cache cleanup
 ./build.sh cache cleanup
+
 # Remove expired entries + orphaned index entries
+python -m scripts.cli cache cleanup --force
 ./build.sh cache cleanup force
 ```
 #### Clean by Pattern
 ```bash
 # Remove all APK files from cache
+python -m scripts.cli cache clean '.*\.apk'
 ./build.sh cache clean '.*\.apk'
 # Remove cache for specific app
+python -m scripts.cli cache clean 'youtube.*'
 ./build.sh cache clean 'youtube.*'
 # Remove all cache entries
+python -m scripts.cli cache clean
 ./build.sh cache clean
 ```
 ### Programmatic API
@@ -390,8 +407,8 @@ When updates are found:
 3. **Include Patches Changelog**: Provides context for users
 4. **Customize Format**: Choose format based on your needs
 ### Build Cache System
-1. **Regular Cleanup**: Run `./build.sh cache cleanup` weekly
-2. **Monitor Size**: Check `./build.sh cache stats` regularly
+1. **Regular Cleanup**: Run `python -m scripts.cli cache cleanup` weekly
+2. **Monitor Size**: Check `python -m scripts.cli cache stats` regularly
 3. **Adjust TTL**: Set appropriate TTL for your build frequency
 4. **Pattern Cleaning**: Use patterns to clean specific categories
 ### Dependency Checker
@@ -408,9 +425,9 @@ When updates are found:
 - **Solution**: Check if commits exist in specified range
 ### Cache Issues
 **Problem**: Cache index corrupted
-- **Solution**: Delete `.cache-index.json` and run `./build.sh cache init`
+- **Solution**: Delete `.cache-index.json` and run `python -m scripts.cli cache init`
 **Problem**: High cache disk usage
-- **Solution**: Run `./build.sh cache cleanup force`
+- **Solution**: Run `python -m scripts.cli cache cleanup --force`
 ### Dependency Checker Issues
 **Problem**: "API rate limit exceeded"
 - **Solution**: Set `GITHUB_TOKEN` environment variable

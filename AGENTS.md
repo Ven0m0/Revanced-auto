@@ -38,11 +38,11 @@ python -m scripts.cli check [--config config.toml]
 python -m scripts.cli version-tracker {check|save|show|reset} [--config config.toml]
 ```
 
-### Bash (legacy — use only for cache subcommands)
+### Bash (legacy wrapper)
 ```bash
 ./build.sh [config.toml]                    # deprecated; routes to Python CLI
 ./build.sh clean                            # clean build artifacts
-./build.sh cache {stats|cleanup|clean|init} # cache management (Python CLI lacks this)
+./build.sh cache {stats|cleanup|clean|init} # legacy wrapper for Python cache subcommands
 ```
 
 ### Development
@@ -113,5 +113,5 @@ Key globals: `parallel-jobs`, `arch`, `build-mode`, `patches-version`, `cli-vers
 5. **Always** run `./scripts/lint.sh` before committing. Fix all errors; warnings from `shellharden` are advisory.
 6. **Always** run `bash -n <file.sh>` after any Bash edit.
 7. **Always** sign APKs with v1+v2 (`apksigner.jar`). Never skip signing.
-8. **Python CLI is primary.** The Bash build path is deprecated except for `cache` subcommands.
+8. **Python CLI is primary.** The Bash build path is deprecated and only kept as a wrapper.
 9. Branch naming: `feature/desc`, `fix/desc`, `agent/desc`.
