@@ -4,11 +4,11 @@
 from __future__ import annotations
 
 import shutil
+import tempfile
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-import tempfile
 
 
 class ModuleType(Enum):

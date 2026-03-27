@@ -19,7 +19,6 @@ from scripts.scrapers.base import (
     VersionInfo,
 )
 
-
 APKPURE_BASE = "https://apkpure.net"
 
 
@@ -168,8 +167,7 @@ class APKPureScraper(ScraperBase):
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, "wb") as f:
-                for chunk in dl_response.iter_bytes(chunk_size=8192):
-                    f.write(chunk)
+                f.writelines(dl_response.iter_bytes(chunk_size=8192))
 
             return DownloadResult(
                 success=True,

@@ -1,12 +1,11 @@
 """Archive.org scraper for j-hc-apks collection."""
 
 import re
-from typing import Match
+from re import Match
 
 from selectolax.parser import HTMLParser
 
-from .base import APK_ARCHIVE_URL, ScraperBase, DownloadSource, VersionInfo, DownloadResult
-
+from .base import APK_ARCHIVE_URL, DownloadResult, DownloadSource, ScraperBase, VersionInfo
 
 ARCHIVE_COLLECTION = "jhc-apks"
 ARCHIVE_BASE_URL = f"{APK_ARCHIVE_URL}/download/{ARCHIVE_COLLECTION}/apks"

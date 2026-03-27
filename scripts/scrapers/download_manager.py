@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -143,7 +142,7 @@ class DownloadManager:
                 errors.append(error_msg)
 
             except Exception as e:
-                error_msg = f"{source.value}: {str(e)}"
+                error_msg = f"{source.value}: {e!s}"
                 errors.append(error_msg)
                 continue
 

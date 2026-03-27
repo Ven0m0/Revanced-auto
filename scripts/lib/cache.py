@@ -11,7 +11,6 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-
 DEFAULT_CACHE_TTL = 86400
 DEFAULT_CACHE_DIR = "temp"
 DEFAULT_CLEAN_PATTERN = ".*"

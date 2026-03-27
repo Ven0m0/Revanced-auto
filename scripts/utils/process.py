@@ -5,9 +5,10 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 if sys.version_info < (3, 13):
     raise RuntimeError("This module requires Python 3.13 or higher.")
