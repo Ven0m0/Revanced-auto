@@ -4,6 +4,8 @@ import re
 import shutil
 import subprocess
 import tempfile
+import zipfile
+from enum import Enum
 from pathlib import Path
 
 
@@ -175,7 +177,7 @@ def merge_bundle(bundle_path: Path, output_path: Path) -> bool:
         True if merge succeeded, False otherwise.
     """
     if not isinstance(bundle_path, Path):
-        raise ValueError(f"merge_bundle: bundle_path must be a Path object")
+        raise ValueError("merge_bundle: bundle_path must be a Path object")
     if not _validate_path(bundle_path):
         raise ValueError(f"merge_bundle: path traversal detected in '{bundle_path}'")
 
@@ -186,7 +188,7 @@ def merge_bundle(bundle_path: Path, output_path: Path) -> bool:
     if not _validate_path(output_path):
         raise ValueError(f"merge_bundle: path traversal detected in '{output_path}'")
     if output_path.suffix.lower() != ".apk":
-        raise ValueError(f"merge_bundle: output must have .apk extension")
+        raise ValueError("merge_bundle: output must have .apk extension")
 
     if not bundle_path.exists():
         return False
@@ -258,6 +260,234 @@ def verify_signature(apk_path: Path) -> str | None:
 
     except (subprocess.CalledProcessError, OSError):
         return None
+
+
+class BundleType(Enum):
+    """Type of APK bundle."""
+
+    APK = "apk"
+    XAPK = "xapk"
+    APKM = "apkm"
+    UNKNOWN = "unknown"
+
+
+def detect_bundle_type(file_path: Path) -> BundleType:
+    """Detect the bundle type of a file.
+
+    Args:
+        file_path: Path to the file to detect.
+
+    Returns:
+        The detected BundleType.
+
+    """
+    if not file_path.exists():
+        return BundleType.UNKNOWN
+
+    suffix = file_path.suffix.lower()
+    if suffix == ".apk":
+        return BundleType.APK
+    if suffix == ".xapk":
+        return BundleType.XAPK
+    if suffix == ".apkm":
+        return BundleType.APKM
+
+    # Try ZIP magic bytes
+    try:
+        with file_path.open("rb") as f:
+            header = f.read(4)
+        if header == b"PK\x03\x04":
+            return BundleType.APK
+    except OSError:
+        pass
+
+    return BundleType.UNKNOWN
+
+
+class SplitAPKHandler:
+    """Handler for split APK bundles (XAPK, APKM)."""
+
+    def detect_bundle_type(self, file_path: Path) -> BundleType:
+        """Detect the bundle type of a file.
+
+        Args:
+            file_path: Path to the file to detect.
+
+        Returns:
+            The detected BundleType.
+
+        """
+        return detect_bundle_type(file_path)
+
+    def _find_apkeditor(self) -> Path | None:
+        """Find APKEditor JAR in known locations.
+
+        Returns:
+            Path to APKEditor JAR if found, None otherwise.
+
+        """
+        candidates = [
+            Path("bin/APKEditor.jar"),
+            Path("APKEditor.jar"),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return None
+
+    def merge_splits(self, bundle_path: Path, output_path: Path) -> bool:
+        """Merge a split APK bundle into a single APK.
+
+        Args:
+            bundle_path: Path to the bundle file.
+            output_path: Path to write the merged APK.
+
+        Returns:
+            True if merge succeeded, False otherwise.
+
+        """
+        bundle_type = self.detect_bundle_type(bundle_path)
+        if bundle_type == BundleType.APK:
+            try:
+                shutil.copy2(bundle_path, output_path)
+                return True
+            except OSError:
+                return False
+        if bundle_type in (BundleType.XAPK, BundleType.APKM):
+            jar = self._find_apkeditor()
+            if jar is None:
+                return False
+            try:
+                result = subprocess.run(
+                    ["java", "-jar", str(jar), "merge", "-i", str(bundle_path), "-o", str(output_path)],
+                    capture_output=True,
+                )
+                return result.returncode == 0
+            except OSError:
+                return False
+        return False
+
+    def extract_splits(self, bundle_path: Path, output_dir: Path) -> list[Path]:
+        """Extract split APKs from a bundle.
+
+        Args:
+            bundle_path: Path to the bundle file.
+            output_dir: Directory to extract splits into.
+
+        Returns:
+            List of extracted APK paths.
+
+        """
+        if not bundle_path.exists():
+            return []
+
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            splits: list[Path] = []
+            with zipfile.ZipFile(bundle_path, "r") as zf:
+                for name in zf.namelist():
+                    if name.endswith(".apk"):
+                        dest = output_dir / Path(name).name
+                        zf.extract(name, output_dir)
+                        extracted = output_dir / name
+                        if extracted != dest:
+                            shutil.move(str(extracted), dest)
+                        splits.append(dest)
+            return splits
+        except (zipfile.BadZipFile, OSError):
+            return []
+
+
+class AAPT2Manager:
+    """Manager for downloading and using AAPT2 binaries for APK optimization."""
+
+    SOURCES: list[str] = [
+        "Graywizard888/Custom-Enhancify-aapt2-binary",
+        "ReVanced-Extended-Organization/AAPT2",
+    ]
+
+    def __init__(self, cache_dir: Path | None = None) -> None:
+        """Initialize AAPT2Manager.
+
+        Args:
+            cache_dir: Directory for caching downloaded AAPT2 binaries.
+
+        """
+        self.cache_dir = cache_dir or Path.home() / ".cache" / "revanced" / "aapt2"
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def get_aapt2(self, arch: str = "arm64-v8a") -> Path | None:
+        """Get the AAPT2 binary for the given architecture.
+
+        Checks the cache first, then tries to download from known sources.
+        Falls back to the system PATH.
+
+        Args:
+            arch: Target architecture (e.g., "arm64-v8a").
+
+        Returns:
+            Path to the AAPT2 binary, or None if unavailable.
+
+        """
+        from scripts.utils.network import gh_dl
+
+        cached = self.cache_dir / f"aapt2-{arch}"
+        if cached.exists():
+            return cached
+
+        for source in self.SOURCES:
+            url = f"https://github.com/{source}/releases/latest/download/aapt2-{arch}"
+            if gh_dl(cached, url):
+                cached.chmod(0o755)
+                return cached
+
+        # Fallback to system PATH
+        system_aapt2 = shutil.which("aapt2")
+        if system_aapt2:
+            return Path(system_aapt2)
+
+        return None
+
+    def optimize_apk(
+        self,
+        apk_path: Path,
+        output_path: Path,
+        *,
+        arch: str = "arm64-v8a",
+        languages: list[str] | None = None,
+        densities: list[str] | None = None,
+    ) -> bool:
+        """Optimize an APK using AAPT2 resource filtering.
+
+        Args:
+            apk_path: Path to the input APK.
+            output_path: Path to write the optimized APK.
+            arch: Target architecture for AAPT2 binary.
+            languages: Language codes to keep (e.g., ["en", "de"]).
+            densities: Screen densities to keep (e.g., ["xxhdpi"]).
+
+        Returns:
+            True if optimization succeeded, False otherwise.
+
+        """
+        if not apk_path.exists():
+            return False
+
+        aapt2 = self.get_aapt2(arch)
+        if aapt2 is None:
+            return False
+
+        cmd = [str(aapt2), "optimize", "-o", str(output_path), str(apk_path)]
+        if languages:
+            cmd += ["--target-locales", ",".join(languages)]
+        if densities:
+            cmd += ["--target-densities", ",".join(densities)]
+
+        try:
+            result = subprocess.run(cmd, capture_output=True)
+            return result.returncode == 0
+        except OSError:
+            return False
 
 
 def check_signature(apk_path: Path) -> bool:

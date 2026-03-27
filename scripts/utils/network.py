@@ -11,7 +11,6 @@ import sys
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -122,7 +121,7 @@ class HttpClient:
                 parts = line.split("\t")
                 if len(parts) >= 7:
                     cookies[parts[5]] = parts[6]
-        except (OSError, IOError):
+        except OSError:
             pass
         return cookies
 
@@ -640,6 +639,89 @@ def _executor_download_with_lock(
         config,
         headers,
     )
+
+
+def aria2c_download(
+    urls: list[str],
+    output_path: str | Path,
+    *,
+    max_connections: int = 16,
+    split: int = 16,
+    min_split_size: str = "1M",
+    extra_args: list[str] | None = None,
+) -> bool:
+    """Download a file using aria2c for multi-connection acceleration.
+
+    Args:
+        urls: List of URLs to download (mirrors).
+        output_path: Destination file path.
+        max_connections: Maximum concurrent connections per server.
+        split: Number of chunks to split the download into.
+        min_split_size: Minimum segment size for splitting.
+        extra_args: Additional aria2c CLI arguments.
+
+    Returns:
+        True if download succeeded, False otherwise.
+
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("aria2c"):
+        return False
+
+    output_path = Path(output_path)
+    cmd = [
+        "aria2c",
+        f"--max-connection-per-server={max_connections}",
+        f"--split={split}",
+        f"--min-split-size={min_split_size}",
+        "--dir",
+        str(output_path.parent),
+        "--out",
+        output_path.name,
+    ]
+    if extra_args:
+        cmd.extend(extra_args)
+    cmd.extend(urls)
+
+    try:
+        result = subprocess.run(cmd, capture_output=True)
+        return result.returncode == 0
+    except OSError:
+        return False
+
+
+def download_with_aria2c_fallback(
+    urls: list[str],
+    output_path: str | Path,
+    *,
+    config: HttpClientConfig | None = None,
+    headers: dict[str, str] | None = None,
+    max_connections: int = 16,
+) -> bool:
+    """Download a file using aria2c if available, falling back to httpx.
+
+    Args:
+        urls: List of URLs to download (first URL used for httpx fallback).
+        output_path: Destination file path.
+        config: Optional HTTP client configuration for fallback.
+        headers: Optional headers for fallback download.
+        max_connections: Max connections for aria2c.
+
+    Returns:
+        True if download succeeded, False otherwise.
+
+    """
+    import shutil
+
+    output_path = Path(output_path)
+    if shutil.which("aria2c") and aria2c_download(urls, output_path, max_connections=max_connections):
+        return True
+
+    # Fallback to httpx via download_with_lock
+    primary_url = urls[0] if urls else ""
+    return download_with_lock(primary_url, output_path, config=config, headers=headers)
 
 
 def main() -> int:

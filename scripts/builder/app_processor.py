@@ -12,9 +12,9 @@ import os
 import subprocess
 import sys
 import tempfile
-from concurrent.futures import Future, ThreadPoolExecutor, wait
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
@@ -106,7 +106,7 @@ class BuildSummary:
     total: int
     succeeded: list[BuildResult]
     failed: list[BuildResult]
-    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
     end_time: datetime | None = None
 
     @property
@@ -465,7 +465,7 @@ class AppProcessor:
         Returns:
             BuildSummary with results for all builds.
         """
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
         all_results: list[BuildResult] = []
 
         logger.info("Processing all enabled apps")
@@ -479,7 +479,7 @@ class AppProcessor:
                 succeeded=[],
                 failed=[],
                 start_time=start_time,
-                end_time=datetime.now(timezone.utc),
+                end_time=datetime.now(UTC),
             )
 
         with JobRunner(max_workers=self.parallel_jobs) as runner:
@@ -521,7 +521,7 @@ class AppProcessor:
             succeeded=[r for r in all_results if r.success],
             failed=[r for r in all_results if not r.success],
             start_time=start_time,
-            end_time=datetime.now(timezone.utc),
+            end_time=datetime.now(UTC),
         )
 
         if self.notifier:
@@ -905,12 +905,9 @@ class AppProcessor:
         Returns:
             List of architecture strings.
         """
-        if arch == Architecture.BOTH:
+        if arch == Architecture.BOTH or arch == Architecture.ALL:
             return [Architecture.ARM64_V8A.value, Architecture.ARM_V7A.value]
-        elif arch == Architecture.ALL:
-            return [Architecture.ARM64_V8A.value, Architecture.ARM_V7A.value]
-        else:
-            return [arch.value]
+        return [arch.value]
 
     def _determine_download_source(self, app_config: AppConfig) -> DownloadSource:
         """Determine download source from app config.
@@ -925,15 +922,15 @@ class AppProcessor:
 
         if options.get("apkmirror_dlurl"):
             return DownloadSource.APKMIRROR
-        elif options.get("uptodown_dlurl"):
+        if options.get("uptodown_dlurl"):
             return DownloadSource.UPTODOWN
-        elif options.get("apkpure_dlurl"):
+        if options.get("apkpure_dlurl"):
             return DownloadSource.APKPURE
-        elif options.get("archive_dlurl"):
+        if options.get("archive_dlurl"):
             return DownloadSource.ARCHIVE
-        elif options.get("aptoide_dlurl"):
+        if options.get("aptoide_dlurl"):
             return DownloadSource.APTOIDE
-        elif options.get("apkmonk_dlurl"):
+        if options.get("apkmonk_dlurl"):
             return DownloadSource.APKMonk
 
         return DownloadSource.APKMIRROR
@@ -1054,7 +1051,6 @@ class JavaRunner:
         timeout: int | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """Run a subprocess."""
-        ...
 
     def run_jar(
         self,
@@ -1064,7 +1060,6 @@ class JavaRunner:
         timeout: int | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """Run a JAR file."""
-        ...
 
 
 if __name__ == "__main__":
