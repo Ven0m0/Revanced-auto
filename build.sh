@@ -180,7 +180,7 @@ echo "- [ReVanced GmsCore](https://github.com/ReVanced/GmsCore/releases/latest)"
 echo "- [Wst_Xda GmsCore (Morphe)](https://github.com/MorpheApp/MicroG-RE/releases/latest)" >> build.md
 echo "- [YT-Advanced GmsCore (Rex)](https://github.com/YT-Advanced/GmsCore/releases/latest)" >> build.md
 echo "" >> build.md
-cat "$TEMP_DIR"/*-rv/changelog.md 2> /dev/null || : >> build.md
+cat "$TEMP_DIR"/*-rv/changelog.md 2> /dev/null || :; } >> build.md
 # Add skipped builds info
 SKIPPED=$(cat "$TEMP_DIR"/skipped 2> /dev/null || :)
 if [[ $SKIPPED != "" ]]; then
