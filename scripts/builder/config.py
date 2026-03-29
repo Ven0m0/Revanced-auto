@@ -11,16 +11,15 @@ Exit codes:
 
 from __future__ import annotations
 
-import importlib.metadata
 import json
 import os
-import sys
 import re
+import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 if sys.version_info < (3, 11):
     import tomllib
@@ -259,12 +258,12 @@ class ConfigLoader:
 
             try:
                 if path.suffix.lower() == ".json":
-                    with open(path, "r", encoding="utf-8") as f:
+                    with open(path, encoding="utf-8") as f:
                         data = json.load(f)
                 else:
                     with open(path, "rb") as f:
                         data = tomllib.load(f)
-            except (OSError, IOError) as e:
+            except OSError as e:
                 raise ConfigError(f"Failed to read config file: {e}", path=str(path)) from e
             except (ValueError, json.JSONDecodeError) as e:
                 raise ConfigError(f"Failed to parse config: {e}", path=str(path)) from e
@@ -307,9 +306,9 @@ class ConfigLoader:
         """
         if isinstance(data, dict):
             return {k: self._substitute_env_vars(v) for k, v in data.items()}
-        elif isinstance(data, list):
+        if isinstance(data, list):
             return [self._substitute_env_vars(item) for item in data]
-        elif isinstance(data, str):
+        if isinstance(data, str):
             return self._substitute_string_env(data)
         return data
 
@@ -385,16 +384,15 @@ class ConfigLoader:
                         raise
                     except (TypeError, ValueError) as e:
                         raise ConfigError(f"Invalid config for app '{app_name}': {e}") from e
-            else:
-                if app_name not in apps:
-                    apps[app_name] = AppConfig(name=app_name)
+            elif app_name not in apps:
+                apps[app_name] = AppConfig(name=app_name)
 
         return Config(
             global_settings=global_settings,
             apps=apps,
             modules=modules,
             source_files=source_files,
-            loaded_at=datetime.now(timezone.utc),
+            loaded_at=datetime.now(UTC),
         )
 
     def _parse_modules(self, app_name: str, data: dict[str, Any]) -> dict[str, ModuleConfig]:
@@ -485,7 +483,7 @@ def main(argv: list[str]) -> int:
     try:
         config = load_config(config_path)
         print(f"Loaded config from: {config.source_files}")
-        print(f"Global settings:")
+        print("Global settings:")
         print(f"  parallel_jobs: {config.global_settings.parallel_jobs}")
         print(f"  build_mode: {config.global_settings.build_mode}")
         print(f"  patches_source: {config.global_settings.patches_source}")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, final
 
@@ -147,8 +147,8 @@ class TelegramNotifier(BaseNotifier):
         self._chat_id = chat_id
         self._api_url = f"https://api.telegram.org/bot{bot_token}"
 
-    async def send(self, notification: BuildNotification) -> bool:
-        """Send via Telegram Bot API.
+    async def _async_send(self, notification: BuildNotification) -> bool:
+        """Send via Telegram Bot API (async implementation).
 
         Args:
             notification: Build notification to send.
@@ -175,17 +175,10 @@ class TelegramNotifier(BaseNotifier):
         import asyncio
 
         try:
-            loop = asyncio.get_running_loop()
-            import warnings
-
-            warnings.warn(
-                "Synchronous send() called in async context. Use 'await telegram_notifier.send(notification)' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            return asyncio.run(self.send(notification))
+            asyncio.get_running_loop()
         except RuntimeError:
-            return asyncio.run(self.send(notification))
+            return asyncio.run(self._async_send(notification))
+        return asyncio.run(self._async_send(notification))
 
 
 @final
@@ -255,8 +248,6 @@ class GitHubReleaseNotifier(BaseNotifier):
         Returns:
             URL of created release on success, empty string on failure.
         """
-        import json
-
         url = f"{self._api_url}/releases"
         headers = {
             "Authorization": f"token {self._github_token}",

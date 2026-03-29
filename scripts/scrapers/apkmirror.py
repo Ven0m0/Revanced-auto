@@ -19,7 +19,6 @@ from scripts.scrapers.base import (
     VersionInfo,
 )
 
-
 type ArchType = Literal["universal", "noarch", "arm64-v8a", "armeabi-v7a", "arm64-v8a + armeabi-v7a"]
 type BundleType = Literal["APK", "BUNDLE"]
 

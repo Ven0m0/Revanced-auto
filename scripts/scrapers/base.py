@@ -1,12 +1,11 @@
 """Base scraper class and common types for all APK download sources."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
 import httpx
-
 
 APK_ARCHIVE_URL = "https://archive.org"
 

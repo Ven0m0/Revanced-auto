@@ -73,8 +73,7 @@ def run_build(args: argparse.Namespace) -> int:
             version_tracker.save()
             log.info("Build completed successfully")
             return 0
-        else:
-            log.abort("Build failed")
+        log.abort("Build failed")
     except Exception as e:
         log.abort(f"Build error: {e}")
 
@@ -100,9 +99,8 @@ def run_check(args: argparse.Namespace) -> int:
     if needs_build:
         log.info("Updates available, build needed")
         return 0
-    else:
-        log.info("All apps are up to date")
-        return 0
+    log.info("All apps are up to date")
+    return 0
 
 
 def run_version_tracker(args: argparse.Namespace) -> int:
@@ -130,13 +128,13 @@ def run_version_tracker(args: argparse.Namespace) -> int:
             log.info("All apps are up to date")
         return 0
 
-    elif subcommand == "save":
+    if subcommand == "save":
         log.info("Saving version state...")
         version_tracker.save()
         log.info("Version state saved")
         return 0
 
-    elif subcommand == "show":
+    if subcommand == "show":
         state = version_tracker.get_state()
         if state:
             log.info("Current version state:")
@@ -146,14 +144,13 @@ def run_version_tracker(args: argparse.Namespace) -> int:
             log.info("No version state recorded")
         return 0
 
-    elif subcommand == "reset":
+    if subcommand == "reset":
         log.info("Resetting version state...")
         version_tracker.reset()
         log.info("Version state reset")
         return 0
 
-    else:
-        log.abort(f"Unknown subcommand: {subcommand}")
+    log.abort(f"Unknown subcommand: {subcommand}")
 
 
 def run_cache(args: argparse.Namespace) -> int:
@@ -227,15 +224,14 @@ def main() -> int:
     try:
         if args.command == "build":
             return run_build(args)
-        elif args.command == "check":
+        if args.command == "check":
             return run_check(args)
-        elif args.command == "version-tracker":
+        if args.command == "version-tracker":
             return run_version_tracker(args)
-        elif args.command == "cache":
+        if args.command == "cache":
             return run_cache(args)
-        else:
-            parser.print_help()
-            return 1
+        parser.print_help()
+        return 1
     except KeyboardInterrupt:
         log.abort("Interrupted", code=130)
 

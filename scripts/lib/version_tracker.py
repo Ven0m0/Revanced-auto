@@ -17,7 +17,7 @@ from scripts.version_tracker import (
 try:
     from importlib.resources import files
 except ImportError:
-    from importlib_resources import files  # type: ignore[no-redef]
+    pass  # type: ignore[no-redef]
 
 __all__ = ["VersionTracker"]
 

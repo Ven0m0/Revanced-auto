@@ -8,16 +8,18 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Any
 
 from scripts.builder.config import (
     AppConfig,
-    Config as BuilderConfig,
     ConfigError,
-    ConfigLoader,
     GlobalConfig,
     IntegrationSource,
     ModuleConfig,
+)
+from scripts.builder.config import (
+    Config as BuilderConfig,
+)
+from scripts.builder.config import (
     load_config as builder_load_config,
 )
 

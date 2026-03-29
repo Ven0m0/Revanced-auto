@@ -13,7 +13,6 @@ from selectolax.parser import HTMLParser
 
 from scripts.scrapers.base import DownloadResult, ScraperBase, VersionInfo
 
-
 SUPPORTED_ARCHS = frozenset({"arm64-v8a", "armeabi-v7a", "x86", "x86_64"})
 
 XAPK_MIME_TYPES = frozenset(
@@ -317,15 +316,14 @@ class UptodownScraper(ScraperBase):
 
             if target_version.is_xapk:
                 return await self._download_xapk(content, output_path, version)
-            else:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_bytes(content)
-                return DownloadResult(
-                    success=True,
-                    file_path=output_path,
-                    version=version,
-                    error=None,
-                )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(content)
+            return DownloadResult(
+                success=True,
+                file_path=output_path,
+                version=version,
+                error=None,
+            )
         except Exception as e:
             return DownloadResult(
                 success=False,

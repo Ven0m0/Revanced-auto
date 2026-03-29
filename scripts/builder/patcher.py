@@ -14,18 +14,14 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
-import shutil
 import subprocess
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from scripts.builder.cli_profiles import (
-    CLIProfile,
-    CLIProfileType,
     REVANCED_CLI_V6,
-    build_cli_args,
+    CLIProfile,
 )
 from scripts.builder.config import AppConfig
 from scripts.utils.apk import APKSigner, align_apk, verify_signature
@@ -160,7 +156,7 @@ def _get_file_hash(file_path: Path) -> str | None:
             for chunk in iter(lambda: f.read(8192), b""):
                 sha256_hash.update(chunk)
         return sha256_hash.hexdigest()
-    except (OSError, IOError):
+    except OSError:
         return None
 
 
@@ -790,9 +786,8 @@ def main(argv: list[str]) -> int:
     if result.success:
         print(f"Successfully patched APK: {result.output_apk}")
         return 0
-    else:
-        print(f"Error: {result.error}", file=__import__("sys").stderr)
-        return 1
+    print(f"Error: {result.error}", file=__import__("sys").stderr)
+    return 1
 
 
 if __name__ == "__main__":

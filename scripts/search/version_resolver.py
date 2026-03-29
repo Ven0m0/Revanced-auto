@@ -39,12 +39,11 @@ class VersionResolver:
         """
         if version_mode == "auto":
             return self._resolve_auto(pkg_name, patches_output, include_patches, exclude_patches)
-        elif version_mode == "latest":
+        if version_mode == "latest":
             return self._resolve_latest(pkg_name, patches_output, include_patches, exclude_patches)
-        elif version_mode == "beta":
+        if version_mode == "beta":
             return self._resolve_beta(pkg_name, patches_output, include_patches, exclude_patches)
-        else:
-            return self._validate_specific_version(pkg_name, version_mode, patches_output)
+        return self._validate_specific_version(pkg_name, version_mode, patches_output)
 
     def _resolve_auto(
         self,
