@@ -433,7 +433,10 @@ def download_with_lock(
     lock_file = Path(f"{temp_path}.lock")
     temp_dir_path = temp_path.parent
     temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    try:
+        temp_dir_path.chmod(0o700)
+    except OSError:
+        pass
 
     if output_path.exists():
         return True
@@ -497,7 +500,10 @@ async def async_download_with_lock(
     lock_file = Path(f"{temp_path}.lock")
     temp_dir_path = temp_path.parent
     temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    try:
+        temp_dir_path.chmod(0o700)
+    except OSError:
+        pass
 
     if output_path.exists():
         return True

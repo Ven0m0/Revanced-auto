@@ -316,8 +316,15 @@ class UptodownScraper(ScraperBase):
 
             if target_version.is_xapk:
                 return await self._download_xapk(content, output_path, version)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(content)
+
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                self._save_apk,
+                content,
+                output_path,
+            )
+
             return DownloadResult(
                 success=True,
                 file_path=output_path,
@@ -406,8 +413,15 @@ class UptodownScraper(ScraperBase):
                     )
 
                 main_apk = apk_files[0]
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_bytes(zf.read(main_apk))
+                apk_content = zf.read(main_apk)
+
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(
+                    None,
+                    self._save_apk,
+                    apk_content,
+                    output_path,
+                )
 
                 return DownloadResult(
                     success=True,
@@ -429,6 +443,17 @@ class UptodownScraper(ScraperBase):
                 version=version,
                 error=f"XAPK extraction failed: {e}",
             )
+
+    def _save_apk(self, content: bytes, output_path: Path) -> None:
+        """Save APK content to file.
+
+        Args:
+            content: APK file content.
+            output_path: Path to save the APK.
+
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(content)
 
     def _request_with_retry(self, url: str) -> httpx.Response:
         """Make HTTP request with retry logic.
