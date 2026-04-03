@@ -3,6 +3,9 @@
 *.apkm
 *.zip
 *.xapk
+/bin/apksigner.jar
+/bin/dexlib2.jar
+/bin/paccer.jar
 /temp
 /build
 build.md

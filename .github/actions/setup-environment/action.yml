@@ -31,6 +31,11 @@ runs:
     run: |
       sdkmanager "build-tools;34.0.0"
       echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+  - name: Prepare bundled binaries
+    shell: bash
+    run: |
+      source utils.sh
+      check_binaries
   - name: Install uv
     uses: astral-sh/setup-uv@v7
     with:

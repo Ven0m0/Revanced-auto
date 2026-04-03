@@ -21,7 +21,7 @@ uv sync --locked --all-groups
 bash ./check-env.sh
 ```
 
-`check-env.sh` verifies required tools, Java, bundled binaries in `bin/`, optional helpers, assets, and `config.toml` syntax.
+`check-env.sh` verifies required tools, Java, downloads the required `bin/` jars when missing, checks optional helpers and assets, and validates `config.toml` syntax.
 
 ## Quick start
 
@@ -117,7 +117,7 @@ Config docs and generators:
 - Builds require `KEYSTORE_PASSWORD` and `KEYSTORE_ENTRY_PASSWORD`.
 - Default signing values come from the shell path: `KEYSTORE_PATH=assets/ks.keystore`, `KEYSTORE_ALIAS=jhc`, `KEYSTORE_SIGNER=jhc`.
 - Stock APK signature checks use `assets/sig.txt` when entries are available.
-- Final APKs are re-signed with `bin/apksigner.jar` using **v1 + v2 only**; **v3/v4 are intentionally disabled** for compatibility and predictable signing behavior.
+- Final APKs are re-signed with `bin/apksigner.jar` using **v1 + v2 only**; **v3/v4 are intentionally disabled** for compatibility and predictable signing behavior. The jar is downloaded on demand when missing.
 
 Normal flow:
 
