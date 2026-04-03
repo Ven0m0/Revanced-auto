@@ -35,7 +35,10 @@ runs:
     shell: bash
     run: |
       source utils.sh
-      check_binaries
+      check_binaries || {
+        echo "Failed to prepare bundled binaries in bin/" >&2
+        exit 1
+      }
   - name: Install uv
     uses: astral-sh/setup-uv@v7
     with:

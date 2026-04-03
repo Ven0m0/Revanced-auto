@@ -123,7 +123,10 @@ _ensure_binary() {
     rm -f "$file_path"
   fi
 
-  req "${BINARIES_SOURCE_BASE_URL}/${name}" "$file_path" || return 1
+  req "${BINARIES_SOURCE_BASE_URL}/${name}" "$file_path" || {
+    epr "Failed to download $file_path from ${BINARIES_SOURCE_BASE_URL}/${name}"
+    return 1
+  }
 
   actual_sha=$(_sha256_file "$file_path") || {
     epr "Failed to verify checksum for $file_path"
