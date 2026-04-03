@@ -105,9 +105,8 @@ The sample config currently enables `Music-Extended` and `YouTube-Extended`; oth
 
 Config docs and generators:
 
-- [`CONFIG.md`](./CONFIG.md) — config reference
+- [`docs/CONFIG.md`](./docs/CONFIG.md) — config reference
 - [`docs/README.md`](./docs/README.md) — docs index
-- [`docs/FEATURES.md`](./docs/FEATURES.md) — cache, generator, changelog, dependency tooling
 - [`docs/index.html`](./docs/index.html) — local docs landing page
 - [`docs/generator.html`](./docs/generator.html) — local config generator
 - Hosted generator used by this repo's config format: <https://j-hc.github.io/rvmm-config-gen/>
@@ -142,7 +141,7 @@ For YouTube and YouTube Music builds, expect to install a compatible GmsCore/Mic
 - `.github/last_built_versions.json` — saved version-tracker state
 - `build.md` — legacy Bash-flow build notes/changelog
 
-Cache commands use `temp/` by default with a TTL of `86400` seconds (24 hours). Expired entries are reused only until cleanup or replacement; see [`docs/FEATURES.md`](./docs/FEATURES.md) for cache behavior details. Set `CACHE_DIR` to override the cache location.
+Cache commands use `temp/` by default with a TTL of `86400` seconds (24 hours). Expired entries are reused only until cleanup or replacement. Set `CACHE_DIR` to override the cache location.
 
 ## Troubleshooting
 
@@ -172,7 +171,6 @@ Useful env vars:
 
 ## Docs
 
-- [`CONFIG.md`](./CONFIG.md)
+- [`docs/CONFIG.md`](./docs/CONFIG.md)
 - [`docs/README.md`](./docs/README.md)
-- [`docs/FEATURES.md`](./docs/FEATURES.md)
 - [`AGENTS.md`](./AGENTS.md)
