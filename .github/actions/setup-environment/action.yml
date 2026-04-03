@@ -31,12 +31,12 @@ runs:
     run: |
       sdkmanager "build-tools;34.0.0"
       echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
-  - name: Prepare bundled binaries
+  - name: Bootstrap pinned bin JAR dependencies
     shell: bash
     run: |
       source utils.sh
       check_binaries || {
-        echo "Failed to prepare bundled binaries in bin/" >&2
+        echo "Failed to bootstrap/download pinned bin/*.jar dependencies" >&2
         exit 1
       }
   - name: Install uv
