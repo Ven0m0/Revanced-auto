@@ -6,7 +6,7 @@ set -euo pipefail
 # Returns 1 if any tool is missing
 check_system_tools() {
   local missing=()
-  for tool in jq java zip uv; do
+  for tool in jq java zip uv curl sha256sum; do
     if ! command -v "$tool" &>/dev/null; then
       missing+=("$tool")
     fi
@@ -53,9 +53,6 @@ check_assets() {
 # Check optional tools
 check_optional_tools() {
   local warnings=()
-  if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
-    warnings+=("curl or wget (for downloads)")
-  fi
   if ! command -v zipalign &>/dev/null; then
     warnings+=("zipalign (for APK optimization)")
   fi
@@ -84,18 +81,63 @@ check_python_version() {
     return 1
   fi
 }
-# Check binary files
-check_binaries() {
-  local missing=()
-  for bin in apksigner.jar dexlib2.jar paccer.jar; do
-    if [[ ! -f "bin/$bin" ]]; then
-      missing+=("bin/$bin")
+
+BINARIES_SOURCE_REF="${BINARIES_SOURCE_REF:-c62a54d5a04617400cd19ef33cba2dfdb5b0947f}"
+readonly BINARIES_SOURCE_REF
+# SHA-256 values for the pinned upstream binaries at BINARIES_SOURCE_REF.
+readonly APKSIGNER_SHA256="eefdd6aed9db9fb849e4c98a50d8741e19d1b674ba6547220bcb9c3ed152123a"
+readonly DEXLIB2_SHA256="bbd18fb81e521c362fb37fa89d93974debb2107a9d2e1057cdd8329b92479466"
+readonly PACCER_SHA256="cbc9d084b2117a203a1818fba3c73b06cd8817b147a185c00975980e86d5dead"
+
+_sha256_file() {
+  sha256sum "$1" | awk '{print $1}'
+}
+
+_ensure_binary() {
+  local name=$1 expected_sha=$2
+  local file_path="${BIN_DIR}/${name}"
+  local base_url="https://raw.githubusercontent.com/j-hc/revanced-magisk-module/${BINARIES_SOURCE_REF}/bin"
+  local actual_sha=""
+
+  mkdir -p "$BIN_DIR"
+
+  if [[ -f "$file_path" ]]; then
+    actual_sha=$(_sha256_file "$file_path") || {
+      epr "Failed to verify checksum for $file_path"
+      return 1
+    }
+    if [[ "$actual_sha" == "$expected_sha" ]]; then
+      log_debug "Binary ready: $file_path"
+      return 0
     fi
-  done
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    epr "Missing binaries: ${missing[*]}"
+    log_warn "Checksum mismatch for $file_path; re-downloading"
+    rm -f "$file_path"
+  fi
+
+  req "${base_url}/${name}" "$file_path" || {
+    epr "Failed to download $file_path from ${base_url}/${name}"
+    return 1
+  }
+
+  actual_sha=$(_sha256_file "$file_path") || {
+    epr "Failed to verify checksum for $file_path"
+    return 1
+  }
+  if [[ "$actual_sha" != "$expected_sha" ]]; then
+    rm -f "$file_path"
+    epr "Checksum mismatch for $file_path"
     return 1
   fi
+
+  log_info "Downloaded ${file_path}"
+  return 0
+}
+
+# Check binary files
+check_binaries() {
+  _ensure_binary apksigner.jar "$APKSIGNER_SHA256" || return 1
+  _ensure_binary dexlib2.jar "$DEXLIB2_SHA256" || return 1
+  _ensure_binary paccer.jar "$PACCER_SHA256" || return 1
   return 0
 }
 # Check config file syntax
@@ -121,6 +163,9 @@ check_prerequisites() {
     exit 1
   fi
   if ! check_java_version; then
+    exit 1
+  fi
+  if ! check_binaries; then
     exit 1
   fi
   check_assets
