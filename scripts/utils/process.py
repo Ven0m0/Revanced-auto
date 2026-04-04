@@ -305,14 +305,16 @@ class AsyncJobRunner:
         return await asyncio.to_thread(self._runner.get_result, name)
 
 
+def sample_job(value: int) -> int:
+    """Sample job function for demonstration."""
+    return value * 2
+
+
 def main() -> int:
     """Run a simple demonstration of the JobRunner module."""
     parser = argparse.ArgumentParser(description="JobRunner demonstration")
     parser.add_argument("--workers", type=int, default=2, help="Number of workers")
     args = parser.parse_args()
-
-    def sample_job(value: int) -> int:
-        return value * 2
 
     with JobRunner(max_workers=args.workers) as runner:
         for i in range(4):
