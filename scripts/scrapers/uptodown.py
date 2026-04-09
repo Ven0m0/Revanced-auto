@@ -123,7 +123,8 @@ class UptodownScraper(ScraperBase):
 
         """
         try:
-            response = self._request_with_retry(url)
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(None, self._request_with_retry, url)
             return response.text
         except Exception:
             return None
@@ -311,7 +312,8 @@ class UptodownScraper(ScraperBase):
             )
 
         try:
-            response = self._request_with_retry(target_version.url)
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(None, self._request_with_retry, target_version.url)
             content = response.content
 
             if target_version.is_xapk:
