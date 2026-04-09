@@ -112,7 +112,7 @@ class ArchiveScraper(ScraperBase):
                     v.url,
                     output_path,
                     v.version,
-                )
+                loop = asyncio.get_running_loop()
 
         return DownloadResult(
             success=False,
