@@ -413,9 +413,9 @@ class UptodownScraper(ScraperBase):
                     )
 
                 main_apk = apk_files[0]
-                apk_content = zf.read(main_apk)
-
                 loop = asyncio.get_event_loop()
+                apk_content = await loop.run_in_executor(None, zf.read, main_apk)
+
                 await loop.run_in_executor(
                     None,
                     self._save_apk,
