@@ -70,7 +70,7 @@ check_optional_tools() {
 # Check uv and Python version (>= 3.11 for tomllib)
 check_python_version() {
   if ! command -v uv &>/dev/null; then
-    epr "uv not found. See https://github.com/astral-sh/uv for installation instructions."
+    epr "uv not found (see https://astral.sh/uv for installation instructions)"
     return 1
   fi
   if uv run python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2>/dev/null; then
