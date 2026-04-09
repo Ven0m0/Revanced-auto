@@ -131,7 +131,7 @@ class JobRunner:
             RuntimeError: If the runner is not started or is shut down.
         """
         if self._executor is None:
-            msg = "JobRunner not started. Use context manager."
+            msg = "JobRunner not started. Use the context manager before submitting jobs."
             raise RuntimeError(msg)
 
         if kwargs is None:
@@ -279,7 +279,7 @@ class AsyncJobRunner:
         if kwargs is None:
             kwargs = {}
 
-        return self._runner.submit(func, args, kwargs, name)
+        return await asyncio.to_thread(self._runner.submit, func, args, kwargs, name)
 
     async def wait_all_async(self) -> list[JobResult[Any]]:
         """Wait for all submitted jobs to complete asynchronously.
