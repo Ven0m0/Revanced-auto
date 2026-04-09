@@ -34,14 +34,21 @@ _req() {
     local normalized_op
     normalized_op=$(realpath -m -- "$op")
     local hash
-    hash=$(printf '%s' "$normalized_op" | sha256sum | cut -d' ' -f1)
+    hash=$(printf '%s' "$normalized_op" | sha256sum | cut -c1-32)
     local work_dir="${TEMP_DIR}/work.${hash}"
 
     # Atomically create a secure directory for this task
     if ! mkdir -m 700 "$work_dir" 2>/dev/null; then
-      # If it exists, ensure it's a real directory we own (not a symlink)
-      if [[ -L "$work_dir" || ! -d "$work_dir" || ! -O "$work_dir" ]]; then
-        epr "Security error: temporary directory is invalid or insecure: $work_dir"
+      if [[ -L "$work_dir" ]]; then
+        epr "Security error: temporary directory is a symlink: $work_dir"
+        return 1
+      fi
+      if [[ ! -d "$work_dir" ]]; then
+        epr "Security error: temporary directory is invalid: $work_dir"
+        return 1
+      fi
+      if [[ ! -O "$work_dir" ]]; then
+        epr "Security error: temporary directory ownership mismatch: $work_dir"
         return 1
       fi
       if ! chmod 700 "$work_dir"; then

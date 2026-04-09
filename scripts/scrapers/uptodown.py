@@ -132,6 +132,10 @@ class UptodownScraper(ScraperBase):
         arch_str = str(arch)
         return arch_str if arch_str in SUPPORTED_ARCHS else None
 
+    def _ensure_session_initialized(self) -> None:
+        """Initialize the shared HTTP session before offloading work to a thread."""
+        _ = self.session
+
     async def _fetch_page(self, url: str) -> str | None:
         """Fetch a page with retry logic.
 
@@ -143,7 +147,7 @@ class UptodownScraper(ScraperBase):
 
         """
         try:
-            _ = self.session
+            self._ensure_session_initialized()
             response = await asyncio.to_thread(self._request_with_retry, url)
         except Exception:
             return None
@@ -359,7 +363,7 @@ class UptodownScraper(ScraperBase):
             )
 
         try:
-            _ = self.session
+            self._ensure_session_initialized()
             response = await asyncio.to_thread(self._request_with_retry, target_version.url)
             content = response.content
 

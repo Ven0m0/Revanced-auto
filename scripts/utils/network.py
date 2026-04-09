@@ -405,7 +405,7 @@ def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
         RuntimeError: If the directory is insecure or cannot be created.
 
     """
-    path_hash = hashlib.sha256(str(output_path).encode()).hexdigest()
+    path_hash = hashlib.sha256(str(output_path).encode()).hexdigest()[:32]
     work_dir = temp_dir / f"work.{path_hash}"
     work_dir.mkdir(mode=SECURE_WORK_DIR_MODE, parents=True, exist_ok=True)
 
@@ -422,11 +422,11 @@ def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
     # Ensure restricted permissions
     try:
         work_dir.chmod(SECURE_WORK_DIR_MODE)
-    except PermissionError:
+    except PermissionError as exc:
         mode = work_dir.stat().st_mode & 0o777
         if mode & INSECURE_PERMISSION_MASK:
             msg = f"Security error: temporary directory has insecure permissions: {work_dir}"
-            raise RuntimeError(msg) from None
+            raise RuntimeError(msg) from exc
     else:
         mode = work_dir.stat().st_mode & 0o777
         if mode != SECURE_WORK_DIR_MODE:
