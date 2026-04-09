@@ -1,11 +1,18 @@
 """Archive.org scraper for j-hc-apks collection."""
 
+from __future__ import annotations
+
+import asyncio
 import re
-from re import Match
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from selectolax.parser import HTMLParser
 
 from .base import APK_ARCHIVE_URL, DownloadResult, DownloadSource, ScraperBase, VersionInfo
+
+if TYPE_CHECKING:
+    from re import Match
 
 ARCHIVE_COLLECTION = "jhc-apks"
 ARCHIVE_BASE_URL = f"{APK_ARCHIVE_URL}/download/{ARCHIVE_COLLECTION}/apks"
@@ -98,7 +105,14 @@ class ArchiveScraper(ScraperBase):
 
         for v in versions:
             if v.version == version and (arch is None or v.arch == arch):
-                return self._download_file(v.url, output_path, v.version)
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(
+                    None,
+                    self._download_file,
+                    v.url,
+                    output_path,
+                    v.version,
+                loop = asyncio.get_running_loop()
 
         return DownloadResult(
             success=False,
