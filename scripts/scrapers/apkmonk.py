@@ -10,7 +10,10 @@ import asyncio
 import re
 from pathlib import Path
 
-import httpx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import httpx
 from selectolax.parser import HTMLParser
 
 from scripts.scrapers.base import (
