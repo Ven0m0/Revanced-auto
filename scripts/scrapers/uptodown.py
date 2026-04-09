@@ -323,7 +323,7 @@ class UptodownScraper(ScraperBase):
                 self._save_apk,
                 content,
                 output_path,
-            )
+            loop = asyncio.get_running_loop()
 
             return DownloadResult(
                 success=True,
