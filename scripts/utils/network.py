@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 import httpx
 
+from scripts.lib import logging as log
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -385,19 +387,53 @@ class HttpClient:
             asyncio.get_event_loop().run_until_complete(self._async_client.aclose())
 
 
-def _get_deterministic_temp_path(temp_dir: Path, output_path: str | Path) -> Path:
-    """Generate deterministic temp path based on output path hash.
+SECURE_WORK_DIR_MODE = 0o700
+INSECURE_PERMISSION_MASK = 0o077
+
+
+def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
+    """Create and validate a secure, deterministic work directory.
 
     Args:
-        temp_dir: Temporary directory.
-        output_path: Target output path.
+        temp_dir: Parent temporary directory.
+        output_path: Target output path for the download.
 
     Returns:
-        Path to temporary file for the download.
+        Path to the secure work directory.
+
+    Raises:
+        RuntimeError: If the directory is insecure or cannot be created.
 
     """
     path_hash = hashlib.sha256(str(output_path).encode()).hexdigest()[:32]
-    return temp_dir / f"tmp.{path_hash}"
+    work_dir = temp_dir / f"work.{path_hash}"
+    work_dir.mkdir(mode=SECURE_WORK_DIR_MODE, parents=True, exist_ok=True)
+
+    # Security check: ensure it's a real directory we own (not a symlink)
+    if work_dir.is_symlink() or not work_dir.is_dir():
+        msg = f"Security error: temporary directory is invalid: {work_dir}"
+        raise RuntimeError(msg)
+
+    # Check ownership (UID match)
+    if work_dir.stat().st_uid != os.getuid():
+        msg = f"Security error: temporary directory ownership mismatch: {work_dir}"
+        raise RuntimeError(msg)
+
+    # Ensure restricted permissions
+    try:
+        work_dir.chmod(SECURE_WORK_DIR_MODE)
+    except PermissionError as exc:
+        mode = work_dir.stat().st_mode & 0o777
+        if mode & INSECURE_PERMISSION_MASK:
+            msg = f"Security error: temporary directory has insecure permissions: {work_dir}"
+            raise RuntimeError(msg) from exc
+    else:
+        mode = work_dir.stat().st_mode & 0o777
+        if mode != SECURE_WORK_DIR_MODE:
+            msg = f"Security error: temporary directory permissions mismatch: {work_dir}"
+            raise RuntimeError(msg)
+
+    return work_dir
 
 
 def download_with_lock(
@@ -426,17 +462,16 @@ def download_with_lock(
     import tempfile
 
     output_path = Path(output).resolve()
-    temp_path = _get_deterministic_temp_path(
-        Path(temp_dir) if temp_dir else Path(tempfile.gettempdir()),
-        output_path,
-    )
-    lock_file = Path(f"{temp_path}.lock")
-    temp_dir_path = temp_path.parent
-    temp_dir_path.mkdir(parents=True, exist_ok=True)
+    base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
+
     try:
-        temp_dir_path.chmod(0o700)
-    except PermissionError:
-        pass
+        work_dir = _get_secure_work_dir(base_temp, output_path)
+    except RuntimeError as exc:
+        log.error(str(exc))
+        return False
+
+    temp_path = work_dir / "download.tmp"
+    lock_file = work_dir / "lock"
 
     if output_path.exists():
         return True
@@ -493,17 +528,16 @@ async def async_download_with_lock(
     import tempfile
 
     output_path = Path(output).resolve()
-    temp_path = _get_deterministic_temp_path(
-        Path(temp_dir) if temp_dir else Path(tempfile.gettempdir()),
-        output_path,
-    )
-    lock_file = Path(f"{temp_path}.lock")
-    temp_dir_path = temp_path.parent
-    temp_dir_path.mkdir(parents=True, exist_ok=True)
+    base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
+
     try:
-        temp_dir_path.chmod(0o700)
-    except PermissionError:
-        pass
+        work_dir = _get_secure_work_dir(base_temp, output_path)
+    except RuntimeError as exc:
+        log.error(str(exc))
+        return False
+
+    temp_path = work_dir / "download.tmp"
+    lock_file = work_dir / "lock"
 
     if output_path.exists():
         return True

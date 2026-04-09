@@ -18,25 +18,73 @@ _req() {
   local retry_count=0
   local delay=$INITIAL_RETRY_DELAY
   local success=false
+  mkdir -p "$TEMP_DIR"
+  if [[ -L "$TEMP_DIR" ]]; then
+    epr "Security error: temporary directory is a symlink: $TEMP_DIR"
+    return 1
+  fi
+  if [[ ! -d "$TEMP_DIR" ]]; then
+    epr "Security error: temporary directory is invalid: $TEMP_DIR"
+    return 1
+  fi
+  if [[ ! -O "$TEMP_DIR" ]]; then
+    epr "Security error: temporary directory ownership mismatch: $TEMP_DIR"
+    return 1
+  fi
+  if ! chmod 700 "$TEMP_DIR"; then
+    epr "Security error: failed to secure temporary directory permissions: $TEMP_DIR"
+    return 1
+  fi
   # If output file exists, skip download
   if [[ "$op" != "-" && -f "$op" ]]; then
     log_debug "File already exists, skipping download: $op"
     return 0
   fi
   # Handle temporary file for downloads with proper locking
-  local dlp="" lock_fd
+  local dlp="" lock_fd lock_file=""
+  local cookie_file="${TEMP_DIR}/cookie.txt"
   if [[ "$op" != "-" ]]; then
     # Deterministic hash-based temp path (not mktemp) so concurrent downloads
     # of the same destination share one temp file and correctly serialize on the lock
-    mkdir -p "$TEMP_DIR"
-    chmod 700 "$TEMP_DIR"
-    dlp="${TEMP_DIR}/tmp.$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)"
-    local lock_file="${dlp}.lock"
+    local normalized_op
+    normalized_op=$(realpath -m -- "$op")
+    local hash
+    hash=$(printf '%s' "$normalized_op" | sha256sum | cut -c1-32)
+    local work_dir="${TEMP_DIR}/work.${hash}"
+
+    # Atomically create a secure directory for this task
+    if ! mkdir -m 700 "$work_dir" 2>/dev/null; then
+      if [[ -L "$work_dir" ]]; then
+        epr "Security error: temporary directory is a symlink: $work_dir"
+        return 1
+      fi
+      if [[ ! -d "$work_dir" ]]; then
+        epr "Security error: temporary directory is invalid: $work_dir"
+        return 1
+      fi
+      if [[ ! -O "$work_dir" ]]; then
+        epr "Security error: temporary directory ownership mismatch: $work_dir"
+        return 1
+      fi
+      if ! chmod 700 "$work_dir"; then
+        epr "Security error: failed to secure temporary directory permissions: $work_dir"
+        return 1
+      fi
+      if [[ -L "$work_dir" || ! -d "$work_dir" || ! -O "$work_dir" ]]; then
+        epr "Security error: temporary directory changed during validation: $work_dir"
+        return 1
+      fi
+    fi
+
+    dlp="${work_dir}/download.tmp"
+    lock_file="${work_dir}/lock"
+
     # Try to acquire exclusive lock (create lock file atomically)
     exec {lock_fd}>"$lock_file" || {
       epr "Failed to create lock file: $lock_file"
       return 1
     }
+
     if ! flock -n "$lock_fd"; then
       # Another process is downloading - wait for lock
       log_info "Waiting for concurrent download: $dlp"
@@ -45,7 +93,6 @@ _req() {
       # Check if the other process actually succeeded
       if [[ -f "$op" ]]; then
         exec {lock_fd}>&- # Close lock file descriptor
-        rm -f "$lock_file"
         log_debug "File was downloaded by other process: $op"
         return 0
       fi
@@ -60,7 +107,7 @@ _req() {
   while [[ "$retry_count" -le "$MAX_RETRIES" ]]; do
     if [[ "$op" = "-" ]]; then
       # Output to stdout
-      if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
+      if curl -L -c "$cookie_file" -b "$cookie_file" \
         --connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
         --fail -s -S "$@" "$ip"; then
         success=true
@@ -68,7 +115,7 @@ _req() {
       fi
     else
       # Output to file
-      if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
+      if curl -L -c "$cookie_file" -b "$cookie_file" \
         --connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
         --fail -s -S "$@" "$ip" -o "$dlp"; then
         mv -f "$dlp" "$op"
