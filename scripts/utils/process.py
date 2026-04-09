@@ -256,7 +256,7 @@ class AsyncJobRunner:
         exc_tb: TracebackType | None,
     ) -> None:
         """Exit the async context manager."""
-        self._runner.shutdown(wait=True)
+        await asyncio.to_thread(self._runner.shutdown, wait=True)
 
     async def submit_async(
         self,
