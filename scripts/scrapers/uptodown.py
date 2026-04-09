@@ -6,11 +6,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
-import time
 import zipfile
 from dataclasses import dataclass
 from io import BytesIO
-from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
@@ -25,7 +23,8 @@ from scripts.scrapers.base import (
 )
 
 if TYPE_CHECKING:
-    import httpx
+    from pathlib import Path
+
     from selectolax.parser import Node
 
 SUPPORTED_ARCHS = frozenset({"arm64-v8a", "armeabi-v7a", "x86", "x86_64"})
@@ -169,7 +168,7 @@ class UptodownScraper(ScraperBase):
 
             version = version_link.text(strip=True)
 
-            href = version_link.attrs.get("href", "")
+            href = version_link.attrs.get("href") or ""
             file_id_match = re.search(r"/download/([^/]+)", href)
             file_id = file_id_match.group(1) if file_id_match else ""
 
@@ -491,34 +490,3 @@ class UptodownScraper(ScraperBase):
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_bytes(content)
-
-    def _request_with_retry(self, url: str) -> httpx.Response:
-        """Make HTTP request with retry logic.
-
-        Args:
-            url: URL to request.
-
-        Returns:
-            HTTP response.
-
-        Raises:
-            RuntimeError: If all retries fail.
-
-        """
-        delay = self.BASE_DELAY
-        last_error: Exception | None = None
-
-        for attempt in range(self.MAX_RETRIES):
-            try:
-                response = self.session.get(url)
-                response.raise_for_status()
-            except Exception as exc:
-                last_error = exc
-                if attempt < self.MAX_RETRIES - 1:
-                    time.sleep(delay)
-                    delay *= 2
-            else:
-                return response
-
-        msg = f"Request failed after {self.MAX_RETRIES} retries: {url}"
-        raise RuntimeError(msg) from last_error

@@ -63,6 +63,27 @@ class TestGetSecureWorkDir:
         p2 = _get_secure_work_dir(tmp_path, "/build/app2.apk")
         assert p1 != p2
 
+    def test_rejects_symlinked_work_dir(self, tmp_path: Path) -> None:
+        work_dir = _get_secure_work_dir(tmp_path, "/build/app.apk")
+        work_dir.rmdir()
+
+        symlink_target = tmp_path / "symlink-target"
+        symlink_target.mkdir()
+        work_dir.symlink_to(symlink_target, target_is_directory=True)
+
+        with pytest.raises(RuntimeError, match="invalid"):
+            _get_secure_work_dir(tmp_path, "/build/app.apk")
+
+    def test_rejects_insecure_permissions_when_chmod_fails(self, tmp_path: Path) -> None:
+        work_dir = _get_secure_work_dir(tmp_path, "/build/app.apk")
+        work_dir.chmod(0o755)
+
+        with (
+            patch("pathlib.Path.chmod", side_effect=PermissionError("chmod denied")),
+            pytest.raises(RuntimeError, match="insecure permissions"),
+        ):
+            _get_secure_work_dir(tmp_path, "/build/app.apk")
+
 
 # ---------------------------------------------------------------------------
 # HttpClient context managers
