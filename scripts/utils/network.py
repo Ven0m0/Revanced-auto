@@ -435,7 +435,7 @@ def download_with_lock(
     temp_dir_path.mkdir(parents=True, exist_ok=True)
     try:
         temp_dir_path.chmod(0o700)
-    except OSError:
+    except PermissionError:
         pass
 
     if output_path.exists():
