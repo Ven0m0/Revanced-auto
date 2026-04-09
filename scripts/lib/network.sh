@@ -18,6 +18,23 @@ _req() {
   local retry_count=0
   local delay=$INITIAL_RETRY_DELAY
   local success=false
+  mkdir -p "$TEMP_DIR"
+  if [[ -L "$TEMP_DIR" ]]; then
+    epr "Security error: temporary directory is a symlink: $TEMP_DIR"
+    return 1
+  fi
+  if [[ ! -d "$TEMP_DIR" ]]; then
+    epr "Security error: temporary directory is invalid: $TEMP_DIR"
+    return 1
+  fi
+  if [[ ! -O "$TEMP_DIR" ]]; then
+    epr "Security error: temporary directory ownership mismatch: $TEMP_DIR"
+    return 1
+  fi
+  if ! chmod 700 "$TEMP_DIR"; then
+    epr "Security error: failed to secure temporary directory permissions: $TEMP_DIR"
+    return 1
+  fi
   # If output file exists, skip download
   if [[ "$op" != "-" && -f "$op" ]]; then
     log_debug "File already exists, skipping download: $op"
@@ -26,8 +43,6 @@ _req() {
   # Handle temporary file for downloads with proper locking
   local dlp="" lock_fd lock_file=""
   local cookie_file="${TEMP_DIR}/cookie.txt"
-  mkdir -p "$TEMP_DIR"
-  chmod 700 "$TEMP_DIR"
   if [[ "$op" != "-" ]]; then
     # Deterministic hash-based temp path (not mktemp) so concurrent downloads
     # of the same destination share one temp file and correctly serialize on the lock
@@ -53,6 +68,10 @@ _req() {
       fi
       if ! chmod 700 "$work_dir"; then
         epr "Security error: failed to secure temporary directory permissions: $work_dir"
+        return 1
+      fi
+      if [[ -L "$work_dir" || ! -d "$work_dir" || ! -O "$work_dir" ]]; then
+        epr "Security error: temporary directory changed during validation: $work_dir"
         return 1
       fi
     fi

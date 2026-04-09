@@ -25,6 +25,7 @@ from scripts.scrapers.base import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import httpx
     from selectolax.parser import Node
 
 SUPPORTED_ARCHS = frozenset({"arm64-v8a", "armeabi-v7a", "x86", "x86_64"})
@@ -136,6 +137,11 @@ class UptodownScraper(ScraperBase):
         """Initialize the shared HTTP session before offloading work to a thread."""
         _ = self.session
 
+    async def _request_with_retry_async(self, url: str) -> httpx.Response:
+        """Run the base retrying request helper without blocking the event loop."""
+        self._ensure_session_initialized()
+        return await asyncio.to_thread(super()._request_with_retry, url)
+
     async def _fetch_page(self, url: str) -> str | None:
         """Fetch a page with retry logic.
 
@@ -147,8 +153,7 @@ class UptodownScraper(ScraperBase):
 
         """
         try:
-            self._ensure_session_initialized()
-            response = await asyncio.to_thread(self._request_with_retry, url)
+            response = await self._request_with_retry_async(url)
         except Exception:
             return None
         else:
@@ -363,8 +368,7 @@ class UptodownScraper(ScraperBase):
             )
 
         try:
-            self._ensure_session_initialized()
-            response = await asyncio.to_thread(self._request_with_retry, target_version.url)
+            response = await self._request_with_retry_async(target_version.url)
             content = response.content
 
             if target_version.is_xapk:
