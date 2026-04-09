@@ -131,7 +131,7 @@ class JobRunner:
             RuntimeError: If the runner is not started or is shut down.
         """
         if self._executor is None:
-            msg = "JobRunner not started. Use context manager or call start()."
+            msg = "JobRunner not started. Use context manager."
             raise RuntimeError(msg)
 
         if kwargs is None:
