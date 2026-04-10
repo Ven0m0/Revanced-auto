@@ -119,11 +119,33 @@ gh_req() {
 # Args:
 #   $1: Output file path
 #   $2: Asset URL
+#   $3: SHA256 hash (optional)
 gh_dl() {
-  if [[ ! -f "$1" ]]; then
-    pr "Getting '$1' from '$2'"
-    _req "$2" "$1" -H "$GH_HEADER" -H "Accept: application/octet-stream"
+  local op="$1" url="$2" expected_sha="${3:-}"
+  if [[ -f "$op" && -n "$expected_sha" ]]; then
+    local actual_sha
+    actual_sha=$(sha256sum "$op" | cut -d' ' -f1)
+    if [[ "$actual_sha" != "$expected_sha" ]]; then
+      log_warn "Checksum mismatch for $op; re-downloading"
+      rm -f "$op"
+    fi
+  fi
+
+  if [[ ! -f "$op" ]]; then
+    pr "Getting '$op' from '$url'"
+    if ! _req "$url" "$op" -H "$GH_HEADER" -H "Accept: application/octet-stream"; then
+      return 1
+    fi
+    if [[ -n "$expected_sha" ]]; then
+      local actual_sha
+      actual_sha=$(sha256sum "$op" | cut -d' ' -f1)
+      if [[ "$actual_sha" != "$expected_sha" ]]; then
+        rm -f "$op"
+        epr "Checksum mismatch for $op"
+        return 1
+      fi
+    fi
   else
-    log_debug "Asset already downloaded: $1"
+    log_debug "Asset already downloaded and verified: $op"
   fi
 }

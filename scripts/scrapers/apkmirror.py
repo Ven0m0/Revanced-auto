@@ -407,16 +407,15 @@ class APKMirror(ScraperBase):
             True if merge succeeded, False otherwise.
 
         """
+        from scripts.utils.network import gh_dl
+
         apkeditor_jar = self.temp_dir / "apkeditor.jar"
-        if not apkeditor_jar.exists():
-            subprocess.run(
-                [
-                    "gh_dl",
-                    str(apkeditor_jar),
-                    "https://github.com/REAndroid/APKEditor/releases/download/V1.4.2/APKEditor-1.4.2.jar",
-                ],
-                check=True,
-            )
+        if not gh_dl(
+            apkeditor_jar,
+            "https://github.com/REAndroid/APKEditor/releases/download/V1.4.2/APKEditor-1.4.2.jar",
+            sha256="706297058a52862d53603403337f400782782e4f0163353e4142f9a76785265a",
+        ):
+            raise RuntimeError("Failed to download or verify APKEditor.jar")
 
         try:
             result = subprocess.run(

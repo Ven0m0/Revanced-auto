@@ -400,12 +400,30 @@ def _get_deterministic_temp_path(temp_dir: Path, output_path: str | Path) -> Pat
     return temp_dir / f"tmp.{path_hash}"
 
 
+def _calculate_sha256(file_path: Path) -> str:
+    """Calculate SHA256 hash of a file using chunked reading.
+
+    Args:
+        file_path: Path to the file.
+
+    Returns:
+        Hexadecimal representation of the SHA256 hash.
+
+    """
+    sha256_hash = hashlib.sha256()
+    with file_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256_hash.update(chunk)
+    return sha256_hash.hexdigest()
+
+
 def download_with_lock(
     url: str,
     output: str | Path,
     temp_dir: str | Path | None = None,
     config: HttpClientConfig | None = None,
     headers: dict[str, str] | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Download file with concurrent download protection via file locking.
 
@@ -418,6 +436,7 @@ def download_with_lock(
         temp_dir: Temporary directory for lock files and partial downloads.
         config: Optional HTTP client configuration.
         headers: Additional headers for the request.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -433,10 +452,19 @@ def download_with_lock(
     lock_file = Path(f"{temp_path}.lock")
     temp_dir_path = temp_path.parent
     temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    try:
+        temp_dir_path.chmod(0o700)
+    except OSError:
+        pass
 
     if output_path.exists():
-        return True
+        if sha256:
+            actual_hash = _calculate_sha256(output_path)
+            if actual_hash == sha256:
+                return True
+            output_path.unlink()
+        else:
+            return True
 
     lock_fd = None
     try:
@@ -444,11 +472,23 @@ def download_with_lock(
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
         if output_path.exists():
-            return True
+            if sha256:
+                actual_hash = _calculate_sha256(output_path)
+                if actual_hash == sha256:
+                    return True
+                output_path.unlink()
+            else:
+                return True
 
         client = HttpClient(config)
         try:
             client.get(url, temp_path, headers=headers or {})
+            if sha256:
+                actual_hash = _calculate_sha256(temp_path)
+                if actual_hash != sha256:
+                    if temp_path.exists():
+                        temp_path.unlink()
+                    return False
             temp_path.replace(output_path)
             return True
         finally:
@@ -473,6 +513,7 @@ async def async_download_with_lock(
     temp_dir: str | Path | None = None,
     config: HttpClientConfig | None = None,
     headers: dict[str, str] | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Async download file with concurrent download protection via file locking.
 
@@ -482,6 +523,7 @@ async def async_download_with_lock(
         temp_dir: Temporary directory for lock files and partial downloads.
         config: Optional HTTP client configuration.
         headers: Additional headers for the request.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -497,10 +539,20 @@ async def async_download_with_lock(
     lock_file = Path(f"{temp_path}.lock")
     temp_dir_path = temp_path.parent
     temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    try:
+        temp_dir_path.chmod(0o700)
+    except OSError:
+        pass
 
     if output_path.exists():
-        return True
+        if sha256:
+            with output_path.open("rb") as f:
+                actual_hash = hashlib.sha256(f.read()).hexdigest()
+            if actual_hash == sha256:
+                return True
+            output_path.unlink()
+        else:
+            return True
 
     lock_fd = None
     try:
@@ -508,10 +560,22 @@ async def async_download_with_lock(
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
         if output_path.exists():
-            return True
+            if sha256:
+                actual_hash = _calculate_sha256(output_path)
+                if actual_hash == sha256:
+                    return True
+                output_path.unlink()
+            else:
+                return True
 
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
+            if sha256:
+                actual_hash = _calculate_sha256(temp_path)
+                if actual_hash != sha256:
+                    if temp_path.exists():
+                        temp_path.unlink()
+                    return False
             temp_path.replace(output_path)
             return True
     except OSError:
@@ -589,6 +653,7 @@ def gh_dl(
     asset_path: str | Path,
     url: str,
     config: HttpClientConfig | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Download GitHub release asset with file locking.
 
@@ -596,6 +661,7 @@ def gh_dl(
         asset_path: Path where the asset should be saved.
         url: GitHub asset download URL.
         config: Optional HTTP client configuration.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -607,7 +673,7 @@ def gh_dl(
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    return download_with_lock(url, asset_path, config=cfg, headers=headers)
+    return download_with_lock(url, asset_path, config=cfg, headers=headers, sha256=sha256)
 
 
 def _executor_download_with_lock(
