@@ -14,11 +14,6 @@ from scripts.version_tracker import (
     save_state,
 )
 
-try:
-    from importlib.resources import files
-except ImportError:
-    pass  # type: ignore[no-redef]
-
 __all__ = ["VersionTracker"]
 
 
