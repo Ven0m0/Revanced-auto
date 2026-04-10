@@ -13,7 +13,7 @@ import pytest
 from scripts.utils.network import (
     HttpClient,
     HttpClientConfig,
-    _get_deterministic_temp_path,
+    _get_secure_work_dir,
     aria2c_download,
     download_with_aria2c_fallback,
     download_with_lock,
@@ -48,19 +48,19 @@ class TestHttpClientConfig:
 
 
 # ---------------------------------------------------------------------------
-# _get_deterministic_temp_path
+# _get_secure_work_dir
 # ---------------------------------------------------------------------------
 
 
-class TestGetDeterministicTempPath:
+class TestGetSecureWorkDir:
     def test_same_output_same_temp(self, tmp_path: Path) -> None:
-        p1 = _get_deterministic_temp_path(tmp_path, "/build/app.apk")
-        p2 = _get_deterministic_temp_path(tmp_path, "/build/app.apk")
+        p1 = _get_secure_work_dir(tmp_path, "/build/app.apk")
+        p2 = _get_secure_work_dir(tmp_path, "/build/app.apk")
         assert p1 == p2
 
     def test_different_output_different_temp(self, tmp_path: Path) -> None:
-        p1 = _get_deterministic_temp_path(tmp_path, "/build/app1.apk")
-        p2 = _get_deterministic_temp_path(tmp_path, "/build/app2.apk")
+        p1 = _get_secure_work_dir(tmp_path, "/build/app1.apk")
+        p2 = _get_secure_work_dir(tmp_path, "/build/app2.apk")
         assert p1 != p2
 
 

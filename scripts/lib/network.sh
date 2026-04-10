@@ -25,18 +25,35 @@ _req() {
   fi
   # Handle temporary file for downloads with proper locking
   local dlp="" lock_fd
+  local cookie_file="${TEMP_DIR}/cookie.txt"
   if [[ "$op" != "-" ]]; then
     # Deterministic hash-based temp path (not mktemp) so concurrent downloads
     # of the same destination share one temp file and correctly serialize on the lock
     mkdir -p "$TEMP_DIR"
     chmod 700 "$TEMP_DIR"
-    dlp="${TEMP_DIR}/tmp.$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)"
-    local lock_file="${dlp}.lock"
+
+    local hash=$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)
+    local work_dir="${TEMP_DIR}/work.${hash}"
+
+    # Atomically create a secure directory for this task
+    if ! mkdir -m 700 "$work_dir" 2>/dev/null; then
+      # If it exists, ensure it's a real directory we own (not a symlink)
+      if [[ -L "$work_dir" || ! -d "$work_dir" || ! -O "$work_dir" ]]; then
+        epr "Security error: temporary directory is invalid or insecure: $work_dir"
+        return 1
+      fi
+    fi
+
+    dlp="${work_dir}/download.tmp"
+    local lock_file="${work_dir}/lock"
+    cookie_file="${work_dir}/cookie.txt"
+
     # Try to acquire exclusive lock (create lock file atomically)
     exec {lock_fd}>"$lock_file" || {
       epr "Failed to create lock file: $lock_file"
       return 1
     }
+
     if ! flock -n "$lock_fd"; then
       # Another process is downloading - wait for lock
       log_info "Waiting for concurrent download: $dlp"
@@ -45,7 +62,6 @@ _req() {
       # Check if the other process actually succeeded
       if [[ -f "$op" ]]; then
         exec {lock_fd}>&- # Close lock file descriptor
-        rm -f "$lock_file"
         log_debug "File was downloaded by other process: $op"
         return 0
       fi
@@ -60,7 +76,7 @@ _req() {
   while [[ "$retry_count" -le "$MAX_RETRIES" ]]; do
     if [[ "$op" = "-" ]]; then
       # Output to stdout
-      if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
+      if curl -L -c "$cookie_file" -b "$cookie_file" \
         --connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
         --fail -s -S "$@" "$ip"; then
         success=true
@@ -68,7 +84,7 @@ _req() {
       fi
     else
       # Output to file
-      if curl -L -c "$TEMP_DIR/cookie.txt" -b "$TEMP_DIR/cookie.txt" \
+      if curl -L -c "$cookie_file" -b "$cookie_file" \
         --connect-timeout "$CONNECTION_TIMEOUT" --max-time 300 \
         --fail -s -S "$@" "$ip" -o "$dlp"; then
         mv -f "$dlp" "$op"

@@ -4,24 +4,33 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import fcntl
 import hashlib
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 import httpx
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from types import TracebackType
 
 DEFAULT_TIMEOUT = 300
 DEFAULT_MAX_RETRIES = 4
 DEFAULT_INITIAL_DELAY = 2
+SECURE_MODE = 0o700
+COOKIE_PARTS_MIN = 7
+COOKIE_NAME_INDEX = 5
+COOKIE_VALUE_INDEX = 6
 
 
 @dataclass
@@ -83,17 +92,22 @@ class HttpClient:
         )
         self._async_client: httpx.AsyncClient | None = None
 
-    def __enter__(self) -> HttpClient:
+    def __enter__(self) -> Self:
         """Enter context manager for sync client."""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Exit context manager and close clients."""
         self._sync_client.close()
         if self._async_client:
             pass
 
-    async def __aenter__(self) -> HttpClient:
+    async def __aenter__(self) -> Self:
         """Enter async context manager."""
         self._async_client = httpx.AsyncClient(
             timeout=httpx.Timeout(self.config.timeout),
@@ -102,7 +116,12 @@ class HttpClient:
         )
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Exit async context manager and close clients."""
         if self._async_client:
             await self._async_client.aclose()
@@ -113,16 +132,14 @@ class HttpClient:
         if not self.config.cookie_file or not self.config.cookie_file.exists():
             return {}
         cookies = {}
-        try:
+        with contextlib.suppress(OSError):
             content = self.config.cookie_file.read_text()
             for line in content.splitlines():
                 if line.startswith("#") or not line.strip():
                     continue
                 parts = line.split("\t")
-                if len(parts) >= 7:
-                    cookies[parts[5]] = parts[6]
-        except OSError:
-            pass
+                if len(parts) >= COOKIE_PARTS_MIN:
+                    cookies[parts[COOKIE_NAME_INDEX]] = parts[COOKIE_VALUE_INDEX]
         return cookies
 
     def _build_headers(self, extra_headers: dict[str, str] | None = None) -> dict[str, str]:
@@ -168,7 +185,8 @@ class HttpClient:
 
         if last_exception:
             raise last_exception
-        raise httpx.HTTPError("Request failed after retries")
+        msg = "Request failed after retries"
+        raise httpx.HTTPError(msg)
 
     async def _async_retry_with_backoff(
         self,
@@ -206,7 +224,8 @@ class HttpClient:
 
         if last_exception:
             raise last_exception
-        raise httpx.HTTPError("Request failed after retries")
+        msg = "Request failed after retries"
+        raise httpx.HTTPError(msg)
 
     def _do_request(
         self,
@@ -268,7 +287,8 @@ class HttpClient:
 
         """
         if not self._async_client:
-            raise RuntimeError("Async client not initialized. Use 'async with' context.")
+            msg = "Async client not initialized. Use 'async with' context."
+            raise RuntimeError(msg)
         client = self._async_client
 
         full_headers = self._build_headers(headers)
@@ -281,6 +301,8 @@ class HttpClient:
         if output == "-" or output is None:
             return response.text
 
+        # Use synchronous write_bytes for now to avoid complexity of async file IO
+        # in this utility. If high performance is needed, use anyio or aiofiles.
         output_path = Path(output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_bytes(response.content)
@@ -380,24 +402,50 @@ class HttpClient:
         """Close the HTTP client and release resources."""
         self._sync_client.close()
         if self._async_client:
-            import asyncio
-
             asyncio.get_event_loop().run_until_complete(self._async_client.aclose())
 
 
-def _get_deterministic_temp_path(temp_dir: Path, output_path: str | Path) -> Path:
-    """Generate deterministic temp path based on output path hash.
+def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
+    """Create and validate a secure, deterministic work directory.
 
     Args:
-        temp_dir: Temporary directory.
-        output_path: Target output path.
+        temp_dir: Parent temporary directory.
+        output_path: Target output path for the download.
 
     Returns:
-        Path to temporary file for the download.
+        Path to the secure work directory.
+
+    Raises:
+        RuntimeError: If the directory is insecure or cannot be created.
 
     """
-    path_hash = hashlib.sha256(str(output_path).encode()).hexdigest()[:32]
-    return temp_dir / f"tmp.{path_hash}"
+    path_hash = hashlib.sha256(str(output_path).encode()).hexdigest()
+    work_dir = temp_dir / f"work.{path_hash}"
+
+    with contextlib.suppress(FileExistsError):
+        work_dir.mkdir(mode=SECURE_MODE, parents=True, exist_ok=True)
+
+    # Security check: ensure it's a real directory we own (not a symlink)
+    if work_dir.is_symlink() or not work_dir.is_dir():
+        msg = f"Security error: temporary directory is invalid: {work_dir}"
+        raise RuntimeError(msg)
+
+    # Check ownership (UID match)
+    if work_dir.stat().st_uid != os.getuid():
+        msg = f"Security error: temporary directory ownership mismatch: {work_dir}"
+        raise RuntimeError(msg)
+
+    # Ensure restricted permissions
+    try:
+        work_dir.chmod(SECURE_MODE)
+    except PermissionError:
+        # If we can't chmod but we own it and it's a dir, we proceed if it's already secure enough
+        # or if we are in a restricted environment where chmod is not allowed but mkdir mode was respected.
+        if (work_dir.stat().st_mode & 0o777) != SECURE_MODE and (work_dir.stat().st_mode & 0o002):
+            msg = f"Security error: temporary directory is world-writable: {work_dir}"
+            raise RuntimeError(msg) from None
+
+    return work_dir
 
 
 def download_with_lock(
@@ -423,48 +471,41 @@ def download_with_lock(
         True if download succeeded or file already exists, False otherwise.
 
     """
-    import tempfile
-
     output_path = Path(output).resolve()
-    temp_path = _get_deterministic_temp_path(
-        Path(temp_dir) if temp_dir else Path(tempfile.gettempdir()),
-        output_path,
-    )
-    lock_file = Path(f"{temp_path}.lock")
-    temp_dir_path = temp_path.parent
-    temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
+
+    try:
+        work_dir = _get_secure_work_dir(base_temp, output_path)
+    except RuntimeError:
+        return False
+
+    temp_path = work_dir / "download.tmp"
+    lock_file = work_dir / "lock"
 
     if output_path.exists():
         return True
 
-    lock_fd = None
     try:
-        lock_fd = open(lock_file, "w")
-        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+        with lock_file.open("w") as lock_fd:
+            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
-        if output_path.exists():
-            return True
+            if output_path.exists():
+                return True
 
-        client = HttpClient(config)
-        try:
-            client.get(url, temp_path, headers=headers or {})
-            temp_path.replace(output_path)
-            return True
-        finally:
-            client.close()
-    except OSError:
+            with HttpClient(config) as client:
+                client.get(url, temp_path, headers=headers or {})
+                temp_path.replace(output_path)
+                return True
+    except (OSError, RuntimeError):
         return False
     except Exception:
         if temp_path.exists():
             temp_path.unlink()
         return False
     finally:
-        if lock_fd:
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
-            lock_fd.close()
         if lock_file.exists():
-            lock_file.unlink()
+            with contextlib.suppress(OSError):
+                lock_file.unlink()
 
 
 async def async_download_with_lock(
@@ -487,45 +528,43 @@ async def async_download_with_lock(
         True if download succeeded or file already exists, False otherwise.
 
     """
-    import tempfile
-
     output_path = Path(output).resolve()
-    temp_path = _get_deterministic_temp_path(
-        Path(temp_dir) if temp_dir else Path(tempfile.gettempdir()),
-        output_path,
-    )
-    lock_file = Path(f"{temp_path}.lock")
-    temp_dir_path = temp_path.parent
-    temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
+
+    try:
+        work_dir = _get_secure_work_dir(base_temp, output_path)
+    except RuntimeError:
+        return False
+
+    temp_path = work_dir / "download.tmp"
+    lock_file = work_dir / "lock"
 
     if output_path.exists():
         return True
 
-    lock_fd = None
     try:
-        lock_fd = open(lock_file, "w")
-        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+        # fcntl.flock is blocking. In a truly async environment, we would use
+        # a non-blocking lock or run this in a thread.
+        with lock_file.open("w") as lock_fd:
+            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
-        if output_path.exists():
-            return True
+            if output_path.exists():
+                return True
 
-        async with HttpClient(config) as client:
-            await client.async_get(url, temp_path, headers=headers or {})
-            temp_path.replace(output_path)
-            return True
-    except OSError:
+            async with HttpClient(config) as client:
+                await client.async_get(url, temp_path, headers=headers or {})
+                temp_path.replace(output_path)
+                return True
+    except (OSError, RuntimeError):
         return False
     except Exception:
         if temp_path.exists():
             temp_path.unlink()
         return False
     finally:
-        if lock_fd:
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
-            lock_fd.close()
         if lock_file.exists():
-            lock_file.unlink()
+            with contextlib.suppress(OSError):
+                lock_file.unlink()
 
 
 def req(
@@ -547,10 +586,8 @@ def req(
     """
     cfg = config or HttpClientConfig()
     client = HttpClient(cfg)
-    try:
+    with client:
         return client.get(url, output)
-    finally:
-        client.close()
 
 
 def gh_req(
@@ -579,10 +616,8 @@ def gh_req(
         headers["Authorization"] = f"Bearer {token}"
 
     client = HttpClient(cfg)
-    try:
+    with client:
         return client.get(url, output, headers=headers)
-    finally:
-        client.close()
 
 
 def gh_dl(
@@ -664,9 +699,6 @@ def aria2c_download(
         True if download succeeded, False otherwise.
 
     """
-    import shutil
-    import subprocess
-
     if not shutil.which("aria2c"):
         return False
 
@@ -686,7 +718,7 @@ def aria2c_download(
     cmd.extend(urls)
 
     try:
-        result = subprocess.run(cmd, capture_output=True)
+        result = subprocess.run(cmd, capture_output=True, check=False)
         return result.returncode == 0
     except OSError:
         return False
@@ -713,8 +745,6 @@ def download_with_aria2c_fallback(
         True if download succeeded, False otherwise.
 
     """
-    import shutil
-
     output_path = Path(output_path)
     if shutil.which("aria2c") and aria2c_download(urls, output_path, max_connections=max_connections):
         return True
