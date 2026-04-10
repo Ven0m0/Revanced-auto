@@ -101,7 +101,7 @@ class TestDownloadWithLock:
     def test_returns_true_when_file_exists(self, tmp_path: Path) -> None:
         existing = tmp_path / "existing.apk"
         existing.write_bytes(b"\x00")
-        result = download_with_lock("https://example.com/app.apk", existing)
+        result = download_with_lock("https://example.com/app.apk", existing, temp_dir=tmp_path)
         assert result is True
 
     def test_returns_false_on_download_failure(self, tmp_path: Path) -> None:
