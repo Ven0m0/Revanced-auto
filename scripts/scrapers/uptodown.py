@@ -136,7 +136,7 @@ class UptodownScraper(ScraperBase):
 
         """
         try:
-            response = await asyncio.to_thread(self._request_with_retry, url)
+            response = await asyncio.to_thread(self.get, url)
         except Exception:
             return None
         else:
