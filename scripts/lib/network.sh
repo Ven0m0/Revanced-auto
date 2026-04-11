@@ -41,6 +41,17 @@ _req() {
         epr "Security error: temporary directory is invalid or insecure: $work_dir"
         return 1
       fi
+
+      local work_dir_mode
+      work_dir_mode=$(stat -c '%a' -- "$work_dir" 2>/dev/null) || {
+        epr "Security error: failed to inspect temporary directory permissions: $work_dir"
+        return 1
+      }
+
+      if (( (8#"${work_dir_mode}" & 022) != 0 )); then
+        epr "Security error: temporary directory must not be writable by group or others: $work_dir"
+        return 1
+      fi
     fi
 
     dlp="${work_dir}/download.tmp"
