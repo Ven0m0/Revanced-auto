@@ -433,7 +433,7 @@ class UptodownScraper(ScraperBase):
                     )
 
                 main_apk = apk_files[0]
-                apk_content = zf.read(main_apk)
+                apk_content = await asyncio.to_thread(zf.read, main_apk)
 
                 await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
                 await asyncio.to_thread(output_path.write_bytes, apk_content)
