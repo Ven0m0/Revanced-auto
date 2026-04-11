@@ -571,7 +571,7 @@ async def async_download_with_lock(
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
             if sha256:
-                actual_hash = _calculate_sha256(temp_path)
+                actual_hash = await asyncio.get_running_loop().run_in_executor(None, _calculate_sha256, temp_path)
                 if actual_hash != sha256:
                     if temp_path.exists():
                         temp_path.unlink()
