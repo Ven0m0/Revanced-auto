@@ -30,7 +30,6 @@ _req() {
     # Deterministic hash-based temp path (not mktemp) so concurrent downloads
     # of the same destination share one temp file and correctly serialize on the lock
     mkdir -p "$TEMP_DIR"
-    chmod 700 "$TEMP_DIR"
 
     local hash=$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)
     local work_dir="${TEMP_DIR}/work.${hash}"
