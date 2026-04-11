@@ -8,8 +8,8 @@ lockfile = true
 env_shell_expand = true
 
 [settings.python]
-uv_venv_auto = "create|source"
-uv_venv_create_args = ["--system-site-packages", "--seed"]
+uv_venv_auto = true
+uv_venv_create_args = "--system-site-packages --seed"
 precompiled_os = "x86_64_v3"
 
 [settings.cargo]
@@ -18,8 +18,6 @@ binstall = true
 [settings.pipx]
 uvx = true
 
-[settings.node]
-ninja = true
 
 [settings.npm]
 package_manager = "bun"
