@@ -103,9 +103,7 @@ class HttpClient:
         exc_tb: TracebackType | None,
     ) -> None:
         """Exit context manager and close clients."""
-        self._sync_client.close()
-        if self._async_client:
-            pass
+        self.close()
 
     async def __aenter__(self) -> Self:
         """Enter async context manager."""
