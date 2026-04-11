@@ -1062,10 +1062,6 @@ class JavaRunner:
         """Run a JAR file."""
 
 
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))
-
-
 def main(argv: list[str]) -> int:
     """Main entry point for app processor CLI.
 
@@ -1100,3 +1096,7 @@ def main(argv: list[str]) -> int:
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
