@@ -1,15 +1,15 @@
 [settings]
-gix = true
+# gix = true
 experimental = true
 color = true
 yes = true
 auto_install = true
 lockfile = true
-env_shell_expand = true
+# env_shell_expand = true
 
 [settings.python]
-uv_venv_auto = "create|source"
-uv_venv_create_args = ["--system-site-packages", "--seed"]
+uv_venv_auto = true
+uv_venv_create_args = "--system-site-packages --seed"
 precompiled_os = "x86_64_v3"
 
 [settings.cargo]
@@ -19,10 +19,10 @@ binstall = true
 uvx = true
 
 [settings.node]
-ninja = true
+# ninja = true
 
 [settings.npm]
-package_manager = "bun"
+bun = true
 
 [tools]
 "actionlint" = "latest"
