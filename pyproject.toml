@@ -8,7 +8,7 @@ license = { file = "LICENSE" }
 authors = [ { name = "ReVanced Builder Contributors" } ]
 dependencies = [
     "selectolax>=0.3.21",
-    "orjson>=3.10.0",
+    "orjson>=3.11.8",
     "httpx>=0.28.1",
 ]
 
