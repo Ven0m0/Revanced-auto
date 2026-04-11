@@ -6,10 +6,24 @@ import os
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Protocol, final
+from typing import TYPE_CHECKING, Protocol, final
 
 import httpx
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from pathlib import Path
+
+
+class _GitHubTokenAuth(httpx.Auth):
+    """Custom Auth class for GitHub token authentication to prevent token leakage in logs."""
+
+    def __init__(self, token: str) -> None:
+        self.token = token
+
+    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request]:
+        request.headers["Authorization"] = f"token {self.token}"
+        yield request
 
 
 @dataclass
@@ -29,7 +43,7 @@ class BuildNotification:
 class NotificationConfig:
     """Configuration for notifier with environment variable substitution."""
 
-    def __init__(self, config_dict: dict | None = None):
+    def __init__(self, config_dict: dict | None = None) -> None:
         """Initialize configuration with optional dict."""
         self._config = config_dict or {}
 
@@ -136,7 +150,7 @@ class NullNotifier(BaseNotifier):
 class TelegramNotifier(BaseNotifier):
     """Notifier that sends messages via Telegram Bot API."""
 
-    def __init__(self, bot_token: str, chat_id: str):
+    def __init__(self, bot_token: str, chat_id: str) -> None:
         """Initialize Telegram notifier.
 
         Args:
@@ -185,7 +199,7 @@ class TelegramNotifier(BaseNotifier):
 class AppriseNotifier(BaseNotifier):
     """Notifier that sends universal notifications via Apprise library."""
 
-    def __init__(self, apprise_url: str):
+    def __init__(self, apprise_url: str) -> None:
         """Initialize Apprise notifier.
 
         Args:
@@ -211,8 +225,7 @@ class AppriseNotifier(BaseNotifier):
             title = f"Build {'SUCCESS' if notification.success else 'FAILED'}: {notification.app_name}"
             body = self._format_message(notification)
 
-            result = appr.notify(title=title, body=body)
-            return result
+            return appr.notify(title=title, body=body)
         except Exception:
             return False
 
@@ -221,7 +234,7 @@ class AppriseNotifier(BaseNotifier):
 class GitHubReleaseNotifier(BaseNotifier):
     """Notifier that creates GitHub releases."""
 
-    def __init__(self, repo: str, github_token: str):
+    def __init__(self, repo: str, github_token: str) -> None:
         """Initialize GitHub release notifier.
 
         Args:
@@ -250,7 +263,6 @@ class GitHubReleaseNotifier(BaseNotifier):
         """
         url = f"{self._api_url}/releases"
         headers = {
-            "Authorization": f"token {self._github_token}",
             "Accept": "application/vnd.github.v3+json",
             "Content-Type": "application/json",
         }
@@ -263,7 +275,13 @@ class GitHubReleaseNotifier(BaseNotifier):
         }
 
         try:
-            response = httpx.post(url, headers=headers, json=payload, timeout=30.0)
+            response = httpx.post(
+                url,
+                headers=headers,
+                json=payload,
+                auth=_GitHubTokenAuth(self._github_token),
+                timeout=30.0,
+            )
             if response.status_code == 201:
                 release_data = response.json()
                 upload_url = release_data.get("upload_url", "").replace("{?name,label}", "")
@@ -298,7 +316,6 @@ class GitHubReleaseNotifier(BaseNotifier):
             True if upload was successful, False otherwise.
         """
         headers = {
-            "Authorization": f"token {self._github_token}",
             "Content-Type": "application/octet-stream",
         }
         params = {"name": filename}
@@ -310,6 +327,7 @@ class GitHubReleaseNotifier(BaseNotifier):
                     headers=headers,
                     params=params,
                     content=f.read(),
+                    auth=_GitHubTokenAuth(self._github_token),
                     timeout=60.0,
                 )
                 return response.status_code == 200
@@ -364,18 +382,22 @@ class NotifierFactory:
                 bot_token = config.telegram_bot_token
                 chat_id = config.telegram_chat_id
                 if not bot_token or not chat_id:
-                    raise ValueError("Telegram notifier requires 'telegram_bot_token' and 'telegram_chat_id'")
+                    msg = "Telegram notifier requires 'telegram_bot_token' and 'telegram_chat_id'"
+                    raise ValueError(msg)
                 return TelegramNotifier(bot_token, chat_id)
             case "apprise":
                 apprise_url = config.apprise_url
                 if not apprise_url:
-                    raise ValueError("Apprise notifier requires 'apprise_url'")
+                    msg = "Apprise notifier requires 'apprise_url'"
+                    raise ValueError(msg)
                 return AppriseNotifier(apprise_url)
             case "github":
                 repo = config.github_repo
                 token = config.github_token
                 if not repo or not token:
-                    raise ValueError("GitHub notifier requires 'github_repo' and 'github_token'")
+                    msg = "GitHub notifier requires 'github_repo' and 'github_token'"
+                    raise ValueError(msg)
                 return GitHubReleaseNotifier(repo, token)
             case _:
-                raise ValueError(f"Unknown notifier type: {notifier_type}")
+                msg = f"Unknown notifier type: {notifier_type}"
+                raise ValueError(msg)
