@@ -506,7 +506,10 @@ def download_with_lock(
             with contextlib.suppress(OSError):
                 lock_file.unlink()
 
-
+        with contextlib.suppress(OSError):
+            work_dir_stat = work_dir.stat()
+            if work_dir.is_dir() and work_dir_stat.st_uid == os.getuid():
+                work_dir.rmdir()
 async def async_download_with_lock(
     url: str,
     output: str | Path,
