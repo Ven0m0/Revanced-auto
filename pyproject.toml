@@ -9,7 +9,7 @@ authors = [ { name = "ReVanced Builder Contributors" } ]
 dependencies = [
     "selectolax>=0.3.21",
     "orjson>=3.10.0",
-    "httpx>=0.28.0",
+    "httpx>=0.28.1",
 ]
 
 [dependency-groups]
