@@ -332,7 +332,8 @@ class GitHubReleaseNotifier(BaseNotifier):
                     auth=_GitHubTokenAuth(self._github_token),
                     timeout=60.0,
                 )
-                return response.status_code == 200
+                response.raise_for_status()
+                return True
         except (httpx.HTTPError, OSError):
             return False
 
