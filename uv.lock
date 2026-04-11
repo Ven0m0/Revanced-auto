@@ -437,21 +437,21 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", specifier = ">=0.28.0" },
-    { name = "orjson", specifier = ">=3.10.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "orjson", specifier = ">=3.11.8" },
     { name = "selectolax", specifier = ">=0.3.21" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "hypothesis", specifier = ">=6.100.0" },
-    { name = "mypy", specifier = ">=1.15.0" },
+    { name = "mypy", specifier = ">=1.20.0" },
     { name = "prek", specifier = ">=0.3.4" },
     { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-asyncio", specifier = ">=0.25.0" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-durations", specifier = ">=1.3.0" },
-    { name = "ruff", specifier = ">=0.15.4" },
+    { name = "ruff", specifier = ">=0.15.10" },
     { name = "types-toml", specifier = ">=0.10.8.20240310" },
 ]
 
