@@ -437,10 +437,11 @@ def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
     try:
         work_dir.chmod(SECURE_MODE)
     except PermissionError:
-        # If we can't chmod but we own it and it's a dir, we proceed if it's already secure enough
-        # or if we are in a restricted environment where chmod is not allowed but mkdir mode was respected.
-        if (work_dir.stat().st_mode & 0o077) != 0:
-            msg = f"Security error: temporary directory is world-writable: {work_dir}"
+        # If chmod is blocked, only proceed when the directory is already private
+        # to the current user with no group/other permissions.
+        mode = work_dir.stat().st_mode
+        if (mode & 0o077) != 0:
+            msg = f"Security error: temporary directory permissions are too broad: {work_dir}"
             raise RuntimeError(msg) from None
 
     return work_dir
