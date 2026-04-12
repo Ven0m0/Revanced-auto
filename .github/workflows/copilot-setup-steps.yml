@@ -1,0 +1,58 @@
+name: Copilot Setup Steps
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+permissions:
+  contents: read
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Cache Android SDK Build Tools
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.ANDROID_HOME }}/build-tools
+          key: ${{ runner.os }}-android-build-tools-34.0.0
+          restore-keys: |
+            ${{ runner.os }}-android-build-tools-
+
+      - name: Install Android SDK Build Tools
+        run: |
+          sdkmanager "build-tools;34.0.0"
+          echo "$ANDROID_HOME/build-tools/34.0.0" >> "$GITHUB_PATH"
+
+      - name: Bootstrap pinned bin JAR dependencies
+        run: |
+          source utils.sh
+          check_binaries || {
+            echo "Failed to bootstrap pinned bin/*.jar dependencies" >&2
+            exit 1
+          }
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.13"
+
+      - name: Install Python dependencies (including dev)
+        run: uv sync --locked --all-groups
