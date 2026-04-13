@@ -361,6 +361,7 @@ class SplitAPKHandler:
                 result = subprocess.run(
                     ["java", "-jar", str(jar), "merge", "-i", str(bundle_path), "-o", str(output_path)],
                     capture_output=True,
+                    check=False,
                 )
                 return result.returncode == 0
             except OSError:
@@ -484,7 +485,7 @@ class AAPT2Manager:
             cmd += ["--target-densities", ",".join(densities)]
 
         try:
-            result = subprocess.run(cmd, capture_output=True)
+            result = subprocess.run(cmd, capture_output=True, check=False)
             return result.returncode == 0
         except OSError:
             return False

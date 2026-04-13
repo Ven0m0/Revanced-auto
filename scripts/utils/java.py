@@ -94,6 +94,7 @@ class JavaRunner:
                 capture_output=True,
                 text=True,
                 timeout=timeout or self.timeout,
+                check=False,
             )
             logger.debug("Return code: %d", result.returncode)
             if result.stdout:
