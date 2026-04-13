@@ -180,9 +180,7 @@ class UptodownScraper(ScraperBase):
 
             return UptodownVersion(
                 version=version,
-                url=href
-                if href.startswith("http")
-                else f"https://{self.get_package_name(self._build_app_url('')).lower()}.en.uptodown.com{href}",
+                url=href if href.startswith("http") else f"https://en.uptodown.com{href}",
                 arch=arch,
                 file_id=file_id,
                 is_xapk=is_xapk,

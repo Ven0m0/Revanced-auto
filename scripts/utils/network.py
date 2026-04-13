@@ -453,6 +453,28 @@ def _calculate_sha256(file_path: Path) -> str:
     return sha256_hash.hexdigest()
 
 
+def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
+    """Verify a file's SHA256 checksum; remove it if the check fails.
+
+    Args:
+        file_path: Path to the file to verify.
+        sha256: Expected SHA256 hex digest, or None to skip verification.
+
+    Returns:
+        True if the file is valid (or no sha256 was specified), False if the
+        hash mismatched (the file is removed).
+
+    """
+    if not sha256:
+        return True
+    if _calculate_sha256(file_path) == sha256:
+        return True
+    import contextlib
+
+    with contextlib.suppress(OSError):
+        file_path.unlink()
+    return False
+
 def download_with_lock(
     url: str,
     output: str | Path,
@@ -493,12 +515,7 @@ def download_with_lock(
     lock_file = work_dir / "lock"
 
     if output_path.exists():
-        if sha256:
-            actual_hash = _calculate_sha256(output_path)
-            if actual_hash == sha256:
-                return True
-            output_path.unlink()
-        else:
+        if _verify_or_remove(output_path, sha256):
             return True
 
     lock_fd = None
@@ -507,23 +524,14 @@ def download_with_lock(
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
         if output_path.exists():
-            if sha256:
-                actual_hash = _calculate_sha256(output_path)
-                if actual_hash == sha256:
-                    return True
-                output_path.unlink()
-            else:
+            if _verify_or_remove(output_path, sha256):
                 return True
 
         client = HttpClient(config)
         try:
             client.get(url, temp_path, headers=headers or {})
-            if sha256:
-                actual_hash = _calculate_sha256(temp_path)
-                if actual_hash != sha256:
-                    if temp_path.exists():
-                        temp_path.unlink()
-                    return False
+            if sha256 and not _verify_or_remove(temp_path, sha256):
+                return False
             temp_path.replace(output_path)
             return True
         finally:
@@ -579,12 +587,8 @@ async def async_download_with_lock(
     lock_file = work_dir / "lock"
 
     if output_path.exists():
-        if sha256:
-            actual_hash = await asyncio.get_running_loop().run_in_executor(None, _calculate_sha256, output_path)
-            if actual_hash == sha256:
-                return True
-            output_path.unlink()
-        else:
+        verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+        if verified:
             return True
 
     lock_fd = None
@@ -593,21 +597,15 @@ async def async_download_with_lock(
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
         if output_path.exists():
-            if sha256:
-                actual_hash = await asyncio.get_running_loop().run_in_executor(None, _calculate_sha256, output_path)
-                if actual_hash == sha256:
-                    return True
-                output_path.unlink()
-            else:
+            verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+            if verified:
                 return True
 
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
             if sha256:
-                actual_hash = await asyncio.get_running_loop().run_in_executor(None, _calculate_sha256, temp_path)
-                if actual_hash != sha256:
-                    if temp_path.exists():
-                        temp_path.unlink()
+                valid = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, temp_path, sha256)
+                if not valid:
                     return False
             temp_path.replace(output_path)
             return True

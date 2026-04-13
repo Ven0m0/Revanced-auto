@@ -48,6 +48,7 @@ _req() {
         return 1
       }
 
+      # Check if group-write (020) or other-write (002) bits are set
       if (( (8#"${work_dir_mode}" & 022) != 0 )); then
         epr "Security error: temporary directory must not be writable by group or others: $work_dir"
         return 1
