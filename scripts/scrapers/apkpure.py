@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from selectolax.parser import HTMLParser
 
@@ -19,6 +19,11 @@ from scripts.scrapers.base import (
     VersionInfo,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import httpx
+
 APKPURE_BASE = "https://apkpure.net"
 
 
@@ -26,6 +31,7 @@ class APKPureScraper(ScraperBase):
     """Scraper for APKPure.net."""
 
     def __init__(self) -> None:
+        """Initialize APKPure scraper."""
         super().__init__(DownloadSource.APKPURE)
 
     def _build_url(self, name: str, package: str, path: str = "") -> str:
@@ -105,7 +111,7 @@ class APKPureScraper(ScraperBase):
 
         Args:
             pkg_name: Package name (e.g., 'com.google.android.youtube').
-            name: App name slug (passed via kwargs).
+            kwargs: Additional arguments (expects 'name' slug).
 
         Returns:
             List of VersionInfo objects.
@@ -133,7 +139,7 @@ class APKPureScraper(ScraperBase):
             pkg_name: Package name.
             version: Version string to download.
             output_path: Path to save the APK.
-            name: App name slug (passed via kwargs).
+            kwargs: Additional arguments (expects 'name' slug).
 
         Returns:
             DownloadResult with success status and file path.
@@ -165,9 +171,12 @@ class APKPureScraper(ScraperBase):
                     return DownloadResult(success=False, error="Download link not found")
                 dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
 
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "wb") as f:
-                f.writelines(dl_response.iter_bytes(chunk_size=8192))
+            await loop.run_in_executor(
+                None,
+                self._save_apk,
+                dl_response,
+                output_path,
+            )
 
             return DownloadResult(
                 success=True,
@@ -177,6 +186,18 @@ class APKPureScraper(ScraperBase):
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
+
+    def _save_apk(self, response: httpx.Response, output_path: Path) -> None:
+        """Save APK from response to file.
+
+        Args:
+            response: HTTP response object.
+            output_path: Path to save the APK.
+
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("wb") as f:
+            f.writelines(response.iter_bytes(chunk_size=8192))
 
     def get_package_name(self, url: str) -> str | None:
         """Extract package name from APKPure URL.

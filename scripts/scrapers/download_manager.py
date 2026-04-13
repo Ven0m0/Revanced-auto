@@ -14,10 +14,10 @@ from scripts.scrapers.aptoide import AptoideScraper
 from scripts.scrapers.archive import ArchiveScraper
 from scripts.scrapers.base import DownloadResult, DownloadSource, ScraperBase
 from scripts.scrapers.uptodown import UptodownScraper
-from scripts.utils.network import HttpClient
 
 if TYPE_CHECKING:
     from scripts.builder.config import AppConfig
+    from scripts.utils.network import HttpClient
 
 
 ARCH_NORMALIZATION: dict[str, str] = {

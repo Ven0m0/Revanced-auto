@@ -1,17 +1,21 @@
-#!/usr/bin/env python3
-"""Uptodown scraper module for APK version lookup and downloads."""
 
 from __future__ import annotations
 
 import asyncio
 import re
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from io import BytesIO
+from typing import TYPE_CHECKING, Any
 
 from selectolax.parser import HTMLParser
 
-from scripts.scrapers.base import DownloadResult, ScraperBase, VersionInfo
+from scripts.lib import logging as log
+from scripts.scrapers.base import DownloadResult, DownloadSource, ScraperBase, VersionInfo
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import httpx
 
 SUPPORTED_ARCHS = frozenset({"arm64-v8a", "armeabi-v7a", "x86", "x86_64"})
 
@@ -64,8 +68,6 @@ class UptodownScraper(ScraperBase):
 
     def __init__(self) -> None:
         """Initialize Uptodown scraper."""
-        from scripts.scrapers.base import DownloadSource
-
         super().__init__(DownloadSource.UPTODOWN)
         self.base_url = "https://{app}.en.uptodown.com/android"
         self.max_pages = 5
@@ -124,11 +126,12 @@ class UptodownScraper(ScraperBase):
         """
         try:
             response = self._request_with_retry(url)
-            return response.text
         except Exception:
             return None
+        else:
+            return response.text
 
-    def _parse_version_card(self, node: Any) -> UptodownVersion | None:
+    def _parse_version_card(self, node: Any) -> UptodownVersion | None:  # noqa: ANN401
         """Parse a version card node to extract version info.
 
         Args:
@@ -168,7 +171,7 @@ class UptodownScraper(ScraperBase):
                 version=version,
                 url=href
                 if href.startswith("http")
-                else f"https://{self.get_package_name(self._build_app_url('')).lower()}.en.uptodown.com{href}",
+                else f"https://{self.get_package_name(self._build_app_url('') or '').lower()}.en.uptodown.com{href}",
                 arch=arch,
                 file_id=file_id,
                 is_xapk=is_xapk,
@@ -195,10 +198,10 @@ class UptodownScraper(ScraperBase):
                 if version:
                     versions.append(version)
         except Exception:
-            pass
+            log.debug("Failed to parse Uptodown versions page")
         return versions
 
-    async def get_versions(self, pkg_name: str, **kwargs: Any) -> list[VersionInfo]:
+    async def get_versions(self, pkg_name: str, **kwargs: Any) -> list[VersionInfo]:  # noqa: ANN401
         """Get available versions for an app.
 
         Searches pages 1-5 for version listings and returns all found versions.
@@ -248,12 +251,37 @@ class UptodownScraper(ScraperBase):
 
         return result
 
+    async def _get_target_version(
+        self,
+        pkg_name: str,
+        version: str,
+        target_arch: str | None,
+    ) -> UptodownVersion | None:
+        """Find the target version information."""
+        versions = await self.get_versions(pkg_name, arch=target_arch)
+        for v_info in versions:
+            if v_info.version == version:
+                url = v_info.url
+                if url:
+                    found_versions = await self._find_version_by_file_id(pkg_name, v_info.arch)
+                    for fv in found_versions:
+                        if fv.version == version:
+                            return fv
+                    return UptodownVersion(
+                        version=version,
+                        url=url,
+                        arch=v_info.arch,
+                        file_id="",
+                        is_xapk=False,
+                    )
+        return None
+
     async def download(
         self,
         pkg_name: str,
         version: str | None,
         output_path: Path,
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ANN401
     ) -> DownloadResult:
         """Download a specific version.
 
@@ -272,43 +300,13 @@ class UptodownScraper(ScraperBase):
         if version is None:
             versions = await self.get_versions(pkg_name, arch=target_arch)
             if not versions:
-                return DownloadResult(
-                    success=False,
-                    file_path=None,
-                    version=None,
-                    error="No versions found",
-                )
+                return DownloadResult(success=False, error="No versions found")
             version = versions[0].version
 
-        versions = await self.get_versions(pkg_name, arch=target_arch)
-        target_version: UptodownVersion | None = None
-
-        for v_info in versions:
-            if v_info.version == version:
-                url = v_info.url
-                if url:
-                    found_versions = await self._find_version_by_file_id(pkg_name, v_info.arch)
-                    for fv in found_versions:
-                        if fv.version == version:
-                            target_version = fv
-                            break
-                    if target_version is None:
-                        target_version = UptodownVersion(
-                            version=version,
-                            url=url,
-                            arch=v_info.arch,
-                            file_id="",
-                            is_xapk=False,
-                        )
-                break
+        target_version = await self._get_target_version(pkg_name, version, target_arch)
 
         if target_version is None or not target_version.url:
-            return DownloadResult(
-                success=False,
-                file_path=None,
-                version=version,
-                error=f"Version {version} not found",
-            )
+            return DownloadResult(success=False, version=version, error=f"Version {version} not found")
 
         try:
             response = self._request_with_retry(target_version.url)
@@ -316,21 +314,13 @@ class UptodownScraper(ScraperBase):
 
             if target_version.is_xapk:
                 return await self._download_xapk(content, output_path, version)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(content)
-            return DownloadResult(
-                success=True,
-                file_path=output_path,
-                version=version,
-                error=None,
-            )
+
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, self._save_apk, content, output_path)
+
+            return DownloadResult(success=True, file_path=output_path, version=version)
         except Exception as e:
-            return DownloadResult(
-                success=False,
-                file_path=None,
-                version=version,
-                error=str(e),
-            )
+            return DownloadResult(success=False, version=version, error=str(e))
 
     async def _find_version_by_file_id(
         self,
@@ -361,9 +351,7 @@ class UptodownScraper(ScraperBase):
             if not page_versions:
                 break
 
-            for v in page_versions:
-                if arch is None or v.arch == arch or v.arch is None:
-                    all_versions.append(v)
+            all_versions.extend(v for v in page_versions if arch is None or v.arch == arch or v.arch is None)
 
             await asyncio.sleep(0.3)
 
@@ -389,8 +377,7 @@ class UptodownScraper(ScraperBase):
             DownloadResult with success status.
 
         """
-        import zipfile
-        from io import BytesIO
+        import zipfile  # noqa: PLC0415
 
         try:
             with zipfile.ZipFile(BytesIO(content)) as zf:
@@ -406,8 +393,15 @@ class UptodownScraper(ScraperBase):
                     )
 
                 main_apk = apk_files[0]
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_bytes(zf.read(main_apk))
+                apk_content = zf.read(main_apk)
+
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(
+                    None,
+                    self._save_apk,
+                    apk_content,
+                    output_path,
+                )
 
                 return DownloadResult(
                     success=True,
@@ -430,6 +424,17 @@ class UptodownScraper(ScraperBase):
                 error=f"XAPK extraction failed: {e}",
             )
 
+    def _save_apk(self, content: bytes, output_path: Path) -> None:
+        """Save APK content to file.
+
+        Args:
+            content: APK file content.
+            output_path: Path to save the APK.
+
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(content)
+
     def _request_with_retry(self, url: str) -> httpx.Response:
         """Make HTTP request with retry logic.
 
@@ -443,7 +448,7 @@ class UptodownScraper(ScraperBase):
             RuntimeError: If all retries fail.
 
         """
-        import time
+        import time  # noqa: PLC0415
 
         delay = self.BASE_DELAY
         last_error: Exception | None = None
@@ -452,12 +457,13 @@ class UptodownScraper(ScraperBase):
             try:
                 response = self.session.get(url)
                 response.raise_for_status()
-                return response
             except Exception as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
                     time.sleep(delay)
                     delay *= 2
+            else:
+                return response
 
         msg = f"Request failed after {self.MAX_RETRIES} retries: {url}"
         raise RuntimeError(msg) from last_error

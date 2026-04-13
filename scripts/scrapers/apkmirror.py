@@ -419,7 +419,7 @@ class APKMirror(ScraperBase):
             )
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 [
                     "java",
                     "-jar",
@@ -437,7 +437,8 @@ class APKMirror(ScraperBase):
                 check=True,
             )
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"APKEditor failed: {e.stderr}") from e
+            msg = f"APKEditor failed: {e.stderr}"
+            raise RuntimeError(msg) from e
 
         extract_dir = bundle_path.with_suffix("")
         extract_dir.mkdir(exist_ok=True)

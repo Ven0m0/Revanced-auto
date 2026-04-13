@@ -1,11 +1,20 @@
 """Archive.org scraper for j-hc-apks collection."""
 
+from __future__ import annotations
+
+import asyncio
 import re
-from re import Match
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from selectolax.parser import HTMLParser
 
 from .base import APK_ARCHIVE_URL, DownloadResult, DownloadSource, ScraperBase, VersionInfo
+
+if TYPE_CHECKING:
+    from re import Match
 
 ARCHIVE_COLLECTION = "jhc-apks"
 ARCHIVE_BASE_URL = f"{APK_ARCHIVE_URL}/download/{ARCHIVE_COLLECTION}/apks"
@@ -20,15 +29,35 @@ class ArchiveScraper(ScraperBase):
     )
 
     def __init__(self) -> None:
+        """Initialize Archive scraper."""
         super().__init__(DownloadSource.ARCHIVE)
 
     def get_package_name(self, url: str) -> str | None:
+        """Extract package name from URL.
+
+        Args:
+            url: Archive.org APK URL.
+
+        Returns:
+            Package name if found.
+
+        """
         match = re.search(r"/apks/([a-zA-Z0-9_.-]+?)(?:[-_]|$)", url)
         if match:
             return match.group(1)
         return None
 
-    async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
+    async def get_versions(self, pkg_name: str, **_kwargs: object) -> list[VersionInfo]:
+        """Get available versions for an app.
+
+        Args:
+            pkg_name: Package name.
+            _kwargs: Additional arguments (unused).
+
+        Returns:
+            List of VersionInfo objects.
+
+        """
         url = f"{ARCHIVE_BASE_URL}/{pkg_name}"
         response = self.get(url)
         parser = HTMLParser(response.text)
@@ -86,6 +115,18 @@ class ArchiveScraper(ScraperBase):
         output_path: Path,
         **kwargs: object,
     ) -> DownloadResult:
+        """Download specific version of an app.
+
+        Args:
+            pkg_name: Package name.
+            version: Version string to download.
+            output_path: Path to save the APK.
+            **kwargs: Additional arguments.
+
+        Returns:
+            DownloadResult with success status and file path.
+
+        """
         arch: str | None = kwargs.get("arch")
 
         if version is None:
@@ -98,7 +139,14 @@ class ArchiveScraper(ScraperBase):
 
         for v in versions:
             if v.version == version and (arch is None or v.arch == arch):
-                return self._download_file(v.url, output_path, v.version)
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(
+                    None,
+                    self._download_file,
+                    v.url,
+                    output_path,
+                    v.version,
+                )
 
         return DownloadResult(
             success=False,

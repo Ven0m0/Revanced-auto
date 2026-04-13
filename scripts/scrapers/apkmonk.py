@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from selectolax.parser import HTMLParser
 
@@ -19,6 +19,11 @@ from scripts.scrapers.base import (
     VersionInfo,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import httpx
+
 APKMONK_BASE = "https://www.apkmonk.com"
 
 
@@ -26,6 +31,7 @@ class APKMonkScraper(ScraperBase):
     """Scraper for APKMonk.com."""
 
     def __init__(self) -> None:
+        """Initialize APKMonk scraper."""
         super().__init__(DownloadSource.APKMonk)
 
     def _build_url(self, package: str, path: str = "") -> str:
@@ -101,12 +107,12 @@ class APKMonkScraper(ScraperBase):
 
         return None
 
-    async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
+    async def get_versions(self, pkg_name: str, **_kwargs: object) -> list[VersionInfo]:
         """Get available versions for an app.
 
         Args:
             pkg_name: Package name (e.g., 'com.google.android.youtube').
-            name: App name slug (passed via kwargs, unused for APKMonk).
+            _kwargs: Additional arguments (unused for APKMonk).
 
         Returns:
             List of VersionInfo objects.
@@ -125,7 +131,7 @@ class APKMonkScraper(ScraperBase):
         pkg_name: str,
         version: str | None,
         output_path: Path,
-        **kwargs: object,
+        **_kwargs: object,
     ) -> DownloadResult:
         """Download specific version of an app.
 
@@ -133,7 +139,7 @@ class APKMonkScraper(ScraperBase):
             pkg_name: Package name.
             version: Version string to download.
             output_path: Path to save the APK.
-            name: App name slug (passed via kwargs, unused for APKMonk).
+            _kwargs: Additional arguments (unused for APKMonk).
 
         Returns:
             DownloadResult with success status and file path.
@@ -163,9 +169,12 @@ class APKMonkScraper(ScraperBase):
                     return DownloadResult(success=False, error="Download link not found")
                 dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
 
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "wb") as f:
-                f.writelines(dl_response.iter_bytes(chunk_size=8192))
+            await loop.run_in_executor(
+                None,
+                self._save_apk,
+                dl_response,
+                output_path,
+            )
 
             return DownloadResult(
                 success=True,
@@ -175,6 +184,18 @@ class APKMonkScraper(ScraperBase):
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
+
+    def _save_apk(self, response: httpx.Response, output_path: Path) -> None:
+        """Save APK from response to file.
+
+        Args:
+            response: HTTP response object.
+            output_path: Path to save the APK.
+
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("wb") as f:
+            f.writelines(response.iter_bytes(chunk_size=8192))
 
     def get_package_name(self, url: str) -> str | None:
         """Extract package name from APKMonk URL.

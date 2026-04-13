@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar
 
 from scripts.scrapers.base import (
     DownloadResult,
@@ -17,13 +17,18 @@ from scripts.scrapers.base import (
     VersionInfo,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import httpx
+
 APTOIDE_API = "https://ws75.aptoide.com/api/7"
 
 
 class AptoideScraper(ScraperBase):
     """Scraper for Aptoide."""
 
-    ARCH_MAP = {
+    ARCH_MAP: ClassVar[dict[str, str]] = {
         "armeabi-v7a": "armeabi-v7a",
         "arm64-v8a": "arm64-v8a",
         "x86": "x86",
@@ -32,6 +37,7 @@ class AptoideScraper(ScraperBase):
     }
 
     def __init__(self) -> None:
+        """Initialize Aptoide scraper."""
         super().__init__(DownloadSource.APTOIDE)
 
     def _build_info_url(self, package: str) -> str:
@@ -103,14 +109,14 @@ class AptoideScraper(ScraperBase):
         """
         if arch == "universal":
             return versions
-        return [v for v in versions if v.arch == arch or v.arch == "universal"]
+        return [v for v in versions if v.arch in (arch, "universal")]
 
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         """Get available versions for an app.
 
         Args:
             pkg_name: Package name (e.g., 'com.google.android.youtube').
-            arch: Architecture filter (optional).
+            kwargs: Additional arguments (expects 'arch' filter).
 
         Returns:
             List of VersionInfo objects.
@@ -141,7 +147,7 @@ class AptoideScraper(ScraperBase):
             pkg_name: Package name.
             version: Version string to download.
             output_path: Path to save the APK.
-            arch: Architecture filter (optional).
+            kwargs: Additional arguments (expects 'arch' filter).
 
         Returns:
             DownloadResult with success status and file path.
@@ -173,9 +179,12 @@ class AptoideScraper(ScraperBase):
             if "text/html" in content_type.lower():
                 return DownloadResult(success=False, error="Received HTML instead of APK")
 
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "wb") as f:
-                f.writelines(dl_response.iter_bytes(chunk_size=8192))
+            await loop.run_in_executor(
+                None,
+                self._save_apk,
+                dl_response,
+                output_path,
+            )
 
             return DownloadResult(
                 success=True,
@@ -185,6 +194,18 @@ class AptoideScraper(ScraperBase):
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
+
+    def _save_apk(self, response: httpx.Response, output_path: Path) -> None:
+        """Save APK from response to file.
+
+        Args:
+            response: HTTP response object.
+            output_path: Path to save the APK.
+
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("wb") as f:
+            f.writelines(response.iter_bytes(chunk_size=8192))
 
     def get_package_name(self, url: str) -> str | None:
         """Extract package name from Aptoide URL.

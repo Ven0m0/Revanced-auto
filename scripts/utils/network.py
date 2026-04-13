@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import fcntl
 import hashlib
 import os
@@ -12,7 +13,7 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 import httpx
 
@@ -83,7 +84,7 @@ class HttpClient:
         )
         self._async_client: httpx.AsyncClient | None = None
 
-    def __enter__(self) -> HttpClient:
+    def __enter__(self) -> Self:
         """Enter context manager for sync client."""
         return self
 
@@ -93,7 +94,7 @@ class HttpClient:
         if self._async_client:
             pass
 
-    async def __aenter__(self) -> HttpClient:
+    async def __aenter__(self) -> Self:
         """Enter async context manager."""
         self._async_client = httpx.AsyncClient(
             timeout=httpx.Timeout(self.config.timeout),
@@ -168,7 +169,8 @@ class HttpClient:
 
         if last_exception:
             raise last_exception
-        raise httpx.HTTPError("Request failed after retries")
+        msg = "Request failed after retries"
+        raise httpx.HTTPError(msg)
 
     async def _async_retry_with_backoff(
         self,
@@ -206,7 +208,8 @@ class HttpClient:
 
         if last_exception:
             raise last_exception
-        raise httpx.HTTPError("Request failed after retries")
+        msg = "Request failed after retries"
+        raise httpx.HTTPError(msg)
 
     def _do_request(
         self,
@@ -268,7 +271,8 @@ class HttpClient:
 
         """
         if not self._async_client:
-            raise RuntimeError("Async client not initialized. Use 'async with' context.")
+            msg = "Async client not initialized. Use 'async with' context."
+            raise RuntimeError(msg)
         client = self._async_client
 
         full_headers = self._build_headers(headers)
@@ -433,7 +437,8 @@ def download_with_lock(
     lock_file = Path(f"{temp_path}.lock")
     temp_dir_path = temp_path.parent
     temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    with contextlib.suppress(OSError):
+        temp_dir_path.chmod(0o700)
 
     if output_path.exists():
         return True
@@ -497,7 +502,8 @@ async def async_download_with_lock(
     lock_file = Path(f"{temp_path}.lock")
     temp_dir_path = temp_path.parent
     temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    with contextlib.suppress(OSError):
+        temp_dir_path.chmod(0o700)
 
     if output_path.exists():
         return True
