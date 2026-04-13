@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -101,7 +102,7 @@ class TestDownloadWithLock:
     def test_returns_true_when_file_exists(self, tmp_path: Path) -> None:
         existing = tmp_path / "existing.apk"
         existing.write_bytes(b"\x00")
-        result = download_with_lock("https://example.com/app.apk", existing)
+        result = download_with_lock("https://example.com/app.apk", existing, temp_dir=tmp_path)
         assert result is True
 
     def test_returns_false_on_download_failure(self, tmp_path: Path) -> None:
@@ -196,7 +197,7 @@ class TestAria2cDownload:
             patch("shutil.which", return_value="/usr/bin/aria2c"),
             patch("subprocess.run") as mock_run,
         ):
-            mock_run.return_value = MagicMock(returncode=1)
+            mock_run.side_effect = subprocess.CalledProcessError(1, "aria2c")
             result = aria2c_download(["https://example.com/app.apk"], output)
 
         assert result is False

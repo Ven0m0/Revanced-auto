@@ -3,6 +3,7 @@
 # ruff: noqa: D101, D102, S101, SLF001, PLR2004, ARG001, ARG002, RUF043, S108
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -220,3 +221,17 @@ class TestAAPT2Manager:
         assert "en" in cmd
         assert "--target-densities" in cmd
         assert "xxhdpi" in cmd
+
+    def test_optimize_apk_subprocess_failure(self, tmp_path: Path, sample_apk: Path) -> None:
+        mgr = AAPT2Manager(cache_dir=tmp_path / "aapt2")
+        fake_bin = tmp_path / "aapt2_bin"
+        fake_bin.write_bytes(b"fake")
+        fake_bin.chmod(0o755)
+
+        with (
+            patch.object(mgr, "get_aapt2", return_value=fake_bin),
+            patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "aapt2")),
+        ):
+            result = mgr.optimize_apk(sample_apk, tmp_path / "out.apk")
+
+        assert result is False

@@ -62,7 +62,7 @@ class APKSigner:
         try:
             subprocess.run(cmd, check=True, capture_output=True)
             return True
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, OSError):
             return False
 
 
@@ -162,7 +162,7 @@ def align_apk(input_path: Path, output_path: Path) -> bool:
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         return True
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, OSError):
         return False
 
 
@@ -207,9 +207,7 @@ def merge_bundle(bundle_path: Path, output_path: Path) -> bool:
                 "-o",
                 str(temp_path / "merged.apk"),
             ]
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-            if result.returncode != 0:
-                return False
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
 
             merged_apk = temp_path / "merged.apk"
             if not merged_apk.exists():
@@ -358,12 +356,13 @@ class SplitAPKHandler:
             if jar is None:
                 return False
             try:
-                result = subprocess.run(
+                subprocess.run(
                     ["java", "-jar", str(jar), "merge", "-i", str(bundle_path), "-o", str(output_path)],
+                    check=True,
                     capture_output=True,
                 )
-                return result.returncode == 0
-            except OSError:
+                return True
+            except (subprocess.CalledProcessError, OSError):
                 return False
         return False
 
@@ -484,9 +483,9 @@ class AAPT2Manager:
             cmd += ["--target-densities", ",".join(densities)]
 
         try:
-            result = subprocess.run(cmd, capture_output=True)
-            return result.returncode == 0
-        except OSError:
+            subprocess.run(cmd, check=True, capture_output=True)
+            return True
+        except (subprocess.CalledProcessError, OSError):
             return False
 
 
@@ -520,5 +519,5 @@ def check_signature(apk_path: Path) -> bool:
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         return True
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, OSError):
         return False
