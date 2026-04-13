@@ -436,12 +436,52 @@ def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
     return work_dir
 
 
+def _calculate_sha256(file_path: Path) -> str:
+    """Calculate SHA256 hash of a file using chunked reading.
+
+    Args:
+        file_path: Path to the file.
+
+    Returns:
+        Hexadecimal representation of the SHA256 hash.
+
+    """
+    sha256_hash = hashlib.sha256()
+    with file_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256_hash.update(chunk)
+    return sha256_hash.hexdigest()
+
+
+def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
+    """Verify a file's SHA256 checksum; remove it if the check fails.
+
+    Args:
+        file_path: Path to the file to verify.
+        sha256: Expected SHA256 hex digest, or None to skip verification.
+
+    Returns:
+        True if the file is valid (or no sha256 was specified), False if the
+        hash mismatched (the file is removed).
+
+    """
+    if not sha256:
+        return True
+    if _calculate_sha256(file_path) == sha256:
+        return True
+    import contextlib
+
+    with contextlib.suppress(OSError):
+        file_path.unlink()
+    return False
+
 def download_with_lock(
     url: str,
     output: str | Path,
     temp_dir: str | Path | None = None,
     config: HttpClientConfig | None = None,
     headers: dict[str, str] | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Download file with concurrent download protection via file locking.
 
@@ -454,6 +494,7 @@ def download_with_lock(
         temp_dir: Temporary directory for lock files and partial downloads.
         config: Optional HTTP client configuration.
         headers: Additional headers for the request.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -474,7 +515,8 @@ def download_with_lock(
     lock_file = work_dir / "lock"
 
     if output_path.exists():
-        return True
+        if _verify_or_remove(output_path, sha256):
+            return True
 
     lock_fd = None
     try:
@@ -482,11 +524,14 @@ def download_with_lock(
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
         if output_path.exists():
-            return True
+            if _verify_or_remove(output_path, sha256):
+                return True
 
         client = HttpClient(config)
         try:
             client.get(url, temp_path, headers=headers or {})
+            if sha256 and not _verify_or_remove(temp_path, sha256):
+                return False
             temp_path.replace(output_path)
             return True
         finally:
@@ -511,6 +556,7 @@ async def async_download_with_lock(
     temp_dir: str | Path | None = None,
     config: HttpClientConfig | None = None,
     headers: dict[str, str] | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Async download file with concurrent download protection via file locking.
 
@@ -520,6 +566,7 @@ async def async_download_with_lock(
         temp_dir: Temporary directory for lock files and partial downloads.
         config: Optional HTTP client configuration.
         headers: Additional headers for the request.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -540,7 +587,9 @@ async def async_download_with_lock(
     lock_file = work_dir / "lock"
 
     if output_path.exists():
-        return True
+        verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+        if verified:
+            return True
 
     lock_fd = None
     try:
@@ -548,10 +597,16 @@ async def async_download_with_lock(
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
         if output_path.exists():
-            return True
+            verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+            if verified:
+                return True
 
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
+            if sha256:
+                valid = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, temp_path, sha256)
+                if not valid:
+                    return False
             temp_path.replace(output_path)
             return True
     except OSError:
@@ -629,6 +684,7 @@ def gh_dl(
     asset_path: str | Path,
     url: str,
     config: HttpClientConfig | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Download GitHub release asset with file locking.
 
@@ -636,6 +692,7 @@ def gh_dl(
         asset_path: Path where the asset should be saved.
         url: GitHub asset download URL.
         config: Optional HTTP client configuration.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -647,7 +704,7 @@ def gh_dl(
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    return download_with_lock(url, asset_path, config=cfg, headers=headers)
+    return download_with_lock(url, asset_path, config=cfg, headers=headers, sha256=sha256)
 
 
 def _executor_download_with_lock(
