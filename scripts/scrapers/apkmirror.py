@@ -344,7 +344,8 @@ class APKMirror(ScraperBase):
         )
 
         versions_url = self._get_versions_page_url(pkg_name)
-        response = self.get(versions_url)
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, self.get, versions_url)
 
         tree = HTMLParser(response.text)
         version_links = tree.css("div.version-fed-list > div")
@@ -511,7 +512,8 @@ class APKMirror(ScraperBase):
                 version = version_info.version
             else:
                 versions_url = self._get_versions_page_url(pkg_name)
-                response = self.get(versions_url)
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(None, self.get, versions_url)
 
                 tree = HTMLParser(response.text)
                 version_links = tree.css("div.version-fed-list > div")
@@ -549,7 +551,8 @@ class APKMirror(ScraperBase):
                         error=f"Version {version} not found with specified criteria",
                     )
 
-            final_download_url = self._get_download_url(download_url)
+            loop = asyncio.get_event_loop()
+            final_download_url = await loop.run_in_executor(None, self._get_download_url, download_url)
             if final_download_url is None:
                 return DownloadResult(
                     success=False,
