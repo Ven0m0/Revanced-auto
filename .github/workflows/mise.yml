@@ -17,4 +17,4 @@ jobs:
           install: true # [default: true] run `mise install`
           cache: true # [default: true] cache mise using GitHub's cache
           experimental: true # [default: false] enable experimental features
-      - run: shellcheck scripts/*.sh
+      - run: shellcheck scripts/*.sh scripts/lib/*.sh

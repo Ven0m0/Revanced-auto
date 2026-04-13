@@ -1,11 +1,11 @@
 [settings]
-gix = true
+# gix = true
 experimental = true
 color = true
 yes = true
 auto_install = true
 lockfile = true
-env_shell_expand = true
+# env_shell_expand = true
 
 [settings.python]
 uv_venv_auto = true
@@ -20,7 +20,7 @@ uvx = true
 
 
 [settings.npm]
-package_manager = "bun"
+bun = true
 
 [tools]
 "actionlint" = "latest"
