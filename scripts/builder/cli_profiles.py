@@ -276,9 +276,6 @@ def _detect_profile_from_help(help_output: str) -> CLIProfile:
     return REVANCED_CLI_V5
 
 
-CLIProfileType = CLIProfileType
-
-
 def build_cli_args(
     profile: CLIProfile,
     command: str,
@@ -343,36 +340,36 @@ def build_cli_args(
                     args.append(str(output_path))
 
         if patches_jars:
-            for jar in patches_jars:
-                patches_mapping = patch_args.get("PATCHES")
-                if patches_mapping:
+            patches_mapping = patch_args.get("PATCHES")
+            if patches_mapping:
+                for jar in patches_jars:
                     args.extend(patches_mapping.prepend_args)
                     args.append(patches_mapping.flag)
                     if patches_mapping.requires_value:
                         args.append(str(jar))
 
         if patches_post:
-            for jar in patches_post:
-                post_mapping = patch_args.get("PATCHES_POST")
-                if post_mapping:
+            post_mapping = patch_args.get("PATCHES_POST")
+            if post_mapping:
+                for jar in patches_post:
                     args.extend(post_mapping.prepend_args)
                     args.append(post_mapping.flag)
                     if post_mapping.requires_value:
                         args.append(str(jar))
 
         if exclude:
-            for patch_name in exclude:
-                disabled_mapping = patch_args.get("DISABLED")
-                if disabled_mapping:
+            disabled_mapping = patch_args.get("DISABLED")
+            if disabled_mapping:
+                for patch_name in exclude:
                     args.extend(disabled_mapping.prepend_args)
                     args.append(disabled_mapping.flag)
                     if disabled_mapping.requires_value:
                         args.append(patch_name)
 
         if include:
-            for patch_name in include:
-                enabled_mapping = patch_args.get("ENABLED")
-                if enabled_mapping:
+            enabled_mapping = patch_args.get("ENABLED")
+            if enabled_mapping:
+                for patch_name in include:
                     args.extend(enabled_mapping.prepend_args)
                     args.append(enabled_mapping.flag)
                     if enabled_mapping.requires_value:
@@ -438,9 +435,9 @@ def build_cli_args(
         list_patches_args = profile.list_patches_args
 
         if patches_jars:
-            for jar in patches_jars:
-                patches_mapping = list_patches_args.get("PATCHES")
-                if patches_mapping:
+            patches_mapping = list_patches_args.get("PATCHES")
+            if patches_mapping:
+                for jar in patches_jars:
                     args.extend(patches_mapping.prepend_args)
                     args.append(patches_mapping.flag)
                     if patches_mapping.requires_value:
