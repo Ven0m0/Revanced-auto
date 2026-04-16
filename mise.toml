@@ -21,9 +21,9 @@ uvx = true
 bun = true
 
 [tools]
-python = "3.13"
+python = "3.14.4"
 uv = "latest"
-java = "temurin-21"
+java = "temurin-25.0.2+10.0.LTS"
 "actionlint" = "latest"
 action-validator = "latest"
 prek = "latest"
