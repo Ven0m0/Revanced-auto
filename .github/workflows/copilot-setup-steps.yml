@@ -49,8 +49,7 @@ jobs:
           uv tool install ruff
           uv tool install tombi
           uv tool install ty
-          uv tool install yamllint
-          bun i -g \
+          npm i -g \
             @ast-grep/cli \
             @biomejs/biome \
             bash-language-server \
