@@ -1,6 +1,6 @@
 """Tests for scripts/builder/config.py."""
 
-# ruff: noqa: D101, D102, S101, PLR2004, TC003
+# ruff: noqa: S101, TC003
 
 from __future__ import annotations
 

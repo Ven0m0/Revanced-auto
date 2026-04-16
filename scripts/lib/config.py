@@ -40,14 +40,22 @@ class Config:
     a simplified interface with properties for common settings.
     """
 
-    def __init__(self, inner: BuilderConfig, *, use_cache: bool = True) -> None:
+    def __init__(
+        self,
+        inner: BuilderConfig,
+        *,
+        config_file: str | Path = "config.toml",
+        use_cache: bool = True,
+    ) -> None:
         """Initialize Config wrapper.
 
         Args:
             inner: The underlying builder Config instance.
+            config_file: Source configuration path.
             use_cache: Whether to use cached downloads (default: True).
         """
         self._inner = inner
+        self._config_file = str(config_file)
         self._use_cache = use_cache
 
     @classmethod
@@ -64,7 +72,7 @@ class Config:
             ConfigError: If loading or parsing fails.
         """
         inner = builder_load_config(path)
-        return cls(inner)
+        return cls(inner, config_file=path)
 
     @property
     def build_mode(self) -> str:
@@ -100,6 +108,11 @@ class Config:
     def apps(self) -> dict[str, AppConfig]:
         """Dictionary of app configurations."""
         return self._inner.apps
+
+    @property
+    def config_file(self) -> str:
+        """Original configuration file path."""
+        return self._config_file
 
     def clean(self) -> None:
         """Clean temporary and build directories."""

@@ -417,10 +417,10 @@ def format_changes_for_github_output(changes: list[VersionDiff]) -> str:
         Formatted string for workflow commands.
 
     """
-    lines = []
-    for change in changes:
-        lines.append(f"::notice title={change.key}::{change.change_type}: {change.old} -> {change.new}")
-    return "\n".join(lines)
+    return "\n".join(
+        f"::notice title={change.key}::{change.change_type}: {change.old} -> {change.new}"
+        for change in changes
+    )
 
 
 def execute_check_command(config_path: str, state_path: Path | None) -> int:
@@ -515,7 +515,8 @@ def determine_command(args: argparse.Namespace) -> Command:
         case "reset":
             return Command.RESET
         case _:
-            raise ValueError(f"unknown command: {args.command}")
+            msg = f"unknown command: {args.command}"
+            raise ValueError(msg)
 
 
 def main() -> int:
@@ -558,8 +559,6 @@ def main() -> int:
                 return execute_show_command(state_path)
             case Command.RESET:
                 return execute_reset_command(state_path)
-            case _:
-                return 1
     except KeyboardInterrupt:
         return 130
 

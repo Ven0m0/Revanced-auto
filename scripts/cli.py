@@ -2,9 +2,11 @@
 """CLI entry point for ReVanced Builder."""
 
 import argparse
+import re
 import signal
 import sys
 from pathlib import Path
+from types import FrameType
 
 # Allow running as a direct script: `python scripts/cli.py`
 # Inserts the project root so `scripts.*` imports resolve correctly.
@@ -24,7 +26,7 @@ from scripts.lib.cache import (
 )
 
 
-def _signal_handler(signum: int, frame) -> None:
+def _signal_handler(signum: int, _frame: FrameType | None) -> None:
     """Handle interrupt signals gracefully."""
     signame = signal.Signals(signum).name
     log.abort(f"Received {signame}, shutting down...", code=130)
@@ -155,8 +157,6 @@ def run_version_tracker(args: argparse.Namespace) -> int:
 
 def run_cache(args: argparse.Namespace) -> int:
     """Execute cache subcommands and return a process exit code."""
-    import re
-
     manager = CacheManager()
     subcommand = args.cache_command
 
@@ -230,8 +230,9 @@ def main() -> int:
             return run_version_tracker(args)
         if args.command == "cache":
             return run_cache(args)
-        parser.print_help()
-        return 1
+        else:
+            parser.print_help()
+            return 1
     except KeyboardInterrupt:
         log.abort("Interrupted", code=130)
 

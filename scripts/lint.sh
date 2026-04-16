@@ -225,15 +225,26 @@ fi
 # ============================================================================
 log_section "JSON/HTML/JS/TS/CSS (Biome)"
 if check_command "biome" "JSON/HTML/JS/TS/CSS"; then
-  if [[ "$FIX_MODE" == true ]]; then
-    if biome check --write .; then
+  mapfile -t BIOME_FILES < <(
+    find . \
+      \( -name "*.json" -o -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.ts" \) \
+      -not -path "./.git/*" \
+      -not -path "./.venv/*" \
+      -not -path "./node_modules/*" \
+      -not -path "./build/*" \
+      -not -path "./temp/*" 2>/dev/null || true
+  )
+  if [[ ${#BIOME_FILES[@]} -eq 0 ]]; then
+    log_warn "No Biome-managed files found"
+  elif [[ "$FIX_MODE" == true ]]; then
+    if biome check --write "${BIOME_FILES[@]}"; then
       log_success "Biome check and format completed"
     else
       log_error "Biome failed"
       EXIT_CODE=1
     fi
   else
-    if biome check .; then
+    if biome check "${BIOME_FILES[@]}"; then
       log_success "Files pass Biome checks"
     else
       log_error "Biome check failed"

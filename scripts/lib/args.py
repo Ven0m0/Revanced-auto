@@ -3,7 +3,7 @@
 import argparse
 
 
-def build_parser(subparsers: argparse._SubParsersAction) -> None:
+def build_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add 'build' subcommand to subparsers."""
     parser = subparsers.add_parser(
         "build",
@@ -38,7 +38,7 @@ def build_parser(subparsers: argparse._SubParsersAction) -> None:
     )
 
 
-def check_parser(subparsers: argparse._SubParsersAction) -> None:
+def check_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add 'check' subcommand to subparsers."""
     parser = subparsers.add_parser(
         "check",
@@ -51,7 +51,7 @@ def check_parser(subparsers: argparse._SubParsersAction) -> None:
     )
 
 
-def version_tracker_parser(subparsers: argparse._SubParsersAction) -> None:
+def version_tracker_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add 'version-tracker' subcommand with sub-subcommands."""
     parser = subparsers.add_parser(
         "version-tracker",
@@ -88,7 +88,7 @@ def version_tracker_parser(subparsers: argparse._SubParsersAction) -> None:
     )
 
 
-def cache_parser(subparsers: argparse._SubParsersAction) -> None:
+def cache_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add 'cache' subcommand with sub-subcommands."""
     parser = subparsers.add_parser(
         "cache",

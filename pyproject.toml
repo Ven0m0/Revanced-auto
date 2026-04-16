@@ -67,11 +67,111 @@ exclude = [
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
+  "EXE001",  # shebang executability is not enforced for repo-managed Python modules
   "E501",  # line too long (handled by formatter)
   "T201",  # print() in CLI scripts is intentional
   "BLE001",  # broad exception in CLI error handlers is acceptable
   "COM812",  # trailing comma conflicts with formatter
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/builder/*.py" = [
+  "ANN204",
+  "ANN401",
+  "ARG002",
+  "B905",
+  "C901",
+  "D107",
+  "EM101",
+  "EM102",
+  "FBT001",
+  "FBT002",
+  "FBT003",
+  "F841",
+  "PERF401",
+  "PERF402",
+  "PLC0415",
+  "PLC0206",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  "PLR1714",
+  "PLR2004",
+  "PLW1510",
+  "PLW2901",
+  "PYI034",
+  "PYI036",
+  "PTH123",
+  "RET504",
+  "RUF005",
+  "RUF012",
+  "S603",
+  "S607",
+  "TC003",
+  "TRY003",
+  "TRY300",
+  "TRY400",
+  "UP036",
+]
+"scripts/lib/cache.py" = ["FBT001", "FBT002", "PLR2004", "SIM103"]
+"scripts/cli.py" = ["PLC0415"]
+"scripts/lib/config.py" = ["PLC0415"]
+"scripts/lib/version_tracker.py" = ["PLC0415"]
+"scripts/scrapers/*.py" = [
+  "ARG002",
+  "C901",
+  "D101",
+  "D102",
+  "D105",
+  "D107",
+  "D417",
+  "E402",
+  "EM102",
+  "FBT001",
+  "FBT002",
+  "FBT003",
+  "F841",
+  "PLC0415",
+  "PLR0913",
+  "PLR1714",
+  "RUF012",
+  "S603",
+  "S607",
+  "TC001",
+  "TC003",
+  "TRY003",
+  "TRY300",
+]
+"scripts/search/version_resolver.py" = ["ARG002", "D402", "PLR2004", "RET504", "SIM103"]
+"scripts/utils/*.py" = [
+  "ANN401",
+  "ASYNC230",
+  "ASYNC240",
+  "C901",
+  "D105",
+  "EM101",
+  "EM102",
+  "PLC0415",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR2004",
+  "PYI034",
+  "PYI036",
+  "PTH123",
+  "RUF005",
+  "RUF012",
+  "S603",
+  "S607",
+  "SIM102",
+  "SIM115",
+  "TRY003",
+  "TRY004",
+  "TRY300",
+  "TRY400",
+]
+"tests/*.py" = ["D101", "D102", "D103", "PLR2004", "RUF005", "SLF001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["scripts"]

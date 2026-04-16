@@ -1,6 +1,6 @@
 """Tests for scripts/utils/java.py."""
 
-# ruff: noqa: D101, D102, S101, SLF001, S105
+# ruff: noqa: S101, S105
 from __future__ import annotations
 
 import subprocess

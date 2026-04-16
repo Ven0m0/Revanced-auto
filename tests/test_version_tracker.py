@@ -1,6 +1,6 @@
 """Tests for scripts/version_tracker.py and scripts/lib/version_tracker.py."""
 
-# ruff: noqa: D101, D102, S101, PLC0415, TC003
+# ruff: noqa: S101, PLC0415, TC003
 
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ class TestDetectChanges:
         current = {"a": "2", "b": "2"}
         saved = {"a": "1", "b": "1"}
         changes = detect_changes(current, saved)
-        assert len(changes) == 2  # noqa: PLR2004
+        assert len(changes) == 2
 
 
 # ---------------------------------------------------------------------------

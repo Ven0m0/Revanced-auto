@@ -186,6 +186,7 @@ for app in "${!BUILD_STATUS[@]}"; do
     success) emoji="✅" ;;
     failed) emoji="❌" ;;
     building) emoji="🔄" ;;
+    *) emoji="❓" ;;
   esac
   log_info "  ${emoji} ${app}: ${status}"
 done
@@ -199,24 +200,33 @@ fi
 : > build.md
 shopt -s nullglob
 for log_file in build/*.md; do
-  [[ -f "$log_file" ]] && cat "$log_file" >> build.md && echo "" >> build.md
+  if [[ -f "$log_file" ]]; then
+    {
+      cat "$log_file"
+      echo ""
+    } >> build.md
+  fi
 done
 shopt -u nullglob
 
-echo "" >> build.md
-echo "### MicroG / GmsCore (Required for YouTube & YT Music)" >> build.md
-echo "Download and install one of the following GmsCore providers:" >> build.md
-echo "- [ReVanced GmsCore](https://github.com/ReVanced/GmsCore/releases/latest)" >> build.md
-echo "- [Wst_Xda GmsCore (Morphe)](https://github.com/MorpheApp/MicroG-RE/releases/latest)" >> build.md
-echo "- [YT-Advanced GmsCore (Rex)](https://github.com/YT-Advanced/GmsCore/releases/latest)" >> build.md
-echo "" >> build.md
+{
+  echo ""
+  echo "### MicroG / GmsCore (Required for YouTube & YT Music)"
+  echo "Download and install one of the following GmsCore providers:"
+  echo "- [ReVanced GmsCore](https://github.com/ReVanced/GmsCore/releases/latest)"
+  echo "- [Wst_Xda GmsCore (Morphe)](https://github.com/MorpheApp/MicroG-RE/releases/latest)"
+  echo "- [YT-Advanced GmsCore (Rex)](https://github.com/YT-Advanced/GmsCore/releases/latest)"
+  echo ""
+} >> build.md
 cat "$TEMP_DIR"/*-rv/changelog.md >> build.md 2> /dev/null || :
 
 SKIPPED=$(cat "$TEMP_DIR"/skipped 2> /dev/null || :)
 if [[ $SKIPPED != "" ]]; then
-  echo "" >> build.md
-  echo "Skipped:" >> build.md
-  echo "$SKIPPED  " >> build.md
+  {
+    echo ""
+    echo "Skipped:"
+    echo "$SKIPPED  "
+  } >> build.md
 fi
 
 pr "Build complete! Output in: ${BUILD_DIR}/"

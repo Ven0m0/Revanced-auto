@@ -1,6 +1,6 @@
 """Tests for scripts/utils/network.py."""
 
-# ruff: noqa: D101, D102, S101, SLF001, ARG001, S105, TC003
+# ruff: noqa: S101, ARG001, S105, TC003
 
 from __future__ import annotations
 
@@ -31,11 +31,11 @@ from scripts.utils.network import (
 class TestHttpClientConfig:
     def test_default_timeout(self) -> None:
         cfg = HttpClientConfig()
-        assert cfg.timeout == 300  # noqa: PLR2004
+        assert cfg.timeout == 300
 
     def test_default_max_retries(self) -> None:
         cfg = HttpClientConfig()
-        assert cfg.max_retries == 4  # noqa: PLR2004
+        assert cfg.max_retries == 4
 
     def test_github_token_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("GITHUB_TOKEN", "test_token")

@@ -1,6 +1,6 @@
 """Tests for scripts/utils/apk.py."""
 
-# ruff: noqa: D101, D102, S101, SLF001, PLR2004, ARG001, ARG002, RUF043, S108
+# ruff: noqa: S101, ARG001, ARG002, RUF043, S108
 from __future__ import annotations
 
 import subprocess
