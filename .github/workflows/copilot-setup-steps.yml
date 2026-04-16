@@ -30,12 +30,6 @@ jobs:
         run: |
           sdkmanager "build-tools;34.0.0"
           echo "${ANDROID_HOME}/build-tools/34.0.0" >> "${GITHUB_PATH}"
-      - name: Install repository toolchain
-        uses: jdx/mise-action@v4.0.1
-        with:
-          install: true
-          cache: true
-          experimental: true
       - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
         with:
