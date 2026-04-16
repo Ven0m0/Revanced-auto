@@ -15,47 +15,40 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Java 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
-          java-version: '21'
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Cache Android SDK Build Tools
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.ANDROID_HOME }}/build-tools
-          key: ${{ runner.os }}-android-build-tools-34.0.0
-          restore-keys: |
-            ${{ runner.os }}-android-build-tools-
+          java-version: "21"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
       - name: Install Android SDK Build Tools
         run: |
           sdkmanager "build-tools;34.0.0"
-          echo "$ANDROID_HOME/build-tools/34.0.0" >> "$GITHUB_PATH"
-      - name: Bootstrap pinned bin JAR dependencies
-        run: |
-          source utils.sh
-          check_binaries || {
-            echo "Failed to bootstrap pinned bin/*.jar dependencies" >&2
-            exit 1
-          }
-      - name: Install uv and Python
-        uses: astral-sh/setup-uv@v7
+          echo "${ANDROID_HOME}/build-tools/34.0.0" >> "${GITHUB_PATH}"
+      - name: Install repository toolchain
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
-          enable-cache: true
-          cache-dependency-glob: |
-            uv.lock
-            pyproject.toml
-          python-version: "3.13"
-      - name: Install project dependencies
-        run: uv sync --all-extras --all-packages --all-groups --frozen
-      - name: Install llm tooling
+          version: 2024.12.14
+          install: true
+          cache: true
+          experimental: true
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
+      - name: Install Copilot helper tools
         run: |
           uv tool install basedpyright
           uv tool install ruff
           uv tool install ty
-          npm i -g vscode-langservers-extracted bash-language-server yaml-language-server \
-            @ast-grep/cli @biomejs/biome
+          uv tool install yamllint
+          npm install --global \
+            @ast-grep/cli \
+            @biomejs/biome \
+            bash-language-server \
+            vscode-langservers-extracted \
+            yaml-language-server
+      - name: Bootstrap pinned bin JAR dependencies
+        run: |
+          source utils.sh
+          check_binaries
