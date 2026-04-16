@@ -45,11 +45,24 @@ Use this skill before reporting completion on ReVanced-auto changes.
 
    **Other YAML / TOML / JSON changes**
 
-   Run the relevant part of `./scripts/lint.sh` when the required tools are available in the environment.
+   ```bash
+   yamllint <paths>            # YAML
+   taplo format --check <paths> && taplo lint <paths>   # TOML
+   biome check <paths>         # JSON / HTML / CSS and other Biome-managed files
+   ```
+
+   If the tools are already installed, `./scripts/lint.sh` is the combined repo check.
 
    **Guidance docs (`.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`, `.github/skills/*/SKILL.md`)**
 
-   There is no dedicated markdown linter in this repo. Verify that referenced commands and paths exist, and validate any touched workflows separately with `actionlint`.
+   There is no dedicated markdown linter in this repo. Verify references directly:
+
+   ```bash
+   command -v <command>
+   test -e <path>
+   ```
+
+   Validate any touched workflows separately with `actionlint`.
 
 3. Fix issues in the changed files only. Report unrelated pre-existing failures instead of broadening the change.
 
