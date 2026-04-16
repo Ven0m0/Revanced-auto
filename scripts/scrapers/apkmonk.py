@@ -32,7 +32,7 @@ class APKMonkScraper(ScraperBase):
 
     def __init__(self) -> None:
         """Initialize APKMonk scraper."""
-        super().__init__(DownloadSource.APKMonk)
+        super().__init__(DownloadSource.APKMONK)
 
     def _build_url(self, package: str, path: str = "") -> str:
         """Build APKMonk URL.
