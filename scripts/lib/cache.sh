@@ -24,7 +24,7 @@ cache_init() {
   mkdir -p "$cache_dir"
   # Initialize index file if it doesn't exist
   if [[ ! -f "$CACHE_INDEX_FILE" ]]; then
-    echo "{}" >"$CACHE_INDEX_FILE"
+    echo "{}" > "$CACHE_INDEX_FILE"
     log_debug "Created cache index: $CACHE_INDEX_FILE"
   fi
   log_debug "Cache initialized: $cache_dir"
@@ -46,7 +46,7 @@ cache_is_valid() {
   fi
   # Get cache entry from index
   local cache_entry
-  cache_entry=$(jq -r --arg path "$file_path" '.[$path] // empty' "$CACHE_INDEX_FILE" 2>/dev/null)
+  cache_entry=$(jq -r --arg path "$file_path" '.[$path] // empty' "$CACHE_INDEX_FILE" 2> /dev/null)
   if [[ -z "$cache_entry" || "$cache_entry" == "null" ]]; then
     log_debug "Cache miss: no index entry for $file_path"
     return 1
@@ -94,7 +94,7 @@ cache_put() {
   cache_init
   # Get file metadata
   local file_size
-  file_size=$(stat -c%s "$file_path" 2>/dev/null || stat -f%z "$file_path" 2>/dev/null)
+  file_size=$(stat -c%s "$file_path" 2> /dev/null || stat -f%z "$file_path" 2> /dev/null)
   local checksum
   checksum=$(sha256sum "$file_path" | cut -d' ' -f1)
   local now
@@ -120,7 +120,7 @@ cache_put() {
   local temp_index
   temp_index=$(mktemp)
   jq --arg path "$file_path" --argjson entry "$cache_entry" \
-    '.[$path] = $entry' "$CACHE_INDEX_FILE" >"$temp_index"
+    '.[$path] = $entry' "$CACHE_INDEX_FILE" > "$temp_index"
   mv "$temp_index" "$CACHE_INDEX_FILE"
   log_debug "Cached: $file_path (size: $file_size, ttl: ${ttl}s)"
   return 0
@@ -144,7 +144,7 @@ cache_stats() {
     "$CACHE_INDEX_FILE")
   echo "Cache Statistics:"
   echo "  Total entries: $total_entries"
-  echo "  Total size: $(numfmt --to=iec-i --suffix=B "$total_size" 2>/dev/null || echo "${total_size} bytes")"
+  echo "  Total size: $(numfmt --to=iec-i --suffix=B "$total_size" 2> /dev/null || echo "${total_size} bytes")"
   echo "  Expired entries: $expired_count"
   echo "  Cache directory: $CACHE_DIR"
 }
@@ -166,7 +166,7 @@ cache_cleanup() {
   fi
   jq -c --arg now "$now" \
     '[to_entries | .[] | select((.value.created + .value.ttl) < ($now | tonumber)) | .key]' \
-    "$CACHE_INDEX_FILE" >"$temp_keys_file" || abort "Failed to generate expired keys list."
+    "$CACHE_INDEX_FILE" > "$temp_keys_file" || abort "Failed to generate expired keys list."
   # Check if there are any expired entries
   local count
   count=$(jq 'length' "$temp_keys_file")
@@ -189,7 +189,7 @@ cache_cleanup() {
     fi
     # --slurpfile reads the array from file into a variable (array of arrays)
     jq --slurpfile keys_wrapper "$temp_keys_file" \
-      'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" >"$temp_index" || abort "Failed to batch update cache index."
+      'del(.[$keys_wrapper[0][]])' "$CACHE_INDEX_FILE" > "$temp_index" || abort "Failed to batch update cache index."
     mv "$temp_index" "$CACHE_INDEX_FILE"
     pr "Removed $removed_count expired cache entries"
   else
@@ -209,10 +209,10 @@ cache_cleanup() {
     if [[ ${#orphaned_keys[@]} -gt 0 ]]; then
       local orphaned_keys_file
       orphaned_keys_file=$(mktemp)
-      jq -n --args '$ARGS.positional' -- "${orphaned_keys[@]}" >"$orphaned_keys_file"
+      jq -n --args '$ARGS.positional' -- "${orphaned_keys[@]}" > "$orphaned_keys_file"
       local temp_index
       temp_index=$(mktemp)
-      jq --slurpfile keys "$orphaned_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" >"$temp_index"
+      jq --slurpfile keys "$orphaned_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" > "$temp_index"
       mv "$temp_index" "$CACHE_INDEX_FILE"
       pr "Removed ${#orphaned_keys[@]} orphaned index entries"
       rm -f "$orphaned_keys_file"
@@ -232,14 +232,14 @@ cache_clean_pattern() {
   matching_keys_file=$(mktemp)
   jq --arg pattern "$pattern" \
     '[to_entries | .[] | select(.key | test($pattern)) | .key]' \
-    "$CACHE_INDEX_FILE" >"$matching_keys_file"
+    "$CACHE_INDEX_FILE" > "$matching_keys_file"
   local removed_count
   removed_count=$(jq 'length' "$matching_keys_file")
   if [[ "$removed_count" -gt 0 ]]; then
     # Batch remove from index
     local temp_index
     temp_index=$(mktemp)
-    jq --slurpfile keys "$matching_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" >"$temp_index"
+    jq --slurpfile keys "$matching_keys_file" 'delpaths($keys[0] | map([.]))' "$CACHE_INDEX_FILE" > "$temp_index"
     mv "$temp_index" "$CACHE_INDEX_FILE"
     # Remove files
     jq -j '.[] | . + "\u0000"' "$matching_keys_file" | while IFS= read -r -d '' file_path; do

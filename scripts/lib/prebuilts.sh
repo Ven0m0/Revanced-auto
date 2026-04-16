@@ -11,10 +11,10 @@ _get_aapt2_asset_name() {
   local machine_arch
   machine_arch=$(uname -m)
   case "$machine_arch" in
-  aarch64 | arm64) echo "aapt2-arm64-v8a" ;;
-  armv7* | armv8l) echo "aapt2-armeabi-v7a" ;;
-  x86_64) echo "aapt2-arm64-v8a" ;;
-  *) echo "" ;;
+    aarch64 | arm64) echo "aapt2-arm64-v8a" ;;
+    armv7* | armv8l) echo "aapt2-armeabi-v7a" ;;
+    x86_64) echo "aapt2-arm64-v8a" ;;
+    *) echo "" ;;
   esac
 }
 
@@ -46,7 +46,7 @@ fetch_aapt2_binary() {
     local cache_meta="${cache_dir}/${asset_name}.meta"
     if [[ -f "$cache_meta" ]]; then
       local cached_at
-      read -r cached_at <"$cache_meta"
+      read -r cached_at < "$cache_meta"
       local now
       now=$(date +%s)
       if (((now - cached_at) < AAPT2_CACHE_TTL)); then
@@ -74,8 +74,8 @@ fetch_aapt2_binary() {
 
   local download_url tag_name
   download_url=$(jq -r --arg name "$asset_name" \
-    '.assets[] | select(.name == $name) | .browser_download_url' <<<"$release_json")
-  tag_name=$(jq -r '.tag_name' <<<"$release_json")
+    '.assets[] | select(.name == $name) | .browser_download_url' <<< "$release_json")
+  tag_name=$(jq -r '.tag_name' <<< "$release_json")
 
   if [[ -z "$download_url" || "$download_url" == "null" ]]; then
     log_warn "Asset '${asset_name}' not found in ${aapt2_repo} ${tag_name}"
@@ -90,7 +90,7 @@ fetch_aapt2_binary() {
   log_info "Downloading aapt2 ${tag_name} (${asset_name})..."
   local asset_url
   asset_url=$(jq -r --arg name "$asset_name" \
-    '.assets[] | select(.name == $name) | .url' <<<"$release_json")
+    '.assets[] | select(.name == $name) | .url' <<< "$release_json")
 
   if ! gh_dl "$cached_binary" "$asset_url"; then
     log_warn "Failed to download aapt2 binary"
@@ -105,7 +105,7 @@ fetch_aapt2_binary() {
   chmod +x "$cached_binary"
 
   # Update cache timestamp
-  date +%s >"${cache_dir}/${asset_name}.meta"
+  date +%s > "${cache_dir}/${asset_name}.meta"
 
   pr "Downloaded aapt2 ${tag_name} for $(uname -m)"
   echo "$cached_binary"
@@ -138,10 +138,10 @@ resolve_rv_artifact() {
   local is_morphe=false
   if [[ "$tag" = "Patches" ]]; then
     case "$src" in
-    MorpheApp/* | */morphe-* | */rvx-morphed | */anddea-rvx-morphed | */patcheddit)
-      ext="mpp"
-      is_morphe=true
-      ;;
+      MorpheApp/* | */morphe-* | */rvx-morphed | */anddea-rvx-morphed | */patcheddit)
+        ext="mpp"
+        is_morphe=true
+        ;;
     esac
   fi
   local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
@@ -158,61 +158,61 @@ resolve_rv_artifact() {
     else
       local resp
       resp=$(gh_req "$rv_rel" -) || return 1
-      ver=$(jq -e -r '.[] | .tag_name' <<<"$resp" | get_highest_ver) || return 1
+      ver=$(jq -e -r '.[] | .tag_name' <<< "$resp" | get_highest_ver) || return 1
       RV_DEV_VER_CACHE[$rv_rel]="$ver"
       log_debug "Selected dev version: $ver"
     fi
   fi
   # Check if file already exists locally (try both .mpp and .rvp for patches)
   local url file tag_name name
-  file=$(find "$dir" -name "${fprefix}-${ver#v}*.${ext}" -type f 2>/dev/null || find "$dir" -name "${fprefix}-*.${ext}" -type f 2>/dev/null)
+  file=$(find "$dir" -name "${fprefix}-${ver#v}*.${ext}" -type f 2> /dev/null || find "$dir" -name "${fprefix}-*.${ext}" -type f 2> /dev/null)
   # For Morphe sources, also try the alternate extension if primary not found
   if [[ -z "$file" && "$tag" = "Patches" ]]; then
     local alt_ext
     if [[ "$is_morphe" == "true" ]]; then alt_ext="rvp"; else alt_ext="mpp"; fi
-    file=$(find "$dir" -name "${fprefix}-${ver#v}*.${alt_ext}" -type f 2>/dev/null || find "$dir" -name "${fprefix}-*.${alt_ext}" -type f 2>/dev/null)
+    file=$(find "$dir" -name "${fprefix}-${ver#v}*.${alt_ext}" -type f 2> /dev/null || find "$dir" -name "${fprefix}-*.${alt_ext}" -type f 2> /dev/null)
   fi
   if [[ -z "$file" ]]; then
     log_info "Downloading $tag from GitHub"
     local resp asset
     resp=$(gh_req "$rv_rel" -) || return 1
-    tag_name=$(jq -r ".[0].tag_name" <<<"$resp")
-    asset=$(jq -e -r "first(.[0].assets[] | select(.name | endswith(\".$ext\")))" <<<"$resp" 2>/dev/null) || true
+    tag_name=$(jq -r ".[0].tag_name" <<< "$resp")
+    asset=$(jq -e -r "first(.[0].assets[] | select(.name | endswith(\".$ext\")))" <<< "$resp" 2> /dev/null) || true
     # Fallback: if .mpp not found, try .rvp (and vice versa)
     if [[ -z "${asset:-}" || "${asset:-}" == "null" ]]; then
       if [[ "$is_morphe" == "true" ]]; then
         log_debug "No .mpp asset found, trying .rvp fallback"
-        asset=$(jq -e -r 'first(.[0].assets[] | select(.name | endswith(".rvp")))' <<<"$resp") || return 1
+        asset=$(jq -e -r 'first(.[0].assets[] | select(.name | endswith(".rvp")))' <<< "$resp") || return 1
       else
         log_debug "No .rvp asset found, trying .mpp fallback"
-        asset=$(jq -e -r 'first(.[0].assets[] | select(.name | endswith(".mpp")))' <<<"$resp") || return 1
+        asset=$(jq -e -r 'first(.[0].assets[] | select(.name | endswith(".mpp")))' <<< "$resp") || return 1
       fi
     fi
-    url=$(jq -r .url <<<"$asset")
-    name=$(basename "$(jq -r .name <<<"$asset")")
+    url=$(jq -r .url <<< "$asset")
+    name=$(basename "$(jq -r .name <<< "$asset")")
     file="${dir}/${name}"
     gh_dl "$file" "$url" >&2 || return 1
-    echo "$tag: $(cut -d/ -f1 <<<"$src")/${name}  " >>"${cl_dir}/changelog.md"
+    echo "$tag: $(cut -d/ -f1 <<< "$src")/${name}  " >> "${cl_dir}/changelog.md"
   else
     grab_cl=false
     local for_err=$file
     if [[ "$ver" = "latest" ]]; then
-      file=$(grep -v '/[^/]*dev[^/]*$' <<<"$file" | head -1)
+      file=$(grep -v '/[^/]*dev[^/]*$' <<< "$file" | head -1)
     else
-      file=$(grep "/[^/]*${ver#v}[^/]*\$" <<<"$file" | head -1)
+      file=$(grep "/[^/]*${ver#v}[^/]*\$" <<< "$file" | head -1)
     fi
     if [[ -z "$file" ]]; then
       abort "filter fail: '$for_err' with '$ver'"
     fi
     name=$(basename "$file")
-    tag_name=$(cut -d'-' -f3- <<<"$name")
+    tag_name=$(cut -d'-' -f3- <<< "$name")
     tag_name=v${tag_name%.*}
     log_debug "Using cached $tag: $file"
   fi
   # Handle patches-specific processing
   if [[ "$tag" = "Patches" ]]; then
     if [[ "$grab_cl" = true ]]; then
-      printf "[Changelog](https://github.com/%s/releases/tag/%s)\n\n" "$src" "$tag_name" >>"${cl_dir}/changelog.md"
+      printf "[Changelog](https://github.com/%s/releases/tag/%s)\n\n" "$src" "$tag_name" >> "${cl_dir}/changelog.md"
     fi
     # Remove integrations checks if requested
     if [[ "${REMOVE_RV_INTEGRATIONS_CHECKS:-}" = true ]]; then
@@ -254,7 +254,7 @@ get_rv_prebuilts_multi() {
   # Morphe CLI uses "morphe-cli" prefix instead of "revanced-cli"
   local cli_prefix="revanced-cli"
   case "$cli_src" in
-  MorpheApp/* | */morphe-cli) cli_prefix="morphe-cli" ;;
+    MorpheApp/* | */morphe-cli) cli_prefix="morphe-cli" ;;
   esac
   local cli_jar
   cli_jar=$(resolve_rv_artifact "$cli_src" "CLI" "$cli_ver" "$cli_prefix" "$cl_dir")
@@ -296,6 +296,6 @@ _remove_integrations_checks() {
     zip -0rq "${PROJECT_ROOT}/$(basename "${file}")" . || return 1
   ) >&2
   local ret=$?
-  rm -rf "${file}-zip" 2>/dev/null || :
+  rm -rf "${file}-zip" 2> /dev/null || :
   return "$ret"
 }

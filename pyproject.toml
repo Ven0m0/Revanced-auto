@@ -5,63 +5,25 @@ description = "ReVanced Builder: Automated APK patching and building system"
 requires-python = ">=3.13"
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [ { name = "ReVanced Builder Contributors" } ]
+authors = [{ name = "ReVanced Builder Contributors" }]
 dependencies = [
-    "selectolax>=0.3.21",
-    "orjson>=3.11.8",
-    "httpx>=0.28.1",
+  "httpx>=0.28.1",
+  "orjson>=3.11.8",
+  "selectolax>=0.3.21",
 ]
 
 [dependency-groups]
 dev = [
-    "prek>=0.3.4",
-    "ruff>=0.15.10",
-    "mypy>=1.20.0",
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-    "pytest-cov>=6.0.0",
-    "pytest-durations>=1.3.0",
-    "hypothesis>=6.100.0",
-    "types-toml>=0.10.8.20240310",
+  "hypothesis>=6.100.0",
+  "mypy>=1.20.0",
+  "prek>=0.3.4",
+  "pytest>=9.0.2",
+  "pytest-asyncio>=1.3.0",
+  "pytest-cov>=6.0.0",
+  "pytest-durations>=1.3.0",
+  "ruff>=0.15.10",
+  "types-toml>=0.10.8.20240310",
 ]
-
-[tool.uv]
-package = false
-
-[tool.ruff]
-line-length = 120
-target-version = "py313"
-fix = true
-exclude = [
-  ".git",
-  ".cache",
-  ".var",
-  ".venv",
-  "venv",
-  "node_modules",
-  "__pycache__",
-  "*.pyc",
-]
-
-[tool.ruff.lint]
-select = [ "ALL"]
-ignore = [
-  "E501",   # line too long (handled by formatter)
-  "T201",   # print() in CLI scripts is intentional
-  "BLE001", # broad exception in CLI error handlers is acceptable
-  "COM812", # trailing comma conflicts with formatter
-]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-line-ending = "lf"
-
-[tool.ruff.lint.isort]
-known-first-party = [ "scripts" ]
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
 
 [tool.mypy]
 python_version = "3.13"
@@ -81,4 +43,46 @@ strict_equality = true
 warn_unreachable = true
 ignore_missing_imports = true
 show_error_codes = true
-enable_error_code = ["ignore-without-code", "unused-awaitable", "possibly-undefined"]
+enable_error_code = [
+  "ignore-without-code",
+  "unused-awaitable",
+  "possibly-undefined"
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+fix = true
+exclude = [
+  ".git",
+  ".cache",
+  ".var",
+  ".venv",
+  "venv",
+  "node_modules",
+  "__pycache__",
+  "*.pyc",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "E501",  # line too long (handled by formatter)
+  "T201",  # print() in CLI scripts is intentional
+  "BLE001",  # broad exception in CLI error handlers is acceptable
+  "COM812",  # trailing comma conflicts with formatter
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["scripts"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.uv]
+package = false

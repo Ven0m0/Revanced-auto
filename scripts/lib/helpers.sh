@@ -71,14 +71,14 @@ get_highest_ver() {
     log_debug "get_highest_ver: no versions provided"
     return 1
   fi
-  first_version=$(head -1 <<<"$versions")
+  first_version=$(head -1 <<< "$versions")
   # If first version is not semver, return as-is (may be date-based or custom)
   if ! semver_validate "$first_version"; then
     echo "$first_version"
     return 0
   fi
   # Use version sort for semantic versions
-  sort -rV <<<"$versions" | head -1
+  sort -rV <<< "$versions" | head -1
 }
 # Validate semantic version format
 # Args:
@@ -109,7 +109,7 @@ semver_validate() {
 # Returns:
 #   Newline-separated list
 list_args() {
-  tr -d '\t\r' <<<"$1" | tr -s ' ' | sed 's/" "/"\n"/g' | sed 's/\([^"]\)"\([^"]\)/\1'\''\2/g' | grep -v '^$' || :
+  tr -d '\t\r' <<< "$1" | tr -s ' ' | sed 's/" "/"\n"/g' | sed 's/\([^"]\)"\([^"]\)/\1'\''\2/g' | grep -v '^$' || :
 }
 # Join arguments with a prefix
 # Args:
@@ -260,11 +260,11 @@ get_patch_last_supported_ver() {
   local vers=""
   if [[ -n "$inc_sel" ]]; then
     # If patches are explicitly included, use the provided list_patches output ($1)
-    if ! op=$(awk '{$1=$1}1' <<<"$list_patches"); then
+    if ! op=$(awk '{$1=$1}1' <<< "$list_patches"); then
       epr "list-patches: '$op'"
       return 1
     fi
-    vers=$(awk -v inc_patches="$(list_args "$inc_sel")" -v exc_patches="$(list_args "$exc_sel")" "$awk_script" <<<"$op")
+    vers=$(awk -v inc_patches="$(list_args "$inc_sel")" -v exc_patches="$(list_args "$exc_sel")" "$awk_script" <<< "$op")
   else
     # Auto mode: Determine applicable patches for this package
     # We must fetch the list of patches filtered by package name to support exclusion correctly
@@ -286,9 +286,9 @@ get_patch_last_supported_ver() {
         local op
         if ! op=$(java "${JAVA_ARGS[@]}" -jar "$cli_jar" list-patches "$patches_jar" -f "$pkg_name" 2>&1); then
           # Write error to file
-          echo "$op" >"${temp_dir}/${i}.err"
+          echo "$op" > "${temp_dir}/${i}.err"
         else
-          echo "$op" >"${temp_dir}/${i}.out"
+          echo "$op" > "${temp_dir}/${i}.out"
         fi
       ) &
       pids+=($!)
@@ -317,12 +317,12 @@ get_patch_last_supported_ver() {
     done
 
     # Process combined output with AWK script (Counting logic + Exclusion)
-    vers=$(awk -v inc_patches="" -v exc_patches="$(list_args "$exc_sel")" "$awk_script" <<<"$all_vers_output")
+    vers=$(awk -v inc_patches="" -v exc_patches="$(list_args "$exc_sel")" "$awk_script" <<< "$all_vers_output")
   fi
 
   if [[ "$vers" ]]; then
     local highest
-    highest=$(get_highest_ver <<<"$vers")
+    highest=$(get_highest_ver <<< "$vers")
     log_debug "Highest compatible version (max compatibility): $highest"
     echo "$highest"
     return 0
@@ -358,7 +358,7 @@ set_prebuilts() {
     # Try dynamic fetch from GitHub
     local aapt2_repo="${AAPT2_SOURCE:-${AAPT2_SOURCE_DEFAULT:-Graywizard888/Custom-Enhancify-aapt2-binary}}"
     local fetched_aapt2=""
-    if fetched_aapt2=$(fetch_aapt2_binary "$aapt2_repo" 2>/dev/null) && [[ -n "$fetched_aapt2" ]] && [[ -x "$fetched_aapt2" ]]; then
+    if fetched_aapt2=$(fetch_aapt2_binary "$aapt2_repo" 2> /dev/null) && [[ -n "$fetched_aapt2" ]] && [[ -x "$fetched_aapt2" ]]; then
       export AAPT2="$fetched_aapt2"
       log_info "Using dynamically fetched aapt2: $fetched_aapt2"
     else

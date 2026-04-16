@@ -30,7 +30,7 @@ log_warn() {
   echo -e "${YELLOW}!${NC} $1"
 }
 check_command() {
-  if ! command -v "$1" &>/dev/null; then
+  if ! command -v "$1" &> /dev/null; then
     log_warn "$1 not found, skipping $2 checks"
     return 1
   fi
@@ -41,7 +41,7 @@ check_command() {
 # ============================================================================
 log_section "Python (Ruff)"
 if check_command "ruff" "Python"; then
-  PYTHON_FILES=$(find . -name "*.py" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2>/dev/null || true)
+  PYTHON_FILES=$(find . -name "*.py" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2> /dev/null || true)
   if [[ -n "$PYTHON_FILES" ]]; then
     if [[ "$FIX_MODE" == true ]]; then
       if ruff check --fix . && ruff format .; then
@@ -67,7 +67,7 @@ fi
 # ============================================================================
 log_section "Python Type Checking (MyPy)"
 if check_command "mypy" "Python Type Checker"; then
-  PYTHON_FILES=$(find . -name "*.py" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" -not -path "./.venv/*" -not -path "./venv/*" 2>/dev/null || true)
+  PYTHON_FILES=$(find . -name "*.py" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" -not -path "./.venv/*" -not -path "./venv/*" 2> /dev/null || true)
   if [[ -n "$PYTHON_FILES" ]]; then
     if mypy --strict scripts/*.py; then
       log_success "Python type checking passed"
@@ -84,7 +84,7 @@ fi
 # ============================================================================
 log_section "Shell Scripts"
 SHELL_FILES=()
-mapfile -t SHELL_FILES < <(find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2>/dev/null || true)
+mapfile -t SHELL_FILES < <(find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2> /dev/null || true)
 if [[ ${#SHELL_FILES[@]} -gt 0 ]]; then
   # ShellCheck
   if check_command "shellcheck" "ShellCheck"; then
@@ -133,7 +133,7 @@ if [[ ${#SHELL_FILES[@]} -gt 0 ]]; then
     else
       sh_pass=true
       for file in "${SHELL_FILES[@]}"; do
-        shellharden --check "$file" 2>/dev/null || sh_pass=false
+        shellharden --check "$file" 2> /dev/null || sh_pass=false
       done
       if "$sh_pass"; then
         log_success "Shell scripts pass shellharden"
@@ -149,7 +149,7 @@ fi
 # YAML - yamllint, yamlfmt
 # ============================================================================
 log_section "YAML Files"
-YAML_FILES=$(find . \( -name "*.yml" -o -name "*.yaml" \) -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2>/dev/null || true)
+YAML_FILES=$(find . \( -name "*.yml" -o -name "*.yaml" \) -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2> /dev/null || true)
 if [[ -n "$YAML_FILES" ]]; then
   # yamllint
   if check_command "yamllint" "yamllint"; then
@@ -185,7 +185,7 @@ fi
 # TOML - tombi
 # ============================================================================
 log_section "TOML Files"
-mapfile -t TOML_FILES < <(find . -name "*.toml" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2>/dev/null || true)
+mapfile -t TOML_FILES < <(find . -name "*.toml" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2> /dev/null || true)
 if [[ ${#TOML_FILES[@]} -gt 0 ]]; then
   if check_command "tombi" "TOML"; then
     if [[ "$FIX_MODE" == true ]]; then

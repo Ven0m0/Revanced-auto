@@ -67,6 +67,7 @@ aapt2-source = "Graywizard888/Custom-Enhancify-aapt2-binary"
 # Ensures the dynamically fetched aapt2 is used for resource processing
 # Default: true
 use-custom-aapt2 = true
+
 # =============================================================================
 # APP CONFIGURATIONS
 # =============================================================================
@@ -97,6 +98,7 @@ uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
 apkpure-dlurl = "https://apkpure.net/youtube-music/com.google.android.apps.youtube.music"
+
 # YouTube Extended (RVX)
 [YouTube-Extended]
 enabled = true
@@ -120,6 +122,7 @@ uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
 apkpure-dlurl = "https://apkpure.net/youtube/com.google.android.youtube"
+
 # Spotify
 [Spotify]
 enabled = false
@@ -132,6 +135,7 @@ patcher-args = [
   "Custom branding name for Spotify",
   "-OappName=RVX Spotify",
 ]
+
 # Reddit
 [Reddit]
 enabled = false
@@ -144,6 +148,7 @@ patcher-args = [
   "-OappName=RVX Reddit",
 ]
 dpi = "320-480dpi"
+
 # X (Twitter)
 [X]
 enabled = false
@@ -153,14 +158,17 @@ patches-source = "crimera/piko"
 rv-brand = "Piko"
 included-patches = "'Dynamic color'"
 dpi = "120-640dpi"
+
 [TikTok]
 enabled = false
 included-patches = "'SIM spoof'"
+
 [Instagram]
 enabled = false
 apkmirror-dlurl = "https://apkmirror.com/apk/instagram/instagram-instagram/"
 included-patches = "'Hide ads' 'Sanitize sharing links' 'Disable signature check'"
 exclusive-patches = true
+
 [GooglePhotos]
 enabled = false
 version = "auto"
