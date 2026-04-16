@@ -30,12 +30,19 @@ jobs:
         run: |
           sdkmanager "build-tools;34.0.0"
           echo "${ANDROID_HOME}/build-tools/34.0.0" >> "${GITHUB_PATH}"
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
       - name: Install apt packages
         run: |
           sudo apt-get update -qq >/dev/null 2>&1
           sudo apt-get install -yqq --no-install-recommends build-essential curl fd-find jq pkg-config ripgrep shellcheck shfmt zip
-      - name: Install Python dependencies
-        run: uv sync --locked --all-groups
+      - name: Bootstrap pinned bin JAR dependencies
+        run: |
+          source utils.sh
+          check_binaries || {
+            echo "Failed to bootstrap pinned bin/*.jar dependencies" >&2
+            exit 1
+          }
       - name: Install Copilot helper tools
         run: |
           uv tool install basedpyright
@@ -48,10 +55,3 @@ jobs:
             bash-language-server \
             @zed-industries/vscode-langservers-extracted \
             yaml-language-server
-      - name: Bootstrap pinned bin JAR dependencies
-        run: |
-          source utils.sh
-          check_binaries || {
-            echo "Failed to bootstrap pinned bin/*.jar dependencies" >&2
-            exit 1
-          }
