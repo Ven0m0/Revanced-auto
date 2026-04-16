@@ -15,6 +15,7 @@ ReVanced-auto builds patched APKs from `config.toml`: resolve versions, download
 - Python: 3.13+, `uv` managed, Ruff + MyPy strict, Google-style docstrings.
 - Python logging/network/parsing: use `scripts.lib.logging`, existing network helpers, `selectolax`, `tomllib`, `orjson`.
 - Bash: `#!/usr/bin/env bash`, `set -euo pipefail`, quote expansions, no `eval`.
+- GitHub Actions: use explicit release tags instead of SHA-pinned `uses:` references.
 - In repo runtime Bash logic, use `req` / `gh_req` and repo logging helpers instead of new raw `curl`/`wget`/user-facing `echo` paths.
 - Keep the main build flow intact: config -> version check -> download -> patch -> sign -> output.
 - Do not weaken APK signing; keep `bin/apksigner.jar` v1+v2 signing behavior.

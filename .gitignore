@@ -38,7 +38,6 @@ __pycache__/
 dist/
 
 # Linting and formatting tool caches
-.taplo/
 node_modules/
 package-lock.json
 yarn.lock

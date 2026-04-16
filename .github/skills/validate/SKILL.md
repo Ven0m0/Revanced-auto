@@ -1,56 +1,76 @@
 ---
 name: validate
-description: Run the correct validation checks for changed files in this repository (ruff, biome, shellcheck, claudelint, pytest).
+description: Run the narrowest ReVanced-auto validation for the files you changed.
 allowed-tools: 'Read, Bash, Grep, Glob'
 ---
 
 # Validate
 
-Run the narrowest checks that cover the files you have changed.
+Run only the repo checks that apply to the changed files.
 
 ## Triggers
 
-Use this skill when asked to validate, lint, type-check, or test changes before committing.
+Use this skill before reporting completion on ReVanced-auto changes.
 
 ## Steps
 
-1. Identify which file types were changed (Python, JS/TS, shell, Markdown/agent docs, or mixed).
+1. Identify the changed files and group them by type: Python, shell, workflows/YAML/TOML/JSON, or guidance docs.
 
-2. Run only the checks relevant to changed files:
+2. Run the narrowest matching validation:
 
-   **Python (`**/\*.py`)\*\*
+   **Python (`**/*.py`)**
 
    ```bash
    uv run ruff format --check <paths>
    uv run ruff check <paths>
-   uv run pytest <test-target>
+   uv run python -m pytest <relevant-test-targets> -v
    ```
 
-   **JS / TS (`**/_.ts`, `\*\*/_.js`, etc.)\*\*
+   Use the repo test mapping from `AGENTS.md` when picking pytest targets.
+
+   **Shell (`**/*.sh`)**
 
    ```bash
-   bunx @biomejs/biome check <paths>
-   bun run tsc --noEmit
-   ```
-
-   **Shell (`**/\*.sh`)\*\*
-
-   ```bash
+   bash -n <paths>
    shellcheck <paths>
    ```
 
-   **Agent / skill docs (`claude/agents/**`, `claude/skills/**`, `.github/skills/**`)\*\*
+   Run `./scripts/lint.sh` as an additional repo check when the shell change is broad.
+
+   **GitHub workflows (`.github/workflows/*.yml`)**
 
    ```bash
-   bun run lint:claude
+   actionlint <paths>
    ```
 
-3. Fix reported issues in the changed files only. Do not touch unrelated files.
+   **Other YAML / TOML / JSON changes**
 
-4. Re-run the affected check to confirm it passes before reporting success.
+   ```bash
+   yamllint <paths>            # YAML
+   tombi format --check <paths>                         # TOML formatting
+   tombi lint <schema-backed-paths>                     # TOML linting (for example: pyproject.toml, config.toml)
+   biome check <paths>         # JSON / HTML / CSS and other Biome-managed files
+   ```
+
+   If the tools are already installed, `./scripts/lint.sh` is the combined repo check.
+
+   **Guidance docs (`.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`, `.github/skills/*/SKILL.md`)**
+
+   There is no dedicated markdown linter in this repo. Verify references directly:
+
+   ```bash
+   command -v <command>
+   test -e <path>
+   ```
+
+   Validate any touched workflows separately with `actionlint`.
+
+3. Fix issues in the changed files only. Report unrelated pre-existing failures instead of broadening the change.
+
+4. Re-run the affected check before reporting success.
 
 ## Invariants
 
 - Never remove or skip a check to make it pass.
 - Do not modify test files to suppress failures unless the test itself is wrong.
-- Report any pre-existing failures that are unrelated to your changes rather than silently fixing them.
+- Report pre-existing failures that are unrelated to your changes.

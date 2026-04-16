@@ -87,17 +87,17 @@ jobs:
 ### **3. Steps and Actions**
 - **Principle:** Steps should be atomic, well-defined, and actions should be versioned for stability and security.
 - **Deeper Dive:**
-    - **`uses`:** Referencing marketplace actions (e.g., `actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2`) or custom actions. Always pin to a full-length commit SHA for maximum security and immutability. Tags and branches are mutable references — a malicious actor who gains write access to an action's repository can silently move a tag (e.g., `@v4`) to a compromised commit, executing arbitrary code in your workflow (a supply chain attack). A commit SHA is immutable and cannot be redirected. Add the version as a comment (e.g., `# v4.3.1`) for human readability. Avoid mutable references like `@main`, `@latest`, or major version tags (e.g., `@v4`).
+    - **`uses`:** Referencing marketplace actions (e.g., `actions/checkout@v6.0.2`) or custom actions. Prefer maintained release tags over raw commit SHAs so workflow revisions stay readable and easy to update. Use explicit version tags where possible, and avoid branch tips such as `@main` or `@latest`.
     - **`name`:** Essential for clear logging and debugging. Make step names descriptive.
     - **`run`:** For executing shell commands. Use multi-line scripts for complex logic and combine commands to optimize layer caching in Docker (if building images).
     - **`env`:** Define environment variables at the step or job level. Do not hardcode sensitive data here.
     - **`with`:** Provide inputs to actions. Ensure all required inputs are present.
 - **Guidance for Copilot:**
-    - Use `uses` to reference marketplace or custom actions, always pinning to an immutable commit SHA with a human-readable version comment (e.g., `uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2`). This is especially critical for third-party actions where you have no control over whether a tag gets moved.
+    - Use `uses` to reference marketplace or custom actions with explicit release tags (e.g., `uses: actions/checkout@v6.0.2`) instead of raw commit SHAs.
     - Use `name` for each step for readability in logs and easier debugging.
     - Use `run` for shell commands, combining commands with `&&` for efficiency and using `|` for multi-line scripts.
     - Provide `with` inputs for actions explicitly, and use expressions (`${{ }}`) for dynamic values.
-- **Security Note:** Audit marketplace actions before use. Prefer actions from trusted sources (e.g., `actions/` organization) and review their source code if possible. Use `dependabot` for action version updates. **Never use mutable tag or branch references** (`@v4`, `@main`, `@latest`) — these are vulnerable to supply chain attacks where a compromised tag can execute malicious code in your CI/CD pipeline.
+- **Security Note:** Audit marketplace actions before use. Prefer actions from trusted sources (e.g., `actions/` organization) and review their source code if possible. Use `dependabot` for action version updates. Prefer explicit release tags such as `@v6.0.2`, and avoid floating branch references like `@main` or `@latest`.
 
 ## Security Best Practices in GitHub Actions
 
@@ -136,7 +136,7 @@ jobs:
     - **Federated Identity:** This is a key pattern for modern, secure cloud deployments.
 - **Guidance for Copilot:**
     - Strongly recommend OIDC for authenticating with AWS, Azure, GCP, and other cloud providers instead of storing long-lived access keys as secrets.
-    - Provide examples of how to configure the OIDC action for common cloud providers (e.g., `aws-actions/configure-aws-credentials@<SHA> # v4.x.x`). Always pin to a full commit SHA.
+    - Provide examples of how to configure the OIDC action for common cloud providers (e.g., `aws-actions/configure-aws-credentials@v4.3.0`) using explicit release tags.
     - Explain the concept of trust policies and how they relate to OIDC setup.
 - **Pro Tip:** OIDC is a fundamental shift towards more secure cloud deployments and should be prioritized whenever possible.
 
@@ -219,7 +219,7 @@ jobs:
     - **Restore Keys:** Use `restore-keys` for fallbacks to older, compatible caches.
     - **Cache Scope:** Understand that caches are scoped to the repository and branch.
 - **Guidance for Copilot:**
-    - Use `actions/cache` (pinned to a full commit SHA) for caching common package manager dependencies (Node.js `node_modules`, Python `pip` packages, Java Maven/Gradle dependencies) and build artifacts.
+    - Use `actions/cache` with explicit release tags for caching common package manager dependencies (Node.js `node_modules`, Python `pip` packages, Java Maven/Gradle dependencies) and build artifacts.
     - Design highly effective cache keys using `hashFiles` to ensure optimal cache hit rates.
     - Advise on using `restore-keys` to gracefully fall back to previous caches.
 - **Example (Advanced Caching for Monorepo):**
@@ -289,7 +289,7 @@ jobs:
     - **`lfs`:** Manage Git LFS (Large File Storage) files efficiently. If not needed, set `lfs: false`.
     - **Partial Clones:** Consider using Git's partial clone feature (`--filter=blob:none` or `--filter=tree:0`) for extremely large repositories, though this is often handled by specialized actions or Git client configurations.
 - **Guidance for Copilot:**
-    - Use `actions/checkout` (pinned to a full commit SHA, e.g., `actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1`) with `fetch-depth: 1` as the default for most build and test jobs to significantly save time and bandwidth.
+    - Use `actions/checkout` with an explicit release tag (e.g., `actions/checkout@v6.0.2`) with `fetch-depth: 1` as the default for most build and test jobs to significantly save time and bandwidth.
     - Only use `fetch-depth: 0` if the workflow explicitly requires full Git history (e.g., for release tagging, deep commit analysis, or `git blame` operations).
     - Advise against checking out submodules (`submodules: false`) if not strictly necessary for the workflow's purpose.
     - Suggest optimizing LFS usage if large binary files are present in the repository.
@@ -303,7 +303,7 @@ jobs:
     - **Use Cases:** Build outputs (executables, compiled code, Docker images), test reports (JUnit XML, HTML reports), code coverage reports, security scan results, generated documentation, static website builds.
     - **Limitations:** Artifacts are immutable once uploaded. Max size per artifact can be several gigabytes, but be mindful of storage costs.
 - **Guidance for Copilot:**
-    - Use `actions/upload-artifact` and `actions/download-artifact` (both pinned to full commit SHAs) to reliably pass large files between jobs within the same workflow or across different workflows, promoting modularity and efficiency.
+    - Use `actions/upload-artifact` and `actions/download-artifact` with explicit release tags to reliably pass large files between jobs within the same workflow or across different workflows, promoting modularity and efficiency.
     - Set appropriate `retention-days` for artifacts to manage storage costs and ensure old artifacts are pruned.
     - Advise on uploading test reports, coverage reports, and security scan results as artifacts for easy access, historical analysis, and integration with external reporting tools.
     - Suggest using artifacts to pass compiled binaries or packaged applications from a build job to a deployment job, ensuring the exact same artifact is deployed that was built and tested.
@@ -452,7 +452,7 @@ This checklist provides a granular set of criteria for reviewing GitHub Actions 
     - Are `needs` dependencies correctly defined between jobs to ensure proper execution order?
     - Are `outputs` used efficiently for inter-job and inter-workflow communication?
     - Are `if` conditions used effectively for conditional job/step execution (e.g., environment-specific deployments, branch-specific actions)?
-    - Are all `uses` actions pinned to a full commit SHA with a human-readable version comment (e.g., `actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1`)? Tags (e.g., `@v4`) and branches (e.g., `@main`) are mutable and can be silently redirected to malicious commits — always use immutable SHA references, especially for third-party actions.
+    - Are all `uses` actions pinned to explicit release tags (e.g., `actions/checkout@v6.0.2`)? Avoid raw SHAs and branch references such as `@main` or `@latest`.
     - Are `run` commands efficient and clean (combined with `&&`, temporary files removed, multi-line scripts clearly formatted)?
     - Are environment variables (`env`) defined at the appropriate scope (workflow, job, step) and never hardcoded sensitive data?
     - Is `timeout-minutes` set for long-running jobs to prevent hung workflows?
