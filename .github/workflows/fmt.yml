@@ -149,7 +149,7 @@ jobs:
       run: tombi format --check .
       continue-on-error: true
     - name: Run Tombi Lint
-      run: tombi lint .
+      run: tombi lint pyproject.toml config.toml
       continue-on-error: true
   lint-web:
     name: Web (Biome)
