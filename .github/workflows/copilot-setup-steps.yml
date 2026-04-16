@@ -9,6 +9,9 @@ on:
       - .github/workflows/copilot-setup-steps.yml
 permissions:
   contents: read
+env:
+  DEBIAN_FRONTEND: noninteractive 
+  DEBCONF_NOWARNINGS: yes
 jobs:
   copilot-setup-steps:
     runs-on: ubuntu-latest
@@ -35,10 +38,10 @@ jobs:
           experimental: true
       - name: Install Python dependencies
         run: uv sync --locked --all-groups
-      - name: Install ripgrep
+      - name: Install apt packages
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes ripgrep
+          sudo apt-get update -qq >/dev/null 2>&1
+          sudo apt-get install -yqq --no-install-recommends ripgrep fd-find shellcheck shfmt
       - name: Install Copilot helper tools
         run: |
           uv tool install basedpyright
@@ -50,7 +53,7 @@ jobs:
             @ast-grep/cli \
             @biomejs/biome \
             bash-language-server \
-            vscode-langservers-extracted \
+            @zed-industries/vscode-langservers-extracted \
             yaml-language-server
       - name: Bootstrap pinned bin JAR dependencies
         run: |
