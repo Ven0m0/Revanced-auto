@@ -276,9 +276,6 @@ def _detect_profile_from_help(help_output: str) -> CLIProfile:
     return REVANCED_CLI_V5
 
 
-CLIProfileType = CLIProfileType
-
-
 def build_cli_args(
     profile: CLIProfile,
     command: str,
