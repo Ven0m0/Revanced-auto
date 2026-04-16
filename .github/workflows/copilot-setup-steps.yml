@@ -36,10 +36,12 @@ jobs:
           experimental: true
       - name: Install Python dependencies
         run: uv sync --locked --all-groups
-      - name: Install Copilot helper tools
+      - name: Install ripgrep
         run: |
           sudo apt-get update
           sudo apt-get install --yes ripgrep
+      - name: Install Copilot helper tools
+        run: |
           uv tool install basedpyright
           uv tool install ruff
           uv tool install ty
