@@ -96,9 +96,7 @@ class TestJavaRunner:
 @patch("subprocess.run")
 def test_run_java_convenience(mock_run: MagicMock) -> None:
     """Test the run_java convenience function."""
-    mock_run.return_value = subprocess.CompletedProcess(
-        args=[], returncode=0, stdout="", stderr=""
-    )
+    mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
     run_java(["arg1"], timeout=30)
     assert mock_run.call_args.kwargs["timeout"] == 30
     assert "arg1" in mock_run.call_args.args[0]

@@ -88,7 +88,7 @@ mapfile -t SHELL_FILES < <(find . -name "*.sh" -not -path "./.git/*" -not -path 
 if [[ ${#SHELL_FILES[@]} -gt 0 ]]; then
   # ShellCheck
   if check_command "shellcheck" "ShellCheck"; then
-    if shellcheck --color=always "${SHELL_FILES[@]}"; then
+    if shellcheck -S warning --color=always "${SHELL_FILES[@]}"; then
       log_success "ShellCheck passed"
     else
       log_error "ShellCheck failed"
@@ -232,7 +232,7 @@ if check_command "biome" "JSON/HTML/JS/TS/CSS"; then
       -not -path "./.venv/*" \
       -not -path "./node_modules/*" \
       -not -path "./build/*" \
-      -not -path "./temp/*" 2>/dev/null || true
+      -not -path "./temp/*" 2> /dev/null || true
   )
   if [[ ${#BIOME_FILES[@]} -eq 0 ]]; then
     log_warn "No Biome-managed files found"

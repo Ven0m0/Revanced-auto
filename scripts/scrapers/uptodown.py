@@ -389,9 +389,7 @@ class UptodownScraper(ScraperBase):
             if not page_versions:
                 break
 
-            all_versions.extend(
-                v for v in page_versions if arch is None or v.arch == arch or v.arch is None
-            )
+            all_versions.extend(v for v in page_versions if arch is None or v.arch == arch or v.arch is None)
 
             await asyncio.sleep(0.3)
 

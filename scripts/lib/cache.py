@@ -147,9 +147,7 @@ class CacheManager:
 
         index = self._read_index()
         now = int(time.time())
-        expired_entries = sum(
-            1 for entry in index.values() if (entry.created + entry.ttl) < now
-        )
+        expired_entries = sum(1 for entry in index.values() if (entry.created + entry.ttl) < now)
         total_size = sum(entry.size for entry in index.values())
 
         return CacheStats(
@@ -166,9 +164,7 @@ class CacheManager:
 
         index = self._read_index()
         now = int(time.time())
-        expired_keys = [
-            key for key, entry in index.items() if (entry.created + entry.ttl) < now
-        ]
+        expired_keys = [key for key, entry in index.items() if (entry.created + entry.ttl) < now]
 
         removed_entries = self._remove_entries(index, expired_keys)
 

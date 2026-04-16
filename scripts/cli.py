@@ -129,13 +129,11 @@ def run_version_tracker(args: argparse.Namespace) -> int:
         else:
             log.info("All apps are up to date")
         return 0
-
     if subcommand == "save":
         log.info("Saving version state...")
         version_tracker.save()
         log.info("Version state saved")
         return 0
-
     if subcommand == "show":
         state = version_tracker.get_state()
         if state:
@@ -145,13 +143,11 @@ def run_version_tracker(args: argparse.Namespace) -> int:
         else:
             log.info("No version state recorded")
         return 0
-
     if subcommand == "reset":
         log.info("Resetting version state...")
         version_tracker.reset()
         log.info("Version state reset")
         return 0
-
     log.abort(f"Unknown subcommand: {subcommand}")
 
 
@@ -230,9 +226,8 @@ def main() -> int:
             return run_version_tracker(args)
         if args.command == "cache":
             return run_cache(args)
-        else:
-            parser.print_help()
-            return 1
+        parser.print_help()
+        return 1
     except KeyboardInterrupt:
         log.abort("Interrupted", code=130)
 

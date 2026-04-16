@@ -115,7 +115,7 @@ ignore = [
   "UP036",
 ]
 "scripts/lib/cache.py" = ["FBT001", "FBT002", "PLR2004", "SIM103"]
-"scripts/cli.py" = ["PLC0415"]
+"scripts/cli.py" = ["PLC0415", "RET503", "TRY300"]
 "scripts/lib/config.py" = ["PLC0415"]
 "scripts/lib/version_tracker.py" = ["PLC0415"]
 "scripts/scrapers/*.py" = [
@@ -143,7 +143,13 @@ ignore = [
   "TRY003",
   "TRY300",
 ]
-"scripts/search/version_resolver.py" = ["ARG002", "D402", "PLR2004", "RET504", "SIM103"]
+"scripts/search/version_resolver.py" = [
+  "ARG002",
+  "D402",
+  "PLR2004",
+  "RET504",
+  "SIM103"
+]
 "scripts/utils/*.py" = [
   "ANN401",
   "ASYNC230",

@@ -90,7 +90,7 @@ class TestDetectBundleType:
 
     def test_unknown_bytes_no_extension(self, tmp_path: Path) -> None:
         f = tmp_path / "app.bin"
-        f.write_bytes(b"\xFF\xFE\xFD\xFC")
+        f.write_bytes(b"\xff\xfe\xfd\xfc")
         assert detect_bundle_type(f) == BundleType.UNKNOWN
 
 
@@ -115,7 +115,7 @@ class TestSplitAPKHandler:
 
     def test_merge_splits_unknown_returns_false(self, tmp_path: Path) -> None:
         bundle = tmp_path / "app.bin"
-        bundle.write_bytes(b"\xFF\xFE")
+        bundle.write_bytes(b"\xff\xfe")
         output = tmp_path / "out.apk"
         handler = SplitAPKHandler()
         assert handler.merge_splits(bundle, output) is False

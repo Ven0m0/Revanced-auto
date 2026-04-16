@@ -418,8 +418,7 @@ def format_changes_for_github_output(changes: list[VersionDiff]) -> str:
 
     """
     return "\n".join(
-        f"::notice title={change.key}::{change.change_type}: {change.old} -> {change.new}"
-        for change in changes
+        f"::notice title={change.key}::{change.change_type}: {change.old} -> {change.new}" for change in changes
     )
 
 
