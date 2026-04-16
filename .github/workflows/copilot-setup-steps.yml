@@ -36,10 +36,6 @@ jobs:
           experimental: true
       - name: Install Python dependencies
         run: uv sync --locked --all-groups
-      - name: Install ripgrep
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes ripgrep
       - name: Install Copilot helper tools
         run: |
           uv tool install basedpyright
@@ -55,4 +51,7 @@ jobs:
       - name: Bootstrap pinned bin JAR dependencies
         run: |
           source utils.sh
-          check_binaries
+          check_binaries || {
+            echo "Failed to bootstrap pinned bin/*.jar dependencies" >&2
+            exit 1
+          }
