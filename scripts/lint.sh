@@ -185,7 +185,6 @@ fi
 # TOML - tombi
 # ============================================================================
 log_section "TOML Files"
-TOML_FILES=()
 mapfile -t TOML_FILES < <(find . -name "*.toml" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2>/dev/null || true)
 if [[ ${#TOML_FILES[@]} -gt 0 ]]; then
   if check_command "tombi" "TOML"; then
@@ -204,7 +203,6 @@ if [[ ${#TOML_FILES[@]} -gt 0 ]]; then
         EXIT_CODE=1
       fi
     fi
-    TOMBI_LINT_FILES=()
     for f in "${TOML_FILES[@]}"; do
       [[ "$f" == "./mise.toml" ]] || TOMBI_LINT_FILES+=("$f")
     done
