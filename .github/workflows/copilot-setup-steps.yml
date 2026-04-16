@@ -15,14 +15,12 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
-
+        uses: actions/checkout@v6
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
@@ -33,12 +31,10 @@ jobs:
           key: ${{ runner.os }}-android-build-tools-34.0.0
           restore-keys: |
             ${{ runner.os }}-android-build-tools-
-
       - name: Install Android SDK Build Tools
         run: |
           sdkmanager "build-tools;34.0.0"
           echo "$ANDROID_HOME/build-tools/34.0.0" >> "$GITHUB_PATH"
-
       - name: Bootstrap pinned bin JAR dependencies
         run: |
           source utils.sh
@@ -46,13 +42,20 @@ jobs:
             echo "Failed to bootstrap pinned bin/*.jar dependencies" >&2
             exit 1
           }
-
       - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
           python-version: "3.13"
-
-      - name: Install Python dependencies (including dev)
-        run: uv sync --locked --all-groups
+      - name: Install project dependencies
+        run: uv sync --all-extras --all-packages --all-groups --frozen
+      - name: Install llm tooling
+        run: |
+          uv tool install basedpyright
+          uv tool install ruff
+          uv tool install ty
+          npm i -g vscode-langservers-extracted bash-language-server yaml-language-server \
+            @ast-grep/cli @biomejs/biome
