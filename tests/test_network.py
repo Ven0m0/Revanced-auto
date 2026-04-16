@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -217,10 +218,12 @@ class TestAria2cDownload:
             patch("shutil.which", return_value="/usr/bin/aria2c"),
             patch("subprocess.run") as mock_run,
         ):
-            mock_run.return_value = MagicMock(returncode=1)
+            mock_run.side_effect = subprocess.CalledProcessError(1, "aria2c")
             result = aria2c_download(["https://example.com/app.apk"], output)
 
         assert result is False
+        assert mock_run.call_args is not None
+        assert mock_run.call_args.kwargs.get("check") is True
 
     def test_returns_false_on_os_error(self, tmp_path: Path) -> None:
         output = tmp_path / "app.apk"
