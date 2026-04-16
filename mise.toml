@@ -10,7 +10,6 @@ lockfile = true
 [settings.python]
 uv_venv_auto = true
 uv_venv_create_args = "--system-site-packages --seed"
-precompiled_os = "x86_64_v3"
 
 [settings.cargo]
 binstall = true
@@ -25,13 +24,6 @@ bun = true
 "actionlint" = "latest"
 action-validator = "latest"
 prek = "latest"
-"shellcheck" = "latest"
-"shfmt" = "latest"
-tombi = "latest"
-"npm:prettier" = "latest"
-node = "{{ env['NODE_VERSION'] | default(value='latest') }}"
-uv = "latest"
-ruff = "latest"
 
 [env]
 _.file = { path = ".env", tools = true }
