@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import pytest
+
 from scripts.search.version_resolver import VersionResolver
 
 

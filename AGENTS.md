@@ -52,6 +52,7 @@ uv run python -m pytest tests -v
 - Use `from scripts.lib import logging as log` for CLI/lib logging.
 - Use `scripts.utils.network` / existing network helpers; do not introduce `requests` or ad-hoc `urllib` calls.
 - Prefer `selectolax` for HTML parsing, `tomllib` for TOML reads, and `orjson`/`json` for JSON.
+- For GitHub Actions, use explicit release tags instead of SHA-pinned `uses:` references.
 - Keep `sys.exit()` in `main()` only; return exit codes from helpers.
 - Add logic to testable functions instead of growing `main()` bodies.
 

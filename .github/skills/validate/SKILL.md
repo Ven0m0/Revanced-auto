@@ -47,7 +47,7 @@ Use this skill before reporting completion on ReVanced-auto changes.
 
    ```bash
    yamllint <paths>            # YAML
-   taplo format --check <paths> && taplo lint <paths>   # TOML
+   tombi format --check <paths> && tombi lint <paths>   # TOML
    biome check <paths>         # JSON / HTML / CSS and other Biome-managed files
    ```
 

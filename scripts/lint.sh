@@ -182,31 +182,31 @@ else
   log_warn "No YAML files found"
 fi
 # ============================================================================
-# TOML - taplo
+# TOML - tombi
 # ============================================================================
 log_section "TOML Files"
 TOML_FILES=$(find . -name "*.toml" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2>/dev/null || true)
 if [[ -n "$TOML_FILES" ]]; then
-  if check_command "taplo" "TOML"; then
+  if check_command "tombi" "TOML"; then
     if [[ "$FIX_MODE" == true ]]; then
-      if taplo format; then
-        log_success "TOML files formatted with taplo"
+      if tombi format .; then
+        log_success "TOML files formatted with tombi"
       else
-        log_error "taplo format failed"
+        log_error "tombi format failed"
         EXIT_CODE=1
       fi
     else
-      if taplo format --check; then
-        log_success "TOML files pass taplo"
+      if tombi format --check .; then
+        log_success "TOML files pass tombi format"
       else
-        log_error "taplo check failed"
+        log_error "tombi format check failed"
         EXIT_CODE=1
       fi
     fi
-    if taplo lint; then
-      log_success "TOML files pass taplo lint"
+    if tombi lint .; then
+      log_success "TOML files pass tombi lint"
     else
-      log_error "taplo lint failed"
+      log_error "tombi lint failed"
       EXIT_CODE=1
     fi
   fi

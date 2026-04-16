@@ -132,31 +132,24 @@ jobs:
       run: yamlfmt -dry .
       continue-on-error: true
   lint-toml:
-    name: TOML (Taplo)
+    name: TOML (Tombi)
     runs-on: ubuntu-slim
     timeout-minutes: 10
     steps:
     - name: Checkout
       uses: actions/checkout@v6.0.2
-    - name: Setup local bin
-      run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-    - name: Cache Taplo
-      uses: actions/cache@v5
-      id: cache-taplo
-      with:
-        path: ~/.local/bin/taplo
-        key: ${{ runner.os }}-taplo-v0.9.3
-    - name: Install Taplo
-      if: steps.cache-taplo.outputs.cache-hit != 'true'
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+    - name: Install Tombi
+      run: uv tool install tombi
+    - name: Ensure uv tool bin is on PATH
       run: |
-        wget -qO- "https://github.com/tamasfe/taplo/releases/download/0.9.3/taplo-linux-x86_64.gz" \
-          | gunzip > "$HOME/.local/bin/taplo"
-        chmod +x "$HOME/.local/bin/taplo"
-    - name: Run Taplo Format Check
-      run: taplo format --check
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Run Tombi Format Check
+      run: tombi format --check .
       continue-on-error: true
-    - name: Run Taplo Lint
-      run: taplo lint
+    - name: Run Tombi Lint
+      run: tombi lint .
       continue-on-error: true
   lint-web:
     name: Web (Biome)
