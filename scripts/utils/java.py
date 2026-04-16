@@ -93,6 +93,7 @@ class JavaRunner:
                 env=exec_env,
                 capture_output=True,
                 text=True,
+                check=False,
                 timeout=timeout or self.timeout,
             )
             logger.debug("Return code: %d", result.returncode)

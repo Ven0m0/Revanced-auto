@@ -783,9 +783,9 @@ def aria2c_download(
     cmd.extend(urls)
 
     try:
-        result = subprocess.run(cmd, capture_output=True)
-        return result.returncode == 0
-    except OSError:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except (subprocess.CalledProcessError, OSError):
         return False
 
 
