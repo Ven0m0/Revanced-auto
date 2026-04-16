@@ -9,7 +9,7 @@ lockfile = true
 
 [settings.python]
 uv_venv_auto = true
-uv_venv_create_args = "--system-site-packages --seed"
+uv_venv_create_args = ["--system-site-packages", "--seed"]
 
 [settings.cargo]
 binstall = true
@@ -21,6 +21,9 @@ uvx = true
 bun = true
 
 [tools]
+python = "3.13"
+uv = "latest"
+java = "temurin-21"
 "actionlint" = "latest"
 action-validator = "latest"
 prek = "latest"
