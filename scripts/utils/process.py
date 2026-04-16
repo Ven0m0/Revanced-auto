@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import os
 import sys
-from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
-if sys.version_info < (3, 13):
-    raise RuntimeError("This module requires Python 3.13 or higher.")
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from types import TracebackType
 
 T = TypeVar("T")
 
 
 @dataclass
-class JobResult(Generic[T]):
+class JobResult[T]:
     """Result of a job execution.
 
     Attributes:
@@ -76,21 +77,28 @@ class JobRunner:
         if max_workers is None:
             max_workers = os.cpu_count() or 1
         if max_workers < 1:
-            raise ValueError("max_workers must be at least 1")
+            msg = "max_workers must be at least 1"
+            raise ValueError(msg)
         if executor_type not in ("process", "thread"):
-            raise ValueError("executor_type must be 'process' or 'thread'")
+            msg = "executor_type must be 'process' or 'thread'"
+            raise ValueError(msg)
 
         self._max_workers = max_workers
         self._executor_type = executor_type
         self._executor: ProcessPoolExecutor | ThreadPoolExecutor | None = None
         self._jobs: dict[str, JobStatus] = {}
 
-    def __enter__(self) -> JobRunner:
+    def __enter__(self) -> Self:
         """Enter the context manager."""
         self._start_executor()
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Exit the context manager and clean up resources."""
         self.shutdown(wait=True)
 
@@ -123,7 +131,8 @@ class JobRunner:
             RuntimeError: If the runner is not started or is shut down.
         """
         if self._executor is None:
-            raise RuntimeError("JobRunner not started. Use context manager or call start().")
+            msg = "JobRunner not started. Use the context manager before submitting jobs."
+            raise RuntimeError(msg)
 
         if kwargs is None:
             kwargs = {}
@@ -132,7 +141,8 @@ class JobRunner:
             name = f"job_{id(func)}_{len(self._jobs)}"
 
         if name in self._jobs:
-            raise ValueError(f"Job with name '{name}' already exists.")
+            msg = f"Job with name '{name}' already exists."
+            raise ValueError(msg)
 
         status = JobStatus(name=name)
         status.future = self._executor.submit(func, *args, **kwargs)
@@ -186,7 +196,7 @@ class JobRunner:
         except Exception as e:
             return JobResult(name=name, success=False, error=str(e))
 
-    def shutdown(self, wait: bool = True) -> None:
+    def shutdown(self, *, wait: bool = True) -> None:
         """Shutdown the executor and clean up resources.
 
         Args:
@@ -233,15 +243,20 @@ class AsyncJobRunner:
         self._runner = JobRunner(max_workers=max_workers, executor_type="thread")
         self._loop: asyncio.AbstractEventLoop | None = None
 
-    async def __aenter__(self) -> AsyncJobRunner:
+    async def __aenter__(self) -> Self:
         """Enter the async context manager."""
         self._runner.__enter__()
         self._loop = asyncio.get_running_loop()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Exit the async context manager."""
-        self._runner.shutdown(wait=True)
+        await asyncio.to_thread(self._runner.shutdown, wait=True)
 
     async def submit_async(
         self,
@@ -264,43 +279,42 @@ class AsyncJobRunner:
         if kwargs is None:
             kwargs = {}
 
-        status = self._runner.submit(func, args, kwargs, name)
-        return status
+        return await asyncio.to_thread(self._runner.submit, func, args, kwargs, name)
 
-    async def wait_all_async(self, timeout: float | None = None) -> list[JobResult[Any]]:
+    async def wait_all_async(self) -> list[JobResult[Any]]:
         """Wait for all submitted jobs to complete asynchronously.
 
-        Args:
-            timeout: Maximum time to wait in seconds.
+        Use `asyncio.timeout` for timing out the operation.
 
         Returns:
             List of JobResult objects for all completed jobs.
         """
-        return self._runner.wait_all(timeout=timeout)
+        return await asyncio.to_thread(self._runner.wait_all)
 
-    async def get_result_async(self, name: str, timeout: float | None = None) -> JobResult[Any] | None:
+    async def get_result_async(self, name: str) -> JobResult[Any] | None:
         """Get the result of a specific job asynchronously.
+
+        Use `asyncio.timeout` for timing out the operation.
 
         Args:
             name: Name of the job.
-            timeout: Maximum time to wait in seconds.
 
         Returns:
             JobResult if the job exists and is complete, None otherwise.
         """
-        return self._runner.get_result(name=name, timeout=timeout)
+        return await asyncio.to_thread(self._runner.get_result, name)
+
+
+def sample_job(value: int) -> int:
+    """Sample job function for demonstration."""
+    return value * 2
 
 
 def main() -> int:
     """Run a simple demonstration of the JobRunner module."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="JobRunner demonstration")
     parser.add_argument("--workers", type=int, default=2, help="Number of workers")
     args = parser.parse_args()
-
-    def sample_job(value: int) -> int:
-        return value * 2
 
     with JobRunner(max_workers=args.workers) as runner:
         for i in range(4):

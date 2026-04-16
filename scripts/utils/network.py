@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 import httpx
 
+from scripts.lib import logging as log
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -385,20 +387,93 @@ class HttpClient:
             asyncio.get_event_loop().run_until_complete(self._async_client.aclose())
 
 
-def _get_deterministic_temp_path(temp_dir: Path, output_path: str | Path) -> Path:
-    """Generate deterministic temp path based on output path hash.
+SECURE_WORK_DIR_MODE = 0o700
+INSECURE_PERMISSION_MASK = 0o077
+
+
+def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
+    """Create and validate a secure, deterministic work directory.
 
     Args:
-        temp_dir: Temporary directory.
-        output_path: Target output path.
+        temp_dir: Parent temporary directory.
+        output_path: Target output path for the download.
 
     Returns:
-        Path to temporary file for the download.
+        Path to the secure work directory.
+
+    Raises:
+        RuntimeError: If the directory is insecure or cannot be created.
 
     """
     path_hash = hashlib.sha256(str(output_path).encode()).hexdigest()[:32]
-    return temp_dir / f"tmp.{path_hash}"
+    work_dir = temp_dir / f"work.{path_hash}"
+    work_dir.mkdir(mode=SECURE_WORK_DIR_MODE, parents=True, exist_ok=True)
 
+    # Security check: ensure it's a real directory we own (not a symlink)
+    if work_dir.is_symlink() or not work_dir.is_dir():
+        msg = f"Security error: temporary directory is invalid: {work_dir}"
+        raise RuntimeError(msg)
+
+    # Check ownership (UID match)
+    if work_dir.stat().st_uid != os.getuid():
+        msg = f"Security error: temporary directory ownership mismatch: {work_dir}"
+        raise RuntimeError(msg)
+
+    # Ensure restricted permissions
+    try:
+        work_dir.chmod(SECURE_WORK_DIR_MODE)
+    except PermissionError as exc:
+        mode = work_dir.stat().st_mode & 0o777
+        if mode & INSECURE_PERMISSION_MASK:
+            msg = f"Security error: temporary directory has insecure permissions: {work_dir}"
+            raise RuntimeError(msg) from exc
+    else:
+        mode = work_dir.stat().st_mode & 0o777
+        if mode != SECURE_WORK_DIR_MODE:
+            msg = f"Security error: temporary directory permissions mismatch: {work_dir}"
+            raise RuntimeError(msg)
+
+    return work_dir
+
+
+def _calculate_sha256(file_path: Path) -> str:
+    """Calculate SHA256 hash of a file using chunked reading.
+
+    Args:
+        file_path: Path to the file.
+
+    Returns:
+        Hexadecimal representation of the SHA256 hash.
+
+    """
+    sha256_hash = hashlib.sha256()
+    with file_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256_hash.update(chunk)
+    return sha256_hash.hexdigest()
+
+
+def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
+    """Verify a file's SHA256 checksum; remove it if the check fails.
+
+    Args:
+        file_path: Path to the file to verify.
+        sha256: Expected SHA256 hex digest, or None to skip verification.
+
+    Returns:
+        True if the file is valid (or no sha256 was specified), False if the
+        hash mismatched (the file is removed).
+
+    """
+    if not sha256:
+        return True
+    if _calculate_sha256(file_path) == sha256:
+        return True
+    import contextlib
+
+    with contextlib.suppress(OSError):
+        file_path.unlink()
+    return False
 
 def download_with_lock(
     url: str,
@@ -406,6 +481,7 @@ def download_with_lock(
     temp_dir: str | Path | None = None,
     config: HttpClientConfig | None = None,
     headers: dict[str, str] | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Download file with concurrent download protection via file locking.
 
@@ -418,6 +494,7 @@ def download_with_lock(
         temp_dir: Temporary directory for lock files and partial downloads.
         config: Optional HTTP client configuration.
         headers: Additional headers for the request.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -426,17 +503,20 @@ def download_with_lock(
     import tempfile
 
     output_path = Path(output).resolve()
-    temp_path = _get_deterministic_temp_path(
-        Path(temp_dir) if temp_dir else Path(tempfile.gettempdir()),
-        output_path,
-    )
-    lock_file = Path(f"{temp_path}.lock")
-    temp_dir_path = temp_path.parent
-    temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
+
+    try:
+        work_dir = _get_secure_work_dir(base_temp, output_path)
+    except RuntimeError as exc:
+        log.error(str(exc))
+        return False
+
+    temp_path = work_dir / "download.tmp"
+    lock_file = work_dir / "lock"
 
     if output_path.exists():
-        return True
+        if _verify_or_remove(output_path, sha256):
+            return True
 
     lock_fd = None
     try:
@@ -444,11 +524,14 @@ def download_with_lock(
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
         if output_path.exists():
-            return True
+            if _verify_or_remove(output_path, sha256):
+                return True
 
         client = HttpClient(config)
         try:
             client.get(url, temp_path, headers=headers or {})
+            if sha256 and not _verify_or_remove(temp_path, sha256):
+                return False
             temp_path.replace(output_path)
             return True
         finally:
@@ -473,6 +556,7 @@ async def async_download_with_lock(
     temp_dir: str | Path | None = None,
     config: HttpClientConfig | None = None,
     headers: dict[str, str] | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Async download file with concurrent download protection via file locking.
 
@@ -482,6 +566,7 @@ async def async_download_with_lock(
         temp_dir: Temporary directory for lock files and partial downloads.
         config: Optional HTTP client configuration.
         headers: Additional headers for the request.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -490,17 +575,21 @@ async def async_download_with_lock(
     import tempfile
 
     output_path = Path(output).resolve()
-    temp_path = _get_deterministic_temp_path(
-        Path(temp_dir) if temp_dir else Path(tempfile.gettempdir()),
-        output_path,
-    )
-    lock_file = Path(f"{temp_path}.lock")
-    temp_dir_path = temp_path.parent
-    temp_dir_path.mkdir(parents=True, exist_ok=True)
-    temp_dir_path.chmod(0o700)
+    base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
+
+    try:
+        work_dir = _get_secure_work_dir(base_temp, output_path)
+    except RuntimeError as exc:
+        log.error(str(exc))
+        return False
+
+    temp_path = work_dir / "download.tmp"
+    lock_file = work_dir / "lock"
 
     if output_path.exists():
-        return True
+        verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+        if verified:
+            return True
 
     lock_fd = None
     try:
@@ -508,10 +597,16 @@ async def async_download_with_lock(
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
 
         if output_path.exists():
-            return True
+            verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+            if verified:
+                return True
 
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
+            if sha256:
+                valid = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, temp_path, sha256)
+                if not valid:
+                    return False
             temp_path.replace(output_path)
             return True
     except OSError:
@@ -589,6 +684,7 @@ def gh_dl(
     asset_path: str | Path,
     url: str,
     config: HttpClientConfig | None = None,
+    sha256: str | None = None,
 ) -> bool:
     """Download GitHub release asset with file locking.
 
@@ -596,6 +692,7 @@ def gh_dl(
         asset_path: Path where the asset should be saved.
         url: GitHub asset download URL.
         config: Optional HTTP client configuration.
+        sha256: Optional SHA256 hash for integrity verification.
 
     Returns:
         True if download succeeded or file already exists, False otherwise.
@@ -607,7 +704,7 @@ def gh_dl(
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    return download_with_lock(url, asset_path, config=cfg, headers=headers)
+    return download_with_lock(url, asset_path, config=cfg, headers=headers, sha256=sha256)
 
 
 def _executor_download_with_lock(

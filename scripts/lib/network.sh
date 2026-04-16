@@ -29,14 +29,41 @@ _req() {
     # Deterministic hash-based temp path (not mktemp) so concurrent downloads
     # of the same destination share one temp file and correctly serialize on the lock
     mkdir -p "$TEMP_DIR"
-    chmod 700 "$TEMP_DIR"
-    dlp="${TEMP_DIR}/tmp.$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)"
-    local lock_file="${dlp}.lock"
+
+    local hash
+    hash=$(printf '%s' "$op" | sha256sum | cut -d' ' -f1)
+    local work_dir="${TEMP_DIR}/work.${hash}"
+
+    # Atomically create a secure directory for this task
+    if ! mkdir -m 700 "$work_dir" 2>/dev/null; then
+      # If it exists, ensure it's a real directory we own (not a symlink)
+      if [[ -L "$work_dir" || ! -d "$work_dir" || ! -O "$work_dir" ]]; then
+        epr "Security error: temporary directory is invalid or insecure: $work_dir"
+        return 1
+      fi
+
+      local work_dir_mode
+      work_dir_mode=$(stat -c '%a' -- "$work_dir" 2>/dev/null) || {
+        epr "Security error: failed to inspect temporary directory permissions: $work_dir"
+        return 1
+      }
+
+      # Check if group-write (020) or other-write (002) bits are set
+      if (( (8#"${work_dir_mode}" & 022) != 0 )); then
+        epr "Security error: temporary directory must not be writable by group or others: $work_dir"
+        return 1
+      fi
+    fi
+
+    dlp="${work_dir}/download.tmp"
+    local lock_file="${work_dir}/lock"
+
     # Try to acquire exclusive lock (create lock file atomically)
     exec {lock_fd}>"$lock_file" || {
       epr "Failed to create lock file: $lock_file"
       return 1
     }
+
     if ! flock -n "$lock_fd"; then
       # Another process is downloading - wait for lock
       log_info "Waiting for concurrent download: $dlp"
@@ -45,7 +72,6 @@ _req() {
       # Check if the other process actually succeeded
       if [[ -f "$op" ]]; then
         exec {lock_fd}>&- # Close lock file descriptor
-        rm -f "$lock_file"
         log_debug "File was downloaded by other process: $op"
         return 0
       fi
@@ -119,11 +145,33 @@ gh_req() {
 # Args:
 #   $1: Output file path
 #   $2: Asset URL
+#   $3: SHA256 hash (optional)
 gh_dl() {
-  if [[ ! -f "$1" ]]; then
-    pr "Getting '$1' from '$2'"
-    _req "$2" "$1" -H "$GH_HEADER" -H "Accept: application/octet-stream"
+  local op="$1" url="$2" expected_sha="${3:-}"
+  if [[ -f "$op" && -n "$expected_sha" ]]; then
+    local actual_sha
+    actual_sha=$(sha256sum "$op" | cut -d' ' -f1)
+    if [[ "$actual_sha" != "$expected_sha" ]]; then
+      log_warn "Checksum mismatch for $op; re-downloading"
+      rm -f "$op"
+    fi
+  fi
+
+  if [[ ! -f "$op" ]]; then
+    pr "Getting '$op' from '$url'"
+    if ! _req "$url" "$op" -H "$GH_HEADER" -H "Accept: application/octet-stream"; then
+      return 1
+    fi
+    if [[ -n "$expected_sha" ]]; then
+      local actual_sha
+      actual_sha=$(sha256sum "$op" | cut -d' ' -f1)
+      if [[ "$actual_sha" != "$expected_sha" ]]; then
+        rm -f "$op"
+        epr "Checksum mismatch for $op"
+        return 1
+      fi
+    fi
   else
-    log_debug "Asset already downloaded: $1"
+    log_debug "Asset already downloaded and verified: $op"
   fi
 }

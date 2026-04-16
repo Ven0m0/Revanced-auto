@@ -9,7 +9,10 @@ from __future__ import annotations
 import asyncio
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import httpx
 from selectolax.parser import HTMLParser
 
 from scripts.scrapers.base import (
@@ -163,9 +166,12 @@ class APKMonkScraper(ScraperBase):
                     return DownloadResult(success=False, error="Download link not found")
                 dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
 
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "wb") as f:
-                f.writelines(dl_response.iter_bytes(chunk_size=8192))
+            await loop.run_in_executor(
+                None,
+                self._save_apk,
+                dl_response,
+                output_path,
+            )
 
             return DownloadResult(
                 success=True,
@@ -175,6 +181,18 @@ class APKMonkScraper(ScraperBase):
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
+
+    def _save_apk(self, response: httpx.Response, output_path: Path) -> None:
+        """Save APK from response to file.
+
+        Args:
+            response: HTTP response object.
+            output_path: Path to save the APK.
+
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("wb") as f:
+            f.writelines(response.iter_bytes(chunk_size=8192))
 
     def get_package_name(self, url: str) -> str | None:
         """Extract package name from APKMonk URL.

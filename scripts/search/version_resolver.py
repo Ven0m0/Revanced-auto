@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class VersionResolver:
     """Resolves compatible app versions for ReVanced builds."""
 
-    _version_pattern: re.Pattern[str] = field(default_factory=lambda: re.compile(r"\d+\.\d+(?:\.\d+)?(?:\-\w+)?"))
+    _version_pattern: re.Pattern[str] = field(default_factory=lambda: re.compile(r"\d+\.\d+(?:\.\d+)+(?:\-\w+)?"))
 
     def get_version(
         self,
@@ -142,12 +142,11 @@ class VersionResolver:
             if not stripped:
                 continue
 
-            if self._is_package_line(stripped):
-                match = self._extract_package_name(stripped)
-                if match:
-                    current_package = match
-                    if current_package not in result:
-                        result[current_package] = []
+            package_name = self._extract_package_name(stripped)
+            if package_name:
+                current_package = package_name
+                if current_package not in result:
+                    result[current_package] = []
             elif current_package and self._is_version_line(stripped):
                 version = self._extract_version(stripped)
                 if version and version not in result[current_package]:

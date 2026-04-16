@@ -111,7 +111,7 @@ jobs:
         fi
     - name: Setup Android SDK
       if: success()
-      uses: android-actions/setup-android@v4.0.0
+      uses: android-actions/setup-android@v4.0.1
     - name: Setup build environment
       if: success()
       uses: ./.github/actions/setup-environment
@@ -159,7 +159,7 @@ jobs:
       continue-on-error: true
     - name: Comment on PR
       if: always()
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const fs = require('fs');

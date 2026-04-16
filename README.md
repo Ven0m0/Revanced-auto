@@ -1,274 +1,176 @@
-# ReVanced Builder
-[![Daily Build](https://github.com/YOUR-USERNAME/Revanced-auto/actions/workflows/build-daily.yml/badge.svg)](https://github.com/YOUR-USERNAME/Revanced-auto/actions/workflows/build-daily.yml)
-[![PR Validation](https://github.com/YOUR-USERNAME/Revanced-auto/actions/workflows/build-pr.yml/badge.svg)](https://github.com/YOUR-USERNAME/Revanced-auto/actions/workflows/build-pr.yml)
-[![License](https://img.shields.io/github/license/YOUR-USERNAME/Revanced-auto)](./LICENSE)
-Automated APK patching and building system for ReVanced and RVX (ReVanced
-Extended) applications.
-## Features
-### Core Building
-- **Multi-App Building**: Build multiple apps in parallel or sequentially
-- **Flexible Configuration**: TOML-based configuration with global and
-  app-specific settings
-- **Multiple Download Sources**: APKMirror, Uptodown, and Archive.org with
-  automatic fallback
-- **Version Control**: Support for specific versions, auto-detection, latest,
-  and dev builds
-- **Optimization Options**: AAPT2 resource optimization, library stripping
-  (riplib), and zipalign
-- **Signature Verification**: Automatic APK signature validation
-- **Modular Architecture**: Clean separation of concerns with reusable library
-  modules
-- **Retry Logic**: Exponential backoff for network requests
-### Advanced Features
-- **Changelog Automation**: Generate comprehensive changelogs from git commits and
-  ReVanced patches updates with multiple output formats
-- **Build Cache System**: Intelligent caching with TTL, integrity validation, and
-  automatic cleanup for faster builds
-- **Dependency Update Checker**: Automated monitoring of CLI and patches versions
-  with GitHub Actions integration
-See [FEATURES.md](docs/FEATURES.md) for detailed documentation.
-## Quick Start
-### Prerequisites
-- **Required**: Bash 4.0+, Java 21+, jq, zip, curl or wget, Python 3.x
-- **Python Dependencies**: lxml, cssselect (install via `pip install lxml cssselect`)
-- **Recommended**: optipng (for asset optimization)
-### Installation
-1. Clone this repository:
+# ReVanced-auto
+
+ReVanced-auto builds patched Android APKs from a TOML config: resolve compatible app versions, download stock APKs, apply ReVanced/RVX-compatible CLI + patches, re-sign the result, and write artifacts to `build/`.
+
+## Requirements
+
+- Python **3.13+**
+- Java **21+**
+- `uv`, `jq`, `zip`
+- Optional but useful: `curl` or `wget`, `zipalign`, `optipng`
+
+This repo uses `uv` for dependency management and is not distributed as a standalone Python package.
+
+## Setup
+
 ```bash
-git clone <repository-url>
-cd <repository-directory>
+git clone <repo-url>
+cd Revanced-auto
+mise install
+uv sync --locked --all-groups
+bash ./check-env.sh
 ```
-1. The project includes all necessary binaries in `bin/`:
-   - `apksigner.jar` - APK signing tool
-   - `dexlib2.jar` - DEX manipulation
-   - `paccer.jar` - Patch integrity checker
-   - `aapt2` - Android Asset Packaging Tool (arch-specific)
-   - `toml` (tq) - TOML parser (arch-specific)
-1. Ensure scripts are executable:
+
+`check-env.sh` verifies required tools, Java, downloads the required `bin/` jars when missing, checks optional helpers and assets, and validates `config.toml` syntax.
+
+## Quick start
+
+Prefer the Python CLI. After `uv sync`, use `uv run ...` for one-off commands, or activate the `uv` environment first if you are working in an interactive shell session.
+
 ```bash
-chmod +x build.sh utils.sh extras.sh scripts/*.sh
+# Prefer a secure secret source over typing passwords into shell history.
+export KEYSTORE_PASSWORD='...'
+export KEYSTORE_ENTRY_PASSWORD='...'
+
+bash ./check-env.sh
+uv run python -m scripts.cli check --config config.toml
+uv run python -m scripts.cli build --config config.toml --build-mode apk --parallel 1
 ```
-### Basic Usage
-Build all enabled apps from `config.toml` with the Python CLI:
+
+The CLI builds every app with `enabled = true` in `config.toml`. To rebuild when nothing changed, reset the version tracker first:
+
 ```bash
-python -m scripts.cli build --config config.toml
+uv run python -m scripts.cli version-tracker reset --config config.toml
 ```
-Or use the legacy wrapper:
+
+Useful variants:
+
 ```bash
-./build.sh config.toml
+uv run python -m scripts.cli build --config config.toml --build-mode both --parallel 2
+uv run python -m scripts.cli build --config config.toml --build-mode apk --parallel 1 --clean
+uv run python -m scripts.cli build --config config.toml --build-mode module --parallel 1 --no-cache
+uv run python -m scripts.cli version-tracker check --config config.toml
+uv run python -m scripts.cli cache stats
 ```
-Manage the cache with the Python CLI:
+
+Legacy wrapper:
+
 ```bash
-python -m scripts.cli cache init
-python -m scripts.cli cache stats
-python -m scripts.cli cache cleanup --force
-python -m scripts.cli cache clean '.*\.apk'
+bash ./build.sh --config config.toml --build-mode apk --parallel 1
+bash ./build.sh cache stats
 ```
-The legacy wrapper forwards to the same cache subcommands when Python 3.13+ is available:
+
+`build.sh` is a compatibility wrapper around the same build flow. Prefer `uv run python -m scripts.cli ...` for normal use.
+
+## Key commands
+
 ```bash
-./build.sh cache stats
+uv run python -m scripts.cli build --config config.toml --build-mode {apk,module,both} --parallel N [--clean] [--no-cache]
+uv run python -m scripts.cli check --config config.toml
+uv run python -m scripts.cli version-tracker {check|save|show|reset} --config config.toml
+uv run python -m scripts.cli cache init
+uv run python -m scripts.cli cache stats
+uv run python -m scripts.cli cache cleanup [--force]
+uv run python -m scripts.cli cache clean [--pattern '.*\.apk']
+uv run bash ./scripts/lint.sh
+uv run python -m pytest tests -v
 ```
-Build a specific app:
-```bash
-# Edit config.toml and set enabled = true for your desired app
-python -m scripts.cli build --config config.toml
-```
-Clean build artifacts:
-```bash
-python -m scripts.cli build --config config.toml --clean
-```
+
 ## Configuration
-The `config.toml` file controls all build settings. You can create this file in two ways:
-1. **Configuration Generator** (Recommended): [Web-based tool](https://YOUR-USERNAME.github.io/Revanced-auto/config-generator/) for creating configurations without manual editing
-2. **Manual Editing**: See [CONFIG.md](CONFIG.md) for detailed documentation
-### Global Settings
-```toml
-parallel-jobs = 1              # Number of parallel builds
-compression-level = 9           # ZIP compression (0-9)
-patches-version = "dev"         # dev, latest, or version tag
-cli-version = "dev"             # dev, latest, or version tag
-patches-source = "anddea/revanced-patches"
-cli-source = "inotia00/revanced-cli"
-rv-brand = "RVX"               # Brand name
-arch = "arm64-v8a"             # Default architecture
-riplib = true                  # Strip unnecessary libraries
-enable-aapt2-optimize = true   # Resource optimization
-```
-### App Configuration
-```toml
-[YouTube-Extended]
-enabled = true
-app-name = "YouTube"
-version = "auto"               # auto, latest, beta, or specific version
-patches-source = "anddea/revanced-patches"
-cli-source = "inotia00/revanced-cli"
-rv-brand = "RVX"
-excluded-patches = "'Enable debug logging'"
-patcher-args = ["-e", "Custom branding icon for YouTube", "-OappIcon=mnt"]
-# Download sources (at least one required)
-uptodown-dlurl = "https://youtube.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
-archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
-```
-## Architecture
-The project is organized into modular components:
-```text
-.
-├── build.sh              # Main build orchestration script
-├── utils.sh              # Utility loader (sources all scripts/lib modules)
-├── config.toml           # Build configuration
-├── bin/                 # Prebuilt binaries and tools
-│   ├── apksigner.jar
-│   ├── dexlib2.jar
-│   ├── paccer.jar
-│   ├── aapt2/           # Architecture-specific AAPT2
-│   └── toml/            # TOML parser (tq)
-├── scripts/
-│   ├── lib/             # Modular library components
-│   │   ├── logger.sh     # Logging functions
-│   │   ├── helpers.sh    # General utilities
-│   │   ├── config.sh     # Configuration parsing
-│   │   ├── network.sh    # HTTP requests with retry
-│   │   ├── prebuilts.sh  # ReVanced CLI/patches management
-│   │   ├── download.sh   # APK downloads
-│   │   └── patching.sh   # APK patching and building
-│   ├── html_parser.py    # Python HTML parser (replaces htmlq)
-│   ├── aapt2-optimize.sh # Resource optimization
-│   └── optimize-assets.sh # PNG optimization
-├── assets/
-│   └── sig.txt          # Known APK signatures
-└── ks.keystore          # Default keystore for signing
-```
-## Build Process
-1. **Prerequisites Check**: Verify Java, jq, and other required tools
-1. **Configuration Load**: Parse config.toml and set defaults
-1. **Download Prebuilts**: Fetch ReVanced CLI and patches from GitHub
-1. **Process Each App**:
-   - Detect compatible version (if version = "auto")
-   - Download stock APK from available sources
-   - Verify APK signature
-   - Apply ReVanced patches
-   - Apply optimizations (zipalign, aapt2)
-1. **Output**: Patched APKs in `build/` directory
-1. **Generate**: build.md with build notes and changelogs
-## Output
-Build artifacts are placed in:
-- `build/` - Final patched APKs
-- `temp/` - Temporary files and cached downloads
-- `build.md` - Build summary and changelogs
+
+The shipped `config.toml` uses top-level global settings plus per-app sections such as `[YouTube-Extended]`. Each enabled app needs at least one download source:
+
+- `apkmirror-dlurl`
+- `uptodown-dlurl`
+- `archive-dlurl`
+- `apkpure-dlurl`
+- `aptoide-dlurl`
+- `apkmonk-dlurl`
+
+Common global settings include:
+
+- `parallel-jobs`
+- `build-mode`
+- `patches-version`
+- `cli-version`
+- `patches-source`
+- `cli-source`
+- `arch`
+- `riplib`
+- `enable-aapt2-optimize`
+- `aapt2-source`
+- `use-custom-aapt2`
+
+The sample config currently enables `Music-Extended` and `YouTube-Extended`; other app sections are included as examples and are disabled by default.
+
+Config docs and generators:
+
+- [`docs/CONFIG.md`](./docs/CONFIG.md) — config reference
+- [`docs/README.md`](./docs/README.md) — docs index
+- [`docs/index.html`](./docs/index.html) — local docs landing page
+- [`docs/generator.html`](./docs/generator.html) — local config generator
+- Hosted generator used by this repo's config format: <https://j-hc.github.io/rvmm-config-gen/>
+
+## Signing and build flow
+
+- Builds require `KEYSTORE_PASSWORD` and `KEYSTORE_ENTRY_PASSWORD`.
+- Default signing values come from the shell path: `KEYSTORE_PATH=assets/ks.keystore`, `KEYSTORE_ALIAS=jhc`, `KEYSTORE_SIGNER=jhc`.
+- Stock APK signature checks use `assets/sig.txt` when entries are available.
+- Final APKs are re-signed with `bin/apksigner.jar` using **v1 + v2 only**; **v3/v4 are intentionally disabled** for compatibility and predictable signing behavior. The jar is downloaded on demand when missing.
+
+Normal flow:
+
+1. Load `config.toml`.
+2. Compare current config state with `.github/last_built_versions.json`.
+3. Skip the build if nothing tracked changed.
+4. If `--clean` is set, remove `temp/`, `build/`, `logs/`, and `build.md`.
+5. Resolve compatible versions (`version = "auto"`), download stock APKs, and fetch CLI/patch prebuilts.
+6. Patch, sign, and write final artifacts to `build/`.
+7. Save the new version state after a successful build.
+
+For YouTube and YouTube Music builds, expect to install a compatible GmsCore/MicroG provider on-device. The legacy Bash flow appends provider links to `build.md`; if you need them directly, see:
+
+- <https://github.com/ReVanced/GmsCore/releases/latest>
+- <https://github.com/MorpheApp/MicroG-RE/releases/latest>
+- <https://github.com/YT-Advanced/GmsCore/releases/latest>
+
+## Outputs
+
+- `build/` — final APKs, module ZIPs, and per-app Markdown summaries
+- `temp/` — temporary files and default cache directory
+- `.github/last_built_versions.json` — saved version-tracker state
+- `build.md` — legacy Bash-flow build notes/changelog
+
+Cache commands use `temp/` by default with a TTL of `86400` seconds (24 hours). Expired entries are reused only until cleanup or replacement. Set `CACHE_DIR` to override the cache location.
+
 ## Troubleshooting
-### Enable Debug Logging
-```bash
-export LOG_LEVEL=0
-./build.sh config.toml
-```
-### Common Issues
-**Java version error**:
-```text
-Java version must be 21 or higher
-```
-Solution: Install OpenJDK Temurin 21 or later
-**Download failures**:
-```text
-Request failed after 4 retries
-```
-Solution: Check internet connection, or try different download source
-**Patch failures**:
-```text
-Building 'App-Name' failed
-```
-Solution: The app version may not be compatible with current patches. Try
-setting `version = "auto"` or use a different version.
-## Environment Variables
-### Runtime Configuration
-- `LOG_LEVEL` - Set to 0 for debug output (default: 1)
-- `MAX_RETRIES` - Maximum retry attempts for network requests (default: 4)
-- `INITIAL_RETRY_DELAY` - Initial retry delay in seconds (default: 2)
-- `CONNECTION_TIMEOUT` - Connection timeout in seconds (default: 10)
-- `GITHUB_TOKEN` - GitHub API token for authenticated requests (optional)
-- `BUILD_MODE` - Set to "dev" or "stable" to force dev/stable patches
-### Signing Configuration (Required)
-- `KEYSTORE_PASSWORD` - Keystore password (required for building)
-- `KEYSTORE_ENTRY_PASSWORD` - Key entry password (required for building)
-- `KEYSTORE_PATH` - Path to keystore file (default: ks.keystore)
-- `KEYSTORE_ALIAS` - Key alias (default: jhc)
-- `KEYSTORE_SIGNER` - Signer name (default: jhc)
-**Note**: For CI/CD workflows, set `KEYSTORE_PASSWORD` and
-`KEYSTORE_ENTRY_PASSWORD` as repository secrets.
-## Scripts
-### build.sh
-Main build script. Usage:
-```bash
-./build.sh [config.toml] [--config-update]
-./build.sh clean
-./build.sh cache {stats|cleanup|clean|init}
-```
-### Python cache CLI
-Preferred cache management commands:
-```bash
-python -m scripts.cli cache init
-python -m scripts.cli cache stats
-python -m scripts.cli cache cleanup [--force]
-python -m scripts.cli cache clean [--pattern '.*\\.apk']
-```
-### extras.sh
-Utility functions for CI/CD workflows:
-```bash
-./extras.sh separate-config <config.toml> <app_name> <output.toml>
-./extras.sh combine-logs <logs_directory>
-```
-## Optimization
-### AAPT2 Optimization
-Enable in `config.toml`:
-```toml
-enable-aapt2-optimize = true
-arch = "arm64-v8a"
-```
-Reduces APK size by keeping only:
-- English language
-- xxhdpi density
-- arm64-v8a architecture
-### Library Stripping (riplib)
-Enable in `config.toml`:
-```toml
-riplib = true
-```
-Removes unnecessary native libraries:
-- Strips x86 and x86_64 (ARM devices don't need them)
-- Reduces APK size by 20-40%
-## Security
-### APK Signature Scheme Enforcement
-All built APKs are signed with **APK Signature Scheme v1 and v2 only**. Higher
-signature schemes (v3, v4) are explicitly disabled to ensure maximum
-compatibility and predictable security characteristics. This is enforced via
-post-patch re-signing using `apksigner.jar`.
-### CI/CD Security
-- Release artifacts are only published from the trusted repository (not from
-  forks)
-- Pull requests can build but cannot publish releases
-- Keystore credentials must be configured as GitHub repository secrets
-## Contributing
-When contributing:
-1. Maintain the modular library structure
-1. Add appropriate logging at correct levels
-1. Handle errors gracefully
-1. Update documentation for new features
-1. Test with various configurations
-1. Maintain backward compatibility
-## CI/CD
-This repository includes automated workflows for building and releasing APKs:
-- **Daily Builds**: Automated builds at 06:00 UTC daily
-- **Manual Builds**: On-demand builds via GitHub Actions
-- **PR Validation**: Automatic testing on pull requests
-See [WORKFLOWS.md](.github/WORKFLOWS.md) for detailed workflow documentation.
-## Tools & Resources
-- **[Configuration Generator](https://YOUR-USERNAME.github.io/Revanced-auto/config-generator/)** - Create config.toml interactively
-- **[Workflow Documentation](.github/WORKFLOWS.md)** - CI/CD setup and usage
-- **[Security Policy](SECURITY.md)** - Security guidelines and reporting
-## License
-See [LICENSE](LICENSE) file for details.
-## Acknowledgments
-- [ReVanced](https://github.com/ReVanced) - Original ReVanced project
-- [anddea/revanced-patches](https://github.com/anddea/revanced-patches) - Extended patches
-- [inotia00/revanced-cli](https://github.com/inotia00/revanced-cli) - Extended CLI
-- [j-hc](https://github.com/j-hc) - Original build system inspiration
+
+- Run `bash ./check-env.sh` first.
+- If `python -m scripts.cli ...` cannot import dependencies, run it through `uv run` or activate the `uv` environment first.
+- If your checkout does not preserve executable bits, invoke shell entry points as `bash ./check-env.sh` and `bash ./build.sh`.
+- If version checks keep skipping builds, inspect or reset `.github/last_built_versions.json` with `uv run python -m scripts.cli version-tracker show --config config.toml` or `... reset --config config.toml`.
+- If downloads fail, set `GITHUB_TOKEN` and/or tune retry env vars.
+- If signing fails, verify keystore env vars and file paths.
+- `DEBUG=1` is useful for Python CLI debugging; `LOG_LEVEL=0` is useful for legacy/shared shell logging.
+
+Useful env vars:
+
+- `KEYSTORE_PASSWORD`
+- `KEYSTORE_ENTRY_PASSWORD`
+- `KEYSTORE_PATH`
+- `KEYSTORE_ALIAS`
+- `KEYSTORE_SIGNER`
+- `GITHUB_TOKEN`
+- `CACHE_DIR`
+- `MAX_RETRIES`
+- `INITIAL_RETRY_DELAY`
+- `CONNECTION_TIMEOUT`
+- `DEBUG`
+- `LOG_LEVEL`
+- `BUILD_MODE` (legacy shell flow)
+
+## Docs
+
+- [`docs/CONFIG.md`](./docs/CONFIG.md)
+- [`docs/README.md`](./docs/README.md)
+- [`AGENTS.md`](./AGENTS.md)

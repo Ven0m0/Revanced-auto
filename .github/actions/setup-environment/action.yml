@@ -31,6 +31,14 @@ runs:
     run: |
       sdkmanager "build-tools;34.0.0"
       echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+  - name: Bootstrap pinned bin JAR dependencies
+    shell: bash
+    run: |
+      source utils.sh
+      check_binaries || {
+        echo "Failed to bootstrap/download pinned bin/*.jar dependencies" >&2
+        exit 1
+      }
   - name: Install uv
     uses: astral-sh/setup-uv@v7
     with:

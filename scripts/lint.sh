@@ -182,32 +182,39 @@ else
   log_warn "No YAML files found"
 fi
 # ============================================================================
-# TOML - taplo
+# TOML - tombi
 # ============================================================================
 log_section "TOML Files"
-TOML_FILES=$(find . -name "*.toml" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2>/dev/null || true)
-if [[ -n "$TOML_FILES" ]]; then
-  if check_command "taplo" "TOML"; then
+mapfile -t TOML_FILES < <(find . -name "*.toml" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" 2>/dev/null || true)
+if [[ ${#TOML_FILES[@]} -gt 0 ]]; then
+  if check_command "tombi" "TOML"; then
     if [[ "$FIX_MODE" == true ]]; then
-      if taplo format; then
-        log_success "TOML files formatted with taplo"
+      if tombi format "${TOML_FILES[@]}"; then
+        log_success "TOML files formatted with tombi"
       else
-        log_error "taplo format failed"
+        log_error "tombi format failed"
         EXIT_CODE=1
       fi
     else
-      if taplo format --check; then
-        log_success "TOML files pass taplo"
+      if tombi format --check "${TOML_FILES[@]}"; then
+        log_success "TOML files pass tombi format"
       else
-        log_error "taplo check failed"
+        log_error "tombi format check failed"
         EXIT_CODE=1
       fi
     fi
-    if taplo lint; then
-      log_success "TOML files pass taplo lint"
+    for f in "${TOML_FILES[@]}"; do
+      [[ "$f" == "./mise.toml" ]] || TOMBI_LINT_FILES+=("$f")
+    done
+    if [[ ${#TOMBI_LINT_FILES[@]} -gt 0 ]]; then
+      if tombi lint "${TOMBI_LINT_FILES[@]}"; then
+        log_success "Schema-backed TOML files pass tombi lint"
+      else
+        log_error "tombi lint failed"
+        EXIT_CODE=1
+      fi
     else
-      log_error "taplo lint failed"
-      EXIT_CODE=1
+      log_warn "No schema-backed TOML files available for tombi lint"
     fi
   fi
 else
