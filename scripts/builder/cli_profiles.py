@@ -293,7 +293,7 @@ def build_cli_args(
     bare: bool = False,
     inplace: bool = False,
     werror: bool = False,
-    options: dict[str, Any] | None = None,
+    _options: dict[str, Any] | None = None,
 ) -> list[str]:
     """Build command arguments from profile configuration.
 

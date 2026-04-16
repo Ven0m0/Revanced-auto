@@ -16,7 +16,7 @@ epr() { echo >&2 -e "\033[0;31m[-] ${1}\033[0m"; }
 
 # Request storage permission and wait until /sdcard is accessible
 pr "Requesting storage permission..."
-until termux-setup-storage >/dev/null 2>&1 && ls /sdcard >/dev/null 2>&1; do
+until termux-setup-storage > /dev/null 2>&1 && ls /sdcard > /dev/null 2>&1; do
   sleep 1
 done
 
@@ -30,7 +30,7 @@ if [[ ! -f "$marker" ]]; then
     -o Dpkg::Options::="--force-confold"
   pkg install -y git curl jq openjdk-21 zip python
   pip install uv --quiet
-  : >"$marker"
+  : > "$marker"
 fi
 
 mkdir -p "$OUTPUT_DIR"
@@ -43,10 +43,10 @@ if [[ -d "$REPO_DIR" ]] || [[ -f config.toml ]]; then
   if git status | grep -q 'is behind\|fatal'; then
     pr "Updating repository (config.toml will be preserved)..."
     cd ..
-    cp -f "$REPO_DIR/config.toml" . 2>/dev/null || :
+    cp -f "$REPO_DIR/config.toml" . 2> /dev/null || :
     rm -rf "$REPO_DIR"
     git clone "$REPO_URL" --depth 1 "$REPO_DIR"
-    mv -f config.toml "$REPO_DIR/config.toml" 2>/dev/null || :
+    mv -f config.toml "$REPO_DIR/config.toml" 2> /dev/null || :
     cd "$REPO_DIR"
   fi
 else
@@ -55,7 +55,7 @@ else
   cd "$REPO_DIR"
   # Disable all apps by default so users opt-in explicitly on first run
   sed -i '/^enabled.*/d; /^\[.*\]/a enabled = false' config.toml
-  git config --global --add safe.directory ~/Revanced-auto 2>/dev/null || :
+  git config --global --add safe.directory ~/Revanced-auto 2> /dev/null || :
 fi
 
 # Sync config from shared storage (if present)

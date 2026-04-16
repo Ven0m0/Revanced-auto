@@ -475,6 +475,7 @@ def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
         file_path.unlink()
     return False
 
+
 def download_with_lock(
     url: str,
     output: str | Path,

@@ -39,7 +39,7 @@ class JavaRunner:
         0
     """
 
-    java_args: list[str] = field(default_factory=lambda: JAVA_ARGS.copy())
+    java_args: list[str] = field(default_factory=JAVA_ARGS.copy)
     env: dict[str, str] | None = None
     timeout: int | None = None
 

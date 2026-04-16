@@ -2,9 +2,11 @@
 """CLI entry point for ReVanced Builder."""
 
 import argparse
+import re
 import signal
 import sys
 from pathlib import Path
+from types import FrameType
 
 # Allow running as a direct script: `python scripts/cli.py`
 # Inserts the project root so `scripts.*` imports resolve correctly.
@@ -24,7 +26,7 @@ from scripts.lib.cache import (
 )
 
 
-def _signal_handler(signum: int, frame) -> None:
+def _signal_handler(signum: int, _frame: FrameType | None) -> None:
     """Handle interrupt signals gracefully."""
     signame = signal.Signals(signum).name
     log.abort(f"Received {signame}, shutting down...", code=130)
@@ -127,13 +129,11 @@ def run_version_tracker(args: argparse.Namespace) -> int:
         else:
             log.info("All apps are up to date")
         return 0
-
     if subcommand == "save":
         log.info("Saving version state...")
         version_tracker.save()
         log.info("Version state saved")
         return 0
-
     if subcommand == "show":
         state = version_tracker.get_state()
         if state:
@@ -143,20 +143,16 @@ def run_version_tracker(args: argparse.Namespace) -> int:
         else:
             log.info("No version state recorded")
         return 0
-
     if subcommand == "reset":
         log.info("Resetting version state...")
         version_tracker.reset()
         log.info("Version state reset")
         return 0
-
     log.abort(f"Unknown subcommand: {subcommand}")
 
 
 def run_cache(args: argparse.Namespace) -> int:
     """Execute cache subcommands and return a process exit code."""
-    import re
-
     manager = CacheManager()
     subcommand = args.cache_command
 

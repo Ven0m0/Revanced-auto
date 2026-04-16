@@ -1,6 +1,6 @@
 """Tests for scripts/search/version_resolver.py."""
 
-# ruff: noqa: D101, D102, S101
+# ruff: noqa: S101
 
 from __future__ import annotations
 

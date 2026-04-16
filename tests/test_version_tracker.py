@@ -1,6 +1,6 @@
 """Tests for scripts/version_tracker.py and scripts/lib/version_tracker.py."""
 
-# ruff: noqa: D101, D102, S101, PLC0415, TC003
+# ruff: noqa: S101, PLC0415, TC003
 
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ class TestDetectChanges:
         current = {"a": "2", "b": "2"}
         saved = {"a": "1", "b": "1"}
         changes = detect_changes(current, saved)
-        assert len(changes) == 2  # noqa: PLR2004
+        assert len(changes) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -191,6 +191,7 @@ class TestVersionTrackerWrapper:
 
         # Patch STATE_FILE via the underlying module so load_state sees no file
         import scripts.version_tracker as vt_mod
+
         original = vt_mod.STATE_FILE
         vt_mod.STATE_FILE = state_file  # type: ignore[misc]
         try:
@@ -207,6 +208,7 @@ class TestVersionTrackerWrapper:
         save_state({"global_cli_version": "5.0.0"}, state_path=state_file)
 
         import scripts.version_tracker as vt_mod
+
         original = vt_mod.STATE_FILE
         vt_mod.STATE_FILE = state_file  # type: ignore[misc]
         vt_mod.load_state.cache_clear()  # clear lru_cache so patched path is used

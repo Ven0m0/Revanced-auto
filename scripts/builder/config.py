@@ -117,6 +117,7 @@ class AppConfig:
 
         data = data.copy()
         integrations_raw = data.pop("integrations", "built-in")
+        integrations: IntegrationSource | str
         if isinstance(integrations_raw, str):
             try:
                 integrations = IntegrationSource(integrations_raw)

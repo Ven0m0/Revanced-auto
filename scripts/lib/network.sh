@@ -35,7 +35,7 @@ _req() {
     local work_dir="${TEMP_DIR}/work.${hash}"
 
     # Atomically create a secure directory for this task
-    if ! mkdir -m 700 "$work_dir" 2>/dev/null; then
+    if ! mkdir -m 700 "$work_dir" 2> /dev/null; then
       # If it exists, ensure it's a real directory we own (not a symlink)
       if [[ -L "$work_dir" || ! -d "$work_dir" || ! -O "$work_dir" ]]; then
         epr "Security error: temporary directory is invalid or insecure: $work_dir"
@@ -43,13 +43,13 @@ _req() {
       fi
 
       local work_dir_mode
-      work_dir_mode=$(stat -c '%a' -- "$work_dir" 2>/dev/null) || {
+      work_dir_mode=$(stat -c '%a' -- "$work_dir" 2> /dev/null) || {
         epr "Security error: failed to inspect temporary directory permissions: $work_dir"
         return 1
       }
 
       # Check if group-write (020) or other-write (002) bits are set
-      if (( (8#"${work_dir_mode}" & 022) != 0 )); then
+      if (((8#"${work_dir_mode}" & 022) != 0)); then
         epr "Security error: temporary directory must not be writable by group or others: $work_dir"
         return 1
       fi
@@ -59,7 +59,7 @@ _req() {
     local lock_file="${work_dir}/lock"
 
     # Try to acquire exclusive lock (create lock file atomically)
-    exec {lock_fd}>"$lock_file" || {
+    exec {lock_fd}> "$lock_file" || {
       epr "Failed to create lock file: $lock_file"
       return 1
     }
@@ -111,7 +111,7 @@ _req() {
   done
   # Clean up temporary file and lock on failure
   if [[ "$success" = false ]]; then
-    rm -f "$dlp" 2>/dev/null
+    rm -f "$dlp" 2> /dev/null
     if [[ -n "${lock_fd:-}" ]]; then
       exec {lock_fd}>&- # Close lock file descriptor
       rm -f "${lock_file:-}"

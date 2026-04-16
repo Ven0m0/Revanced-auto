@@ -105,14 +105,14 @@ class ArchiveScraper(ScraperBase):
 
         for v in versions:
             if v.version == version and (arch is None or v.arch == arch):
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(
                     None,
                     self._download_file,
                     v.url,
                     output_path,
                     v.version,
-                loop = asyncio.get_running_loop()
+                )
 
         return DownloadResult(
             success=False,

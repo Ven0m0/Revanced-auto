@@ -1,6 +1,6 @@
 """Tests for scripts/builder/notifier.py."""
 
-# ruff: noqa: D101, D102, S101, SLF001, PLC0415, TC003
+# ruff: noqa: S101, PLC0415, TC003
 
 from __future__ import annotations
 
@@ -184,9 +184,7 @@ class TestGitHubReleaseNotifier:
         notifier = GitHubReleaseNotifier("owner/repo", "ghp_token")
         assert notifier.send(failure_notification) is False
 
-    def test_send_creates_release_on_success(
-        self, success_notification: BuildNotification
-    ) -> None:
+    def test_send_creates_release_on_success(self, success_notification: BuildNotification) -> None:
         notifier = GitHubReleaseNotifier("owner/repo", "ghp_token")
 
         with patch.object(notifier, "create_release", return_value="https://github.com/owner/repo/releases/1") as mock:
@@ -195,9 +193,7 @@ class TestGitHubReleaseNotifier:
         assert result is True
         mock.assert_called_once()
 
-    def test_send_returns_false_when_create_release_fails(
-        self, success_notification: BuildNotification
-    ) -> None:
+    def test_send_returns_false_when_create_release_fails(self, success_notification: BuildNotification) -> None:
         notifier = GitHubReleaseNotifier("owner/repo", "ghp_token")
 
         with patch.object(notifier, "create_release", return_value=""):
@@ -230,11 +226,13 @@ class TestNotifierFactory:
         assert isinstance(notifier, NullNotifier)
 
     def test_creates_telegram_notifier(self) -> None:
-        cfg = NotificationConfig({
-            "type": "telegram",
-            "telegram_bot_token": "tok",
-            "telegram_chat_id": "chat",
-        })
+        cfg = NotificationConfig(
+            {
+                "type": "telegram",
+                "telegram_bot_token": "tok",
+                "telegram_chat_id": "chat",
+            }
+        )
         notifier = NotifierFactory.create(cfg)
         assert isinstance(notifier, TelegramNotifier)
 
@@ -244,11 +242,13 @@ class TestNotifierFactory:
         assert isinstance(notifier, AppriseNotifier)
 
     def test_creates_github_notifier(self) -> None:
-        cfg = NotificationConfig({
-            "type": "github",
-            "github_repo": "owner/repo",
-            "github_token": "ghp_token",
-        })
+        cfg = NotificationConfig(
+            {
+                "type": "github",
+                "github_repo": "owner/repo",
+                "github_token": "ghp_token",
+            }
+        )
         notifier = NotifierFactory.create(cfg)
         assert isinstance(notifier, GitHubReleaseNotifier)
 

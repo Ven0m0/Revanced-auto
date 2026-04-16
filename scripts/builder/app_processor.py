@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Protocol, Self
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -320,11 +321,16 @@ class JobRunner:
         """
         self._executor.shutdown(wait=wait)
 
-    def __enter__(self) -> JobRunner:
+    def __enter__(self) -> Self:
         """Enter context manager."""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Exit context manager."""
         self.shutdown(wait=True)
 
@@ -497,13 +503,12 @@ class AppProcessor:
                     )
                     futures[future] = app_config.name
 
-            for future in futures:
+            for future, app_name in futures.items():
                 try:
                     results = future.result()
                     all_results.extend(results)
                 except Exception as e:
                     logger.error("Build failed with exception: %s", e)
-                    app_name = futures[future]
                     all_results.append(
                         BuildResult(
                             app_name=app_name,

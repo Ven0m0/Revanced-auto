@@ -21,9 +21,7 @@ class _GitHubTokenAuth(httpx.Auth):
     def __init__(self, token: str) -> None:
         self.token = token
 
-    def auth_flow(
-        self, request: httpx.Request
-    ) -> Generator[httpx.Request, httpx.Response]:
+    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response]:
         request.headers["Authorization"] = f"token {self.token}"
         yield request
 
