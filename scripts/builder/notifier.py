@@ -250,7 +250,6 @@ class GitHubReleaseNotifier(BaseNotifier):
         """
         url = f"{self._api_url}/releases"
         headers = {
-            "Authorization": f"token {self._github_token}",
             "Accept": "application/vnd.github.v3+json",
             "Content-Type": "application/json",
         }
@@ -263,7 +262,7 @@ class GitHubReleaseNotifier(BaseNotifier):
         }
 
         try:
-            response = httpx.post(url, headers=headers, json=payload, timeout=30.0)
+            response = httpx.post(url, headers=headers, auth=("token", self._github_token), json=payload, timeout=30.0)
             if response.status_code == 201:
                 release_data = response.json()
                 upload_url = release_data.get("upload_url", "").replace("{?name,label}", "")
@@ -298,7 +297,6 @@ class GitHubReleaseNotifier(BaseNotifier):
             True if upload was successful, False otherwise.
         """
         headers = {
-            "Authorization": f"token {self._github_token}",
             "Content-Type": "application/octet-stream",
         }
         params = {"name": filename}
@@ -308,6 +306,7 @@ class GitHubReleaseNotifier(BaseNotifier):
                 response = httpx.post(
                     upload_url,
                     headers=headers,
+                    auth=("token", self._github_token),
                     params=params,
                     content=f.read(),
                     timeout=60.0,

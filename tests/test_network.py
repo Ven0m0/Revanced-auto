@@ -173,12 +173,13 @@ class TestHelperFunctions:
             mock_client = MagicMock()
             mock_client.get.side_effect = fake_get
             mock_client.close.return_value = None
+            mock_client._sync_client = __import__("unittest.mock").mock.MagicMock()
+            mock_client._sync_client.auth = None
             mock_cls.return_value = mock_client
 
             gh_req("https://api.github.com/repos/test/test")
 
-        assert "Authorization" in captured_headers
-        assert "ghp_test" in captured_headers["Authorization"]
+        assert mock_client._sync_client.auth == ("Bearer", "ghp_test")
 
     def test_gh_dl_calls_download_with_lock(self, tmp_path: Path) -> None:
         output = tmp_path / "cli.jar"

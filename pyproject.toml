@@ -10,6 +10,7 @@ dependencies = [
     "selectolax>=0.3.21",
     "orjson>=3.10.0",
     "httpx>=0.28.0",
+    "bandit>=1.9.4",
 ]
 
 [dependency-groups]

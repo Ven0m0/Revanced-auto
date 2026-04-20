@@ -443,6 +443,12 @@ def download_with_lock(
     config: HttpClientConfig | None = None,
     headers: dict[str, str] | None = None,
 ) -> bool:
+    """Download file with file lock."""
+    cfg = config or HttpClientConfig()
+    client = HttpClient(cfg)
+    if cfg.github_token and "github" in url:
+        client._sync_client.auth = ("Bearer", cfg.github_token)
+
     """Download file with concurrent download protection via file locking.
 
     Uses deterministic temp paths and flock to serialize concurrent downloads
@@ -484,7 +490,6 @@ def download_with_lock(
         if output_path.exists():
             return True
 
-        client = HttpClient(config)
         try:
             client.get(url, temp_path, headers=headers or {})
             temp_path.replace(output_path)
@@ -615,10 +620,10 @@ def gh_req(
     cfg = config or HttpClientConfig()
     token = cfg.github_token or os.environ.get("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
 
     client = HttpClient(cfg)
+    if token:
+        client._sync_client.auth = ("Bearer", token)
     try:
         return client.get(url, output, headers=headers)
     finally:
@@ -644,9 +649,8 @@ def gh_dl(
     cfg = config or HttpClientConfig()
     token = cfg.github_token or os.environ.get("GITHUB_TOKEN")
     headers = {"Accept": "application/octet-stream"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
 
+    cfg.github_token = token
     return download_with_lock(url, asset_path, config=cfg, headers=headers)
 
 
