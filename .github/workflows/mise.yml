@@ -16,4 +16,5 @@ jobs:
           version: latest # [default: latest] mise version to install
           install: true # [default: true] run `mise install`
           experimental: true # [default: false] enable experimental features
+          cache: false # workaround for exit code 2 issue
       - run: shellcheck scripts/*.sh scripts/lib/*.sh
