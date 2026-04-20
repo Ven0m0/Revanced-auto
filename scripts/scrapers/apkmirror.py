@@ -344,7 +344,7 @@ class APKMirror(ScraperBase):
         )
 
         versions_url = self._get_versions_page_url(pkg_name)
-        response = await asyncio.to_thread(self.get, versions_url)
+        response = await asyncio.get_event_loop().run_in_executor(None, self.get, versions_url)
 
         tree = HTMLParser(response.text)
         version_links = tree.css("div.version-fed-list > div")
@@ -368,7 +368,7 @@ class APKMirror(ScraperBase):
 
             variant_url = f"{self.BASE_URL}{href}"
 
-            variant_html = await asyncio.to_thread(self.get, variant_url, False)
+            variant_html = await asyncio.get_event_loop().run_in_executor(None, self.get, variant_url, False)
 
             download_url = self._search_variant(variant_html.text, config)
             if download_url:
@@ -510,7 +510,7 @@ class APKMirror(ScraperBase):
                 version = version_info.version
             else:
                 versions_url = self._get_versions_page_url(pkg_name)
-                response = await asyncio.to_thread(self.get, versions_url)
+                response = await asyncio.get_event_loop().run_in_executor(None, self.get, versions_url)
 
                 tree = HTMLParser(response.text)
                 version_links = tree.css("div.version-fed-list > div")
@@ -536,7 +536,7 @@ class APKMirror(ScraperBase):
 
                     variant_url = f"{self.BASE_URL}{href}"
 
-                    variant_html = await asyncio.to_thread(self.get, variant_url, False)
+                    variant_html = await asyncio.get_event_loop().run_in_executor(None, self.get, variant_url, False)
 
                     download_url = self._search_variant(variant_html.text, config)
                     break
@@ -547,18 +547,20 @@ class APKMirror(ScraperBase):
                         error=f"Version {version} not found with specified criteria",
                     )
 
-            final_download_url = await asyncio.to_thread(self._get_download_url, download_url)
+            final_download_url = await asyncio.get_event_loop().run_in_executor(
+                None, self._get_download_url, download_url
+            )
             if final_download_url is None:
                 return DownloadResult(
                     success=False,
                     error="Failed to get download URL",
                 )
 
-            await asyncio.to_thread(self._download_file, final_download_url, output_path)
+            await asyncio.get_event_loop().run_in_executor(None, self._download_file, final_download_url, output_path)
 
             if self._is_bundle(output_path):
                 merged_path = output_path.with_suffix(".apk")
-                await asyncio.to_thread(self._merge_splits, output_path, merged_path)
+                await asyncio.get_event_loop().run_in_executor(None, self._merge_splits, output_path, merged_path)
                 output_path = merged_path
 
             return DownloadResult(
