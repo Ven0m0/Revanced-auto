@@ -24,6 +24,7 @@ jobs:
         with:
           install: true
           experimental: true
+          cache: false
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4.0.1
       - name: Install Android SDK Build Tools
