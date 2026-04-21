@@ -556,7 +556,7 @@ class APKMirror(ScraperBase):
                     error="Failed to get download URL",
                 )
 
-            await asyncio.get_event_loop().run_in_executor(None, self._download_file, final_download_url, output_path)
+            await asyncio.to_thread(self._download_file, final_download_url, output_path)
 
             if self._is_bundle(output_path):
                 merged_path = output_path.with_suffix(".apk")
