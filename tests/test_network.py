@@ -173,7 +173,7 @@ class TestHelperFunctions:
             mock_client = MagicMock()
             mock_client.get.side_effect = fake_get
             mock_client.close.return_value = None
-            mock_client._sync_client = __import__("unittest.mock").mock.MagicMock()
+            mock_client._sync_client = MagicMock()
             mock_client._sync_client.auth = None
             mock_cls.return_value = mock_client
 
