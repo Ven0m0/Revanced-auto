@@ -547,7 +547,9 @@ class APKMirror(ScraperBase):
                         error=f"Version {version} not found with specified criteria",
                     )
 
-            final_download_url = await asyncio.to_thread(self._get_download_url, download_url)
+            final_download_url = await asyncio.get_event_loop().run_in_executor(
+                None, self._get_download_url, download_url
+            )
             if final_download_url is None:
                 return DownloadResult(
                     success=False,
