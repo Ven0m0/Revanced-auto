@@ -536,7 +536,7 @@ class APKMirror(ScraperBase):
 
                     variant_url = f"{self.BASE_URL}{href}"
 
-                    variant_html = await asyncio.get_event_loop().run_in_executor(None, self.get, variant_url, False)
+                    variant_html = await asyncio.to_thread(self.get, variant_url, False)
 
                     download_url = self._search_variant(variant_html.text, config)
                     break
