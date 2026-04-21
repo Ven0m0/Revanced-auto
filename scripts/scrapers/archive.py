@@ -37,8 +37,8 @@ class ArchiveScraper(ScraperBase):
 
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         url = f"{ARCHIVE_BASE_URL}/{pkg_name}"
-        loop = asyncio.get_running_loop()
-        response = await loop.run_in_executor(None, self.get, url)
+        _ = self.session  # Ensure session is initialized in the main thread
+        response = await asyncio.to_thread(self.get, url)
         parser = HTMLParser(response.text)
 
         versions: list[VersionInfo] = []
