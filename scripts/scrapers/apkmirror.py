@@ -560,7 +560,7 @@ class APKMirror(ScraperBase):
 
             if self._is_bundle(output_path):
                 merged_path = output_path.with_suffix(".apk")
-                await asyncio.get_event_loop().run_in_executor(None, self._merge_splits, output_path, merged_path)
+                await asyncio.to_thread(self._merge_splits, output_path, merged_path)
                 output_path = merged_path
 
             return DownloadResult(
