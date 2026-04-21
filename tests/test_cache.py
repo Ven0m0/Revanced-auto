@@ -1,4 +1,4 @@
-"""Tests for the cache management library."""
+"""Tests for scripts/lib/cache.py."""
 
 # ruff: noqa: S101
 from __future__ import annotations
