@@ -344,7 +344,7 @@ class APKMirror(ScraperBase):
         )
 
         versions_url = self._get_versions_page_url(pkg_name)
-        response = await asyncio.get_event_loop().run_in_executor(None, self.get, versions_url)
+        response = await asyncio.to_thread(self.get, versions_url)
 
         tree = HTMLParser(response.text)
         version_links = tree.css("div.version-fed-list > div")
