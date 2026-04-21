@@ -16,11 +16,11 @@ from scripts.lib.cache import format_cache_size
         (1023, "1023 bytes"),
         (1024, "1.0 KiB"),
         (1536, "1.5 KiB"),
-        (1048576, "1.0 MiB"),
-        (1073741824, "1.0 GiB"),
-        (1099511627776, "1.0 TiB"),
-        (2199023255552, "2.0 TiB"),
-        (1125899906842624, "1024.0 TiB"),
+        (1024**2, "1.0 MiB"),
+        (1024**3, "1.0 GiB"),
+        (1024**4, "1.0 TiB"),
+        (2 * 1024**4, "2.0 TiB"),
+        (1024**5, "1024.0 TiB"),
     ],
 )
 def test_format_cache_size(size_bytes: int, expected: str) -> None:
