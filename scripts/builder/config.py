@@ -225,6 +225,9 @@ class ConfigLoader:
 
     ENV_PATTERN = re.compile(r"ENV:([A-Z_][A-Z0-9_]*)", re.ASCII)
     STRICT_ENV_PATTERN = re.compile(r"\$\{ENV:([A-Z_][A-Z0-9_]*)\}", re.ASCII)
+    NON_STRICT_ENV_PATTERN = re.compile(
+        r"(?:\{)?" + re.escape("ENV:") + r"([A-Z_][A-Z0-9_]*)(?:\})?", re.ASCII
+    )
 
     def __init__(self, *, strict_env: bool = False) -> None:
         """Initialize ConfigLoader.
@@ -322,10 +325,7 @@ class ConfigLoader:
         Returns:
             String with environment variables substituted.
         """
-        if self.strict_env:
-            pattern = self.STRICT_ENV_PATTERN
-        else:
-            pattern = re.compile(r"(?:\{)?" + re.escape("ENV:") + r"([A-Z_][A-Z0-9_]*)(?:\})?")
+        pattern = self.STRICT_ENV_PATTERN if self.strict_env else self.NON_STRICT_ENV_PATTERN
 
         def replace_env(match: re.Match[str]) -> str:
             var_name = match.group(1)
