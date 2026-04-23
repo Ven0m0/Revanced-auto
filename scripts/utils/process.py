@@ -165,7 +165,7 @@ class JobRunner:
 
         results: list[JobResult[Any]] = []
 
-        for name, status in list(self._jobs.items()):
+        for name, status in self._jobs.items():
             if status.future is None:
                 continue
             try:
