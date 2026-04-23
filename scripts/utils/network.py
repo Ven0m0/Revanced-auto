@@ -446,11 +446,8 @@ def _calculate_sha256(file_path: Path) -> str:
         Hexadecimal representation of the SHA256 hash.
 
     """
-    sha256_hash = hashlib.sha256()
     with file_path.open("rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha256_hash.update(chunk)
-    return sha256_hash.hexdigest()
+        return hashlib.file_digest(f, "sha256").hexdigest()
 
 
 def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
