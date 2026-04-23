@@ -31,7 +31,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6.0.2
     - name: Install uv
-      uses: astral-sh/setup-uv@v7
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
@@ -101,7 +101,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6.0.2
     - name: Install uv
-      uses: astral-sh/setup-uv@v7
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
@@ -139,7 +139,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6.0.2
     - name: Install uv
-      uses: astral-sh/setup-uv@v7
+      uses: astral-sh/setup-uv@v8.1.0
     - name: Install Tombi
       run: uv tool install tombi
     - name: Ensure uv tool bin is on PATH
