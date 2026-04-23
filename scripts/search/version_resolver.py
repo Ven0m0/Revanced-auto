@@ -16,6 +16,7 @@ class VersionResolver:
     """Resolves compatible app versions for ReVanced builds."""
 
     _version_pattern: re.Pattern[str] = field(default_factory=lambda: re.compile(r"\d+\.\d+(?:\.\d+)+(?:\-\w+)?"))
+    _beta_pattern: re.Pattern[str] = field(default_factory=lambda: re.compile(r"beta|b\d+|rc\d*|alpha|\-b\d+|pre\d*"))
 
     def get_version(
         self,
@@ -178,16 +179,7 @@ class VersionResolver:
 
     def _is_beta_version(self, version: str) -> bool:
         """Check if version is a beta version."""
-        beta_patterns = [
-            r"beta",
-            r"b\d+",
-            r"rc\d*",
-            r"alpha",
-            r"\-b\d+",
-            r"pre\d*",
-        ]
-        version_lower = version.lower()
-        return any(re.search(p, version_lower) for p in beta_patterns)
+        return bool(self._beta_pattern.search(version.lower()))
 
     def _normalize_version(self, version: str) -> str:
         """Normalize version string for comparison."""
