@@ -40,6 +40,6 @@ ruff = "latest"
 _.file = { path = ".env", tools = true }
 _.path = ['{{config_root}}/node_modules/.bin']
 _.python.venv = ".venv"
-NODE_ENV = "{{ env.NODE_ENV | default(value='production') }}"
+NODE_ENV = "{{ env['NODE_ENV'] | default(value='production') }}"
 MISE_NPM_PACKAGE_MANAGER = "bun"
 PYTHONOPTIMIZE = "1"
