@@ -5,14 +5,18 @@ from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from scripts.lib.cache import (
+    CacheError,
     CacheManager,
     format_cache_size,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.parametrize(
@@ -71,7 +75,9 @@ class TestCacheManager:
         assert cache_manager.cache_is_valid(test_file)
         assert (tmp_path / ".cache-index.json").exists()
 
-    def test_cache_is_valid_expired(self, cache_manager: CacheManager, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_cache_is_valid_expired(
+        self, cache_manager: CacheManager, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Verify that expired cache entries are considered invalid."""
         test_file = tmp_path / "test.txt"
         test_file.write_text("hello")
@@ -170,7 +176,6 @@ class TestCacheManager:
         index_file = tmp_path / ".cache-index.json"
         index_file.write_text("not json")
 
-        from scripts.lib.cache import CacheError
         with pytest.raises(CacheError, match="Invalid cache index"):
             cache_manager.cache_stats()
 
