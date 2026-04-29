@@ -5,11 +5,10 @@ color = true
 yes = true
 auto_install = true
 lockfile = true
-# env_shell_expand = true
 
 [settings.python]
-uv_venv_auto = true
-uv_venv_create_args = "--system-site-packages --seed"
+uv_venv_auto = "create|source"
+uv_venv_create_args = ["--seed", "--system-site-packages"]
 
 [settings.cargo]
 binstall = true
@@ -21,12 +20,16 @@ uvx = true
 bun = true
 
 [tools]
-python = "3.14.4"
+python = "3.14"
 uv = "latest"
 java = "temurin-25.0.3+9.0.LTS"
-"actionlint" = "latest"
+actionlint = "latest"
 action-validator = "latest"
+ruff = "latest"
+ty = "latest"
 prek = "latest"
+"pipx:pytest" = "latest"
+"pipx:basedpyright" = "latest"
 
 [env]
 _.file = { path = ".env", tools = true }
