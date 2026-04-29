@@ -4,7 +4,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pytest
+
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from scripts.version_tracker import (
     CheckResult,
@@ -221,3 +227,59 @@ class TestVersionTrackerWrapper:
             vt_mod.load_state.cache_clear()
 
         assert state.get("global_cli_version") == "5.0.0"
+
+
+class TestExecuteCheckCommand:
+    @patch("scripts.version_tracker.check_needs_build")
+    @patch("scripts.version_tracker.set_github_output")
+    @patch("scripts.version_tracker.format_changes_for_github_output")
+    def test_needs_build_true_with_changes(
+        self,
+        mock_format: MagicMock,
+        mock_set_github: MagicMock,
+        mock_check: MagicMock,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        change = VersionDiff(key="cli", old="1", new="2", change_type="modified")
+        mock_check.return_value = CheckResult(needs_build=True, changes=[change])
+        mock_format.return_value = "formatted_changes"
+
+        from scripts.version_tracker import execute_check_command
+
+        result = execute_check_command("config.toml", None)
+
+        assert result == 0
+        mock_check.assert_called_once_with("config.toml", None)
+        mock_format.assert_called_once_with([change])
+
+        assert mock_set_github.call_count == 2
+        mock_set_github.assert_any_call("needs_build", "true")
+        mock_set_github.assert_any_call("changes", "formatted_changes")
+
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "true"
+
+    @patch("scripts.version_tracker.check_needs_build")
+    @patch("scripts.version_tracker.set_github_output")
+    @patch("scripts.version_tracker.format_changes_for_github_output")
+    def test_needs_build_false_no_changes(
+        self,
+        mock_format: MagicMock,
+        mock_set_github: MagicMock,
+        mock_check: MagicMock,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        mock_check.return_value = CheckResult(needs_build=False, changes=[])
+
+        from scripts.version_tracker import execute_check_command
+
+        result = execute_check_command("config.toml", None)
+
+        assert result == 0
+        mock_check.assert_called_once_with("config.toml", None)
+        mock_format.assert_not_called()
+
+        mock_set_github.assert_called_once_with("needs_build", "false")
+
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "false"
