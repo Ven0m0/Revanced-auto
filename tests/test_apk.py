@@ -3,6 +3,7 @@
 # ruff: noqa: D101, D102, S101, SLF001, PLR2004, ARG001, ARG002, RUF043, S108
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -14,6 +15,7 @@ from scripts.utils.apk import (
     SplitAPKHandler,
     _validate_apk_path,
     _validate_path,
+    align_apk,
     detect_bundle_type,
 )
 
@@ -220,3 +222,41 @@ class TestAAPT2Manager:
         assert "en" in cmd
         assert "--target-densities" in cmd
         assert "xxhdpi" in cmd
+
+
+# ---------------------------------------------------------------------------
+# align_apk
+# ---------------------------------------------------------------------------
+
+
+class TestAlignApk:
+    def test_align_apk_success(self, tmp_path: Path, sample_apk: Path) -> None:
+        output = tmp_path / "aligned.apk"
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            result = align_apk(sample_apk, output)
+            assert result is True
+            mock_run.assert_called_once()
+            args, _ = mock_run.call_args
+            cmd = args[0]
+            assert "zipalign" in cmd
+            assert str(sample_apk) in cmd
+            assert str(output) in cmd
+
+    def test_align_apk_missing_input(self, tmp_path: Path) -> None:
+        input_path = tmp_path / "missing.apk"
+        output_path = tmp_path / "aligned.apk"
+        result = align_apk(input_path, output_path)
+        assert result is False
+
+    def test_align_apk_subprocess_error(self, tmp_path: Path, sample_apk: Path) -> None:
+        output = tmp_path / "aligned.apk"
+        with patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "zipalign")):
+            result = align_apk(sample_apk, output)
+            assert result is False
+
+    def test_align_apk_invalid_extension(self, tmp_path: Path) -> None:
+        input_path = tmp_path / "input.zip"
+        output_path = tmp_path / "output.apk"
+        with pytest.raises(ValueError, match="align_apk input: file must have .apk extension"):
+            align_apk(input_path, output_path)
