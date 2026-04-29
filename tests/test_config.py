@@ -4,11 +4,20 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from scripts.builder.config import AppConfig, ConfigError, ConfigLoader, GlobalConfig, IntegrationSource
+from scripts.builder.config import (
+    AppConfig,
+    Config,
+    ConfigError,
+    ConfigLoader,
+    GlobalConfig,
+    IntegrationSource,
+    ModuleConfig,
+)
 
 # ---------------------------------------------------------------------------
 # GlobalConfig
@@ -148,3 +157,103 @@ class TestConfigLoader:
         config = loader.load(cfg_file)
         assert config.global_settings.parallel_jobs == 0
         assert config.global_settings.riplib is True
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+
+class TestConfig:
+    def test_app_names_returns_enabled_only(self) -> None:
+        apps = {
+            "YouTube": AppConfig(name="YouTube", enabled=True),
+            "Twitter": AppConfig(name="Twitter", enabled=False),
+            "Reddit": AppConfig(name="Reddit", enabled=True),
+        }
+        config = Config(
+            global_settings=GlobalConfig(),
+            apps=apps,
+            modules={},
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+        assert sorted(config.app_names) == ["Reddit", "YouTube"]
+
+    def test_get_app_returns_enabled_app(self) -> None:
+        youtube = AppConfig(name="YouTube", enabled=True)
+        apps = {"YouTube": youtube}
+        config = Config(
+            global_settings=GlobalConfig(),
+            apps=apps,
+            modules={},
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+        assert config.get_app("YouTube") == youtube
+
+    def test_get_app_returns_none_for_disabled_app(self) -> None:
+        twitter = AppConfig(name="Twitter", enabled=False)
+        apps = {"Twitter": twitter}
+        config = Config(
+            global_settings=GlobalConfig(),
+            apps=apps,
+            modules={},
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+        assert config.get_app("Twitter") is None
+
+    def test_get_app_returns_none_for_missing_app(self) -> None:
+        config = Config(
+            global_settings=GlobalConfig(),
+            apps={},
+            modules={},
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+        assert config.get_app("Missing") is None
+
+    def test_get_module_returns_enabled_module(self) -> None:
+        module = ModuleConfig(name="shorts", enabled=True)
+        modules = {"YouTube": {"shorts": module}}
+        config = Config(
+            global_settings=GlobalConfig(),
+            apps={},
+            modules=modules,
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+        assert config.get_module("YouTube", "shorts") == module
+
+    def test_get_module_returns_none_for_disabled_module(self) -> None:
+        module = ModuleConfig(name="shorts", enabled=False)
+        modules = {"YouTube": {"shorts": module}}
+        config = Config(
+            global_settings=GlobalConfig(),
+            apps={},
+            modules=modules,
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+        assert config.get_module("YouTube", "shorts") is None
+
+    def test_get_module_returns_none_for_missing_module(self) -> None:
+        modules = {"YouTube": {}}
+        config = Config(
+            global_settings=GlobalConfig(),
+            apps={},
+            modules=modules,
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+        assert config.get_module("YouTube", "missing") is None
+
+    def test_get_module_returns_none_for_missing_app(self) -> None:
+        config = Config(
+            global_settings=GlobalConfig(),
+            apps={},
+            modules={},
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+        assert config.get_module("MissingApp", "module") is None
