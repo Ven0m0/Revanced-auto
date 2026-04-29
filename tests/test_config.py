@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -148,3 +149,41 @@ class TestConfigLoader:
         config = loader.load(cfg_file)
         assert config.global_settings.parallel_jobs == 0
         assert config.global_settings.riplib is True
+
+    @pytest.mark.filterwarnings("ignore::UserWarning")
+    def test_load_os_error_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        # ruff: noqa: EM101, TRY003
+        cfg_file = tmp_path / "config.json"
+        cfg_file.write_text("{}")
+
+        def mock_open(*_args: object, **_kwargs: object) -> object:
+            raise OSError("Mocked OSError")
+
+        monkeypatch.setattr("builtins.open", mock_open)
+        loader = ConfigLoader()
+        with pytest.raises(ConfigError) as exc_info:
+            loader.load(cfg_file)
+        assert "Failed to read config file" in str(exc_info.value)
+
+    @pytest.mark.filterwarnings("ignore::UserWarning")
+    def test_load_json_decode_error_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        # ruff: noqa: EM101, TRY003
+        cfg_file = tmp_path / "config.json"
+        cfg_file.write_text("{}")
+
+        def mock_json_load(*_args: object, **_kwargs: object) -> object:
+            raise json.JSONDecodeError("Mocked decode error", "", 0)
+
+        monkeypatch.setattr(json, "load", mock_json_load)
+        loader = ConfigLoader()
+        with pytest.raises(ConfigError) as exc_info:
+            loader.load(cfg_file)
+        assert "Failed to parse config" in str(exc_info.value)
+
+    def test_load_invalid_toml_raises(self, tmp_path: Path) -> None:
+        cfg_file = tmp_path / "config.toml"
+        cfg_file.write_text("invalid_toml = ")
+        loader = ConfigLoader()
+        with pytest.raises(ConfigError) as exc_info:
+            loader.load(cfg_file)
+        assert "Failed to parse config" in str(exc_info.value)
