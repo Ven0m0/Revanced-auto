@@ -145,7 +145,6 @@ resolve_rv_artifact() {
       *)
         : # default
         ;;
-        ;;
     esac
   fi
   local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
