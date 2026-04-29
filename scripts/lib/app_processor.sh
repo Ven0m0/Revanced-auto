@@ -271,7 +271,8 @@ _app_execute_build() {
     done
 
     (
-      export BUILD_LOG_FILE="build/${table_name}-arm64-v8a.md"
+      BUILD_LOG_FILE="build/${table_name}-arm64-v8a.md"
+      export BUILD_LOG_FILE
       build_rv "$args_file"
     ) &
     local pid=$!
@@ -297,7 +298,8 @@ _app_execute_build() {
     done
 
     (
-      export BUILD_LOG_FILE="build/${table_name}-arm-v7a.md"
+      BUILD_LOG_FILE="build/${table_name}-arm-v7a.md"
+      export BUILD_LOG_FILE
       build_rv "$args_file"
     ) &
     local pid=$!
@@ -317,7 +319,8 @@ _app_execute_build() {
     done
 
     (
-      export BUILD_LOG_FILE="build/${table_name}.md"
+      BUILD_LOG_FILE="build/${table_name}.md"
+      export BUILD_LOG_FILE
       build_rv "$args_file"
     ) &
     local pid=$!
