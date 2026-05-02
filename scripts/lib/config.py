@@ -11,7 +11,6 @@ from pathlib import Path
 
 from scripts.builder.config import (
     AppConfig,
-    ConfigError,
     GlobalConfig,
     IntegrationSource,
     ModuleConfig,
@@ -26,7 +25,6 @@ from scripts.builder.config import (
 __all__ = [
     "AppConfig",
     "Config",
-    "ConfigError",
     "GlobalConfig",
     "IntegrationSource",
     "ModuleConfig",
