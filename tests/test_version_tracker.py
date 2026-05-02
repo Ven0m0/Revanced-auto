@@ -1,15 +1,18 @@
 """Tests for scripts/version_tracker.py and scripts/lib/version_tracker.py."""
 
-# ruff: noqa: S101, PLC0415, TC003
+# ruff: noqa: S101, PLC0415, TC003, TC002
 
 from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from scripts.version_tracker import (
     CheckResult,
     VersionDiff,
     detect_changes,
+    execute_show_command,
     extract_current_versions,
     load_state,
     save_state,
@@ -221,3 +224,29 @@ class TestVersionTrackerWrapper:
             vt_mod.load_state.cache_clear()
 
         assert state.get("global_cli_version") == "5.0.0"
+
+
+# ---------------------------------------------------------------------------
+# execute_show_command
+# ---------------------------------------------------------------------------
+
+
+class TestExecuteShowCommand:
+    def test_execute_show_command_with_state(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        state_file = tmp_path / "state.json"
+        save_state({"test_key": "test_value"}, state_path=state_file)
+
+        result = execute_show_command(state_file)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert '"test_key": "test_value"' in captured.out
+
+    def test_execute_show_command_empty(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        state_file = tmp_path / "empty.json"
+
+        result = execute_show_command(state_file)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "{}"
