@@ -5,11 +5,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
+
+if TYPE_CHECKING:
+    import pytest
 
 from scripts.version_tracker import (
     CheckResult,
     VersionDiff,
     detect_changes,
+    execute_check_command,
     extract_current_versions,
     load_state,
     save_state,
@@ -221,3 +227,60 @@ class TestVersionTrackerWrapper:
             vt_mod.load_state.cache_clear()
 
         assert state.get("global_cli_version") == "5.0.0"
+
+
+# ---------------------------------------------------------------------------
+# execute_check_command
+# ---------------------------------------------------------------------------
+
+
+class TestExecuteCheckCommand:
+    @patch("scripts.version_tracker.set_github_output")
+    @patch("scripts.version_tracker.format_changes_for_github_output")
+    @patch("scripts.version_tracker.check_needs_build")
+    def test_execute_check_command_needs_build(
+        self,
+        mock_check: MagicMock,
+        mock_format: MagicMock,
+        mock_set_output: MagicMock,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        diff = VersionDiff(key="cli", old="1", new="2", change_type="modified")
+        mock_check.return_value = CheckResult(
+            needs_build=True,
+            changes=[diff],
+        )
+        mock_format.return_value = "formatted_changes"
+
+        result = execute_check_command("config.toml", None)
+
+        assert result == 0
+        mock_check.assert_called_once_with("config.toml", None)
+        mock_set_output.assert_any_call("needs_build", "true")
+        mock_set_output.assert_any_call("changes", "formatted_changes")
+        mock_format.assert_called_once_with([diff])
+
+        captured = capsys.readouterr()
+        assert "true\n" in captured.out
+
+    @patch("scripts.version_tracker.set_github_output")
+    @patch("scripts.version_tracker.check_needs_build")
+    def test_execute_check_command_no_build(
+        self,
+        mock_check: MagicMock,
+        mock_set_output: MagicMock,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        mock_check.return_value = CheckResult(
+            needs_build=False,
+            changes=[],
+        )
+
+        result = execute_check_command("config.toml", None)
+
+        assert result == 0
+        mock_check.assert_called_once_with("config.toml", None)
+        mock_set_output.assert_called_once_with("needs_build", "false")
+
+        captured = capsys.readouterr()
+        assert "false\n" in captured.out
