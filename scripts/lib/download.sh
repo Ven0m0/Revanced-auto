@@ -168,8 +168,13 @@ _uptodown_search_version() {
 
   # Speculative fetch: Try page 1 first
   (
+    # shellcheck disable=SC2030,SC2031
     local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
-    TEMP_DIR=$(mktemp -d)
+    local worker_temp_dir
+    worker_temp_dir=$(mktemp -d)
+    # shellcheck disable=SC2030
+    TEMP_DIR="$worker_temp_dir"
+
     if [[ -f "$parent_cookie_file" ]]; then
       cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
     fi
@@ -197,8 +202,13 @@ _uptodown_search_version() {
   local pids=()
   for i in {2..5}; do
     (
+      # shellcheck disable=SC2031
       local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
-      TEMP_DIR=$(mktemp -d)
+      local worker_temp_dir
+      worker_temp_dir=$(mktemp -d)
+      # shellcheck disable=SC2030
+      TEMP_DIR="$worker_temp_dir"
+
       if [[ -f "$parent_cookie_file" ]]; then
         cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
       fi
