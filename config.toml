@@ -201,3 +201,39 @@ app-name = "Reddit"
 patches-source = "wchill/patcheddit"
 rv-brand = "Patcheddit"
 apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
+
+# Music Morphed
+[Music-Morphed]
+enabled = false
+app-name = "Music"
+patches-source = "MorpheApp/morphe-patches"
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
+
+# Reddit Morphed
+[Reddit-Morphed]
+enabled = false
+app-name = "Reddit"
+patches-source = "MorpheApp/morphe-patches"
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
+
+# Instagram Piko
+[Instagram-Piko]
+enabled = false
+app-name = "Instagram"
+patches-source = "crimera/piko"
+rv-brand = "Piko"
+apkmirror-dlurl = "https://apkmirror.com/apk/instagram/instagram-instagram/"
+
+# Twitter Piko
+[Twitter-Piko]
+enabled = false
+app-name = "Twitter"
+patches-source = "crimera/piko"
+rv-brand = "Piko"
+uptodown-dlurl = "https://twitter.en.uptodown.com/android"
+apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
+apkmirror-dpi = "120-640dpi"
