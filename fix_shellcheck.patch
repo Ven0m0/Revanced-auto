@@ -1,0 +1,66 @@
+--- scripts/lib/app_processor.sh
++++ scripts/lib/app_processor.sh
+@@ -271,7 +271,7 @@
+     done
+
+     (
+-      export BUILD_LOG_FILE="build/${table_name}-arm64-v8a.md"
++      BUILD_LOG_FILE="build/${table_name}-arm64-v8a.md"
+       build_rv "$args_file"
+     ) &
+     local pid=$!
+@@ -297,7 +297,7 @@
+     done
+
+     (
+-      export BUILD_LOG_FILE="build/${table_name}-arm-v7a.md"
++      BUILD_LOG_FILE="build/${table_name}-arm-v7a.md"
+       build_rv "$args_file"
+     ) &
+     local pid=$!
+@@ -317,7 +317,7 @@
+     done
+
+     (
+-      export BUILD_LOG_FILE="build/${table_name}.md"
++      BUILD_LOG_FILE="build/${table_name}.md"
+       build_rv "$args_file"
+     ) &
+     local pid=$!
+--- scripts/lib/download.sh
++++ scripts/lib/download.sh
+@@ -169,7 +169,7 @@
+   # Speculative fetch: Try page 1 first
+   (
+     local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
+-    TEMP_DIR=$(mktemp -d)
++    local TEMP_DIR=$(mktemp -d)
+     if [[ -f "$parent_cookie_file" ]]; then
+       cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
+     fi
+@@ -198,7 +198,7 @@
+   for i in {2..5}; do
+     (
+       local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
+-      TEMP_DIR=$(mktemp -d)
++      local TEMP_DIR=$(mktemp -d)
+       if [[ -f "$parent_cookie_file" ]]; then
+         cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
+       fi
+--- scripts/lib/prebuilts.sh
++++ scripts/lib/prebuilts.sh
+@@ -142,6 +142,8 @@
+         ext="mpp"
+         is_morphe=true
+         ;;
++      *)
++        ;;
+     esac
+   fi
+
+@@ -256,6 +258,7 @@
+   case "$cli_src" in
+     MorpheApp/* | */morphe-cli) cli_prefix="morphe-cli" ;;
++    *) ;;
+   esac
+   local cli_jar
