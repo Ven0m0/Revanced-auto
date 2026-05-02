@@ -388,13 +388,17 @@ class SplitAPKHandler:
             splits: list[Path] = []
             with zipfile.ZipFile(bundle_path, "r") as zf:
                 for name in zf.namelist():
-                    if name.endswith(".apk"):
-                        dest = output_dir / Path(name).name
-                        zf.extract(name, output_dir)
-                        extracted = output_dir / name
-                        if extracted != dest:
-                            shutil.move(str(extracted), dest)
-                        splits.append(dest)
+                    if not name.endswith(".apk"):
+                        continue
+
+                    dest = output_dir / Path(name).name
+                    zf.extract(name, output_dir)
+                    extracted = output_dir / name
+
+                    if extracted != dest:
+                        shutil.move(str(extracted), dest)
+
+                    splits.append(dest)
             return splits
         except (zipfile.BadZipFile, OSError):
             return []
