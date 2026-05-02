@@ -11,6 +11,7 @@ from pathlib import Path
 
 from scripts.builder.config import (
     AppConfig,
+    ConfigError,
     GlobalConfig,
     IntegrationSource,
     ModuleConfig,
