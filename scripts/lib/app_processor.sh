@@ -271,7 +271,8 @@ _app_execute_build() {
     done
 
     (
-      export BUILD_LOG_FILE="build/${table_name}-arm64-v8a.md"
+      # shellcheck disable=SC2030
+      export BUILD_LOG_FILE="build/${table_name}-arm64-v8a.md" || true
       build_rv "$args_file"
     ) &
     local pid=$!
@@ -297,6 +298,8 @@ _app_execute_build() {
     done
 
     (
+      # shellcheck disable=SC2030,SC2031
+      # shellcheck disable=SC2030,SC2031
       export BUILD_LOG_FILE="build/${table_name}-arm-v7a.md"
       build_rv "$args_file"
     ) &
@@ -317,6 +320,8 @@ _app_execute_build() {
     done
 
     (
+      # shellcheck disable=SC2030,SC2031
+      # shellcheck disable=SC2030,SC2031
       export BUILD_LOG_FILE="build/${table_name}.md"
       build_rv "$args_file"
     ) &
