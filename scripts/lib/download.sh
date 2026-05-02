@@ -168,6 +168,7 @@ _uptodown_search_version() {
 
   # Speculative fetch: Try page 1 first
   (
+    # shellcheck disable=SC2030,SC2031
     local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
     TEMP_DIR=$(mktemp -d)
     if [[ -f "$parent_cookie_file" ]]; then
@@ -197,6 +198,7 @@ _uptodown_search_version() {
   local pids=()
   for i in {2..5}; do
     (
+      # shellcheck disable=SC2030,SC2031
       local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
       TEMP_DIR=$(mktemp -d)
       if [[ -f "$parent_cookie_file" ]]; then
