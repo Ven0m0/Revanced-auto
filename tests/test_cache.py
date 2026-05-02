@@ -12,7 +12,7 @@ from scripts.lib.cache import format_cache_size
     ("size_bytes", "expected"),
     [
         (0, "0 bytes"),
-        (1, "1 byte"),
+        (1, "1 bytes"),
         (1023, "1023 bytes"),
         (1024, "1.0 KiB"),
         (1536, "1.5 KiB"),
