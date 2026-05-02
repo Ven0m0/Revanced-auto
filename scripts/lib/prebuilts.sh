@@ -142,6 +142,9 @@ resolve_rv_artifact() {
         ext="mpp"
         is_morphe=true
         ;;
+      *)
+        : # default
+        ;;
     esac
   fi
   local rv_rel="https://api.github.com/repos/${src}/releases" name_ver
@@ -255,6 +258,9 @@ get_rv_prebuilts_multi() {
   local cli_prefix="revanced-cli"
   case "$cli_src" in
     MorpheApp/* | */morphe-cli) cli_prefix="morphe-cli" ;;
+    *)
+      : # default
+      ;;
   esac
   local cli_jar
   cli_jar=$(resolve_rv_artifact "$cli_src" "CLI" "$cli_ver" "$cli_prefix" "$cl_dir")

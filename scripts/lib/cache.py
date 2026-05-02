@@ -278,6 +278,8 @@ def format_cache_size(size_bytes: int) -> str:
     for unit in units:
         if size < 1024 or unit == units[-1]:
             if unit == "bytes":
+                if int(size) == 1:
+                    return "1 byte"
                 return f"{int(size)} bytes"
             return f"{size:.1f} {unit}"
         size /= 1024

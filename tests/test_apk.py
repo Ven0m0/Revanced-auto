@@ -16,6 +16,7 @@ from scripts.utils.apk import (
     _validate_apk_path,
     _validate_path,
     detect_bundle_type,
+    merge_bundle,
 )
 
 # ---------------------------------------------------------------------------
@@ -239,3 +240,100 @@ class TestAAPT2Manager:
         assert result is False
         mock_run.assert_called_once()
         assert mock_run.call_args.kwargs.get("check") is True
+
+
+# ---------------------------------------------------------------------------
+# merge_bundle
+# ---------------------------------------------------------------------------
+
+
+class TestMergeBundle:
+    def test_rejects_non_path_bundle(self) -> None:
+        with pytest.raises(ValueError, match="bundle_path must be a Path object"):
+            merge_bundle("app.xapk", Path("out.apk"))  # type: ignore[arg-type]
+
+    def test_rejects_path_traversal_bundle(self, tmp_path: Path) -> None:
+        bundle_path = Path("/tmp/\x00bad.xapk")
+        with pytest.raises(ValueError, match="path traversal detected"):
+            merge_bundle(bundle_path, tmp_path / "out.apk")
+
+    def test_rejects_invalid_bundle_extension(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.zip"
+        with pytest.raises(ValueError, match="bundle must be .xapk or .apkm"):
+            merge_bundle(bundle_path, tmp_path / "out.apk")
+
+    def test_rejects_path_traversal_output(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.xapk"
+        output_path = Path("/tmp/\x00bad.apk")
+        with pytest.raises(ValueError, match="path traversal detected"):
+            merge_bundle(bundle_path, output_path)
+
+    def test_rejects_invalid_output_extension(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.xapk"
+        output_path = tmp_path / "out.zip"
+        with pytest.raises(ValueError, match="output must have .apk extension"):
+            merge_bundle(bundle_path, output_path)
+
+    def test_missing_bundle_returns_false(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.xapk"
+        output_path = tmp_path / "out.apk"
+        assert merge_bundle(bundle_path, output_path) is False
+
+    def test_subprocess_called_process_error_returns_false(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.xapk"
+        bundle_path.write_bytes(b"dummy")
+        output_path = tmp_path / "out.apk"
+
+        with patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd")):
+            assert merge_bundle(bundle_path, output_path) is False
+
+    def test_subprocess_os_error_returns_false(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.xapk"
+        bundle_path.write_bytes(b"dummy")
+        output_path = tmp_path / "out.apk"
+
+        with patch("subprocess.run", side_effect=OSError("Permission denied")):
+            assert merge_bundle(bundle_path, output_path) is False
+
+    def test_subprocess_non_zero_returncode_returns_false(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.xapk"
+        bundle_path.write_bytes(b"dummy")
+        output_path = tmp_path / "out.apk"
+
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        with patch("subprocess.run", return_value=mock_result):
+            assert merge_bundle(bundle_path, output_path) is False
+
+    def test_missing_merged_apk_returns_false(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.xapk"
+        bundle_path.write_bytes(b"dummy")
+        output_path = tmp_path / "out.apk"
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        with patch("subprocess.run", return_value=mock_result):
+            assert merge_bundle(bundle_path, output_path) is False
+
+    def test_success(self, tmp_path: Path) -> None:
+        bundle_path = tmp_path / "app.xapk"
+        bundle_path.write_bytes(b"dummy bundle")
+        output_path = tmp_path / "out.apk"
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+
+        # Simulate subprocess creating the merged.apk in the temporary directory
+        def mock_run_side_effect(*args: object, **kwargs: object) -> MagicMock:
+            # Extract the temp directory path from the command arguments
+            cmd = args[0]
+            assert isinstance(cmd, list)
+            merged_apk_path = Path(cmd[-1])
+            merged_apk_path.write_bytes(b"merged apk content")
+            return mock_result
+
+        with patch("subprocess.run", side_effect=mock_run_side_effect):
+            assert merge_bundle(bundle_path, output_path) is True
+
+        assert output_path.exists()
+        assert output_path.read_bytes() == b"merged apk content"

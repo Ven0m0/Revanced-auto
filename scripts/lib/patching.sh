@@ -452,7 +452,7 @@ build_rv() {
     return 0
   fi
   # Handle force flag for non-auto versions
-  if ! [[ "$version_mode" == "auto" ]] || isoneof "$version_mode" latest beta; then
+  if [[ "$version_mode" != "auto" ]] || isoneof "$version_mode" latest beta; then
     p_patcher_args+=("-f")
   fi
   pr "Choosing version '${version}' for ${table}"
