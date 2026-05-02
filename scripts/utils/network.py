@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import fcntl
 import hashlib
 import os
@@ -592,20 +593,29 @@ async def async_download_with_lock(
         if verified:
             return True
 
+    def _acquire_lock(path: Path) -> Any:
+        fd = open(path, "w")
+        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
+        return fd
+
+    def _release_lock(fd: Any) -> None:
+        fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+        fd.close()
+
     lock_fd = None
+    loop = asyncio.get_running_loop()
     try:
-        lock_fd = open(lock_file, "w")
-        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+        lock_fd = await loop.run_in_executor(None, _acquire_lock, lock_file)
 
         if output_path.exists():
-            verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+            verified = await loop.run_in_executor(None, _verify_or_remove, output_path, sha256)
             if verified:
                 return True
 
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
             if sha256:
-                valid = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, temp_path, sha256)
+                valid = await loop.run_in_executor(None, _verify_or_remove, temp_path, sha256)
                 if not valid:
                     return False
             temp_path.replace(output_path)
@@ -618,10 +628,11 @@ async def async_download_with_lock(
         return False
     finally:
         if lock_fd:
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
-            lock_fd.close()
+            with contextlib.suppress(Exception):
+                await loop.run_in_executor(None, _release_lock, lock_fd)
         if lock_file.exists():
-            lock_file.unlink()
+            with contextlib.suppress(Exception):
+                lock_file.unlink()
 
 
 def req(
