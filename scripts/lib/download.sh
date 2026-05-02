@@ -169,9 +169,9 @@ _uptodown_search_version() {
   # Speculative fetch: Try page 1 first
   (
     local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
-    TEMP_DIR=$(mktemp -d)
+    local SUB_TEMP_DIR=$(mktemp -d)
     if [[ -f "$parent_cookie_file" ]]; then
-      cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
+      cp "$parent_cookie_file" "${SUB_TEMP_DIR}/cookie.txt"
     fi
     if ! req "${uptodown_dlurl}/apps/${data_code}/versions/1" - > "${temp_dir}/1"; then
       rm -f "${temp_dir}/1"
@@ -198,7 +198,7 @@ _uptodown_search_version() {
   for i in {2..5}; do
     (
       local parent_cookie_file="${TEMP_DIR:-}/cookie.txt"
-      TEMP_DIR=$(mktemp -d)
+      local TEMP_DIR=$(mktemp -d)
       if [[ -f "$parent_cookie_file" ]]; then
         cp "$parent_cookie_file" "${TEMP_DIR}/cookie.txt"
       fi
