@@ -14,7 +14,6 @@ from scripts.builder.config import (
     ConfigError,
     GlobalConfig,
     IntegrationSource,
-    ModuleConfig,
 )
 from scripts.builder.config import (
     Config as BuilderConfig,
@@ -29,7 +28,6 @@ __all__ = [
     "ConfigError",
     "GlobalConfig",
     "IntegrationSource",
-    "ModuleConfig",
 ]
 
 
