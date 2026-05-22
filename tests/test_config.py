@@ -1,14 +1,24 @@
 """Tests for scripts/builder/config.py."""
 
-# ruff: noqa: S101, TC003
+# ruff: noqa: S101, TC003, EM101, TRY003
 
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from scripts.builder.config import AppConfig, ConfigError, ConfigLoader, GlobalConfig, IntegrationSource
+from scripts.builder.config import (
+    AppConfig,
+    Config,
+    ConfigError,
+    ConfigLoader,
+    GlobalConfig,
+    IntegrationSource,
+    ModuleConfig,
+)
 
 # ---------------------------------------------------------------------------
 # GlobalConfig
@@ -148,3 +158,98 @@ class TestConfigLoader:
         config = loader.load(cfg_file)
         assert config.global_settings.parallel_jobs == 0
         assert config.global_settings.riplib is True
+
+    @pytest.mark.filterwarnings("ignore::UserWarning")
+    def test_load_os_error_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        cfg_file = tmp_path / "config.json"
+        cfg_file.write_text("{}")
+
+        def mock_open(*_args: object, **_kwargs: object) -> object:
+            raise OSError("Mocked OSError")
+
+        monkeypatch.setattr("builtins.open", mock_open)
+        loader = ConfigLoader()
+        with pytest.raises(ConfigError) as exc_info:
+            loader.load(cfg_file)
+        assert "Failed to read config file" in str(exc_info.value)
+
+    @pytest.mark.filterwarnings("ignore::UserWarning")
+    def test_load_json_decode_error_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        cfg_file = tmp_path / "config.json"
+        cfg_file.write_text("{}")
+
+        def mock_json_load(*_args: object, **_kwargs: object) -> object:
+            raise json.JSONDecodeError("Mocked decode error", "", 0)
+
+        monkeypatch.setattr(json, "load", mock_json_load)
+        loader = ConfigLoader()
+        with pytest.raises(ConfigError) as exc_info:
+            loader.load(cfg_file)
+        assert "Failed to parse config" in str(exc_info.value)
+
+    def test_load_invalid_toml_raises(self, tmp_path: Path) -> None:
+        cfg_file = tmp_path / "config.toml"
+        cfg_file.write_text("invalid_toml = ")
+        loader = ConfigLoader()
+        with pytest.raises(ConfigError) as exc_info:
+            loader.load(cfg_file)
+        assert "Failed to parse config" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+
+class TestConfig:
+    def _make_config(self, apps: dict[str, AppConfig], modules: dict[str, dict[str, ModuleConfig]] | None = None) -> Config:
+        return Config(
+            global_settings=GlobalConfig(),
+            apps=apps,
+            modules=modules or {},
+            source_files=[],
+            loaded_at=datetime.now(UTC),
+        )
+
+    def test_app_names_returns_enabled_only(self) -> None:
+        apps = {
+            "YouTube": AppConfig(name="YouTube", enabled=True),
+            "Twitter": AppConfig(name="Twitter", enabled=False),
+            "Reddit": AppConfig(name="Reddit", enabled=True),
+        }
+        config = self._make_config(apps)
+        assert sorted(config.app_names) == ["Reddit", "YouTube"]
+
+    def test_get_app_returns_enabled_app(self) -> None:
+        youtube = AppConfig(name="YouTube", enabled=True)
+        config = self._make_config({"YouTube": youtube})
+        assert config.get_app("YouTube") == youtube
+
+    def test_get_app_returns_none_for_disabled_app(self) -> None:
+        twitter = AppConfig(name="Twitter", enabled=False)
+        config = self._make_config({"Twitter": twitter})
+        assert config.get_app("Twitter") is None
+
+    def test_get_app_returns_none_for_missing_app(self) -> None:
+        config = self._make_config({})
+        assert config.get_app("NonExistent") is None
+
+    def test_get_module_returns_enabled_module(self) -> None:
+        module = ModuleConfig(name="mod", enabled=True)
+        config = self._make_config(
+            {"YouTube": AppConfig(name="YouTube", enabled=True)},
+            {"YouTube": {"mod": module}},
+        )
+        assert config.get_module("YouTube", "mod") == module
+
+    def test_get_module_returns_none_for_disabled_module(self) -> None:
+        module = ModuleConfig(name="mod", enabled=False)
+        config = self._make_config(
+            {"YouTube": AppConfig(name="YouTube", enabled=True)},
+            {"YouTube": {"mod": module}},
+        )
+        assert config.get_module("YouTube", "mod") is None
+
+    def test_get_module_returns_none_for_missing_app(self) -> None:
+        config = self._make_config({})
+        assert config.get_module("NonExistent", "mod") is None

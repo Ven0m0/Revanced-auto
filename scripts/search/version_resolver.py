@@ -11,6 +11,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+_BETA_PATTERN: re.Pattern[str] = re.compile(r"beta|b\d+|rc\d*|alpha|\-b\d+|pre\d*", re.IGNORECASE)
+
+
 @dataclass
 class VersionResolver:
     """Resolves compatible app versions for ReVanced builds."""
@@ -178,16 +181,7 @@ class VersionResolver:
 
     def _is_beta_version(self, version: str) -> bool:
         """Check if version is a beta version."""
-        beta_patterns = [
-            r"beta",
-            r"b\d+",
-            r"rc\d*",
-            r"alpha",
-            r"\-b\d+",
-            r"pre\d*",
-        ]
-        version_lower = version.lower()
-        return any(re.search(p, version_lower) for p in beta_patterns)
+        return bool(_BETA_PATTERN.search(version))
 
     def _normalize_version(self, version: str) -> str:
         """Normalize version string for comparison."""

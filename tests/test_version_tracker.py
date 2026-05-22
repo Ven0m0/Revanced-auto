@@ -1,15 +1,19 @@
 """Tests for scripts/version_tracker.py and scripts/lib/version_tracker.py."""
 
-# ruff: noqa: S101, PLC0415, TC003
+# ruff: noqa: S101, PLC0415, TC003, TC002
 
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from scripts.version_tracker import (
     CheckResult,
     VersionDiff,
     detect_changes,
+    execute_show_command,
     extract_current_versions,
     load_state,
     save_state,
@@ -221,3 +225,90 @@ class TestVersionTrackerWrapper:
             vt_mod.load_state.cache_clear()
 
         assert state.get("global_cli_version") == "5.0.0"
+
+
+# ---------------------------------------------------------------------------
+# execute_show_command
+# ---------------------------------------------------------------------------
+
+
+class TestExecuteShowCommand:
+    def test_execute_show_command_with_state(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        state_file = tmp_path / "state.json"
+        save_state({"test_key": "test_value"}, state_path=state_file)
+
+        result = execute_show_command(state_file)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert '"test_key": "test_value"' in captured.out
+
+    def test_execute_show_command_empty(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        state_file = tmp_path / "empty.json"
+
+        result = execute_show_command(state_file)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "{}"
+
+
+# ---------------------------------------------------------------------------
+# execute_check_command
+# ---------------------------------------------------------------------------
+
+
+class TestExecuteCheckCommand:
+    @patch("scripts.version_tracker.check_needs_build")
+    @patch("scripts.version_tracker.set_github_output")
+    @patch("scripts.version_tracker.format_changes_for_github_output")
+    def test_needs_build_true_with_changes(
+        self,
+        mock_format: MagicMock,
+        mock_set_github: MagicMock,
+        mock_check: MagicMock,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        change = VersionDiff(key="cli", old="1", new="2", change_type="modified")
+        mock_check.return_value = CheckResult(needs_build=True, changes=[change])
+        mock_format.return_value = "formatted_changes"
+
+        from scripts.version_tracker import execute_check_command
+
+        result = execute_check_command("config.toml", None)
+
+        assert result == 0
+        mock_check.assert_called_once_with("config.toml", None)
+        mock_format.assert_called_once_with([change])
+
+        assert mock_set_github.call_count == 2
+        mock_set_github.assert_any_call("needs_build", "true")
+        mock_set_github.assert_any_call("changes", "formatted_changes")
+
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "true"
+
+    @patch("scripts.version_tracker.check_needs_build")
+    @patch("scripts.version_tracker.set_github_output")
+    @patch("scripts.version_tracker.format_changes_for_github_output")
+    def test_needs_build_false_no_changes(
+        self,
+        mock_format: MagicMock,
+        mock_set_github: MagicMock,
+        mock_check: MagicMock,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        mock_check.return_value = CheckResult(needs_build=False, changes=[])
+
+        from scripts.version_tracker import execute_check_command
+
+        result = execute_check_command("config.toml", None)
+
+        assert result == 0
+        mock_check.assert_called_once_with("config.toml", None)
+        mock_format.assert_not_called()
+
+        mock_set_github.assert_called_once_with("needs_build", "false")
+
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "false"
