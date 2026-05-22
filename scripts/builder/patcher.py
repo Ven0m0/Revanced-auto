@@ -151,11 +151,8 @@ def _get_file_hash(file_path: Path) -> str | None:
         Hexadecimal hash string or None if file cannot be read.
     """
     try:
-        sha256_hash = hashlib.sha256()
         with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                sha256_hash.update(chunk)
-        return sha256_hash.hexdigest()
+            return hashlib.file_digest(f, "sha256").hexdigest()
     except OSError:
         return None
 

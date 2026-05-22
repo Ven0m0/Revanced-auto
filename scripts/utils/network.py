@@ -446,11 +446,8 @@ def _calculate_sha256(file_path: Path) -> str:
         Hexadecimal representation of the SHA256 hash.
 
     """
-    sha256_hash = hashlib.sha256()
     with file_path.open("rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha256_hash.update(chunk)
-    return sha256_hash.hexdigest()
+        return hashlib.file_digest(f, "sha256").hexdigest()
 
 
 def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
@@ -592,20 +589,34 @@ async def async_download_with_lock(
         if verified:
             return True
 
-    lock_fd = None
+    loop = asyncio.get_running_loop()
+
+    def _acquire_lock() -> int:
+        fd = open(lock_file, "w")
+        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
+        return fd.fileno()
+
+    def _release_lock(fileno: int) -> None:
+        import contextlib
+        fcntl.flock(fileno, fcntl.LOCK_UN)
+        with contextlib.suppress(OSError):
+            os.close(fileno)
+        with contextlib.suppress(OSError):
+            lock_file.unlink()
+
+    lock_fileno = None
     try:
-        lock_fd = open(lock_file, "w")
-        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+        lock_fileno = await loop.run_in_executor(None, _acquire_lock)
 
         if output_path.exists():
-            verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+            verified = await loop.run_in_executor(None, _verify_or_remove, output_path, sha256)
             if verified:
                 return True
 
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
             if sha256:
-                valid = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, temp_path, sha256)
+                valid = await loop.run_in_executor(None, _verify_or_remove, temp_path, sha256)
                 if not valid:
                     return False
             temp_path.replace(output_path)
@@ -617,11 +628,8 @@ async def async_download_with_lock(
             temp_path.unlink()
         return False
     finally:
-        if lock_fd:
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
-            lock_fd.close()
-        if lock_file.exists():
-            lock_file.unlink()
+        if lock_fileno is not None:
+            await loop.run_in_executor(None, _release_lock, lock_fileno)
 
 
 def req(

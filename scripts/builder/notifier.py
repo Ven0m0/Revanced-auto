@@ -326,7 +326,7 @@ class GitHubReleaseNotifier(BaseNotifier):
                     upload_url,
                     headers=headers,
                     params=params,
-                    content=f.read(),
+                    content=f,
                     auth=_GitHubTokenAuth(self._github_token),
                     timeout=60.0,
                 )
