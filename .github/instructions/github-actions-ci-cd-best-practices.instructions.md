@@ -369,7 +369,7 @@ jobs:
     - **GitHub Checks/Annotations:** Leverage these for inline feedback directly in pull requests, showing which tests passed/failed and providing links to detailed reports.
     - **Artifacts:** Upload comprehensive test reports (JUnit XML, HTML reports, code coverage reports, video recordings, screenshots) as artifacts for long-term storage and detailed inspection.
     - **Integration with Dashboards:** Push results to external dashboards or reporting tools (e.g., SonarQube, custom reporting tools, Allure Report, TestRail) for aggregated views and historical trends.
-    - **Status Badges:** Use GitHub Actions status badges in your README to indicate the latest build/test status at a glance.
+    - **Status Badges:** Use GitHub Actions status badges in your README to indicate the latest CI status at a glance.
 - **Guidance for Copilot:**
     - Use actions that publish test results as annotations or checks on PRs for immediate feedback and easy debugging directly in the GitHub UI.
     - Upload detailed test reports (e.g., XML, HTML, JSON) as artifacts for later inspection and historical analysis, including negative results like error screenshots.
