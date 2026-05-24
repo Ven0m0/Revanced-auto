@@ -4,10 +4,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import fcntl
 import hashlib
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -466,7 +470,6 @@ def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
         return True
     if _calculate_sha256(file_path) == sha256:
         return True
-    import contextlib
 
     with contextlib.suppress(OSError):
         file_path.unlink()
@@ -498,8 +501,6 @@ def download_with_lock(
         True if download succeeded or file already exists, False otherwise.
 
     """
-    import tempfile
-
     output_path = Path(output).resolve()
     base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
 
@@ -570,8 +571,6 @@ async def async_download_with_lock(
         True if download succeeded or file already exists, False otherwise.
 
     """
-    import tempfile
-
     output_path = Path(output).resolve()
     base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
 
@@ -597,7 +596,6 @@ async def async_download_with_lock(
         return fd.fileno()
 
     def _release_lock(fileno: int) -> None:
-        import contextlib
         fcntl.flock(fileno, fcntl.LOCK_UN)
         with contextlib.suppress(OSError):
             os.close(fileno)
@@ -770,9 +768,6 @@ def aria2c_download(
         True if download succeeded, False otherwise.
 
     """
-    import shutil
-    import subprocess
-
     if not shutil.which("aria2c"):
         return False
 
@@ -819,8 +814,6 @@ def download_with_aria2c_fallback(
         True if download succeeded, False otherwise.
 
     """
-    import shutil
-
     output_path = Path(output_path)
     if shutil.which("aria2c") and aria2c_download(urls, output_path, max_connections=max_connections):
         return True
