@@ -72,6 +72,45 @@ def _patch_args_default() -> PatchArgs:
 
 
 @dataclass(frozen=True)
+class PatchCommandConfig:
+    """Configuration for the patch command.
+
+    Attributes:
+        apk_path: Path to input APK file.
+        output_path: Path to output APK file.
+        patches_jars: List of patch bundle JAR files.
+        patches_post: List of post-patch bundle JAR files (v6+).
+        exclude: List of patches to exclude.
+        include: List of patches to include.
+        merge: List of merge JAR files.
+        keystore: Path to keystore file.
+        force: Force overwrite existing output.
+        purge: Purge decompiled resources.
+        rip_lib: List of libs to rip.
+        bare: Bare APK mode.
+        inplace: Inplace modification mode.
+        werror: Treat warnings as errors.
+        options: Additional options dict.
+    """
+
+    apk_path: Path | None = None
+    output_path: Path | None = None
+    patches_jars: list[Path] = field(default_factory=list)
+    patches_post: list[Path] = field(default_factory=list)
+    exclude: list[str] = field(default_factory=list)
+    include: list[str] = field(default_factory=list)
+    merge: list[Path] = field(default_factory=list)
+    keystore: Path | None = None
+    force: bool = False
+    purge: bool = False
+    rip_lib: list[str] = field(default_factory=list)
+    bare: bool = False
+    inplace: bool = False
+    werror: bool = False
+    options: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class CLIProfile:
     """CLI argument compatibility profile for different ReVanced CLI versions.
 
@@ -86,6 +125,29 @@ class CLIProfile:
     profile_type: CLIProfileType
     list_patches_args: ListPatchesArgs = field(default_factory=_list_patches_args_default)
     patch_args: PatchArgs = field(default_factory=_patch_args_default)
+
+    def build_patch_args(self, config: PatchCommandConfig) -> list[str]:
+        """Build arguments for the patch command.
+
+        Args:
+            config: Patch command configuration.
+
+        Returns:
+            List of command arguments.
+        """
+        return build_cli_args(self, "patch", config)
+
+    def build_list_patches_args(self, patches_jars: list[Path] | None = None) -> list[str]:
+        """Build arguments for the list-patches command.
+
+        Args:
+            patches_jars: Optional list of patches JARs.
+
+        Returns:
+            List of command arguments.
+        """
+        config = PatchCommandConfig(patches_jars=patches_jars or [])
+        return build_cli_args(self, "list-patches", config)
 
 
 def _v5_list_patches_args() -> ListPatchesArgs:
@@ -279,153 +341,126 @@ def _detect_profile_from_help(help_output: str) -> CLIProfile:
 def build_cli_args(
     profile: CLIProfile,
     command: str,
-    patches_jars: list[Path] | None = None,
-    patches_post: list[Path] | None = None,
-    exclude: list[str] | None = None,
-    include: list[str] | None = None,
-    merge: list[Path] | None = None,
-    keystore: Path | None = None,
-    apk_path: Path | None = None,
-    output_path: Path | None = None,
-    force: bool = False,
-    purge: bool = False,
-    rip_lib: list[str] | None = None,
-    bare: bool = False,
-    inplace: bool = False,
-    werror: bool = False,
-    _options: dict[str, Any] | None = None,
+    config: PatchCommandConfig,
 ) -> list[str]:
     """Build command arguments from profile configuration.
 
     Args:
         profile: The CLI profile to use.
         command: The command to build args for ('list-patches' or 'patch').
-        patches_jars: List of patch bundle JAR files.
-        patches_post: List of post-patch bundle JAR files (v6+).
-        exclude: List of patches to exclude.
-        include: List of patches to include (exclusive with exclude).
-        merge: List of merge JAR files.
-        keystore: Path to keystore file.
-        apk_path: Path to input APK file.
-        output_path: Path to output APK file.
-        force: Force overwrite existing output.
-        purge: Purge decompiled resources.
-        rip_lib: List of libs to rip.
-        bare: Bare APK mode.
-        inplace: Inplace modification mode.
-        werror: Treat warnings as errors.
-        options: Additional options dict.
+        config: Patch command configuration.
 
     Returns:
         List of command arguments.
     """
     args: list[str] = []
-    patch_args = profile.patch_args
 
     if command == "patch":
-        if apk_path:
+        patch_args = profile.patch_args
+
+        if config.apk_path:
             apk_mapping = patch_args.get("APK")
             if apk_mapping:
                 args.extend(apk_mapping.prepend_args)
                 args.append(apk_mapping.flag)
                 if apk_mapping.requires_value:
-                    args.append(str(apk_path))
+                    args.append(str(config.apk_path))
 
-        if output_path:
+        if config.output_path:
             output_mapping = patch_args.get("OUTPUT")
             if output_mapping:
                 args.extend(output_mapping.prepend_args)
                 args.append(output_mapping.flag)
                 if output_mapping.requires_value:
-                    args.append(str(output_path))
+                    args.append(str(config.output_path))
 
-        if patches_jars:
+        if config.patches_jars:
             patches_mapping = patch_args.get("PATCHES")
             if patches_mapping:
-                for jar in patches_jars:
+                for jar in config.patches_jars:
                     args.extend(patches_mapping.prepend_args)
                     args.append(patches_mapping.flag)
                     if patches_mapping.requires_value:
                         args.append(str(jar))
 
-        if patches_post:
+        if config.patches_post:
             post_mapping = patch_args.get("PATCHES_POST")
             if post_mapping:
-                for jar in patches_post:
+                for jar in config.patches_post:
                     args.extend(post_mapping.prepend_args)
                     args.append(post_mapping.flag)
                     if post_mapping.requires_value:
                         args.append(str(jar))
 
-        if exclude:
+        if config.exclude:
             disabled_mapping = patch_args.get("DISABLED")
             if disabled_mapping:
-                for patch_name in exclude:
+                for patch_name in config.exclude:
                     args.extend(disabled_mapping.prepend_args)
                     args.append(disabled_mapping.flag)
                     if disabled_mapping.requires_value:
                         args.append(patch_name)
 
-        if include:
+        if config.include:
             enabled_mapping = patch_args.get("ENABLED")
             if enabled_mapping:
-                for patch_name in include:
+                for patch_name in config.include:
                     args.extend(enabled_mapping.prepend_args)
                     args.append(enabled_mapping.flag)
                     if enabled_mapping.requires_value:
                         args.append(patch_name)
 
-        if merge:
+        if config.merge:
             merge_mapping = patch_args.get("MERGE")
             if merge_mapping:
-                for jar in merge:
+                for jar in config.merge:
                     args.extend(merge_mapping.prepend_args)
                     args.append(merge_mapping.flag)
                     if merge_mapping.requires_value:
                         args.append(str(jar))
 
-        if keystore:
+        if config.keystore:
             keystore_mapping = patch_args.get("KEYSTORE")
             if keystore_mapping:
                 args.extend(keystore_mapping.prepend_args)
                 args.append(keystore_mapping.flag)
                 if keystore_mapping.requires_value:
-                    args.append(str(keystore))
+                    args.append(str(config.keystore))
 
-        if rip_lib:
+        if config.rip_lib:
             rip_mapping = patch_args.get("RIP_LIB")
             if rip_mapping:
-                for lib in rip_lib:
+                for lib in config.rip_lib:
                     args.extend(rip_mapping.prepend_args)
                     args.append(rip_mapping.flag)
                     if rip_mapping.requires_value:
                         args.append(lib)
 
-        if force:
+        if config.force:
             force_mapping = patch_args.get("FORCE")
             if force_mapping:
                 args.extend(force_mapping.prepend_args)
                 args.append(force_mapping.flag)
 
-        if purge:
+        if config.purge:
             purge_mapping = patch_args.get("PURGE")
             if purge_mapping:
                 args.extend(purge_mapping.prepend_args)
                 args.append(purge_mapping.flag)
 
-        if bare:
+        if config.bare:
             bare_mapping = patch_args.get("BARE")
             if bare_mapping:
                 args.extend(bare_mapping.prepend_args)
                 args.append(bare_mapping.flag)
 
-        if inplace:
+        if config.inplace:
             inplace_mapping = patch_args.get("INPLACE")
             if inplace_mapping:
                 args.extend(inplace_mapping.prepend_args)
                 args.append(inplace_mapping.flag)
 
-        if werror:
+        if config.werror:
             werror_mapping = patch_args.get("WERROR")
             if werror_mapping:
                 args.extend(werror_mapping.prepend_args)
@@ -434,62 +469,13 @@ def build_cli_args(
     elif command == "list-patches":
         list_patches_args = profile.list_patches_args
 
-        if patches_jars:
+        if config.patches_jars:
             patches_mapping = list_patches_args.get("PATCHES")
             if patches_mapping:
-                for jar in patches_jars:
+                for jar in config.patches_jars:
                     args.extend(patches_mapping.prepend_args)
                     args.append(patches_mapping.flag)
                     if patches_mapping.requires_value:
                         args.append(str(jar))
 
     return args
-
-
-@dataclass
-class BuildPatchKwargs:
-    """Keyword arguments for CLIProfile.build_patch_args method."""
-
-    apk_path: Path
-    output_path: Path
-    patches_jars: list[Path] = field(default_factory=list)
-    exclude: list[str] = field(default_factory=list)
-    include: list[str] = field(default_factory=list)
-    merge: list[Path] = field(default_factory=list)
-    keystore: Path | None = None
-    force: bool = False
-    purge: bool = False
-    rip_lib: list[str] = field(default_factory=list)
-    bare: bool = False
-    inplace: bool = False
-    werror: bool = False
-    patches_post: list[Path] = field(default_factory=list)
-    options: dict[str, Any] = field(default_factory=dict)
-
-
-CLIProfile.build_patch_args = lambda self, **kwargs: build_cli_args(  # type: ignore[attr-defined,method-assign]
-    profile=self,
-    command="patch",
-    patches_jars=kwargs.get("patches_jars"),
-    patches_post=kwargs.get("patches_post"),
-    exclude=kwargs.get("exclude"),
-    include=kwargs.get("include"),
-    merge=kwargs.get("merge"),
-    keystore=kwargs.get("keystore"),
-    apk_path=kwargs.get("apk_path"),
-    output_path=kwargs.get("output_path"),
-    force=kwargs.get("force", False),
-    purge=kwargs.get("purge", False),
-    rip_lib=kwargs.get("rip_lib"),
-    bare=kwargs.get("bare", False),
-    inplace=kwargs.get("inplace", False),
-    werror=kwargs.get("werror", False),
-    options=kwargs.get("options"),
-)
-
-
-CLIProfile.build_list_patches_args = lambda self, patches_jars=None: build_cli_args(  # type: ignore[attr-defined,method-assign]
-    profile=self,
-    command="list-patches",
-    patches_jars=patches_jars,
-)
