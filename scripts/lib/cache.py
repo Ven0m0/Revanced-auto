@@ -264,21 +264,19 @@ class CacheManager:
     @staticmethod
     def _checksum(file_path: Path) -> str:
         """Return the SHA-256 checksum for a file."""
-        digest = hashlib.sha256()
         with file_path.open("rb") as file_handle:
-            for chunk in iter(lambda: file_handle.read(8192), b""):
-                digest.update(chunk)
-        return digest.hexdigest()
+            return hashlib.file_digest(file_handle, "sha256").hexdigest()
 
 
 def format_cache_size(size_bytes: int) -> str:
     """Format a size using IEC units."""
-    units = ["bytes", "KiB", "MiB", "GiB", "TiB"]
+    units = ["byte", "KiB", "MiB", "GiB", "TiB"]
     size = float(size_bytes)
     for unit in units:
         if size < 1024 or unit == units[-1]:
-            if unit == "bytes":
-                return f"{int(size)} bytes"
+            if unit == "byte":
+                suffix = "s" if size_bytes != 1 else ""
+                return f"{size_bytes} byte{suffix}"
             return f"{size:.1f} {unit}"
         size /= 1024
-    return f"{size_bytes} bytes"
+    return ""  # pragma: no cover
