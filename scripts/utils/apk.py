@@ -1,5 +1,6 @@
 """APK operations module for signing, aligning, and merging split APKs."""
 
+import logging
 import re
 import shutil
 import subprocess
@@ -7,6 +8,8 @@ import tempfile
 import zipfile
 from enum import Enum
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class APKSigner:
@@ -351,7 +354,8 @@ class SplitAPKHandler:
             try:
                 shutil.copy2(bundle_path, output_path)
                 return True
-            except OSError:
+            except OSError as e:
+                logger.error("Failed to copy APK: %s", e)
                 return False
         if bundle_type in (BundleType.XAPK, BundleType.APKM):
             jar = self._find_apkeditor()
