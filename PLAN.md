@@ -109,7 +109,7 @@ Validation: manual readthrough; copy-paste each command into a clean shell.
 1. **adobo interface**: is `jkennethcarino/adobo` a drop-in CLI invocable like ReVanced CLI, or does it require a different invocation contract? Confirm before T1.5.
 2. **external-bundles layout**: are bundles published as GitHub Releases assets, or as repo files? Determines whether T1.3 reuses the release-asset path or needs a raw-content fetcher.
 3. **Default flip risk**: switching the global default to Morphe changes outputs for every existing user/config. Confirm this is intended vs. opt-in.
-4. **Mise Java pin**: `temurin-25.0.3` vs. CLAUDE.md's "Java 21+" claim — confirm 25 is intentional.
+4. **Mise Java pin**: `temurin-25.0.3` vs. `.github/skills/copilot-init/SKILL.md`'s "Java 21+" claim — confirm 25 is intentional.
 5. **Pages deploy**: keep implicit Jekyll-from-`/docs` or add an explicit `pages.yml` workflow? T3.2 picks the second by default; flag if user prefers the first.
 6. **Scope of "integrate features"**: TODO.md lists four repos but not which specific features. T2.3 is the gate; surface an explicit feature list before implementing.
 
