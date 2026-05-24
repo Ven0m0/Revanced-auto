@@ -1,5 +1,6 @@
 """APK operations module for signing, aligning, and merging split APKs."""
 
+import logging
 import re
 import shutil
 import subprocess
@@ -7,6 +8,8 @@ import tempfile
 import zipfile
 from enum import Enum
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class APKSigner:
@@ -298,8 +301,8 @@ def detect_bundle_type(file_path: Path) -> BundleType:
             header = f.read(4)
         if header == b"PK\x03\x04":
             return BundleType.APK
-    except OSError:
-        pass
+    except OSError as e:
+        logger.debug("Failed to read magic bytes from %s: %s", file_path, e)
 
     return BundleType.UNKNOWN
 
