@@ -42,7 +42,7 @@ Tasks:
 - T1.2 In scripts/builder/config.py, add cli_source to GlobalConfig and AppConfig, and ensure patches-source (GlobalConfig ~L47, AppConfig ~L93) accepts the bundle ecosystem: a GitHub repo slug, a release asset URL, or a list mixing both. Document accepted forms in docstring.
 - T1.3 Add a "patches bundle" fetcher under scripts/scrapers/ (new module, e.g. external_bundles.py) extending the existing scraper base for brosssh/revanced-external-bundles. Refactor ScraperBase to use scripts.utils.network.HttpClient to unify HTTP logic.
 - T1.4 In scripts/builder/app_processor.py (AppBuildContext ~L340–387), fix the bug where cli_source is mapped to patches_source (L624) and thread the new fields through so patches_jars can contain multiple bundle JARs resolved from one logical source.
-- T1.5 In `scripts/builder/patcher.py`, branch on the resolved CLI profile to invoke ReVanced CLI vs Morphe CLI vs adobo. Keep the signing step untouched.
+- T1.5 In scripts/builder/patcher.py, refactor ReVancedPatcher to use self.cli_profile.build_patch_args() instead of the hardcoded _build_patch_args method. This ensures compatibility with adobo and other profiles without branching.
 
 Dependencies: Phase 0.
 
