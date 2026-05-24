@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from enum import Enum
@@ -450,8 +451,6 @@ class APKMirror(ScraperBase):
             check=True,
         )
 
-        import shutil
-
         shutil.move(str(zip_path), str(output_path))
 
         for cleanup in (extract_dir, bundle_path.with_suffix(".mzip")):
@@ -591,8 +590,6 @@ class APKMirror(ScraperBase):
         """Close the scraper and clean up resources."""
         super().close()
         if self._temp_dir is not None:
-            import shutil
-
             shutil.rmtree(self._temp_dir, ignore_errors=True)
             self._temp_dir = None
 
