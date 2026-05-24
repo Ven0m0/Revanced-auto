@@ -48,7 +48,7 @@ Dependencies: Phase 0.
 
 Validation:
 - `uv run python -m pytest tests/test_config.py tests/test_version_tracker.py tests/test_network.py -v`
-- `python -m scripts.cli check --config config.toml` resolves a Morphe-, an external-bundles-, and an adobo-configured app without error.
+- Validate Morphe-, external-bundles-, and adobo-configured app source resolution through the build/resolve path, not `python -m scripts.cli check`; use `python -m scripts.cli build ... --build-mode apk` so CLI/patch sources are resolved and bundles are fetched.
 - One end-to-end `python -m scripts.cli build ... --build-mode apk` per profile on a small app.
 
 ## Phase 2 — Morphe-by-Default + Cross-Repo Feature Integration
