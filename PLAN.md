@@ -23,7 +23,7 @@ Translate `TODO.md` into a sequenced, execution-ready plan to:
 
 Tasks:
 - T0.1 Reconcile Python version: `mise.toml` (currently pins 3.14) → align to 3.13 series matching `pyproject.toml` `requires-python = ">=3.13"`.
-- T0.2 Audit `mise.toml` tool list (Java temurin-25.0.3, uv, jq, zip) against what `check-env.sh` and `build.sh` actually invoke; add missing, drop unused.
+- T0.2 Audit the actual current `mise.toml` tool list (e.g. Python/uv/Java entries) against what `check-env.sh` and `build.sh` actually invoke; explicitly note that `jq` and `zip` are provided outside mise today (for example via apt in CI), then add missing tools to mise or drop unused ones as appropriate.
 - T0.3 Standardize CI bootstrap in `.github/workflows/*.yml`: `mise install` → `uv sync --locked --all-groups` → `./check-env.sh`. Replace any ad-hoc `setup-python` / `setup-java` steps that bypass mise.
 - T0.4 Confirm `pyproject.toml` `[tool.uv]` / dependency groups expose dev tools (ruff, mypy, pytest) used by `scripts/lint.sh`.
 
