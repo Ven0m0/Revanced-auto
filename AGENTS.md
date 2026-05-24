@@ -1,14 +1,15 @@
-# ReVanced-auto AI Instructions
+# ReVanced-auto Agent Guide (Canonical)
 
-## Scope
-- This is the canonical instruction file for AI agents working in this repo.
-- Keep `.github/copilot-instructions.md` aligned but shorter.
-- When docs disagree, trust current code in `scripts/`, `pyproject.toml`, `mise.toml`, and workflows over older README prose.
+This is the canonical instruction file for AI agents in this repository.
 
-## Repo Purpose
-ReVanced-auto automates downloading stock APKs, resolving compatible versions, patching them with ReVanced/RVX-compatible CLI + patches, re-signing outputs, and writing artifacts to `build/` from a TOML config.
+## Source of Truth
+- Keep `.github/copilot-instructions.md` aligned, but shorter.
+- If documentation disagrees, trust current behavior in `scripts/`, `pyproject.toml`, `mise.toml`, and active workflows.
 
-## Prefer These Entry Points
+## Repository Goal
+Automate the end-to-end ReVanced build pipeline from TOML config: resolve compatible app versions, download stock APKs, patch with ReVanced/RVX-compatible tooling, re-sign, and write artifacts to `build/`.
+
+## Preferred Entry Points
 ```bash
 mise install
 uv sync --locked --all-groups
@@ -17,71 +18,74 @@ python -m scripts.cli build --config config.toml --build-mode apk|module|both --
 python -m scripts.cli check --config config.toml
 python -m scripts.cli version-tracker {check|save|show|reset} --config config.toml
 python -m scripts.cli cache {stats|init|cleanup|clean}
-./build.sh ...   # legacy wrapper; keep compatible, but prefer Python CLI
+./build.sh ...   # legacy compatibility wrapper
 ./scripts/lint.sh
 ./scripts/lint.sh --fix
 uv run python -m pytest tests -v
 ```
 
-## Repo Map
-| Path | Use |
+## High-Value Paths
+| Path | Purpose |
 | --- | --- |
-| `scripts/cli.py` | Main CLI entry point |
-| `scripts/lib/args.py` | CLI argument definitions |
-| `scripts/lib/config.py` | TOML config loading and normalization |
-| `scripts/lib/version_tracker.py` | Update detection and saved state |
+| `scripts/cli.py` | Primary CLI entry point |
+| `scripts/lib/args.py` | CLI argument model |
+| `scripts/lib/config.py` | Compatibility wrapper around canonical config logic |
+| `scripts/lib/version_tracker.py` | Version state tracking |
 | `scripts/lib/builder.py` | Build orchestration |
-| `scripts/builder/` | Higher-level build pipeline pieces |
-| `scripts/scrapers/` | APK source-specific download logic |
+| `scripts/builder/` | Build pipeline components |
+| `scripts/scrapers/` | Source-specific APK retrieval |
 | `scripts/search/` | Version resolution |
-| `scripts/utils/` | APK, Java, process, and network helpers |
-| `build.sh` | Compatibility wrapper around the Python CLI |
-| `utils.sh` | Bash loader for shared shell modules |
-| `config.toml` | Global defaults + per-app overrides |
+| `scripts/utils/` | Shared APK/Java/process/network helpers |
+| `build.sh` | Legacy compatibility path |
+| `utils.sh` | Shared Bash loader |
+| `config.toml` | Global + per-app configuration |
 | `tests/` | Pytest suite |
 
-## Change Strategy
-- Prefer extending the Python path for new behavior; the Bash build path is mostly compatibility glue.
-- Keep changes localized: scraper work in `scripts/scrapers/`, config work in `scripts/lib/config.py`, build flow in `scripts/lib/builder.py` or `scripts/builder/`.
-- Reuse existing wrappers before adding new helpers.
-- Avoid broad refactors unless the task requires them.
+## Change Priorities
+- Prefer Python-path changes for new features or fixes; keep `build.sh` aligned for compatibility.
+- Keep edits localized to the owning module/directory.
+- Reuse existing helpers and wrappers before adding new abstractions.
+- Avoid broad refactors unless explicitly requested.
 
-## Python Rules
-- Target Python 3.13+ and existing deps managed by `uv`.
-- Match repo tooling: Ruff (`line-length = 120`, `select = ["ALL"]` with repo ignores), MyPy `--strict`, Google-style docstrings.
-- Use `from scripts.lib import logging as log` for CLI/lib logging.
-- Use `scripts.utils.network` / existing network helpers; do not introduce `requests` or ad-hoc `urllib` calls.
-- Prefer `selectolax` for HTML parsing, `tomllib` for TOML reads, and `orjson`/`json` for JSON.
-- For GitHub Actions, use explicit release tags instead of SHA-pinned `uses:` references.
-- Keep `sys.exit()` in `main()` only; return exit codes from helpers.
-- Add logic to testable functions instead of growing `main()` bodies.
+## Language & Tooling Rules
 
-## Bash Rules
+### Python
+- Target Python `>=3.13`; dependencies are `uv`-managed.
+- Match repository tooling: Ruff (`line-length=120`, `select=["ALL"]` with repo-specific ignores) and MyPy strict mode.
+- Use `from scripts.lib import logging as log` for logging.
+- Reuse existing network helpers (`scripts.utils.network`); avoid ad-hoc new HTTP stacks.
+- Prefer `selectolax` for HTML, `tomllib` for TOML reads, and `orjson`/`json` for JSON.
+- Keep `sys.exit()` in `main()` only; return status codes from helpers.
+- Favor testable functions over growing `main()` flow logic.
+
+### Bash
 - Use `#!/usr/bin/env bash` and `set -euo pipefail`.
-- Source shared shell code via `source utils.sh`; do not source `scripts/lib/*.sh` directly.
-- In build/runtime shell code, use repo logging helpers (`log_info`, `log_warn`, `log_debug`, `pr`, `epr`, `abort`) instead of adding new raw user-facing `echo`/`printf` paths.
-- Use `req` / `gh_req` for network access instead of raw `curl`/`wget` in repo runtime logic.
-- Quote expansions, prefer `mapfile -t`, use `VAR=$((VAR + 1))`, and never use `eval`.
-- Run `bash -n` on every changed shell file.
+- Source shared shell modules via `source utils.sh`; do not source `scripts/lib/*.sh` directly.
+- In runtime paths, use repo logging helpers (`log_info`, `log_warn`, `log_debug`, `pr`, `epr`, `abort`) and `req` / `gh_req`.
+- Quote expansions, prefer `mapfile -t`, use arithmetic expansion for counters, and never use `eval`.
+- Run `bash -n` on any changed shell script.
+
+### GitHub Actions
+- Use explicit release tags for `uses:` instead of SHA pinning in this repository.
 
 ## Domain Invariants
-- `config.toml` uses top-level globals plus per-app `[Section]` overrides.
-- Each enabled app needs at least one supported download source field.
-- Preserve the normal flow: config load -> version check -> download -> patch -> sign -> output.
-- Do not weaken signing behavior: built APKs must be re-signed with `bin/apksigner.jar` using v1+v2 only.
-- Keep `build.sh` behavior aligned with `scripts.cli`; do not add new primary features only to the legacy wrapper.
-- Be careful with cached/networked paths and external archive handling.
+- `config.toml` uses top-level defaults plus per-app override sections.
+- Every enabled app must define at least one supported download source.
+- Preserve the core flow: config -> version check -> download -> patch -> sign -> output.
+- Keep signing hardening intact: output APKs must be re-signed via `bin/apksigner.jar` with v1+v2 only.
+- Keep `build.sh` behavior compatible with `python -m scripts.cli`.
+- Treat cached/network/archive handling changes as high risk and validate carefully.
 
 ## Validation Matrix
-- Any Python change: run `./scripts/lint.sh` and the most relevant pytest targets.
-- Config / CLI args / version tracking: `uv run python -m pytest tests/test_config.py tests/test_version_tracker.py -v`
-- Network / scraper changes: `uv run python -m pytest tests/test_network.py -v`
-- APK / signing changes: `uv run python -m pytest tests/test_apk.py -v`
-- Notifier changes: `uv run python -m pytest tests/test_notifier.py -v`
+- Python changes: `./scripts/lint.sh` and relevant pytest targets.
+- Config / args / version tracking: `uv run python -m pytest tests/test_config.py tests/test_version_tracker.py -v`
+- Network / scraper logic: `uv run python -m pytest tests/test_network.py -v`
+- APK / signing logic: `uv run python -m pytest tests/test_apk.py -v`
+- Notifier logic: `uv run python -m pytest tests/test_notifier.py -v`
 - Broad Python changes: `uv run python -m pytest tests -v`
-- Any Bash change: `bash -n path/to/file.sh` plus `./scripts/lint.sh`
+- Bash changes: `bash -n <changed.sh>` and `./scripts/lint.sh`
 
 ## Safety
-- Never commit secrets such as `GITHUB_TOKEN`, keystore passwords, or private signing material.
-- Do not edit generated/stateful files such as `.github/last_built_versions.json` unless the task explicitly requires it.
-- Keep changes repo-specific and minimal; do not rewrite unrelated docs or workflow files for incidental cleanup.
+- Never commit secrets (`GITHUB_TOKEN`, signing credentials, private keys, passwords).
+- Do not modify generated/state files such as `.github/last_built_versions.json` unless the task explicitly requires it.
+- Keep changes scoped and minimal; avoid unrelated cleanup.
