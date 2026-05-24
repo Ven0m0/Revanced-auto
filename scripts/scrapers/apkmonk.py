@@ -118,7 +118,7 @@ class APKMonkScraper(ScraperBase):
         url = self._build_url(pkg_name)
 
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, self.get, url)
+        response = await self.get(url)
         html = response.text
 
         return self._parse_versions_page(html)
@@ -150,21 +150,21 @@ class APKMonkScraper(ScraperBase):
         loop = asyncio.get_event_loop()
 
         try:
-            response = await loop.run_in_executor(None, self.get, url)
+            response = await self.get(url)
             html = response.text
 
             download_url = self._parse_download_link(html)
             if download_url is None:
                 return DownloadResult(success=False, error="Download link not found")
 
-            dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
+            dl_response = await self._request_with_retry(download_url, "GET")
 
             content_type = dl_response.headers.get("content-type", "")
             if "text/html" in content_type.lower():
                 download_url = self._parse_download_link(dl_response.text)
                 if download_url is None:
                     return DownloadResult(success=False, error="Download link not found")
-                dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
+                dl_response = await self._request_with_retry(download_url, "GET")
 
             await loop.run_in_executor(
                 None,

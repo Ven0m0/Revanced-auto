@@ -302,7 +302,7 @@ class APKMirror(ScraperBase):
 
         return f"{self.BASE_URL}{href}"
 
-    def _get_download_url(self, variant_url: str) -> str | None:
+    async def _get_download_url(self, variant_url: str) -> str | None:
         """Get the actual file download URL from variant page.
 
         Args:
@@ -312,7 +312,7 @@ class APKMirror(ScraperBase):
             Direct download URL if found, None otherwise.
 
         """
-        response = self.get(variant_url)
+        response = await self.get(variant_url)
         return self._find_download_link(response.text)
 
     async def get_versions(
@@ -344,7 +344,7 @@ class APKMirror(ScraperBase):
         )
 
         versions_url = self._get_versions_page_url(pkg_name)
-        response = await asyncio.to_thread(self.get, versions_url)
+        response = await self.get(versions_url)
 
         tree = HTMLParser(response.text)
         version_links = tree.css("div.version-fed-list > div")
@@ -368,7 +368,7 @@ class APKMirror(ScraperBase):
 
             variant_url = f"{self.BASE_URL}{href}"
 
-            variant_html = await asyncio.to_thread(self.get, variant_url, False)
+            variant_html = await self.get(variant_url, False)
 
             download_url = self._search_variant(variant_html.text, config)
             if download_url:
@@ -510,7 +510,7 @@ class APKMirror(ScraperBase):
                 version = version_info.version
             else:
                 versions_url = self._get_versions_page_url(pkg_name)
-                response = await asyncio.to_thread(self.get, versions_url)
+                response = await self.get(versions_url)
 
                 tree = HTMLParser(response.text)
                 version_links = tree.css("div.version-fed-list > div")
@@ -536,7 +536,7 @@ class APKMirror(ScraperBase):
 
                     variant_url = f"{self.BASE_URL}{href}"
 
-                    variant_html = await asyncio.to_thread(self.get, variant_url, False)
+                    variant_html = await self.get(variant_url, False)
 
                     download_url = self._search_variant(variant_html.text, config)
                     break
@@ -547,16 +547,14 @@ class APKMirror(ScraperBase):
                         error=f"Version {version} not found with specified criteria",
                     )
 
-            final_download_url = await asyncio.get_event_loop().run_in_executor(
-                None, self._get_download_url, download_url
-            )
+            final_download_url = await self._get_download_url(download_url)
             if final_download_url is None:
                 return DownloadResult(
                     success=False,
                     error="Failed to get download URL",
                 )
 
-            await asyncio.to_thread(self._download_file, final_download_url, output_path)
+            await self._download_file(final_download_url, output_path)
 
             if self._is_bundle(output_path):
                 merged_path = output_path.with_suffix(".apk")
@@ -575,7 +573,7 @@ class APKMirror(ScraperBase):
                 error=str(e),
             )
 
-    def _download_file(self, url: str, output_path: Path) -> None:
+    async def _download_file(self, url: str, output_path: Path) -> None:
         """Download a file from URL to output path.
 
         Args:
@@ -583,9 +581,9 @@ class APKMirror(ScraperBase):
             output_path: Path to save the file.
 
         """
-        response = self.get(url, use_cache=False)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(response.content)
+        response = await self.get(url, use_cache=False)
+        await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
+        await asyncio.to_thread(output_path.write_bytes, response.content)
 
     def close(self) -> None:
         """Close the scraper and clean up resources."""

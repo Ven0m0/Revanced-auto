@@ -37,7 +37,7 @@ class ArchiveScraper(ScraperBase):
 
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         url = f"{ARCHIVE_BASE_URL}/{pkg_name}"
-        response = await asyncio.to_thread(self.get, url)
+        response = await self.get(url)
         parser = HTMLParser(response.text)
 
         versions: list[VersionInfo] = []
@@ -119,18 +119,18 @@ class ArchiveScraper(ScraperBase):
             error=f"Version {version} not found for package {pkg_name}",
         )
 
-    def _download_file(
+    async def _download_file(
         self,
         url: str,
         output_path: Path,
         version: str,
     ) -> DownloadResult:
         try:
-            response = self.session.get(url, follow_redirects=True)
+            response = await self.session.get(url, follow_redirects=True)
             response.raise_for_status()
 
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(response.content)
+            await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
+            await asyncio.to_thread(output_path.write_bytes, response.content)
 
             return DownloadResult(
                 success=True,

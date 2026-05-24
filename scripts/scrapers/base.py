@@ -42,13 +42,13 @@ class ScraperBase(ABC):
 
     def __init__(self, source: DownloadSource) -> None:
         self.source = source
-        self._session: httpx.Client | None = None
+        self._session: httpx.AsyncClient | None = None
         self._cache: dict[str, tuple[float, object]] = {}
 
     @property
-    def session(self) -> httpx.Client:
+    def session(self) -> httpx.AsyncClient:
         if self._session is None:
-            self._session = httpx.Client(
+            self._session = httpx.AsyncClient(
                 timeout=30.0,
                 follow_redirects=True,
                 headers={
@@ -71,7 +71,7 @@ class ScraperBase(ABC):
     def _clear_cache(self) -> None:
         self._cache.clear()
 
-    def _request_with_retry(
+    async def _request_with_retry(
         self,
         url: str,
         method: str = "GET",
@@ -82,26 +82,27 @@ class ScraperBase(ABC):
 
         for attempt in range(self.MAX_RETRIES):
             try:
-                response = self.session.request(method, url, **kwargs)
+                response = await self.session.request(method, url, **kwargs)
                 response.raise_for_status()
                 return response
             except (httpx.HTTPError, httpx.TimeoutException) as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    _time.sleep(delay)
+                    import asyncio
+                    await asyncio.sleep(delay)
                     delay *= 2
 
         msg = f"Request failed after {self.MAX_RETRIES} retries: {url}"
         raise RuntimeError(msg) from last_error
 
-    def get(self, url: str, use_cache: bool = True) -> httpx.Response:
+    async def get(self, url: str, use_cache: bool = True) -> httpx.Response:
         cache_key = f"get:{url}"
         if use_cache:
             cached = self._get_cache(cache_key)
             if cached is not None:
                 return cached  # type: ignore[return-value]
 
-        response = self._request_with_retry(url)
+        response = await self._request_with_retry(url)
         if use_cache:
             self._set_cache(cache_key, response)
         return response
@@ -124,7 +125,13 @@ class ScraperBase(ABC):
 
     def close(self) -> None:
         if self._session is not None:
-            self._session.close()
+            try:
+                import asyncio
+                loop = asyncio.get_running_loop()
+                task = loop.create_task(self._session.aclose())
+                del task
+            except RuntimeError:
+                pass
             self._session = None
 
     def __del__(self) -> None:

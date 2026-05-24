@@ -122,7 +122,7 @@ class AptoideScraper(ScraperBase):
         """
         url = self._build_versions_url(pkg_name)
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, self.get, url)
+        response = await self.get(url)
         data = response.json()
         versions = self._parse_version_info(data)
 
@@ -171,7 +171,7 @@ class AptoideScraper(ScraperBase):
 
         loop = asyncio.get_event_loop()
         try:
-            dl_response = await loop.run_in_executor(None, self._request_with_retry, target_version.url, "GET")
+            dl_response = await self._request_with_retry(target_version.url, "GET")
 
             content_type = dl_response.headers.get("content-type", "")
             if "text/html" in content_type.lower():
