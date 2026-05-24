@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
-import time
 import zipfile
 from dataclasses import dataclass
 from io import BytesIO
@@ -336,7 +335,7 @@ class UptodownScraper(ScraperBase):
             )
 
         try:
-            response = await asyncio.to_thread(self._request_with_retry, target_version.url)
+            response = await self._request_with_retry(target_version.url)
             content = response.content
 
             if target_version.is_xapk:
@@ -455,7 +454,7 @@ class UptodownScraper(ScraperBase):
                 error=f"XAPK extraction failed: {e}",
             )
 
-    def _request_with_retry(self, url: str) -> httpx.Response:
+    async def _request_with_retry(self, url: str) -> httpx.Response:
         """Make HTTP request with retry logic.
 
         Args:
@@ -473,12 +472,12 @@ class UptodownScraper(ScraperBase):
 
         for attempt in range(self.MAX_RETRIES):
             try:
-                response = self.session.get(url)
+                response = await asyncio.to_thread(self.session.get, url)
                 response.raise_for_status()
             except Exception as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    time.sleep(delay)
+                    await asyncio.sleep(delay)
                     delay *= 2
             else:
                 return response
