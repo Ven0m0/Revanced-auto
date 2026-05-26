@@ -45,6 +45,7 @@ class GlobalConfig:
     patches_version: str = "latest"
     cli_version: str = "latest"
     patches_source: str | list[str] = "ReVanced/revanced-patches"
+    cli_source: str = "ReVanced/revanced-cli"
     riplib: bool = True
     enable_aapt2_optimize: bool = True
     exclusive_load: bool = False
@@ -91,6 +92,7 @@ class AppConfig:
     version: str | None = None
     version_code: int | None = None
     patches_source: str | list[str] | None = None
+    cli_source: str | None = None
     patches: list[str] = field(default_factory=list)
     exclude_patches: list[str] = field(default_factory=list)
     merge_patches: list[str] = field(default_factory=list)
@@ -132,6 +134,7 @@ class AppConfig:
             version=data.pop("version", None),
             version_code=data.pop("version_code", None),
             patches_source=data.pop("patches_source", None),
+            cli_source=data.pop("cli_source", None),
             patches=data.pop("patches", []),
             exclude_patches=data.pop("exclude_patches", []),
             merge_patches=data.pop("merge_patches", []),

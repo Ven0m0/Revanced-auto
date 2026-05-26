@@ -621,7 +621,7 @@ class AppProcessor:
         patches_source = app_config.patches_source or self.config.global_settings.patches_source
         patches_version = self.config.global_settings.patches_version
 
-        cli_source = self.config.global_settings.patches_source
+        cli_source = app_config.cli_source or self.config.global_settings.cli_source
         cli_version = self.config.global_settings.cli_version
 
         output_dir = Path("build")

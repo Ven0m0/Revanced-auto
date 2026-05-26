@@ -27,7 +27,9 @@ patches-source = [
 ]
 # Single source still works for backwards compatibility:
 # patches-source = "revanced/revanced-patches"
-cli-source = "j-hc/revanced-cli"             # where to fetch cli from. default: "j-hc/revanced-cli"
+cli-source = "j-hc/revanced-cli"             # where to fetch cli from. default: "ReVanced/revanced-cli"
+# Supported CLI flavors (auto-detected from --help): ReVanced CLI v5/v6, Morphe CLI, Adobo CLI.
+# Force a specific profile with cli-profile (default "auto"): "revanced-cli-v5", "revanced-cli-v6", "morphe-cli", "adobo-cli".
 # options like cli-source can also set per app
 rv-brand = "ReVanced Extended" # rebrand from 'ReVanced' to something different. default: "ReVanced"
 patches-version = "v2.160.0" # 'latest', 'dev', or a version number. default: "latest"

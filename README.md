@@ -103,6 +103,18 @@ Common global settings include:
 
 The sample config currently enables `Music-Extended` and `YouTube-Extended`; other app sections are included as examples and are disabled by default.
 
+### Patch sources
+
+`patches-source` (and `cli-source`) accepts a GitHub repo slug like `owner/repo`. A list of repo slugs is also accepted; later entries override earlier ones when patches conflict. Common choices:
+
+- **ReVanced** — `ReVanced/revanced-patches` + `ReVanced/revanced-cli` (upstream defaults).
+- **ReVanced Extended (RVX)** — `anddea/revanced-patches` + `inotia00/revanced-cli` (current sample config default).
+- **Morphe** — `MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`. Morphed app skeletons live in `config.toml` as `*-Morphed` sections.
+- **Piko** (Twitter/X) — `crimera/piko`.
+- **Patcheddit** (Reddit) — `wchill/patcheddit`.
+- **External bundles** — `brosssh/revanced-external-bundles` for community-curated patch bundles consumed alongside a primary `patches-source`.
+- **Adobo** — `jkennethcarino/adobo` as an alternative patcher CLI. Auto-detected from the JAR's `--help` output; force via `cli-profile = "adobo-cli"` if needed.
+
 Config docs and generators:
 
 - [`docs/CONFIG.md`](./docs/CONFIG.md) — config reference
