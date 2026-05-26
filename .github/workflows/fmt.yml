@@ -195,7 +195,7 @@ jobs:
         echo "| Python (Ruff) | ${{ needs.lint-python.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Shell Scripts | ${{ needs.lint-shell.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| YAML | ${{ needs.lint-yaml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| TOML (Taplo) | ${{ needs.lint-toml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| TOML (Tombi) | ${{ needs.lint-toml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Web (Biome) | ${{ needs.lint-web.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "Run \`./scripts/lint.sh\` locally to auto-fix issues." >> $GITHUB_STEP_SUMMARY

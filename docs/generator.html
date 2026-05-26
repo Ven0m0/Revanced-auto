@@ -799,32 +799,40 @@ rv-brand = "${g("rv-brand").value}"
                 requiresIntegrations: patch.requiresIntegrations || false,
                 options: patch.options || [],
             });
-            try {
-                const resp = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/patches.json`);
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const data = await resp.json();
-                const patches = data.map(transformPatch);
-                patchesCache.set(repoPath, patches);
-                return patches;
-            } catch (_primaryErr) {
-                const releaseResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`);
-                if (!releaseResp.ok) {
-                    throw new Error(`Cannot fetch patches from ${repoPath}. Ensure the repo exists and has patches.json.`);
+            // Try common branch names for raw patches.json
+            for (const branch of ["main", "dev", "master"]) {
+                try {
+                    const resp = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/patches.json`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const patches = data.map(transformPatch);
+                        patchesCache.set(repoPath, patches);
+                        return patches;
+                    }
+                } catch (_) {
+                    // try next branch
                 }
-                const release = await releaseResp.json();
-                const asset = release.assets.find((a) => a.name === "patches.json");
-                if (!asset) {
-                    throw new Error(`No patches.json found in ${repoPath} releases.`);
-                }
-                const assetResp = await fetch(asset.browser_download_url);
-                if (!assetResp.ok) {
-                    throw new Error(`Cannot download patches.json from ${repoPath} releases.`);
-                }
-                const data = await assetResp.json();
-                const patches = data.map(transformPatch);
-                patchesCache.set(repoPath, patches);
-                return patches;
             }
+            // Fall back to GitHub releases
+            const releaseResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`);
+            if (!releaseResp.ok) {
+                throw new Error(`Cannot fetch patches from ${repoPath}. Ensure the repo exists and has patches.json.`);
+            }
+            const release = await releaseResp.json();
+            // Accept exact "patches.json" or any release asset ending in .json with "patch" in the name
+            const asset = release.assets.find((a) => a.name === "patches.json")
+                || release.assets.find((a) => a.name.toLowerCase().includes("patch") && a.name.endsWith(".json"));
+            if (!asset) {
+                throw new Error(`No patches.json found in ${repoPath} releases.`);
+            }
+            const assetResp = await fetch(asset.browser_download_url);
+            if (!assetResp.ok) {
+                throw new Error(`Cannot download patches.json from ${repoPath} releases.`);
+            }
+            const data = await assetResp.json();
+            const patches = data.map(transformPatch);
+            patchesCache.set(repoPath, patches);
+            return patches;
         }
         async function loadPatches(appId) {
             const appCard = document.getElementById(`app-${appId}`);

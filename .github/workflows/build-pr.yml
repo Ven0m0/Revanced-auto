@@ -89,8 +89,8 @@ jobs:
       run: |
         echo "## Automated Tests" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [[ -f "test-multi-source.sh" ]]; then
-          if ./test-multi-source.sh 2>&1 | tee test-output.txt; then
+        if [[ -d "tests" ]]; then
+          if uv run pytest tests -v 2>&1 | tee test-output.txt; then
             echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
@@ -105,11 +105,8 @@ jobs:
             exit 1
           fi
         else
-          echo "⚠️  No test suite found (test-multi-source.sh)" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️  No test suite found" >> $GITHUB_STEP_SUMMARY
         fi
-    - name: Setup Android SDK
-      if: success()
-      uses: android-actions/setup-android@v4.0.1
     - name: Setup build environment
       if: success()
       uses: ./.github/actions/setup-environment
@@ -119,8 +116,14 @@ jobs:
       run: |
         echo "## Test Build" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        # Find first enabled app for testing
-        TEST_APP=$(jq -r 'to_entries[] | select(.value | type == "object") | select(.value.enabled != false) | .key' config.toml 2>/dev/null | head -1 || echo "")
+        # Find first enabled app for testing (use Python tomllib - jq cannot parse TOML)
+        TEST_APP=$(python3 -c "
+import tomllib, sys
+with open('config.toml', 'rb') as f:
+    cfg = tomllib.load(f)
+apps = [k for k, v in cfg.items() if isinstance(v, dict) and v.get('enabled', True)]
+print(apps[0] if apps else '')
+" 2>/dev/null || echo "")
         if [[ -z "$TEST_APP" ]]; then
           echo "⚠️  No enabled apps found in config.toml - skipping test build" >> $GITHUB_STEP_SUMMARY
           exit 0
