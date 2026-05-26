@@ -56,44 +56,38 @@ jobs:
     - name: Setup build environment
       uses: ./.github/actions/setup-environment
     - name: Generate config for ${{ inputs.app_name }}
+      env:
+        APP_NAME: ${{ inputs.app_name }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_ARCH: ${{ inputs.architecture }}
       run: |
-        echo "Generating config for: ${{ inputs.app_name }}"
-        ./extras.sh separate-config config.toml "${{ inputs.app_name }}" sep_config.toml
+        echo "Generating config for: ${APP_NAME}"
+        ./extras.sh separate-config config.toml "${APP_NAME}" sep_config.toml
         # Override version if specified
-        if [[ "${{ inputs.version }}" != "auto" ]]; then
-          echo "Overriding version to: ${{ inputs.version }}"
-          # Use Python script to update TOML
-          python3 << 'EOF'
-        import sys
-        import json
-        with open('sep_config.toml', 'r') as f:
-            content = f.read()
-        # Simple TOML version replacement
-        lines = []
-        for line in content.split('\n'):
-            if line.strip().startswith('version ='):
-                lines.append('version = "${{ inputs.version }}"')
-            else:
-                lines.append(line)
-        with open('sep_config.toml', 'w') as f:
-            f.write('\n'.join(lines))
-        EOF
+        if [[ "${INPUT_VERSION}" != "auto" ]]; then
+          echo "Overriding version to: ${INPUT_VERSION}"
+          python3 - <<'PYEOF'
+import os
+with open('sep_config.toml') as f:
+    content = f.read()
+ver = os.environ['INPUT_VERSION']
+lines = [f'version = "{ver}"' if l.strip().startswith('version =') else l for l in content.split('\n')]
+with open('sep_config.toml', 'w') as f:
+    f.write('\n'.join(lines))
+PYEOF
         fi
         # Override architecture if not "both"
-        if [[ "${{ inputs.architecture }}" != "both" ]]; then
-          echo "Setting architecture to: ${{ inputs.architecture }}"
-          python3 << 'EOF'
-        with open('sep_config.toml', 'r') as f:
-            content = f.read()
-        lines = []
-        for line in content.split('\n'):
-            if line.strip().startswith('arch ='):
-                lines.append('arch = "${{ inputs.architecture }}"')
-            else:
-                lines.append(line)
-        with open('sep_config.toml', 'w') as f:
-            f.write('\n'.join(lines))
-        EOF
+        if [[ "${INPUT_ARCH}" != "both" ]]; then
+          echo "Setting architecture to: ${INPUT_ARCH}"
+          python3 - <<'PYEOF'
+import os
+with open('sep_config.toml') as f:
+    content = f.read()
+arch = os.environ['INPUT_ARCH']
+lines = [f'arch = "{arch}"' if l.strip().startswith('arch =') else l for l in content.split('\n')]
+with open('sep_config.toml', 'w') as f:
+    f.write('\n'.join(lines))
+PYEOF
         fi
         echo "Final config:"
         cat sep_config.toml
