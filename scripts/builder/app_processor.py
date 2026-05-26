@@ -371,9 +371,9 @@ class AppBuildContext:
     output_path: Path
     source: DownloadSource
     download_url: str = ""
-    patches_source: str | list[str] = "ReVanced/revanced-patches"
+    patches_source: str | list[str] = "MorpheApp/morphe-patches"
     patches_version: str = "latest"
-    cli_source: str = "ReVanced/revanced-cli"
+    cli_source: str = "MorpheApp/morphe-cli"
     cli_version: str = "latest"
     cli_jar: Path | None = None
     patches_jars: list[Path] = field(default_factory=list)
@@ -743,15 +743,32 @@ class AppProcessor:
             [context.patches_source] if isinstance(context.patches_source, str) else context.patches_source
         )
 
+        from scripts.scrapers.external_bundles import (
+            is_external_bundles_source,
+            parse_bundle_selector,
+            resolve_bundle,
+        )
+
         for idx, patches_src in enumerate(patches_sources):
             patches_jar = prebuilts_dir / f"patches-{context.patches_version}-{idx}.jar"
             patches_jars.append(patches_jar)
 
-            if not patches_jar.exists():
-                patches_url = f"https://github.com/{patches_src}/releases/download/v{context.patches_version}/revanced-patches-{context.patches_version}.jar"
-                success = gh_dl(patches_jar, patches_url)
-                if not success:
-                    raise RuntimeError(f"Failed to download patches from {patches_url}")
+            if patches_jar.exists():
+                continue
+
+            if is_external_bundles_source(patches_src):
+                selector = parse_bundle_selector(patches_src) or context.app_id
+                entry = resolve_bundle(selector, context.patches_version)
+                patches_url = entry.download_url
+            else:
+                patches_url = (
+                    f"https://github.com/{patches_src}/releases/download/v{context.patches_version}/"
+                    f"revanced-patches-{context.patches_version}.jar"
+                )
+
+            success = gh_dl(patches_jar, patches_url)
+            if not success:
+                raise RuntimeError(f"Failed to download patches from {patches_url}")
 
         return cli_jar, patches_jars
 
@@ -1028,7 +1045,7 @@ class GlobalConfig:
     build_mode: str = "apk"
     patches_version: str = "latest"
     cli_version: str = "latest"
-    patches_source: str | list[str] = "ReVanced/revanced-patches"
+    patches_source: str | list[str] = "MorpheApp/morphe-patches"
     riplib: bool = True
     keystore_path: str | None = None
 

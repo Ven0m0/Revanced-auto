@@ -107,13 +107,13 @@ The sample config currently enables `Music-Extended` and `YouTube-Extended`; oth
 
 `patches-source` (and `cli-source`) accepts a GitHub repo slug like `owner/repo`. A list of repo slugs is also accepted; later entries override earlier ones when patches conflict. Common choices:
 
-- **ReVanced** — `ReVanced/revanced-patches` + `ReVanced/revanced-cli` (upstream defaults).
-- **ReVanced Extended (RVX)** — `anddea/revanced-patches` + `inotia00/revanced-cli` (current sample config default).
-- **Morphe** — `MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`. Morphed app skeletons live in `config.toml` as `*-Morphed` sections.
+- **Morphe (current default)** — `MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`. Active app sections are `YouTube-Morphed` and `Music-Morphed`.
+- **ReVanced** — `ReVanced/revanced-patches` + `ReVanced/revanced-cli` (upstream).
+- **ReVanced Extended (RVX)** — `anddea/revanced-patches` + `inotia00/revanced-cli`. Sample sections `YouTube-Extended` / `Music-Extended` are shipped disabled; flip `enabled = true` to use them.
 - **Piko** (Twitter/X) — `crimera/piko`.
 - **Patcheddit** (Reddit) — `wchill/patcheddit`.
-- **External bundles** — `brosssh/revanced-external-bundles` for community-curated patch bundles consumed alongside a primary `patches-source`.
-- **Adobo** — `jkennethcarino/adobo` as an alternative patcher CLI. Auto-detected from the JAR's `--help` output; force via `cli-profile = "adobo-cli"` if needed.
+- **External bundles** — `brosssh/revanced-external-bundles` resolves a patch JAR via the community aggregator's GraphQL API (https://revanced-external-bundles.brosssh.com). Use `external-bundles:<bundle_type>` to pin a specific bundle type; the bare repo slug falls back to selecting by the app's package id.
+- **Adobo** — `jkennethcarino/adobo` is a patches collection that runs on top of Morphe CLI. Set `patches-source = "jkennethcarino/adobo"` (and keep `cli-source = "MorpheApp/morphe-cli"`).
 
 Config docs and generators:
 

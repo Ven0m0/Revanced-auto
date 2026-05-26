@@ -28,19 +28,18 @@ jobs:
       uses: actions/checkout@v6.0.2
       with:
         fetch-depth: 0
-    - name: Setup Java
-      uses: actions/setup-java@v5.2.0
+    - name: Install mise-managed toolchain (Java, Python, uv)
+      uses: jdx/mise-action@v4.0.1
       with:
-        distribution: temurin
-        java-version: '21'
+        install: true
+        cache: true
     - name: Check prerequisites
       id: prereq
       run: |
         echo "## Prerequisites Check" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        # Check for required tools
         MISSING=""
-        for tool in jq zip curl java; do
+        for tool in jq zip curl java uv; do
           if command -v $tool &> /dev/null; then
             echo "✓ $tool" >> $GITHUB_STEP_SUMMARY
           else
@@ -52,7 +51,6 @@ jobs:
           echo "Missing tools:$MISSING"
           exit 1
         fi
-        # Check Java version
         JAVA_VER=$(java -version 2>&1 | head -n 1 | awk -F '"' '{print $2}' | cut -d'.' -f1)
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "Java version: $JAVA_VER" >> $GITHUB_STEP_SUMMARY

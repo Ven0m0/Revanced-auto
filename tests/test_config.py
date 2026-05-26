@@ -42,7 +42,10 @@ class TestGlobalConfig:
         assert cfg.verbose is True
 
     def test_default_cli_source(self) -> None:
-        assert GlobalConfig().cli_source == "ReVanced/revanced-cli"
+        assert GlobalConfig().cli_source == "MorpheApp/morphe-cli"
+
+    def test_default_patches_source(self) -> None:
+        assert GlobalConfig().patches_source == "MorpheApp/morphe-patches"
 
     def test_cli_source_override(self) -> None:
         cfg = GlobalConfig.from_dict({"cli_source": "MorpheApp/morphe-cli"})

@@ -44,8 +44,8 @@ class GlobalConfig:
     cli_profile: str = "auto"
     patches_version: str = "latest"
     cli_version: str = "latest"
-    patches_source: str | list[str] = "ReVanced/revanced-patches"
-    cli_source: str = "ReVanced/revanced-cli"
+    patches_source: str | list[str] = "MorpheApp/morphe-patches"
+    cli_source: str = "MorpheApp/morphe-cli"
     riplib: bool = True
     enable_aapt2_optimize: bool = True
     exclusive_load: bool = False

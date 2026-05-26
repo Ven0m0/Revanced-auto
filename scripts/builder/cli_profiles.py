@@ -205,10 +205,10 @@ MORPHE_CLI = CLIProfile(
 )
 
 ADOBO_CLI = CLIProfile(
-    name="Adobo CLI",
+    name="Adobo (Morphe patches)",
     profile_type=CLIProfileType.ADOBO_CLI,
-    list_patches_args=_v6_list_patches_args(),
-    patch_args=_v6_patch_args(),
+    list_patches_args=_morphe_list_patches_args(),
+    patch_args=_morphe_patch_args(),
 )
 
 BUILTIN_PROFILES: dict[CLIProfileType, CLIProfile] = {
@@ -305,7 +305,7 @@ def build_cli_args(
     bare: bool = False,
     inplace: bool = False,
     werror: bool = False,
-    _options: dict[str, Any] | None = None,
+    options: dict[str, Any] | None = None,  # noqa: ARG001
 ) -> list[str]:
     """Build command arguments from profile configuration.
 
