@@ -41,6 +41,16 @@ class TestGlobalConfig:
         assert cfg.riplib is False
         assert cfg.verbose is True
 
+    def test_default_cli_source(self) -> None:
+        assert GlobalConfig().cli_source == "MorpheApp/morphe-cli"
+
+    def test_default_patches_source(self) -> None:
+        assert GlobalConfig().patches_source == "MorpheApp/morphe-patches"
+
+    def test_cli_source_override(self) -> None:
+        cfg = GlobalConfig.from_dict({"cli_source": "MorpheApp/morphe-cli"})
+        assert cfg.cli_source == "MorpheApp/morphe-cli"
+
 
 # ---------------------------------------------------------------------------
 # AppConfig.from_dict
@@ -88,6 +98,17 @@ class TestAppConfigFromDict:
     def test_invalid_name_type_raises(self) -> None:
         with pytest.raises(ConfigError):
             AppConfig.from_dict(123, {})  # type: ignore[arg-type]
+
+    def test_cli_source_default(self) -> None:
+        assert AppConfig.from_dict("YouTube", {}).cli_source is None
+
+    def test_cli_source_override(self) -> None:
+        cfg = AppConfig.from_dict("YouTube", {"cli_source": "MorpheApp/morphe-cli"})
+        assert cfg.cli_source == "MorpheApp/morphe-cli"
+
+    def test_cli_source_not_in_options(self) -> None:
+        cfg = AppConfig.from_dict("YouTube", {"cli_source": "MorpheApp/morphe-cli"})
+        assert "cli_source" not in cfg.options
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +223,9 @@ class TestConfigLoader:
 
 
 class TestConfig:
-    def _make_config(self, apps: dict[str, AppConfig], modules: dict[str, dict[str, ModuleConfig]] | None = None) -> Config:
+    def _make_config(
+        self, apps: dict[str, AppConfig], modules: dict[str, dict[str, ModuleConfig]] | None = None
+    ) -> Config:
         return Config(
             global_settings=GlobalConfig(),
             apps=apps,

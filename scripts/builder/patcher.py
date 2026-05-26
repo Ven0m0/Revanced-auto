@@ -345,6 +345,11 @@ class ReVancedPatcher:
     ) -> list[str]:
         """Build arguments for the patch command.
 
+        Delegates flag mapping to the active ``CLIProfile`` so the same patcher
+        works across ReVanced CLI v5/v6, Morphe, and Adobo (Morphe-compatible)
+        without branching here. Signing/keystore-password/aapt2 flags are
+        appended afterwards since they have no profile-level mapping yet.
+
         Args:
             stock_apk: Path to the input APK.
             output_apk: Path to the output APK.
@@ -358,31 +363,21 @@ class ReVancedPatcher:
         Returns:
             List of command arguments.
         """
-        args: list[str] = []
-
-        args.append(str(stock_apk))
-        args.append("--purge")
-        args.extend(["-o", str(output_apk)])
-
-        for jar in patches_jars:
-            args.extend(["-p", str(jar)])
-
-        for jar in patches_post:
-            args.extend(["-b", str(jar)])
-
-        for patch_name in exclude_patches:
-            args.extend(["-d", patch_name])
-
-        for patch_name in include_patches:
-            args.extend(["-e", patch_name])
-
-        for jar in merge_jars:
-            args.extend(["-m", str(jar)])
+        args: list[str] = self.cli_profile.build_patch_args(
+            apk_path=stock_apk,
+            output_path=output_apk,
+            patches_jars=patches_jars,
+            patches_post=patches_post,
+            exclude=exclude_patches,
+            include=include_patches,
+            merge=merge_jars,
+            keystore=self.patcher_config.keystore_path,
+            force=force,
+            purge=True,
+        )
 
         args.extend(
             [
-                "--keystore",
-                str(self.patcher_config.keystore_path),
                 "--keystore-password=env:RV_KEYSTORE_PASSWORD",
                 "--keystore-entry-password=env:RV_KEYSTORE_ENTRY_PASSWORD",
                 "--signer",
@@ -391,9 +386,6 @@ class ReVancedPatcher:
                 self.patcher_config.key_alias,
             ]
         )
-
-        if force:
-            args.append("-f")
 
         if self.patcher_config.custom_aapt2_binary and self.patcher_config.custom_aapt2_binary.exists():
             args.append(f"--custom-aapt2-binary={self.patcher_config.custom_aapt2_binary}")

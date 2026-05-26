@@ -37,12 +37,19 @@ cli-version = "dev"
 # - Specific version: e.g., "18.48.39"
 version = "auto"
 
+# Default patcher CLI and patches: Morphe (T2.1).
+# Override per-app via `cli-source` / `patches-source` to fall back to ReVanced or any other ecosystem.
+cli-source = "MorpheApp/morphe-cli"
+patches-source = "MorpheApp/morphe-patches"
+
 # Alternative Patch Sources (for patches-source):
+# - Morphe (default): MorpheApp/morphe-patches
+# - Adobo (Morphe-compatible patches): jkennethcarino/adobo
+# - External Bundles aggregator: brosssh/revanced-external-bundles
 # - ReVanced: ReVanced/revanced-patches
 # - ReVanced Extended (anddea): anddea/revanced-patches
 # - ReVanced Extended (inotia00): inotia00/revanced-patches
 # - De-ReVanced: RookieEnough/De-ReVanced
-# - Morphe: MorpheApp/morphe-patches
 # - Piko (Twitter): crimera/piko
 # - Patcheddit (Reddit): wchill/patcheddit
 
@@ -75,9 +82,9 @@ use-custom-aapt2 = true
 # Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, archive-dlurl, apkpure-dlurl, or aptoide-dlurl)
 # Optional fields: All global settings can be overridden per-app
 # =============================================================================
-# YouTube Music Extended (RVX)
+# YouTube Music Extended (RVX) — opt-in alternative to Morphe defaults.
 [Music-Extended]
-enabled = true
+enabled = false
 app-name = "Music"
 patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
@@ -99,9 +106,9 @@ apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
 apkpure-dlurl = "https://apkpure.net/youtube-music/com.google.android.apps.youtube.music"
 
-# YouTube Extended (RVX)
+# YouTube Extended (RVX) — opt-in alternative to Morphe defaults.
 [YouTube-Extended]
-enabled = true
+enabled = false
 app-name = "YouTube"
 patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
@@ -177,14 +184,17 @@ uptodown-dlurl = "https://google-photos.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.photos"
 apkpure-dlurl = "https://apkpure.net/google-photos/com.google.android.apps.photos"
 
-# YouTube Morphed
+# YouTube Morphed (default Morphe build).
 [YouTube-Morphed]
-enabled = false
+enabled = true
 app-name = "YouTube"
 patches-source = "MorpheApp/morphe-patches"
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
+uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
+apkpure-dlurl = "https://apkpure.net/youtube/com.google.android.youtube"
 
 # YouTube Legacy (Android 6-7)
 [YouTube-Legacy]
@@ -202,14 +212,17 @@ patches-source = "wchill/patcheddit"
 rv-brand = "Patcheddit"
 apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
 
-# Music Morphed
+# YouTube Music Morphed (default Morphe build).
 [Music-Morphed]
-enabled = false
+enabled = true
 app-name = "Music"
 patches-source = "MorpheApp/morphe-patches"
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
+uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
+apkpure-dlurl = "https://apkpure.net/youtube-music/com.google.android.apps.youtube.music"
 
 # Reddit Morphed
 [Reddit-Morphed]

@@ -36,7 +36,7 @@ jobs:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
     - name: Set up Python
-      run: uv python install 3.14
+      run: uv python install 3.13
     - name: Install dependencies
       run: uv sync --frozen --all-extras
     - name: Run Ruff Linter
@@ -106,7 +106,7 @@ jobs:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
     - name: Set up Python
-      run: uv python install 3.14
+      run: uv python install 3.13
     - name: Setup local bin
       run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
     - name: Cache yamlfmt

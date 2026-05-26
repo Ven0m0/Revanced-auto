@@ -22,12 +22,16 @@ compression-level = 9                # module zip compression level
 remove-rv-integrations-checks = true # remove checks from the revanced integrations
 # Multiple patch sources can be specified as an array (patches are merged, later sources override earlier ones on conflicts)
 patches-source = [
-  "anddea/revanced-patches",
-  "jkennethcarino/privacy-revanced-patches"
+  "MorpheApp/morphe-patches",       # default
+  "jkennethcarino/adobo",           # Morphe-compatible add-on patches
+  # "brosssh/revanced-external-bundles",         # resolves via the external-bundles aggregator (matched by package id)
+  # "external-bundles:revanced-patches"          # explicit bundle_type selector
 ]
 # Single source still works for backwards compatibility:
-# patches-source = "revanced/revanced-patches"
-cli-source = "j-hc/revanced-cli"             # where to fetch cli from. default: "j-hc/revanced-cli"
+# patches-source = "MorpheApp/morphe-patches"
+cli-source = "j-hc/revanced-cli"             # where to fetch cli from. default: "ReVanced/revanced-cli"
+# Supported CLI flavors (auto-detected from --help): ReVanced CLI v5/v6, Morphe CLI, Adobo CLI.
+# Force a specific profile with cli-profile (default "auto"): "revanced-cli-v5", "revanced-cli-v6", "morphe-cli", "adobo-cli".
 # options like cli-source can also set per app
 rv-brand = "ReVanced Extended" # rebrand from 'ReVanced' to something different. default: "ReVanced"
 patches-version = "v2.160.0" # 'latest', 'dev', or a version number. default: "latest"

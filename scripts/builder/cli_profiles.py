@@ -18,6 +18,7 @@ class CLIProfileType(Enum):
     REVANCED_CLI_V5 = "revanced-cli-v5"
     REVANCED_CLI_V6 = "revanced-cli-v6"
     MORPHE_CLI = "morphe-cli"
+    ADOBO_CLI = "adobo-cli"
     UNKNOWN = "unknown"
 
 
@@ -203,10 +204,18 @@ MORPHE_CLI = CLIProfile(
     patch_args=_morphe_patch_args(),
 )
 
+ADOBO_CLI = CLIProfile(
+    name="Adobo (Morphe patches)",
+    profile_type=CLIProfileType.ADOBO_CLI,
+    list_patches_args=_morphe_list_patches_args(),
+    patch_args=_morphe_patch_args(),
+)
+
 BUILTIN_PROFILES: dict[CLIProfileType, CLIProfile] = {
     CLIProfileType.REVANCED_CLI_V5: REVANCED_CLI_V5,
     CLIProfileType.REVANCED_CLI_V6: REVANCED_CLI_V6,
     CLIProfileType.MORPHE_CLI: MORPHE_CLI,
+    CLIProfileType.ADOBO_CLI: ADOBO_CLI,
 }
 
 
@@ -261,6 +270,9 @@ def _detect_profile_from_help(help_output: str) -> CLIProfile:
     """
     help_lower = help_output.lower()
 
+    if "adobo" in help_lower:
+        return ADOBO_CLI
+
     if "morphe" in help_lower:
         return MORPHE_CLI
 
@@ -293,7 +305,7 @@ def build_cli_args(
     bare: bool = False,
     inplace: bool = False,
     werror: bool = False,
-    _options: dict[str, Any] | None = None,
+    options: dict[str, Any] | None = None,  # noqa: ARG001
 ) -> list[str]:
     """Build command arguments from profile configuration.
 

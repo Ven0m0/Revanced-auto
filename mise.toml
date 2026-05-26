@@ -1,5 +1,4 @@
 [settings]
-# gix = true
 experimental = true
 color = true
 yes = true
@@ -10,31 +9,16 @@ lockfile = true
 uv_venv_auto = "create|source"
 uv_venv_create_args = ["--seed", "--system-site-packages"]
 
-[settings.cargo]
-binstall = true
-
-[settings.pipx]
-uvx = true
-
-[settings.npm]
-bun = true
-
 [tools]
-python = "3.14"
+# Core toolchain shared by local dev and CI. Other lint/type/test helpers
+# (mypy, ruff, pytest, prek, ...) live in pyproject.toml dev groups so
+# `uv sync --all-groups` is the single source of truth and `mise install`
+# stays fast and reproducible.
+python = "3.13"
 uv = "latest"
 java = "temurin-25.0.3+9.0.LTS"
-actionlint = "latest"
-action-validator = "latest"
-ruff = "latest"
-ty = "latest"
-prek = "latest"
-"pipx:pytest" = "latest"
-"pipx:basedpyright" = "latest"
 
 [env]
 _.file = { path = ".env", tools = true }
-_.path = ["{{config_root}}/node_modules/.bin"]
 _.python.venv = ".venv"
-NODE_ENV = "{{ env.NODE_ENV | default(value='production') }}"
-MISE_NPM_PACKAGE_MANAGER = "bun"
 PYTHONOPTIMIZE = "1"
