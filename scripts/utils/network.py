@@ -450,6 +450,23 @@ def _calculate_sha256(file_path: Path) -> str:
         return hashlib.file_digest(f, "sha256").hexdigest()
 
 
+async def _async_verify_or_remove(file_path: Path, sha256: str | None) -> bool:
+    """Async wrapper for _verify_or_remove.
+
+    Args:
+        file_path: Path to the file to verify.
+        sha256: Expected SHA256 hex digest, or None to skip verification.
+
+    Returns:
+        True if the file is valid (or no sha256 was specified), False if the
+        hash mismatched (the file is removed).
+
+    """
+    import asyncio
+
+    return await asyncio.to_thread(_verify_or_remove, file_path, sha256)
+
+
 def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
     """Verify a file's SHA256 checksum; remove it if the check fails.
 
@@ -585,7 +602,7 @@ async def async_download_with_lock(
     lock_file = work_dir / "lock"
 
     if output_path.exists():
-        verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+        verified = await _async_verify_or_remove(output_path, sha256)
         if verified:
             return True
 
@@ -598,6 +615,7 @@ async def async_download_with_lock(
 
     def _release_lock(fileno: int) -> None:
         import contextlib
+
         fcntl.flock(fileno, fcntl.LOCK_UN)
         with contextlib.suppress(OSError):
             os.close(fileno)
@@ -609,14 +627,14 @@ async def async_download_with_lock(
         lock_fileno = await loop.run_in_executor(None, _acquire_lock)
 
         if output_path.exists():
-            verified = await loop.run_in_executor(None, _verify_or_remove, output_path, sha256)
+            verified = await _async_verify_or_remove(output_path, sha256)
             if verified:
                 return True
 
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
             if sha256:
-                valid = await loop.run_in_executor(None, _verify_or_remove, temp_path, sha256)
+                valid = await _async_verify_or_remove(temp_path, sha256)
                 if not valid:
                     return False
             temp_path.replace(output_path)

@@ -202,7 +202,9 @@ class TestConfigLoader:
 
 
 class TestConfig:
-    def _make_config(self, apps: dict[str, AppConfig], modules: dict[str, dict[str, ModuleConfig]] | None = None) -> Config:
+    def _make_config(
+        self, apps: dict[str, AppConfig], modules: dict[str, dict[str, ModuleConfig]] | None = None
+    ) -> Config:
         return Config(
             global_settings=GlobalConfig(),
             apps=apps,
