@@ -46,7 +46,7 @@ class HttpClientConfig:
     initial_delay: int = DEFAULT_INITIAL_DELAY
     connect_timeout: int = 10
     user_agent: str = "Mozilla/5.0 (X11; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0"
-    github_token: str | None = field(default_factory=lambda: os.environ.get("GITHUB_TOKEN"))
+    github_token: str | None = field(default_factory=lambda: os.environ.get("GITHUB_TOKEN"), repr=False)
     cookie_file: Path | None = None
 
 
