@@ -117,8 +117,7 @@ class APKPureScraper(ScraperBase):
         name = str(kwargs.get("name", pkg_name))
         url = self._build_url(name, pkg_name, "versions")
 
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, self.get, url)
+        response = await self.async_get(url)
         html = response.text
 
         return self._parse_versions_page(html)
@@ -148,17 +147,17 @@ class APKPureScraper(ScraperBase):
         name = str(kwargs.get("name", pkg_name))
         url = self._build_url(name, pkg_name, f"download/{version}")
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         try:
-            response = await loop.run_in_executor(None, self.get, url)
+            response = await self.async_get(url)
             html = response.text
 
             download_url = self._parse_download_link(html)
             if download_url is None:
                 return DownloadResult(success=False, error="Download link not found")
 
-            dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
+            dl_response = await self._async_request_with_retry(download_url, method="GET")
 
             content_type = dl_response.headers.get("content-type", "")
             if "text/html" in content_type.lower():
@@ -166,7 +165,7 @@ class APKPureScraper(ScraperBase):
                 download_url = self._parse_download_link(html)
                 if download_url is None:
                     return DownloadResult(success=False, error="Download link not found")
-                dl_response = await loop.run_in_executor(None, self._request_with_retry, download_url, "GET")
+                dl_response = await self._async_request_with_retry(download_url, method="GET")
 
             await loop.run_in_executor(
                 None,

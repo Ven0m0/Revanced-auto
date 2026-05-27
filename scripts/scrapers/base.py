@@ -43,6 +43,7 @@ class ScraperBase(ABC):
     def __init__(self, source: DownloadSource) -> None:
         self.source = source
         self._session: httpx.Client | None = None
+        self._async_session: httpx.AsyncClient | None = None
         self._cache: dict[str, tuple[float, object]] = {}
 
     @property
@@ -56,6 +57,18 @@ class ScraperBase(ABC):
                 },
             )
         return self._session
+
+    @property
+    def async_session(self) -> httpx.AsyncClient:
+        if self._async_session is None:
+            self._async_session = httpx.AsyncClient(
+                timeout=30.0,
+                follow_redirects=True,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (compatible; APKScraper/1.0)",
+                },
+            )
+        return self._async_session
 
     def _get_cache(self, key: str) -> object | None:
         if key in self._cache:
@@ -106,6 +119,41 @@ class ScraperBase(ABC):
             self._set_cache(cache_key, response)
         return response
 
+    async def _async_request_with_retry(
+        self,
+        url: str,
+        method: str = "GET",
+        **kwargs: object,
+    ) -> httpx.Response:
+        delay = self.BASE_DELAY
+        last_error: Exception | None = None
+
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                response = await self.async_session.request(method, url, **kwargs)
+                response.raise_for_status()
+                return response
+            except (httpx.HTTPError, httpx.TimeoutException) as e:
+                last_error = e
+                if attempt < self.MAX_RETRIES - 1:
+                    await _asyncio.sleep(delay)
+                    delay *= 2
+
+        msg = f"Request failed after {self.MAX_RETRIES} retries: {url}"
+        raise RuntimeError(msg) from last_error
+
+    async def async_get(self, url: str, use_cache: bool = True) -> httpx.Response:
+        cache_key = f"get:{url}"
+        if use_cache:
+            cached = self._get_cache(cache_key)
+            if cached is not None:
+                return cached  # type: ignore[return-value]
+
+        response = await self._async_request_with_retry(url)
+        if use_cache:
+            self._set_cache(cache_key, response)
+        return response
+
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         raise NotImplementedError
 
@@ -126,9 +174,20 @@ class ScraperBase(ABC):
         if self._session is not None:
             self._session.close()
             self._session = None
+        if self._async_session is not None:
+            import contextlib
+
+            try:
+                loop = _asyncio.get_running_loop()
+                self._close_task = loop.create_task(self._async_session.aclose())
+            except RuntimeError:
+                with contextlib.suppress(Exception):
+                    _asyncio.run(self._async_session.aclose())
+            self._async_session = None
 
     def __del__(self) -> None:
         self.close()
 
 
+import asyncio as _asyncio
 import time as _time
