@@ -232,24 +232,14 @@ class ReVancedPatcher:
         Returns:
             PatcherResult indicating success or failure.
         """
-        if not stock_apk.exists():
-            return PatcherResult(success=False, error=f"Stock APK not found: {stock_apk}")
+        error = self._verify_inputs(stock_apk, cli_jar, patches_jars)
+        if error:
+            return PatcherResult(success=False, error=error)
 
-        if not cli_jar.exists():
-            return PatcherResult(success=False, error=f"CLI JAR not found: {cli_jar}")
-
-        for jar in patches_jars:
-            if not jar.exists():
-                return PatcherResult(success=False, error=f"Patches JAR not found: {jar}")
-
-        if exclude_patches is None:
-            exclude_patches = []
-        if include_patches is None:
-            include_patches = []
-        if merge_jars is None:
-            merge_jars = []
-        if patches_post is None:
-            patches_post = []
+        exclude_patches = exclude_patches or []
+        include_patches = include_patches or []
+        merge_jars = merge_jars or []
+        patches_post = patches_post or []
 
         output_apk.parent.mkdir(parents=True, exist_ok=True)
 
@@ -268,6 +258,37 @@ class ReVancedPatcher:
             force=force,
         )
 
+        result = self._execute_patch_command(cli_jar, cli_args)
+        if result:
+            return result
+
+        if not output_apk.exists():
+            return PatcherResult(success=False, error="Patching succeeded but output APK not found")
+
+        result = self._sign_apk(output_apk)
+        if result:
+            return result
+
+        self._zipalign_apk(output_apk)
+
+        return PatcherResult(success=True, output_apk=output_apk, version=version)
+
+    def _verify_inputs(self, stock_apk: Path, cli_jar: Path, patches_jars: list[Path]) -> str | None:
+        """Verify that all input files exist."""
+        if not stock_apk.exists():
+            return f"Stock APK not found: {stock_apk}"
+
+        if not cli_jar.exists():
+            return f"CLI JAR not found: {cli_jar}"
+
+        for jar in patches_jars:
+            if not jar.exists():
+                return f"Patches JAR not found: {jar}"
+
+        return None
+
+    def _execute_patch_command(self, cli_jar: Path, cli_args: list[str]) -> PatcherResult | None:
+        """Execute the ReVanced CLI patch command."""
         logger.info("Executing: java -jar %s patch %s", cli_jar.name, " ".join(cli_args))
 
         env = os.environ.copy()
@@ -301,9 +322,10 @@ class ReVancedPatcher:
         except OSError as e:
             return PatcherResult(success=False, error=f"Failed to execute Java: {e}")
 
-        if not output_apk.exists():
-            return PatcherResult(success=False, error="Patching succeeded but output APK not found")
+        return None
 
+    def _sign_apk(self, output_apk: Path) -> PatcherResult | None:
+        """Re-sign the patched APK."""
         temp_signed = output_apk.parent / f"{output_apk.stem}.tmp-signed.apk"
         try:
             signer = APKSigner(
@@ -322,6 +344,10 @@ class ReVancedPatcher:
             temp_signed.unlink(missing_ok=True)
             return PatcherResult(success=False, error=f"Failed to re-sign APK: {e}")
 
+        return None
+
+    def _zipalign_apk(self, output_apk: Path) -> None:
+        """Zipalign the signed APK."""
         aligned_apk = output_apk.parent / f"{output_apk.stem}-aligned.apk"
         if align_apk(output_apk, aligned_apk):
             aligned_apk.replace(output_apk)
@@ -329,8 +355,6 @@ class ReVancedPatcher:
         else:
             logger.warning("zipalign failed, continuing with unaligned APK")
             aligned_apk.unlink(missing_ok=True)
-
-        return PatcherResult(success=True, output_apk=output_apk, version=version)
 
     def _build_patch_args(
         self,
