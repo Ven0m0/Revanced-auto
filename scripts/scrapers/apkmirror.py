@@ -6,7 +6,6 @@ import asyncio
 import re
 import subprocess
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Literal
 
@@ -21,13 +20,6 @@ from scripts.scrapers.base import (
 
 type ArchType = Literal["universal", "noarch", "arm64-v8a", "armeabi-v7a", "arm64-v8a + armeabi-v7a"]
 type BundleType = Literal["APK", "BUNDLE"]
-
-
-class ApkBundle(Enum):
-    """APK bundle type."""
-
-    APK = "APK"
-    BUNDLE = "BUNDLE"
 
 
 @dataclass(frozen=True, slots=True)
