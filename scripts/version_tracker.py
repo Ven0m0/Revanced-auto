@@ -37,13 +37,6 @@ import orjson
 STATE_FILE: Final[Path] = Path(".github/last_built_versions.json")
 
 
-class VersionState(TypedDict):
-    """State dictionary for version tracking."""
-
-    component: str
-    version: str
-
-
 class AppVersionInfo(TypedDict, total=False):
     """App version information from config."""
 
