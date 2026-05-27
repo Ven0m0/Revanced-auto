@@ -3,7 +3,6 @@
 import re
 import shutil
 import subprocess
-import tempfile
 import zipfile
 from enum import Enum
 from pathlib import Path
@@ -164,62 +163,6 @@ def align_apk(input_path: Path, output_path: Path) -> bool:
         return True
     except subprocess.CalledProcessError:
         return False
-
-
-def merge_bundle(bundle_path: Path, output_path: Path) -> bool:
-    """Merge split APK bundle into single APK using APKEditor.
-
-    Args:
-        bundle_path: Path to the XAPK/APKM bundle file.
-        output_path: Path to the output merged APK file.
-
-    Returns:
-        True if merge succeeded, False otherwise.
-    """
-    if not isinstance(bundle_path, Path):
-        raise ValueError("merge_bundle: bundle_path must be a Path object")
-    if not _validate_path(bundle_path):
-        raise ValueError(f"merge_bundle: path traversal detected in '{bundle_path}'")
-
-    bundle_ext = bundle_path.suffix.lower()
-    if bundle_ext not in (".xapk", ".apkm"):
-        raise ValueError(f"merge_bundle: bundle must be .xapk or .apkm, got '{bundle_ext}'")
-
-    if not _validate_path(output_path):
-        raise ValueError(f"merge_bundle: path traversal detected in '{output_path}'")
-    if output_path.suffix.lower() != ".apk":
-        raise ValueError("merge_bundle: output must have .apk extension")
-
-    if not bundle_path.exists():
-        return False
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-
-        try:
-            cmd = [
-                "java",
-                "-jar",
-                "APKEditor.jar",
-                "merge",
-                "-i",
-                str(bundle_path),
-                "-o",
-                str(temp_path / "merged.apk"),
-            ]
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-            if result.returncode != 0:
-                return False
-
-            merged_apk = temp_path / "merged.apk"
-            if not merged_apk.exists():
-                return False
-
-            shutil.copy2(merged_apk, output_path)
-            return True
-
-        except (subprocess.CalledProcessError, OSError):
-            return False
 
 
 def verify_signature(apk_path: Path) -> str | None:
