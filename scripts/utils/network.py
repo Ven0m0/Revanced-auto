@@ -598,6 +598,7 @@ async def async_download_with_lock(
 
     def _release_lock(fileno: int) -> None:
         import contextlib
+
         fcntl.flock(fileno, fcntl.LOCK_UN)
         with contextlib.suppress(OSError):
             os.close(fileno)

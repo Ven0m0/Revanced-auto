@@ -7,6 +7,7 @@ versions and downloading APKs from Aptoide.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,6 +21,7 @@ from scripts.scrapers.base import (
     ScraperBase,
     VersionInfo,
 )
+from scripts.utils.network import HttpClient
 
 APTOIDE_API = "https://ws75.aptoide.com/api/7"
 
@@ -121,9 +123,9 @@ class AptoideScraper(ScraperBase):
 
         """
         url = self._build_versions_url(pkg_name)
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, self.get, url)
-        data = response.json()
+        async with HttpClient() as client:
+            response_text = await client.async_get(url)
+            data = json.loads(response_text)
         versions = self._parse_version_info(data)
 
         arch = str(kwargs.get("arch", "universal"))
