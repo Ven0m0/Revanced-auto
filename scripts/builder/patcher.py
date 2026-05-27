@@ -11,6 +11,7 @@ Exit codes:
 
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import logging
 import os
@@ -533,15 +534,17 @@ class ReVancedPatcher:
             return ""
 
         patches_hashes: list[str] = []
-        for jar in patches_jars:
-            if not jar.exists():
-                logger.warning("get_cached_patches_list: JAR not found: %s", jar)
-                return ""
-            jar_hash = _get_file_hash(jar)
-            if jar_hash is None:
-                logger.warning("Failed to get hash for: %s", jar)
-                return ""
-            patches_hashes.append(jar_hash)
+        if patches_jars:
+            for jar in patches_jars:
+                if not jar.exists():
+                    logger.warning("get_cached_patches_list: JAR not found: %s", jar)
+                    return ""
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                for i, jar_hash in enumerate(executor.map(_get_file_hash, patches_jars)):
+                    if jar_hash is None:
+                        logger.warning("Failed to get hash for: %s", patches_jars[i])
+                        return ""
+                    patches_hashes.append(jar_hash)
 
         cache_key = f"patches-list-{cli_hash}-{'+'.join(patches_hashes)}"
         cache_path = self._cache_manager.get_cache_path(cache_key, subdir="patches")
