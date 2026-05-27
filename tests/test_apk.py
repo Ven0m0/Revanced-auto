@@ -147,6 +147,28 @@ class TestSplitAPKHandler:
             jar = handler._find_apkeditor()
         assert jar is None
 
+    def test_extract_splits_skips_malicious_paths(self, tmp_path: Path) -> None:
+        # ruff: noqa: PLC0415
+        import zipfile
+
+        bundle = tmp_path / "malicious.xapk"
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        with zipfile.ZipFile(bundle, "w") as zf:
+            # zipfile.ZipInfo objects can have absolute or traversal paths
+            info = zipfile.ZipInfo("../evil.apk")
+            zf.writestr(info, b"evil content")
+            zf.writestr("good.apk", b"good content")
+
+        handler = SplitAPKHandler()
+        splits = handler.extract_splits(bundle, out_dir)
+
+        # Should only contain good.apk, evil.apk should be skipped
+        assert len(splits) == 1
+        assert splits[0].name == "good.apk"
+        assert not (tmp_path / "evil.apk").exists()
+
 
 # ---------------------------------------------------------------------------
 # AAPT2Manager
