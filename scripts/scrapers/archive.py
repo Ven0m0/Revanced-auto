@@ -37,30 +37,24 @@ class ArchiveScraper(ScraperBase):
 
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         url = f"{ARCHIVE_BASE_URL}/{pkg_name}"
-        response = await asyncio.to_thread(self.get, url)
+        response = await self.get(url)
         parser = HTMLParser(response.text)
-
         versions: list[VersionInfo] = []
         seen: set[str] = set()
-
         for link in parser.css("a"):
             href = link.attributes.get("href", "")
             if not href or href.startswith("?") or "/" not in href:
                 continue
-
             filename = href.rstrip("/").split("/")[-1]
             if not filename.endswith(".apk"):
                 continue
-
             parsed = self._parse_filename(filename)
             if parsed is None:
                 continue
-
             version_key = f"{parsed.version}-{parsed.arch}"
             if version_key in seen:
                 continue
             seen.add(version_key)
-
             versions.append(
                 VersionInfo(
                     version=parsed.version,
@@ -68,7 +62,6 @@ class ArchiveScraper(ScraperBase):
                     arch=parsed.arch,
                 )
             )
-
         versions.sort(
             key=lambda v: [int(x) if x.isdigit() else x for x in v.version.split(".")],
             reverse=True,
@@ -80,11 +73,7 @@ class ArchiveScraper(ScraperBase):
         match: Match[str] | None = self.VERSION_PATTERN.match(name_without_ext)
         if not match:
             return None
-
-        return VersionInfo(
-            version=match.group("version"),
-            arch=match.group("arch"),
-        )
+        return VersionInfo(version=match.group("version"), arch=match.group("arch"))
 
     async def download(
         self,
@@ -94,51 +83,20 @@ class ArchiveScraper(ScraperBase):
         **kwargs: object,
     ) -> DownloadResult:
         arch: str | None = kwargs.get("arch")
-
         if version is None:
-            return DownloadResult(
-                success=False,
-                error="Version is required for Archive.org downloads",
-            )
-
+            return DownloadResult(success=False, error="Version is required for Archive.org downloads")
         versions = await self.get_versions(pkg_name, **kwargs)
-
         for v in versions:
             if v.version == version and (arch is None or v.arch == arch):
-                loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(
-                    None,
-                    self._download_file,
-                    v.url,
-                    output_path,
-                    v.version,
-                )
+                return await self._download_file(v.url, output_path, v.version)
+        return DownloadResult(success=False, error=f"Version {version} not found for package {pkg_name}")
 
-        return DownloadResult(
-            success=False,
-            error=f"Version {version} not found for package {pkg_name}",
-        )
-
-    def _download_file(
-        self,
-        url: str,
-        output_path: Path,
-        version: str,
-    ) -> DownloadResult:
+    async def _download_file(self, url: str, output_path: Path, version: str) -> DownloadResult:
         try:
-            response = self.session.get(url, follow_redirects=True)
+            response = await self.session.get(url, follow_redirects=True)
             response.raise_for_status()
-
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(response.content)
-
-            return DownloadResult(
-                success=True,
-                file_path=output_path,
-                version=version,
-            )
+            await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
+            await asyncio.to_thread(output_path.write_bytes, response.content)
+            return DownloadResult(success=True, file_path=output_path, version=version)
         except Exception as e:
-            return DownloadResult(
-                success=False,
-                error=str(e),
-            )
+            return DownloadResult(success=False, error=str(e))
