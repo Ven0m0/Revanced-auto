@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 import tempfile
 import zipfile
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class ModuleType(Enum):
@@ -338,5 +341,5 @@ class ModuleGenerator:
                 patch = int(parts[2]) if len(parts) > 2 else 0
                 return str(major + minor + patch)
             except ValueError:
-                pass
+                logger.warning("Failed to parse version '%s' into numeric parts", version)
         return "1000"

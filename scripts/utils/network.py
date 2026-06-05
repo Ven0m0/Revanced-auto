@@ -4,10 +4,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import fcntl
 import hashlib
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -46,7 +50,7 @@ class HttpClientConfig:
     initial_delay: int = DEFAULT_INITIAL_DELAY
     connect_timeout: int = 10
     user_agent: str = "Mozilla/5.0 (X11; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0"
-    github_token: str | None = field(default_factory=lambda: os.environ.get("GITHUB_TOKEN"))
+    github_token: str | None = field(default_factory=lambda: os.environ.get("GITHUB_TOKEN"), repr=False)
     cookie_file: Path | None = None
 
 
@@ -466,11 +470,25 @@ def _verify_or_remove(file_path: Path, sha256: str | None) -> bool:
         return True
     if _calculate_sha256(file_path) == sha256:
         return True
-    import contextlib
 
     with contextlib.suppress(OSError):
         file_path.unlink()
     return False
+
+
+async def _async_verify_or_remove(file_path: Path, sha256: str | None) -> bool:
+    """Async wrapper for _verify_or_remove.
+
+    Args:
+        file_path: Path to the file to verify.
+        sha256: Expected SHA256 hex digest, or None to skip verification.
+
+    Returns:
+        True if the file is valid (or no sha256 was specified), False if the
+        hash mismatched (the file is removed).
+
+    """
+    return await asyncio.to_thread(_verify_or_remove, file_path, sha256)
 
 
 def download_with_lock(
@@ -498,8 +516,6 @@ def download_with_lock(
         True if download succeeded or file already exists, False otherwise.
 
     """
-    import tempfile
-
     output_path = Path(output).resolve()
     base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
 
@@ -570,8 +586,6 @@ async def async_download_with_lock(
         True if download succeeded or file already exists, False otherwise.
 
     """
-    import tempfile
-
     output_path = Path(output).resolve()
     base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
 
@@ -585,7 +599,7 @@ async def async_download_with_lock(
     lock_file = work_dir / "lock"
 
     if output_path.exists():
-        verified = await asyncio.get_running_loop().run_in_executor(None, _verify_or_remove, output_path, sha256)
+        verified = await _async_verify_or_remove(output_path, sha256)
         if verified:
             return True
 
@@ -597,7 +611,6 @@ async def async_download_with_lock(
         return fd.fileno()
 
     def _release_lock(fileno: int) -> None:
-        import contextlib
         fcntl.flock(fileno, fcntl.LOCK_UN)
         with contextlib.suppress(OSError):
             os.close(fileno)
@@ -609,14 +622,14 @@ async def async_download_with_lock(
         lock_fileno = await loop.run_in_executor(None, _acquire_lock)
 
         if output_path.exists():
-            verified = await loop.run_in_executor(None, _verify_or_remove, output_path, sha256)
+            verified = await _async_verify_or_remove(output_path, sha256)
             if verified:
                 return True
 
         async with HttpClient(config) as client:
             await client.async_get(url, temp_path, headers=headers or {})
             if sha256:
-                valid = await loop.run_in_executor(None, _verify_or_remove, temp_path, sha256)
+                valid = await _async_verify_or_remove(temp_path, sha256)
                 if not valid:
                     return False
             temp_path.replace(output_path)
@@ -770,9 +783,6 @@ def aria2c_download(
         True if download succeeded, False otherwise.
 
     """
-    import shutil
-    import subprocess
-
     if not shutil.which("aria2c"):
         return False
 
@@ -819,8 +829,6 @@ def download_with_aria2c_fallback(
         True if download succeeded, False otherwise.
 
     """
-    import shutil
-
     output_path = Path(output_path)
     if shutil.which("aria2c") and aria2c_download(urls, output_path, max_connections=max_connections):
         return True
