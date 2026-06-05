@@ -55,12 +55,6 @@ class CacheManager:
     """Manage cached files using the same on-disk format as the shell cache."""
 
     def __init__(self, cache_dir: Path | None = None, default_ttl: int = DEFAULT_CACHE_TTL) -> None:
-        """Initialize the cache manager.
-
-        Args:
-            cache_dir: Cache directory. Defaults to CACHE_DIR or ``temp``.
-            default_ttl: Default TTL in seconds.
-        """
         cache_root = cache_dir or Path(os.environ.get("CACHE_DIR", DEFAULT_CACHE_DIR))
         self.cache_dir = cache_root
         self.default_ttl = default_ttl
@@ -73,15 +67,6 @@ class CacheManager:
             self._write_index({})
 
     def get_cache_path(self, key: str, subdir: str | None = None) -> Path:
-        """Return the cache path for a key.
-
-        Args:
-            key: Cache key or filename.
-            subdir: Optional subdirectory inside the cache root.
-
-        Returns:
-            The full cache path.
-        """
         if subdir:
             return self.cache_dir / subdir / key
         return self.cache_dir / key
@@ -106,16 +91,6 @@ class CacheManager:
         return True
 
     def cache_put(self, file_path: Path | str, source_url: str = "", ttl: int | None = None) -> None:
-        """Create or update a cache entry for an existing file.
-
-        Args:
-            file_path: Cached file path.
-            source_url: Optional source URL.
-            ttl: Optional TTL override.
-
-        Raises:
-            FileNotFoundError: If the file does not exist.
-        """
         cache_path = Path(file_path)
         if not cache_path.is_file():
             msg = f"Cannot cache non-existent file: {cache_path}"
@@ -136,7 +111,6 @@ class CacheManager:
         self._write_index(index)
 
     def cache_stats(self) -> CacheStats:
-        """Return cache statistics."""
         if not self.index_file.exists():
             return CacheStats(
                 total_entries=0,
@@ -158,7 +132,6 @@ class CacheManager:
         )
 
     def cache_cleanup(self, force: bool = False) -> CacheCleanupResult:
-        """Remove expired entries and optionally orphaned index entries."""
         if not self.index_file.exists():
             return CacheCleanupResult()
 
@@ -180,7 +153,6 @@ class CacheManager:
         )
 
     def cache_clean_pattern(self, pattern: str = DEFAULT_CLEAN_PATTERN) -> int:
-        """Remove cached entries whose keys match a regex pattern."""
         if not self.index_file.exists():
             return 0
 
@@ -192,11 +164,6 @@ class CacheManager:
         return removed_entries
 
     def _read_index(self) -> dict[str, CacheEntry]:
-        """Load the cache index from disk.
-
-        Raises:
-            CacheError: If the index is not valid JSON or contains invalid fields.
-        """
         try:
             raw_data = json.loads(self.index_file.read_text(encoding="utf-8"))
         except FileNotFoundError:
@@ -250,7 +217,6 @@ class CacheManager:
         temp_file.replace(self.index_file)
 
     def _remove_entries(self, index: dict[str, CacheEntry], keys: list[str]) -> int:
-        """Remove indexed entries and any files that still exist."""
         removed_entries = 0
         for key in keys:
             path = Path(key)
@@ -263,12 +229,8 @@ class CacheManager:
 
     @staticmethod
     def _checksum(file_path: Path) -> str:
-        """Return the SHA-256 checksum for a file."""
-        digest = hashlib.sha256()
         with file_path.open("rb") as file_handle:
-            for chunk in iter(lambda: file_handle.read(8192), b""):
-                digest.update(chunk)
-        return digest.hexdigest()
+            return hashlib.file_digest(file_handle, "sha256").hexdigest()
 
 
 def format_cache_size(size_bytes: int) -> str:

@@ -11,6 +11,7 @@ Exit codes:
 
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import logging
 import os
@@ -22,6 +23,7 @@ from pathlib import Path
 from scripts.builder.cli_profiles import (
     REVANCED_CLI_V6,
     CLIProfile,
+    PatchCommandConfig,
 )
 from scripts.builder.config import AppConfig
 from scripts.utils.apk import APKSigner, align_apk, verify_signature
@@ -41,18 +43,7 @@ RIP_LIB_ARCH_PATTERNS = {
 
 @dataclass
 class PatcherConfig:
-    """Configuration for the patching process.
-
-    Attributes:
-        keystore_path: Path to the keystore file.
-        keystore_password: Password for the keystore.
-        key_alias: Alias of the key to use for signing.
-        key_password: Password for the key.
-        enable_riplib: Whether to enable library stripping.
-        enable_aapt2_optimize: Whether to enable AAPT2 optimization.
-        custom_aapt2_binary: Path to custom AAPT2 binary, if any.
-        rv_brand: Brand identifier for output naming.
-    """
+    """Configuration for the patching process."""
 
     keystore_path: Path
     keystore_password: str
@@ -66,14 +57,7 @@ class PatcherConfig:
 
 @dataclass
 class PatcherResult:
-    """Result of a patching operation.
-
-    Attributes:
-        success: Whether the patching succeeded.
-        output_apk: Path to the patched APK.
-        version: Version string used for patching.
-        error: Error message if patching failed.
-    """
+    """Result of a patching operation."""
 
     success: bool
     output_apk: Path | None = None
@@ -85,26 +69,12 @@ class CacheManager:
     """Manages caching for patch lists and other temporary data."""
 
     def __init__(self, cache_dir: Path | None = None) -> None:
-        """Initialize CacheManager.
-
-        Args:
-            cache_dir: Directory for cache files. Defaults to temp directory.
-        """
         if cache_dir is None:
             cache_dir = Path(tempfile.gettempdir()) / "rv-cache"
         self._cache_dir = cache_dir
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
     def get_cache_path(self, key: str, subdir: str | None = None) -> Path:
-        """Get cache file path for a given key.
-
-        Args:
-            key: Cache key identifier.
-            subdir: Optional subdirectory within cache.
-
-        Returns:
-            Path to the cache file.
-        """
         safe_key = hashlib.sha256(key.encode()).hexdigest()[:32]
         if subdir:
             cache_path = self._cache_dir / subdir / safe_key
@@ -114,15 +84,6 @@ class CacheManager:
         return cache_path
 
     def cache_is_valid(self, cache_path: Path, ttl: int = CACHE_TTL_DEFAULT) -> bool:
-        """Check if cache file exists and is still valid.
-
-        Args:
-            cache_path: Path to the cache file.
-            ttl: Time-to-live in seconds.
-
-        Returns:
-            True if cache is valid, False otherwise.
-        """
         if not cache_path.exists():
             return False
         import time
@@ -132,24 +93,11 @@ class CacheManager:
         return age < ttl
 
     def cache_put(self, cache_path: Path) -> None:
-        """Mark cache file as valid by updating its timestamp.
-
-        Args:
-            cache_path: Path to the cache file.
-        """
         if cache_path.exists():
             os.utime(cache_path, None)
 
 
 def _get_file_hash(file_path: Path) -> str | None:
-    """Calculate SHA256 hash of a file.
-
-    Args:
-        file_path: Path to the file to hash.
-
-    Returns:
-        Hexadecimal hash string or None if file cannot be read.
-    """
     try:
         with open(file_path, "rb") as f:
             return hashlib.file_digest(f, "sha256").hexdigest()
@@ -158,24 +106,7 @@ def _get_file_hash(file_path: Path) -> str | None:
 
 
 class ReVancedPatcher:
-    """Orchestrates the ReVanced APK patching process.
-
-    Handles invoking the ReVanced CLI to patch APKs with support for:
-    - Multiple patch sources
-    - CLI profile integration
-    - Signature verification
-    - Library stripping (riplib)
-    - Custom AAPT2 binary
-    - Keystore signing
-    - Zipalign optimization
-
-    Attributes:
-        config: Application configuration.
-        cli_profile: CLI profile for argument mapping.
-        java_runner: Java subprocess runner.
-        patcher_config: Patcher-specific configuration.
-        cache_manager: Cache manager for patch lists.
-    """
+    """Orchestrates the ReVanced APK patching process."""
 
     def __init__(
         self,
@@ -185,15 +116,6 @@ class ReVancedPatcher:
         patcher_config: PatcherConfig,
         cache_manager: CacheManager | None = None,
     ) -> None:
-        """Initialize ReVancedPatcher.
-
-        Args:
-            config: Application configuration.
-            cli_profile: CLI profile for argument mapping.
-            java_runner: Java subprocess runner.
-            patcher_config: Patcher-specific configuration.
-            cache_manager: Optional cache manager.
-        """
         self.config = config
         self.cli_profile = cli_profile
         self.java_runner = java_runner
@@ -214,42 +136,14 @@ class ReVancedPatcher:
         patches_post: list[Path] | None = None,
         force: bool = False,
     ) -> PatcherResult:
-        """Run the ReVanced CLI to patch an APK.
+        error = self._verify_inputs(stock_apk, cli_jar, patches_jars)
+        if error:
+            return PatcherResult(success=False, error=error)
 
-        Args:
-            stock_apk: Path to the input APK.
-            output_apk: Path to the output APK.
-            cli_jar: Path to the ReVanced CLI JAR.
-            patches_jars: List of patch bundle JAR files.
-            version: Version string for naming.
-            arch: Target architecture.
-            exclude_patches: List of patches to exclude.
-            include_patches: List of patches to include.
-            merge_jars: List of merge JAR files.
-            patches_post: List of post-patch bundle JARs.
-            force: Force overwrite existing output.
-
-        Returns:
-            PatcherResult indicating success or failure.
-        """
-        if not stock_apk.exists():
-            return PatcherResult(success=False, error=f"Stock APK not found: {stock_apk}")
-
-        if not cli_jar.exists():
-            return PatcherResult(success=False, error=f"CLI JAR not found: {cli_jar}")
-
-        for jar in patches_jars:
-            if not jar.exists():
-                return PatcherResult(success=False, error=f"Patches JAR not found: {jar}")
-
-        if exclude_patches is None:
-            exclude_patches = []
-        if include_patches is None:
-            include_patches = []
-        if merge_jars is None:
-            merge_jars = []
-        if patches_post is None:
-            patches_post = []
+        exclude_patches = exclude_patches or []
+        include_patches = include_patches or []
+        merge_jars = merge_jars or []
+        patches_post = patches_post or []
 
         output_apk.parent.mkdir(parents=True, exist_ok=True)
 
@@ -268,6 +162,37 @@ class ReVancedPatcher:
             force=force,
         )
 
+        result = self._execute_patch_command(cli_jar, cli_args)
+        if result:
+            return result
+
+        if not output_apk.exists():
+            return PatcherResult(success=False, error="Patching succeeded but output APK not found")
+
+        result = self._sign_apk(output_apk)
+        if result:
+            return result
+
+        self._zipalign_apk(output_apk)
+
+        return PatcherResult(success=True, output_apk=output_apk, version=version)
+
+    def _verify_inputs(self, stock_apk: Path, cli_jar: Path, patches_jars: list[Path]) -> str | None:
+        """Verify that all input files exist."""
+        if not stock_apk.exists():
+            return f"Stock APK not found: {stock_apk}"
+
+        if not cli_jar.exists():
+            return f"CLI JAR not found: {cli_jar}"
+
+        for jar in patches_jars:
+            if not jar.exists():
+                return f"Patches JAR not found: {jar}"
+
+        return None
+
+    def _execute_patch_command(self, cli_jar: Path, cli_args: list[str]) -> PatcherResult | None:
+        """Execute the ReVanced CLI patch command."""
         logger.info("Executing: java -jar %s patch %s", cli_jar.name, " ".join(cli_args))
 
         env = os.environ.copy()
@@ -301,9 +226,10 @@ class ReVancedPatcher:
         except OSError as e:
             return PatcherResult(success=False, error=f"Failed to execute Java: {e}")
 
-        if not output_apk.exists():
-            return PatcherResult(success=False, error="Patching succeeded but output APK not found")
+        return None
 
+    def _sign_apk(self, output_apk: Path) -> PatcherResult | None:
+        """Re-sign the patched APK."""
         temp_signed = output_apk.parent / f"{output_apk.stem}.tmp-signed.apk"
         try:
             signer = APKSigner(
@@ -322,6 +248,10 @@ class ReVancedPatcher:
             temp_signed.unlink(missing_ok=True)
             return PatcherResult(success=False, error=f"Failed to re-sign APK: {e}")
 
+        return None
+
+    def _zipalign_apk(self, output_apk: Path) -> None:
+        """Zipalign the signed APK."""
         aligned_apk = output_apk.parent / f"{output_apk.stem}-aligned.apk"
         if align_apk(output_apk, aligned_apk):
             aligned_apk.replace(output_apk)
@@ -329,8 +259,6 @@ class ReVancedPatcher:
         else:
             logger.warning("zipalign failed, continuing with unaligned APK")
             aligned_apk.unlink(missing_ok=True)
-
-        return PatcherResult(success=True, output_apk=output_apk, version=version)
 
     def _build_patch_args(
         self,
@@ -343,37 +271,19 @@ class ReVancedPatcher:
         patches_post: list[Path],
         force: bool,
     ) -> list[str]:
-        """Build arguments for the patch command.
-
-        Delegates flag mapping to the active ``CLIProfile`` so the same patcher
-        works across ReVanced CLI v5/v6, Morphe, and Adobo (Morphe-compatible)
-        without branching here. Signing/keystore-password/aapt2 flags are
-        appended afterwards since they have no profile-level mapping yet.
-
-        Args:
-            stock_apk: Path to the input APK.
-            output_apk: Path to the output APK.
-            patches_jars: List of patch bundle JARs.
-            exclude_patches: List of patches to exclude.
-            include_patches: List of patches to include.
-            merge_jars: List of merge JARs.
-            patches_post: List of post-patch JARs.
-            force: Force overwrite.
-
-        Returns:
-            List of command arguments.
-        """
         args: list[str] = self.cli_profile.build_patch_args(
-            apk_path=stock_apk,
-            output_path=output_apk,
-            patches_jars=patches_jars,
-            patches_post=patches_post,
-            exclude=exclude_patches,
-            include=include_patches,
-            merge=merge_jars,
-            keystore=self.patcher_config.keystore_path,
-            force=force,
-            purge=True,
+            PatchCommandConfig(
+                apk_path=stock_apk,
+                output_path=output_apk,
+                patches_jars=patches_jars,
+                patches_post=patches_post,
+                exclude=exclude_patches,
+                include=include_patches,
+                merge=merge_jars,
+                keystore=self.patcher_config.keystore_path,
+                force=force,
+                purge=True,
+            )
         )
 
         args.extend(
@@ -394,15 +304,6 @@ class ReVancedPatcher:
         return args
 
     def list_patches(self, patches_jar: Path, cli_jar: Path) -> str:
-        """Get list of available patches from a patches JAR.
-
-        Args:
-            patches_jar: Path to the patches JAR.
-            cli_jar: Path to the CLI JAR.
-
-        Returns:
-            Output from list-patches command.
-        """
         cmd = ["java"] + self.java_runner.java_args + ["-jar", str(cli_jar), "list-patches", str(patches_jar), "-v"]
 
         try:
@@ -425,18 +326,6 @@ class ReVancedPatcher:
         include_patches: list[str] | None = None,
         exclude_patches: list[str] | None = None,
     ) -> str | None:
-        """Get highest supported version from patches.
-
-        Args:
-            pkg_name: Package name to query.
-            patches_jars: List of patches JARs.
-            cli_jar: Path to the CLI JAR.
-            include_patches: Optional list of patches to include.
-            exclude_patches: Optional list of patches to exclude.
-
-        Returns:
-            Highest supported version string or None.
-        """
         list_output = self.get_cached_patches_list(cli_jar, patches_jars)
         if not list_output:
             return None
@@ -450,17 +339,6 @@ class ReVancedPatcher:
         include_patches: list[str] | None = None,
         exclude_patches: list[str] | None = None,
     ) -> str | None:
-        """Parse version from list-patches output.
-
-        Args:
-            list_output: Output from list-patches command.
-            pkg_name: Package name to look for.
-            include_patches: Patches to include (for filtering).
-            exclude_patches: Patches to exclude.
-
-        Returns:
-            Version string or None.
-        """
         lines = list_output.splitlines()
         in_package = False
         version: str | None = None
@@ -481,15 +359,6 @@ class ReVancedPatcher:
         return version
 
     def _version_compare(self, v1: str, v2: str) -> int:
-        """Compare two version strings.
-
-        Args:
-            v1: First version string.
-            v2: Second version string.
-
-        Returns:
-            -1 if v1 < v2, 0 if equal, 1 if v1 > v2.
-        """
         parts1 = [int(p) for p in v1.split(".") if p.isdigit()]
         parts2 = [int(p) for p in v2.split(".") if p.isdigit()]
 
@@ -511,18 +380,6 @@ class ReVancedPatcher:
         cli_jar: Path,
         patches_jars: list[Path],
     ) -> str:
-        """Get cached list of patches from patches JAR.
-
-        Uses caching based on CLI and patches JAR hashes to avoid
-        re-running list-patches on every invocation.
-
-        Args:
-            cli_jar: Path to the CLI JAR.
-            patches_jars: List of patches JARs.
-
-        Returns:
-            Cached list-patches output.
-        """
         if not cli_jar.exists():
             logger.warning("get_cached_patches_list: CLI JAR not found")
             return ""
@@ -533,15 +390,17 @@ class ReVancedPatcher:
             return ""
 
         patches_hashes: list[str] = []
-        for jar in patches_jars:
-            if not jar.exists():
-                logger.warning("get_cached_patches_list: JAR not found: %s", jar)
-                return ""
-            jar_hash = _get_file_hash(jar)
-            if jar_hash is None:
-                logger.warning("Failed to get hash for: %s", jar)
-                return ""
-            patches_hashes.append(jar_hash)
+        if patches_jars:
+            for jar in patches_jars:
+                if not jar.exists():
+                    logger.warning("get_cached_patches_list: JAR not found: %s", jar)
+                    return ""
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                for i, jar_hash in enumerate(executor.map(_get_file_hash, patches_jars)):
+                    if jar_hash is None:
+                        logger.warning("Failed to get hash for: %s", patches_jars[i])
+                        return ""
+                    patches_hashes.append(jar_hash)
 
         cache_key = f"patches-list-{cli_hash}-{'+'.join(patches_hashes)}"
         cache_path = self._cache_manager.get_cache_path(cache_key, subdir="patches")
@@ -593,20 +452,6 @@ class ReVancedPatcher:
         exclude_patches: list[str] | None = None,
         version_override: str | None = None,
     ) -> str | None:
-        """Determine target version for patching.
-
-        Args:
-            version_mode: Version mode (auto/latest/beta or specific version).
-            pkg_name: Package name.
-            patches_jars: List of patches JARs.
-            cli_jar: Path to the CLI JAR.
-            include_patches: List of patches to include.
-            exclude_patches: List of patches to exclude.
-            version_override: Specific version to use.
-
-        Returns:
-            Version string to use for patching, or None.
-        """
         if version_mode == "auto":
             logger.info("Auto-detecting compatible version")
             version = self.get_supported_version(
@@ -633,20 +478,6 @@ class ReVancedPatcher:
         exclude_patches: list[str],
         include_patches: list[str],
     ) -> tuple[list[str], list[str], str | None]:
-        """Handle MicroG/GmsCore patch inclusion/exclusion.
-
-        The MicroG patch cannot be manually included/excluded as it is
-        handled automatically by the builder.
-
-        Args:
-            patches_jars: List of patches JARs.
-            cli_jar: Path to the CLI JAR.
-            exclude_patches: Current list of excluded patches.
-            include_patches: Current list of included patches.
-
-        Returns:
-            Tuple of (updated_exclude, updated_include, microg_patch_name).
-        """
         list_output = self.get_cached_patches_list(cli_jar, patches_jars)
         microg_patch: str | None = None
 
@@ -674,17 +505,6 @@ class ReVancedPatcher:
         return exclude_patches, include_patches, microg_patch
 
     def apply_riplib_optimization(self, arch: str) -> list[str]:
-        """Apply library stripping optimizations based on architecture.
-
-        Strips unnecessary native libraries based on target architecture
-        to reduce APK size.
-
-        Args:
-            arch: Target architecture (e.g., 'arm64-v8a', 'x86_64').
-
-        Returns:
-            List of rip-lib arguments.
-        """
         if not self.patcher_config.enable_riplib:
             return []
 
@@ -703,16 +523,6 @@ class ReVancedPatcher:
         version: str,
         arch: str,
     ) -> str:
-        """Generate output APK filename.
-
-        Args:
-            app_name: Application name.
-            version: Version string.
-            arch: Architecture string.
-
-        Returns:
-            Output filename in format: {app}-{brand}-v{version}-{arch}.apk
-        """
         brand = self.patcher_config.rv_brand.lower().replace(" ", "-")
         app_clean = app_name.lower().replace(" ", "-")
         version_clean = version.replace(".", "_")
@@ -721,14 +531,6 @@ class ReVancedPatcher:
 
 
 def main(argv: list[str]) -> int:
-    """Main entry point for patcher module CLI.
-
-    Args:
-        argv: Command line arguments.
-
-    Returns:
-        Exit code (0 for success, 1 for error).
-    """
     import argparse
 
     parser = argparse.ArgumentParser(description="ReVanced Patcher")
