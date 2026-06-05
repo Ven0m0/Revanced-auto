@@ -1,0 +1,88 @@
+"""Tests for scripts/builder/app_processor.py."""
+
+# ruff: noqa: S101
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
+import pytest
+
+from scripts.builder.app_processor import AppProcessor, Architecture, DownloadSource
+from scripts.builder.config import AppConfig
+
+
+class TestAppProcessorArchitecture:
+    """Tests for AppProcessor._parse_architecture."""
+
+    @pytest.fixture
+    def processor(self) -> AppProcessor:
+        """Provide a mocked AppProcessor instance."""
+        config_mock = MagicMock()
+        java_runner_mock = MagicMock()
+        return AppProcessor(config=config_mock, java_runner=java_runner_mock)
+
+    def test_parse_architecture_default(self, processor: AppProcessor) -> None:
+        """Test default architecture (no arch specified)."""
+        config = AppConfig(name="TestApp", options={})
+        assert processor._parse_architecture(config) == Architecture.ALL
+
+    @pytest.mark.parametrize(
+        ("arch_str", "expected_arch"),
+        [
+            ("arm64-v8a", Architecture.ARM64_V8A),
+            ("arm-v7a", Architecture.ARM_V7A),
+            ("both", Architecture.BOTH),
+            ("all", Architecture.ALL),
+        ],
+    )
+    def test_parse_architecture_valid(
+        self,
+        processor: AppProcessor,
+        arch_str: str,
+        expected_arch: Architecture,
+    ) -> None:
+        """Test valid architecture strings."""
+        config = AppConfig(name="TestApp", options={"arch": arch_str})
+        assert processor._parse_architecture(config) == expected_arch
+
+    def test_parse_architecture_invalid(self, processor: AppProcessor) -> None:
+        """Test invalid architecture raises ValueError."""
+        config = AppConfig(name="TestApp", options={"arch": "invalid-arch"})
+        with pytest.raises(ValueError, match="Invalid architecture: invalid-arch"):
+            processor._parse_architecture(config)
+
+
+class TestAppProcessorDownloadSource:
+    """Tests for AppProcessor._determine_download_source."""
+
+    @pytest.fixture
+    def processor(self) -> AppProcessor:
+        """Provide a mocked AppProcessor instance."""
+        config_mock = MagicMock()
+        java_runner_mock = MagicMock()
+        return AppProcessor(config=config_mock, java_runner=java_runner_mock)
+
+    @pytest.mark.parametrize(
+        ("options", "expected_source"),
+        [
+            ({"apkmirror_dlurl": "https://apkmirror.com/some/path"}, DownloadSource.APKMIRROR),
+            ({"uptodown_dlurl": "https://uptodown.com/some/path"}, DownloadSource.UPTODOWN),
+            ({"apkpure_dlurl": "https://apkpure.com/some/path"}, DownloadSource.APKPURE),
+            ({"archive_dlurl": "https://archive.org/some/path"}, DownloadSource.ARCHIVE),
+            ({"aptoide_dlurl": "https://aptoide.com/some/path"}, DownloadSource.APTOIDE),
+            ({"apkmonk_dlurl": "https://apkmonk.com/some/path"}, DownloadSource.APKMonk),
+            ({}, DownloadSource.APKMIRROR),
+            ({"other_dlurl": "https://example.com/"}, DownloadSource.APKMIRROR),
+        ],
+    )
+    def test_determine_download_source(
+        self,
+        processor: AppProcessor,
+        options: dict[str, str],
+        expected_source: DownloadSource,
+    ) -> None:
+        """Test download source resolution based on app configuration."""
+        app_config = AppConfig(name="TestApp", options=options)
+        source = processor._determine_download_source(app_config)
+        assert source == expected_source
