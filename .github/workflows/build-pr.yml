@@ -25,11 +25,11 @@ jobs:
       pull-requests: write
     steps:
     - name: Checkout PR
-      uses: actions/checkout@v6.0.3
+      uses: actions/checkout@v7.0.0
       with:
         fetch-depth: 0
     - name: Install mise-managed toolchain (Java, Python, uv)
-      uses: jdx/mise-action@v4.1.0
+      uses: jdx/mise-action@v4.2.0
       with:
         install: true
         cache: true

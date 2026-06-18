@@ -32,7 +32,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v6.0.3
+      uses: actions/checkout@v7.0.0
     - name: Generate Matrix
       id: set-matrix
       run: |
@@ -51,7 +51,7 @@ jobs:
       matrix: ${{ fromJson(needs.setup_matrix.outputs.matrix) }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v6.0.3
+      uses: actions/checkout@v7.0.0
       with:
         fetch-depth: 0
         submodules: true
@@ -100,7 +100,7 @@ jobs:
       actions: read
     steps:
     - name: Checkout
-      uses: actions/checkout@v6.0.3
+      uses: actions/checkout@v7.0.0
       with:
         fetch-depth: 0
     - name: Check if any artifacts exist
