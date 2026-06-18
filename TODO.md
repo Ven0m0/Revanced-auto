@@ -10,3 +10,5 @@ integrate features of:
 - update the github pages website
 - update the @README.md
 - fix the mise.toml and setup the correct dependency usage with mise and uv in pyproject.toml, mise.toml and the gh actions yml workflows
+
+- implement https://github.com/nvbangg/builder-for-morphe
