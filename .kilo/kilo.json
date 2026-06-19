@@ -40,7 +40,7 @@
 			"extensions": [".json", ".jsonc", ".js", ".ts"]
 		},
 		"ruff": {
-			"command": ["ruff", "format", "$FILE"],
+			"command": ["uvx", "ruff", "format", "$FILE"],
 			"extensions": [".py", ".pyi",".pyc"]
 		}
 	},
@@ -78,13 +78,7 @@
 			"type": "local",
 			"command": ["npx", "-y", "octocode-mcp@latest"],
 			"enabled": true
-		},
-    "morph-mcp": {
-      "type": "local",
-      "command": ["npx", "-y", "@morphllm/morphmcp"],
-      "environment": { "MORPH_API_KEY": "{env:MORPH_API_KEY}" },
-      "enabled": true
-    }
+		}
 	},
 	"lsp": {
 		"basedpyright": {
