@@ -78,7 +78,7 @@ uv run python -m pytest tests -v
 
 ## Configuration
 
-The shipped `config.toml` uses top-level global settings plus per-app sections such as `[YouTube-Extended]`. Each enabled app needs at least one download source:
+The shipped `config.toml` uses top-level global settings plus per-app sections such as `[YouTube-Extended]` or `[YouTube-Morphed]`. Each enabled app needs at least one download source:
 
 - `apkmirror-dlurl`
 - `uptodown-dlurl`
@@ -93,15 +93,16 @@ Common global settings include:
 - `build-mode`
 - `patches-version`
 - `cli-version`
-- `patches-source`
-- `cli-source`
+- `patches-source` (defaults to `MorpheApp/morphe-patches`)
+- `cli-source` (defaults to `MorpheApp/morphe-cli`)
+- `cli-profile` (defaults to `"auto"`; detects `revanced-cli-v5`, `revanced-cli-v6`, `morphe-cli`, or `adobo-cli` from `--help`)
 - `arch`
 - `riplib`
 - `enable-aapt2-optimize`
 - `aapt2-source`
 - `use-custom-aapt2`
 
-The sample config currently enables `Music-Extended` and `YouTube-Extended`; other app sections are included as examples and are disabled by default.
+The sample config enables `Music-Morphed` and `YouTube-Morphed` (Morphe default). Other sections (`Music-Extended`, `YouTube-Extended`, `X`, `Spotify`, etc.) are included as examples and are disabled by default — flip `enabled = true` to use them.
 
 ### Patch sources
 

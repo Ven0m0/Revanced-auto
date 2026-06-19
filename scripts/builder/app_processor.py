@@ -266,6 +266,28 @@ class Notifier(Protocol):
         ...
 
 
+def _cli_artifact_name(cli_source: str) -> str:
+    """Derive the CLI JAR artifact prefix from a ``owner/repo`` slug.
+
+    Examples:
+        ``MorpheApp/morphe-cli`` → ``morphe-cli``
+        ``ReVanced/revanced-cli`` → ``revanced-cli``
+        ``inotia00/revanced-cli`` → ``revanced-cli``
+    """
+    return cli_source.rsplit("/", 1)[-1]
+
+
+def _patches_artifact_name(patches_source: str) -> str:
+    """Derive the patches JAR artifact prefix from a ``owner/repo`` slug.
+
+    Examples:
+        ``MorpheApp/morphe-patches`` → ``morphe-patches``
+        ``ReVanced/revanced-patches`` → ``revanced-patches``
+        ``crimera/piko`` → ``piko``
+    """
+    return patches_source.rsplit("/", 1)[-1]
+
+
 class JobRunner:
     """Manages parallel job execution with concurrency limiting.
 
@@ -734,7 +756,11 @@ class AppProcessor:
         from scripts.utils.network import gh_dl
 
         if not cli_jar.exists():
-            cli_url = f"https://github.com/{context.cli_source}/releases/download/v{context.cli_version}/revanced-cli-{context.cli_version}-all.jar"
+            cli_artifact = _cli_artifact_name(context.cli_source)
+            cli_url = (
+                f"https://github.com/{context.cli_source}/releases/download/"
+                f"v{context.cli_version}/{cli_artifact}-{context.cli_version}-all.jar"
+            )
             success = gh_dl(cli_jar, cli_url)
             if not success:
                 raise RuntimeError(f"Failed to download CLI from {cli_url}")
@@ -761,9 +787,10 @@ class AppProcessor:
                 entry = resolve_bundle(selector, context.patches_version)
                 patches_url = entry.download_url
             else:
+                patches_artifact = _patches_artifact_name(patches_src)
                 patches_url = (
                     f"https://github.com/{patches_src}/releases/download/v{context.patches_version}/"
-                    f"revanced-patches-{context.patches_version}.jar"
+                    f"{patches_artifact}-{context.patches_version}.jar"
                 )
 
             success = gh_dl(patches_jar, patches_url)
