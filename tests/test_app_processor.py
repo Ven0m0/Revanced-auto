@@ -8,7 +8,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from scripts.builder.app_processor import AppProcessor, Architecture, DownloadSource
+from scripts.builder.app_processor import (
+    AppProcessor,
+    Architecture,
+    DownloadSource,
+    _cli_artifact_name,
+    _patches_artifact_name,
+)
 from scripts.builder.config import AppConfig
 
 
@@ -86,3 +92,66 @@ class TestAppProcessorDownloadSource:
         app_config = AppConfig(name="TestApp", options=options)
         source = processor._determine_download_source(app_config)
         assert source == expected_source
+
+
+class TestArtifactNameDerivation:
+    """Tests for CLI / patches artifact name derivation from repo slugs.
+
+    These guard the regression where the hardcoded ``revanced-cli-`` and
+    ``revanced-patches-`` URLs broke downloads for Morphe, Piko, and other
+    non-ReVanced sources.
+    """
+
+    @pytest.mark.parametrize(
+        ("repo", "expected"),
+        [
+            ("MorpheApp/morphe-cli", "morphe-cli"),
+            ("ReVanced/revanced-cli", "revanced-cli"),
+            ("inotia00/revanced-cli", "revanced-cli"),
+            ("j-hc/revanced-cli", "revanced-cli"),
+            ("jkennethcarino/adobo", "adobo"),
+        ],
+    )
+    def test_cli_artifact_name(self, repo: str, expected: str) -> None:
+        assert _cli_artifact_name(repo) == expected
+
+    @pytest.mark.parametrize(
+        ("repo", "expected"),
+        [
+            ("MorpheApp/morphe-patches", "morphe-patches"),
+            ("ReVanced/revanced-patches", "revanced-patches"),
+            ("anddea/revanced-patches", "revanced-patches"),
+            ("crimera/piko", "piko"),
+            ("wchill/patcheddit", "patcheddit"),
+            ("jkennethcarino/adobo", "adobo"),
+        ],
+    )
+    def test_patches_artifact_name(self, repo: str, expected: str) -> None:
+        assert _patches_artifact_name(repo) == expected
+
+    @pytest.mark.parametrize(
+        ("repo", "expected"),
+        [
+            ("  MorpheApp/morphe-cli  ", "morphe-cli"),  # whitespace
+            ("MorpheApp/morphe-cli/", "morphe-cli"),      # trailing slash
+            ("  crimera/piko/  ", "piko"),                 # both
+            ("/owner/repo", "repo"),                        # leading slash
+        ],
+    )
+    def test_cli_artifact_name_trims_whitespace_and_slashes(
+        self, repo: str, expected: str
+    ) -> None:
+        assert _cli_artifact_name(repo) == expected
+
+    @pytest.mark.parametrize(
+        ("repo", "expected"),
+        [
+            ("  MorpheApp/morphe-patches  ", "morphe-patches"),
+            ("MorpheApp/morphe-patches/", "morphe-patches"),
+            ("  crimera/piko/  ", "piko"),
+        ],
+    )
+    def test_patches_artifact_name_trims_whitespace_and_slashes(
+        self, repo: str, expected: str
+    ) -> None:
+        assert _patches_artifact_name(repo) == expected
