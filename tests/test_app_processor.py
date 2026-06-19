@@ -128,3 +128,30 @@ class TestArtifactNameDerivation:
     )
     def test_patches_artifact_name(self, repo: str, expected: str) -> None:
         assert _patches_artifact_name(repo) == expected
+
+    @pytest.mark.parametrize(
+        ("repo", "expected"),
+        [
+            ("  MorpheApp/morphe-cli  ", "morphe-cli"),  # whitespace
+            ("MorpheApp/morphe-cli/", "morphe-cli"),      # trailing slash
+            ("  crimera/piko/  ", "piko"),                 # both
+            ("/owner/repo", "repo"),                        # leading slash
+        ],
+    )
+    def test_cli_artifact_name_trims_whitespace_and_slashes(
+        self, repo: str, expected: str
+    ) -> None:
+        assert _cli_artifact_name(repo) == expected
+
+    @pytest.mark.parametrize(
+        ("repo", "expected"),
+        [
+            ("  MorpheApp/morphe-patches  ", "morphe-patches"),
+            ("MorpheApp/morphe-patches/", "morphe-patches"),
+            ("  crimera/piko/  ", "piko"),
+        ],
+    )
+    def test_patches_artifact_name_trims_whitespace_and_slashes(
+        self, repo: str, expected: str
+    ) -> None:
+        assert _patches_artifact_name(repo) == expected

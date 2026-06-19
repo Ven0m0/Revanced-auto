@@ -274,7 +274,7 @@ def _cli_artifact_name(cli_source: str) -> str:
         ``ReVanced/revanced-cli`` → ``revanced-cli``
         ``inotia00/revanced-cli`` → ``revanced-cli``
     """
-    return cli_source.rsplit("/", 1)[-1]
+    return cli_source.strip().rstrip("/").rsplit("/", 1)[-1]
 
 
 def _patches_artifact_name(patches_source: str) -> str:
@@ -285,7 +285,7 @@ def _patches_artifact_name(patches_source: str) -> str:
         ``ReVanced/revanced-patches`` → ``revanced-patches``
         ``crimera/piko`` → ``piko``
     """
-    return patches_source.rsplit("/", 1)[-1]
+    return patches_source.strip().rstrip("/").rsplit("/", 1)[-1]
 
 
 class JobRunner:
