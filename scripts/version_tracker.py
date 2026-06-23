@@ -123,7 +123,7 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
         versions["global_patches_source"] = normalized
 
     for key, value in config.items():
-        if type(value) is not dict or not value.get("enabled", True):
+        if not isinstance(value, dict) or not value.get("enabled", True):
             continue
 
         app_prefix = f"app_{key.lower().replace(' ', '-')}_"
