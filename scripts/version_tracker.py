@@ -121,25 +121,24 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
     normalized = _normalize_patches_source(global_patches_src)
     if normalized:
         versions["global_patches_source"] = normalized
+
     for key, value in config.items():
-        if not isinstance(value, dict):
+        if not isinstance(value, dict) or not value.get("enabled", True):
             continue
-        enabled = value.get("enabled", True)
-        if not enabled:
-            continue
-        app_key = key.lower().replace(" ", "-")
-        patches_src = value.get("patches-source", global_patches_src)
-        patches_normalized = _normalize_patches_source(patches_src)
-        if patches_normalized:
-            versions[f"app_{app_key}_patches_source"] = patches_normalized
-        cli_src = value.get("cli-source", "")
-        if cli_src:
-            versions[f"app_{app_key}_cli_source"] = str(cli_src)
-        app_ver = value.get("version", "auto")
-        versions[f"app_{app_key}_version"] = str(app_ver)
-        integrations_ver = value.get("integrations-version")
-        if integrations_ver:
-            versions[f"app_{app_key}_integrations_version"] = str(integrations_ver)
+
+        app_prefix = f"app_{key.lower().replace(' ', '-')}_"
+
+        if patches_normalized := _normalize_patches_source(value.get("patches-source", global_patches_src)):
+            versions[app_prefix + "patches_source"] = patches_normalized
+
+        if cli_src := value.get("cli-source"):
+            versions[app_prefix + "cli_source"] = str(cli_src)
+
+        versions[app_prefix + "version"] = str(value.get("version", "auto"))
+
+        if integrations_ver := value.get("integrations-version"):
+            versions[app_prefix + "integrations_version"] = str(integrations_ver)
+
     return versions
 
 
@@ -150,22 +149,17 @@ def extract_build_state(config: dict[str, object]) -> BuildState:
     normalized_global_patches = _normalize_patches_source(global_patches_src) or ""
     app_versions: dict[str, AppVersionState] = {}
     for key, value in config.items():
-        if not isinstance(value, dict):
+        if not isinstance(value, dict) or not value.get("enabled", True):
             continue
-        enabled = value.get("enabled", True)
-        if not enabled:
-            continue
+
         app_key = key.lower().replace(" ", "-")
-        patches_src = value.get("patches-source", global_patches_src)
-        patches_normalized = _normalize_patches_source(patches_src) or ""
-        cli_src = value.get("cli-source", "")
-        app_ver = value.get("version", "auto")
-        integrations_ver = value.get("integrations-version")
+
+        patches_normalized = _normalize_patches_source(value.get("patches-source", global_patches_src)) or ""
         app_versions[app_key] = AppVersionState(
             patches_source=patches_normalized,
-            cli_source=str(cli_src) if cli_src else "",
-            version=str(app_ver),
-            integrations_version=str(integrations_ver) if integrations_ver else None,
+            cli_source=str(value["cli-source"]) if "cli-source" in value else "",
+            version=str(value.get("version", "auto")),
+            integrations_version=str(value["integrations-version"]) if "integrations-version" in value else None,
         )
     return BuildState(
         global_cli_version=global_cli_ver,
