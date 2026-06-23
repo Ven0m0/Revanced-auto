@@ -131,13 +131,13 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
         if patches_normalized := _normalize_patches_source(value.get("patches-source", global_patches_src)):
             versions[app_prefix + "patches_source"] = patches_normalized
 
-        if "cli-source" in value:
-            versions[app_prefix + "cli_source"] = str(value["cli-source"])
+        if cli_src := value.get("cli-source"):
+            versions[app_prefix + "cli_source"] = str(cli_src)
 
         versions[app_prefix + "version"] = str(value.get("version", "auto"))
 
-        if "integrations-version" in value:
-            versions[app_prefix + "integrations_version"] = str(value["integrations-version"])
+        if integrations_ver := value.get("integrations-version"):
+            versions[app_prefix + "integrations_version"] = str(integrations_ver)
 
     return versions
 
