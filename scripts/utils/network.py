@@ -603,23 +603,25 @@ async def async_download_with_lock(
         if verified:
             return True
 
-    loop = asyncio.get_running_loop()
+    from typing import IO
 
-    def _acquire_lock() -> int:
+    def _acquire_lock() -> IO:
         fd = open(lock_file, "w")
         fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
-        return fd.fileno()
+        return fd
 
-    def _release_lock(fileno: int) -> None:
-        fcntl.flock(fileno, fcntl.LOCK_UN)
-        with contextlib.suppress(OSError):
-            os.close(fileno)
+    def _release_lock(fd: IO) -> None:
+        try:
+            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+            fd.close()
+        except OSError:
+            pass
         with contextlib.suppress(OSError):
             lock_file.unlink()
 
-    lock_fileno = None
+    lock_fd = None
     try:
-        lock_fileno = await loop.run_in_executor(None, _acquire_lock)
+        lock_fd = await asyncio.to_thread(_acquire_lock)
 
         if output_path.exists():
             verified = await _async_verify_or_remove(output_path, sha256)
@@ -641,8 +643,8 @@ async def async_download_with_lock(
             temp_path.unlink()
         return False
     finally:
-        if lock_fileno is not None:
-            await loop.run_in_executor(None, _release_lock, lock_fileno)
+        if lock_fd is not None:
+            await asyncio.to_thread(_release_lock, lock_fd)
 
 
 def req(
