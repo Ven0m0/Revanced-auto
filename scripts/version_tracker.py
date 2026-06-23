@@ -149,7 +149,7 @@ def extract_build_state(config: dict[str, object]) -> BuildState:
     normalized_global_patches = _normalize_patches_source(global_patches_src) or ""
     app_versions: dict[str, AppVersionState] = {}
     for key, value in config.items():
-        if type(value) is not dict or not value.get("enabled", True):
+        if not isinstance(value, dict) or not value.get("enabled", True):
             continue
 
         app_key = key.lower().replace(" ", "-")
