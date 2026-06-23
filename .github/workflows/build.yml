@@ -58,7 +58,7 @@ jobs:
     - name: Setup build environment
       uses: ./.github/actions/setup-environment
     - name: Cache ReVanced prebuilts
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ./temp
         key: ${{ runner.os }}-revanced-prebuilts-${{ hashFiles('config.toml') }}
