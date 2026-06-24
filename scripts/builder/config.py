@@ -163,14 +163,14 @@ class AppConfig:
             exclusive=data.pop("exclusive", False),
             using=data.pop("using", None),
             options=data,
-            enable_media_optimizer=data.pop("enable_media_optimizer", None),
-            enable_apk_optimizer=data.pop("enable_apk_optimizer", None),
-            enable_string_cleaner=data.pop("enable_string_cleaner", None),
-            enable_dtlx=data.pop("enable_dtlx", None),
-            enable_lspatch=data.pop("enable_lspatch", None),
-            enable_rkpairip=data.pop("enable_rkpairip", None),
-            enable_whatsapp_patcher=data.pop("enable_whatsapp_patcher", None),
-            lspatch_mode=data.pop("lspatch_mode", "complement"),
+            enable_media_optimizer=data.pop("enable_media_optimizer", data.pop("enable-media-optimizer", None)),
+            enable_apk_optimizer=data.pop("enable_apk_optimizer", data.pop("enable-apk-optimizer", None)),
+            enable_string_cleaner=data.pop("enable_string_cleaner", data.pop("enable-string-cleaner", None)),
+            enable_dtlx=data.pop("enable_dtlx", data.pop("enable-dtlx", None)),
+            enable_lspatch=data.pop("enable_lspatch", data.pop("enable-lspatch", None)),
+            enable_rkpairip=data.pop("enable_rkpairip", data.pop("enable-rkpairip", None)),
+            enable_whatsapp_patcher=data.pop("enable_whatsapp_patcher", data.pop("enable-whatsapp-patcher", None)),
+            lspatch_mode=data.pop("lspatch_mode", data.pop("lspatch-mode", "complement")),
         )
     def engine_enabled(self, engine_name: str, global_value: bool) -> bool:
         """Resolve whether an engine is enabled for this app.
