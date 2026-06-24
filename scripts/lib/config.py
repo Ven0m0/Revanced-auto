@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import Any
 
 from scripts.builder.config import AppConfig
 from scripts.builder.config import Config as BuilderConfig
@@ -94,6 +95,27 @@ class Config:
     def apps(self) -> dict[str, AppConfig]:
         """Dictionary of app configurations."""
         return self._inner.apps
+
+    def set_global_engine_enabled(self, engine_name: str, enabled: bool) -> None:
+        """Globally enable or disable an engine.
+
+        Args:
+            engine_name: Engine identifier (e.g., "media_optimizer").
+            enabled: Whether the engine should run by default.
+        """
+        setattr(self._inner.global_settings, f"enable_{engine_name}", enabled)
+
+    def set_engine_option(self, engine_name: str, key: str, value: Any) -> None:
+        """Set an engine option for all apps.
+
+        Args:
+            engine_name: Engine identifier.
+            key: Option key.
+            value: Option value.
+        """
+        for app in self._inner.apps.values():
+            engine_opts = app.options.setdefault(engine_name, {})
+            engine_opts[key] = value
 
     @property
     def config_file(self) -> str:

@@ -33,9 +33,13 @@ uv run python -m pytest tests -v
 | `scripts/lib/version_tracker.py` | Version state tracking |
 | `scripts/lib/builder.py` | Build orchestration |
 | `scripts/builder/` | Build pipeline components |
+| `scripts/builder/engines/` | Optional APK processing engines (media optimizer, APK optimizer, DTL-X, LSPatch, etc.) |
+| `scripts/lib/plugins.py` | Auto-discovered plugin hook dispatcher |
+| `scripts/plugins/` | User plugin directory |
 | `scripts/scrapers/` | Source-specific APK retrieval |
 | `scripts/search/` | Version resolution |
 | `scripts/utils/` | Shared APK/Java/process/network helpers |
+| `scripts/utils/apk_io.py` | APK extract/repack helpers used by engines |
 | `build.sh` | Legacy compatibility path |
 | `utils.sh` | Shared Bash loader |
 | `config.toml` | Global + per-app configuration |
@@ -81,6 +85,7 @@ uv run python -m pytest tests -v
 - Config / args / version tracking: `uv run python -m pytest tests/test_config.py tests/test_version_tracker.py -v`
 - Network / scraper logic: `uv run python -m pytest tests/test_network.py -v`
 - APK / signing logic: `uv run python -m pytest tests/test_apk.py -v`
+- Engine logic: `uv run python -m pytest tests/test_engines.py -v`
 - Notifier logic: `uv run python -m pytest tests/test_notifier.py -v`
 - Broad Python changes: `uv run python -m pytest tests -v`
 - Bash changes: `bash -n <changed.sh>` and `./scripts/lint.sh`
@@ -89,3 +94,22 @@ uv run python -m pytest tests -v
 - Never commit secrets (`GITHUB_TOKEN`, signing credentials, private keys, passwords).
 - Do not modify generated/state files such as `.github/last_built_versions.json` unless the task explicitly requires it.
 - Keep changes scoped and minimal; avoid unrelated cleanup.
+
+## Engine System (apk-tweak integration)
+
+Optional APK processing engines live in `scripts/builder/engines/`. Each engine is a
+class with `name`, `stage`, and `run(ctx: EngineContext) -> EngineResult`.
+
+- **Pre-patch engines** run before ReVanced patching: `dtlx`, `lspatch`, `rkpairip`, `whatsapp_patcher`.
+- **Post-patch engines** run after patching, before signing: `media_optimizer`, `apk_optimizer`, `string_cleaner`.
+- Engines are opt-in via `enable-<engine> = true` in `config.toml` (global default or per-app override).
+- Engine-specific options are configured in per-engine sub-tables, e.g. `[YouTube-Morphed.media-optimizer]`.
+- CLI overrides: `--enable-media-optimizer`, `--disable-media-optimizer`, `--target-dpi`, `--optimize-images`, etc.
+- Plugins can hook pipeline stages by implementing `handle_hook(ctx: EngineContext, stage: str) -> None` in `scripts/plugins/`.
+
+### Adding a new engine
+1. Create `scripts/builder/engines/<name>.py` with an `Engine` class.
+2. Register it in `scripts/builder/engines/__init__.py` `_ENGINE_REGISTRY`.
+3. Add `enable_<name>` fields to `GlobalConfig` and `AppConfig` in `scripts/builder/config.py`.
+4. Document options in `config.toml` and `AGENTS.md`.
+5. Add tests in `tests/test_engines.py` or `tests/test_<name>.py`.

@@ -52,6 +52,24 @@ def run_build(args: argparse.Namespace) -> int:
     if args.no_cache:
         config.use_cache = False
 
+    # Apply CLI engine overrides (ported from apk-tweak integration).
+    engine_toggles = {
+        "media_optimizer": args.enable_media_optimizer,
+        "apk_optimizer": args.enable_apk_optimizer,
+        "string_cleaner": args.enable_string_cleaner,
+        "dtlx": args.enable_dtlx,
+    }
+    for engine_name, enabled in engine_toggles.items():
+        if enabled is not None:
+            config.set_global_engine_enabled(engine_name, enabled)
+
+    if args.target_dpi is not None:
+        config.set_engine_option("media_optimizer", "target_dpi", args.target_dpi)
+    if args.optimize_images is not None:
+        config.set_engine_option("media_optimizer", "optimize_images", args.optimize_images)
+    if args.optimize_audio is not None:
+        config.set_engine_option("media_optimizer", "optimize_audio", args.optimize_audio)
+
     version_tracker = VersionTracker(config)
 
     log.info("Checking versions...")

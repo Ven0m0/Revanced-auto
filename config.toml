@@ -76,6 +76,21 @@ aapt2-source = "Graywizard888/Custom-Enhancify-aapt2-binary"
 use-custom-aapt2 = true
 
 # =============================================================================
+# APK-TWEAK ENGINE SETTINGS (ported from https://github.com/Ven0m0/apk-tweak)
+# =============================================================================
+# All engines are opt-in. When enabled globally they apply to every app unless
+# overridden per-app with `enable-<engine> = false`.
+# External tools are detected at runtime; missing tools produce warnings.
+
+enable-media-optimizer = false
+enable-apk-optimizer = false
+enable-string-cleaner = false
+enable-dtlx = false
+enable-lspatch = false
+enable-rkpairip = false
+enable-whatsapp-patcher = false
+
+# =============================================================================
 # APP CONFIGURATIONS
 # =============================================================================
 # Each app section can override global settings
@@ -195,6 +210,24 @@ uptodown-dlurl = "https://youtube.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
 apkpure-dlurl = "https://apkpure.net/youtube/com.google.android.youtube"
+
+# Example per-app engine overrides for YouTube-Morphed:
+# enable-media-optimizer = true
+# enable-apk-optimizer = true
+#
+# [YouTube-Morphed.media-optimizer]
+# optimize-images = true
+# optimize-audio = false
+# target-dpi = "xxhdpi"
+# pngquant-quality = "65-80"
+# jpeg-quality = 85
+#
+# [YouTube-Morphed.apk-optimizer]
+# remove-debug-symbols = true
+# minimize-manifest = true
+# optimize-resources = true
+# keep-locales = ["en"]
+# strip-native-libs = true
 
 # YouTube Legacy (Android 6-7)
 [YouTube-Legacy]

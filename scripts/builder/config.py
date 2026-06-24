@@ -60,6 +60,15 @@ class GlobalConfig:
     experimental: bool = False
     verbose: bool = False
 
+    # Engine toggles (global defaults) - ported from apk-tweak
+    enable_media_optimizer: bool = False
+    enable_apk_optimizer: bool = False
+    enable_string_cleaner: bool = False
+    enable_dtlx: bool = False
+    enable_lspatch: bool = False
+    enable_rkpairip: bool = False
+    enable_whatsapp_patcher: bool = False
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> GlobalConfig:
         """Create GlobalConfig from a dictionary.
@@ -103,6 +112,16 @@ class AppConfig:
     using: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
 
+    # Per-app engine overrides (None = inherit global) - ported from apk-tweak
+    enable_media_optimizer: bool | None = None
+    enable_apk_optimizer: bool | None = None
+    enable_string_cleaner: bool | None = None
+    enable_dtlx: bool | None = None
+    enable_lspatch: bool | None = None
+    enable_rkpairip: bool | None = None
+    enable_whatsapp_patcher: bool | None = None
+    lspatch_mode: str = "complement"  # "complement" or "alternative"
+
     @classmethod
     def from_dict(cls, name: str, data: dict[str, Any]) -> AppConfig:
         """Create AppConfig from a dictionary.
@@ -144,7 +163,31 @@ class AppConfig:
             exclusive=data.pop("exclusive", False),
             using=data.pop("using", None),
             options=data,
+            enable_media_optimizer=data.pop("enable_media_optimizer", data.pop("enable-media-optimizer", None)),
+            enable_apk_optimizer=data.pop("enable_apk_optimizer", data.pop("enable-apk-optimizer", None)),
+            enable_string_cleaner=data.pop("enable_string_cleaner", data.pop("enable-string-cleaner", None)),
+            enable_dtlx=data.pop("enable_dtlx", data.pop("enable-dtlx", None)),
+            enable_lspatch=data.pop("enable_lspatch", data.pop("enable-lspatch", None)),
+            enable_rkpairip=data.pop("enable_rkpairip", data.pop("enable-rkpairip", None)),
+            enable_whatsapp_patcher=data.pop("enable_whatsapp_patcher", data.pop("enable-whatsapp-patcher", None)),
+            lspatch_mode=data.pop("lspatch_mode", data.pop("lspatch-mode", "complement")),
         )
+    def engine_enabled(self, engine_name: str, global_value: bool) -> bool:
+        """Resolve whether an engine is enabled for this app.
+
+        Per-app override takes precedence over the global default.
+
+        Args:
+            engine_name: Engine identifier (e.g., "media_optimizer").
+            global_value: Global default for the engine.
+
+        Returns:
+            True if the engine should run for this app.
+        """
+        override = getattr(self, f"enable_{engine_name}", None)
+        if isinstance(override, bool):
+            return override
+        return global_value
 
 
 @dataclass
