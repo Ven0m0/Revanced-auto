@@ -222,8 +222,11 @@ class DTLXEngine:
             if candidate.exists():
                 return candidate
 
-        # Fallback: newest APK in work dir.
-        apk_files = [p for p in work_dir.glob("*.apk") if p.is_file()]
+        # Fallback: newest APK in work dir, excluding the input APK.
+        apk_files = [
+            p for p in work_dir.glob("*.apk")
+            if p.is_file() and p.name != input_apk.name
+        ]
         if apk_files:
             return max(apk_files, key=lambda p: p.stat().st_mtime)
         return None
