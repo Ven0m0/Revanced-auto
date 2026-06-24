@@ -38,5 +38,12 @@ uv run python -m pytest tests -v
 - Config / args / version tracking: `tests/test_config.py`, `tests/test_version_tracker.py`
 - Network / scrapers: `tests/test_network.py`
 - APK / signing: `tests/test_apk.py`
+- Engines: `tests/test_engines.py`
 - Notifier: `tests/test_notifier.py`
 - After Bash edits: run `bash -n` on changed `.sh` files
+
+## Engine System
+- Optional APK processing engines live in `scripts/builder/engines/` (pre-patch and post-patch).
+- Enable via `enable-<engine> = true` in `config.toml` or CLI `--enable-<engine>`.
+- Plugin hooks in `scripts/plugins/` implement `handle_hook(ctx, stage)`.
+- See `AGENTS.md` for the full engine development guide.

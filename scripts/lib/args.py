@@ -37,6 +37,73 @@ def build_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]
         help="Disable caching",
     )
 
+    # Engine overrides (ported from apk-tweak)
+    parser.add_argument(
+        "--enable-media-optimizer",
+        action="store_true",
+        default=None,
+        help="Enable media optimization (PNG/JPEG/audio compression, DPI filtering)",
+    )
+    parser.add_argument(
+        "--disable-media-optimizer",
+        action="store_false",
+        dest="enable_media_optimizer",
+        help="Disable media optimization",
+    )
+    parser.add_argument(
+        "--enable-apk-optimizer",
+        action="store_true",
+        default=None,
+        help="Enable APK optimization (debug strip, native lib strip, locale filter)",
+    )
+    parser.add_argument(
+        "--disable-apk-optimizer",
+        action="store_false",
+        dest="enable_apk_optimizer",
+        help="Disable APK optimization",
+    )
+    parser.add_argument(
+        "--enable-string-cleaner",
+        action="store_true",
+        default=None,
+        help="Enable unused string resource cleanup",
+    )
+    parser.add_argument(
+        "--disable-string-cleaner",
+        action="store_false",
+        dest="enable_string_cleaner",
+        help="Disable string cleaner",
+    )
+    parser.add_argument(
+        "--enable-dtlx",
+        action="store_true",
+        default=None,
+        help="Enable DTL-X analysis/optimization",
+    )
+    parser.add_argument(
+        "--disable-dtlx",
+        action="store_false",
+        dest="enable_dtlx",
+        help="Disable DTL-X",
+    )
+    parser.add_argument(
+        "--target-dpi",
+        default=None,
+        help="Target DPI(s) to keep, comma-separated (e.g., xxhdpi,xhdpi)",
+    )
+    parser.add_argument(
+        "--optimize-images",
+        action="store_true",
+        default=None,
+        help="Optimize images when media optimizer is enabled",
+    )
+    parser.add_argument(
+        "--optimize-audio",
+        action="store_true",
+        default=None,
+        help="Optimize audio when media optimizer is enabled",
+    )
+
 
 def check_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add 'check' subcommand to subparsers."""
