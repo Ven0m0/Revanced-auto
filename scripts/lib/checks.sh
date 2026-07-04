@@ -147,7 +147,7 @@ check_config_file() {
     return 0
   fi
   if command -v uv &> /dev/null; then
-    if uv run scripts/toml_get.py --file config.toml > /dev/null 2>&1; then
+    if uv run python3 -c "import tomllib; tomllib.load(open('config.toml', 'rb'))" > /dev/null 2>&1; then
       log_debug "config.toml syntax valid"
     else
       epr "config.toml syntax invalid"
