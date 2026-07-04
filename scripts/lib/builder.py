@@ -13,11 +13,7 @@ class Builder:
         self.config = config
 
     def build_all(self) -> bool:
-        """Run the legacy build entry point and return whether it succeeded."""
-        result = subprocess.run(  # noqa: S603
-            ["./build.sh", self.config.config_file],
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-        return result.returncode == 0
+        """Run the new Python build pipeline and return whether it succeeded."""
+        from scripts.builder.app_processor import main
+
+        return main(["app_processor.py", self.config.config_file]) == 0

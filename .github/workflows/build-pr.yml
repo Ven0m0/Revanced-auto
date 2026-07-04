@@ -118,12 +118,12 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         # Find first enabled app for testing (use Python tomllib - jq cannot parse TOML)
         TEST_APP=$(python3 -c "
-import tomllib, sys
-with open('config.toml', 'rb') as f:
-    cfg = tomllib.load(f)
-apps = [k for k, v in cfg.items() if isinstance(v, dict) and v.get('enabled', True)]
-print(apps[0] if apps else '')
-" 2>/dev/null || echo "")
+            import tomllib, sys
+            with open('config.toml', 'rb') as f:
+                cfg = tomllib.load(f)
+            apps = [k for k, v in cfg.items() if isinstance(v, dict) and v.get('enabled', True)]
+            print(apps[0] if apps else '')
+        " 2>/dev/null || echo "")
         if [[ -z "$TEST_APP" ]]; then
           echo "⚠️  No enabled apps found in config.toml - skipping test build" >> $GITHUB_STEP_SUMMARY
           exit 0

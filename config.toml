@@ -60,7 +60,7 @@ patches-source = "MorpheApp/morphe-patches"
 # - Can reduce APK size by 10-30%
 # - Only applies to arm64-v8a APK builds
 # Default: true
-enable-aapt2-optimize = true
+enable-aapt2-optimize = false
 
 # AAPT2 Binary Source
 # GitHub repository to fetch custom aapt2 binary from (dynamically downloaded)
