@@ -16,4 +16,4 @@ class Builder:
         """Run the new Python build pipeline and return whether it succeeded."""
         from scripts.builder.app_processor import main
 
-        return main([self.config.config_file]) == 0
+        return main(["app_processor.py", self.config.config_file]) == 0
