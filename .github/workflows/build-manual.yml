@@ -37,8 +37,7 @@ on:
         default: true
         type: boolean
 concurrency:
-  group: manual-build-${{ github.event.inputs.app_name }}-${{ github.event.inputs.architecture
-    }}
+  group: manual-build-${{ github.event.inputs.app_name }}-${{ github.event.inputs.architecture }}
   cancel-in-progress: true
 jobs:
   build:
@@ -114,8 +113,7 @@ PYEOF
         if-no-files-found: warn
         retention-days: 7
     - name: Publish to Release
-      if: inputs.publish_release && github.event_name != 'pull_request' && github.repository
-        == github.event.repository.full_name
+      if: inputs.publish_release && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
