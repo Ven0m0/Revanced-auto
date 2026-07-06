@@ -1,7 +1,6 @@
 # High-Priority Tasks
 
-## Toolchain & Infrastructure
-- Fix `mise.toml` and setup correct dependency usage with mise and uv in `pyproject.toml`, `mise.toml`, and GitHub Actions workflows
+## Add info from [awesome-for-morphe](https://github.com/nvbangg/awesome-for-morphe) to the @README.md and to the @docs/
 
 ## Patcher Integration
 - Use Morphe by default
