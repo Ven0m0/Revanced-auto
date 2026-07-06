@@ -63,6 +63,62 @@ bash ./build.sh cache stats
 
 `build.sh` is a compatibility wrapper around the same build flow. Prefer `uv run python -m scripts.cli ...` for normal use.
 
+## Morphe setup guide
+
+This repo ships with **Morphe** as the default patcher (`MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`). `YouTube-Morphed` and `Music-Morphed` are enabled out of the box in `config.toml`.
+
+### Prerequisites
+
+- Java **21+** (Morphe CLI is built and tested on Java 21 LTS)
+- Python **3.13+**
+- `uv` for dependency management (or `mise` to provision the toolchain)
+
+### First-time setup
+
+```bash
+git clone <repo-url>
+cd Revanced-auto
+mise install            # optional: provisions Python 3.13 + Java 21 via mise
+uv sync --locked --all-groups
+bash ./check-env.sh     # verifies tools, downloads bin/* jars, validates config.toml
+export KEYSTORE_PASSWORD='...'
+export KEYSTORE_ENTRY_PASSWORD='...'
+```
+
+### Build with Morphe
+
+```bash
+# Sanity check (does not download APKs)
+uv run python -m scripts.cli check --config config.toml
+
+# Build all enabled apps (YouTube-Morphed + Music-Morphed by default)
+uv run python -m scripts.cli build --config config.toml --build-mode apk --parallel 2
+```
+
+To force a specific CLI profile, set `cli-profile` in `config.toml` (or pass it on the command line where supported). Valid values:
+
+- `"auto"` (default) — detect from the CLI JAR's `--help` output
+- `"morphe-cli"`
+- `"revanced-cli-v5"`
+- `"revanced-cli-v6"`
+- `"adobo-cli"` (Adobo patches run on Morphe CLI)
+
+### Morphe resources
+
+- [Official Morphe Website](https://morphe.software)
+- [Morphe Patches site](https://morphe-patches.software)
+- [Morphe Documentation](https://github.com/MorpheApp/morphe-documentation)
+- [Awesome for Morphe](https://github.com/nvbangg/awesome-for-morphe) — curated list of Morphe tools, patch indexes, and community resources
+- [Patch Explorer](https://patch-explorer.web.app/) — browse all Morphe-supported apps and patches
+- [Morphe Patch Tracker](https://github.com/MorpheApp/morphe-patches/releases) — latest patches release
+- [Morphe CLI releases](https://github.com/MorpheApp/morphe-cli/releases) — latest CLI release
+
+### Troubleshooting Morphe
+
+- **CLI detection picks the wrong profile** — set `cli-profile = "morphe-cli"` in `config.toml` to force it.
+- **`patch --help` flags differ from what the docs say** — Morphe CLI tracks upstream; pin `cli-version = "vX.Y.Z"` to lock behavior.
+- **Build succeeds but patches are not applied** — confirm `patches-source` resolves to a published release and `patches-version` matches the CLI's expected bundle shape.
+
 ## Key commands
 
 ```bash
@@ -255,4 +311,16 @@ Useful env vars:
 
 - [`docs/CONFIG.md`](./docs/CONFIG.md)
 - [`docs/README.md`](./docs/README.md)
+- [`docs/PATCHES.md`](./docs/PATCHES.md) — curated patch sources and Morphe indexes
 - [`AGENTS.md`](./AGENTS.md)
+
+## Related projects
+
+- [Morphe](https://morphe.software) — patches and CLI that drive this repo's default build.
+- [Morphe Patches](https://morphe-patches.software) — index of Morphe-supported apps and patches.
+- [awesome-for-morphe](https://github.com/nvbangg/awesome-for-morphe) — curated list of Morphe tools, patch indexes, and community resources.
+- [builder-for-morphe](https://github.com/nvbangg/builder-for-morphe) — minimal Python rewrite based on j-hc/uni-apks. Uses the same `config.toml` shape as this repo; recommended for users who want a simpler single-purpose builder.
+- [ReVanced](https://github.com/ReVanced) — upstream ReVanced project.
+- [ReVanced Extended (RVX)](https://github.com/inotia00/revanced-patches) — community patch fork.
+- [revanced-external-bundles](https://revanced-external-bundles.brosssh.com) — community patches aggregator (used by `patches-source = "brosssh/revanced-external-bundles"`).
+- [j-hc/rvmm-config-gen](https://j-hc.github.io/rvmm-config-gen/) — web config generator compatible with this repo's TOML format.

@@ -127,6 +127,17 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label for="cli-profile">CLI Profile</label>
+                        <select id="cli-profile">
+                            <option value="auto" selected>auto (detect from --help)</option>
+                            <option value="morphe-cli">morphe-cli</option>
+                            <option value="revanced-cli-v5">revanced-cli-v5</option>
+                            <option value="revanced-cli-v6">revanced-cli-v6</option>
+                            <option value="adobo-cli">adobo-cli</option>
+                        </select>
+                        <p class="help-text">Forces a CLI flag style. Use "auto" to detect from the CLI JAR's <code>--help</code>.</p>
+                    </div>
+                    <div class="form-group">
                         <label for="rv-brand">RV Brand</label>
                         <input type="text" id="rv-brand" value="RVX">
                         <p class="help-text">Brand name (RVX, ReVanced, etc.)</p>
@@ -149,6 +160,59 @@
                         <label class="checkbox-label">
                             <input type="checkbox" id="aapt2" checked>
                             <span>Enable AAPT2 optimization</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="use-custom-aapt2">
+                            <span>Use custom AAPT2 binary</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="aapt2-source">AAPT2 source repo</label>
+                        <input type="text" id="aapt2-source" value="Graywizard888/Custom-Enhancify-aapt2-binary">
+                        <p class="help-text">GitHub <code>owner/repo</code> for the custom AAPT2 binary (used when <code>use-custom-aapt2</code> is enabled).</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="engine-media-optimizer">
+                            <span>Enable media_optimizer engine (post-patch)</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="engine-apk-optimizer">
+                            <span>Enable apk_optimizer engine (post-patch)</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="engine-string-cleaner">
+                            <span>Enable string_cleaner engine (post-patch)</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="engine-dtlx">
+                            <span>Enable dtlx engine (pre-patch)</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="engine-lspatch">
+                            <span>Enable lspatch engine (pre-patch)</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="engine-rkpairip">
+                            <span>Enable rkpairip engine (pre-patch)</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="engine-whatsapp-patcher">
+                            <span>Enable whatsapp_patcher engine (pre-patch)</span>
                         </label>
                     </div>
                     <div class="form-group">
@@ -595,6 +659,18 @@ remove-rv-integrations-checks = ${g("remove-checks").checked}
 riplib = ${g("riplib").checked}
 # AAPT2 Optimization
 enable-aapt2-optimize = ${g("aapt2").checked}
+# AAPT2 Source (custom aapt2 binary)
+aapt2-source = "${g("aapt2-source").value}"
+# Use Custom AAPT2
+use-custom-aapt2 = ${g("use-custom-aapt2").checked}
+# Optional APK-tweak engines (off by default)
+enable-media-optimizer = ${g("engine-media-optimizer").checked}
+enable-apk-optimizer = ${g("engine-apk-optimizer").checked}
+enable-string-cleaner = ${g("engine-string-cleaner").checked}
+enable-dtlx = ${g("engine-dtlx").checked}
+enable-lspatch = ${g("engine-lspatch").checked}
+enable-rkpairip = ${g("engine-rkpairip").checked}
+enable-whatsapp-patcher = ${g("engine-whatsapp-patcher").checked}
 # Default Architecture
 arch = "${g("arch").value}"
 # Build Mode
@@ -609,6 +685,8 @@ version = "auto"
 patches-source = "${g("patches-source").value}"
 # Default CLI Source
 cli-source = "${g("cli-source").value}"
+# CLI Profile (force a flag style: auto, morphe-cli, revanced-cli-v5/v6, adobo-cli)
+cli-profile = "${g("cli-profile").value}"
 # RV Brand
 rv-brand = "${g("rv-brand").value}"
 # =============================================================================
@@ -691,9 +769,12 @@ rv-brand = "${g("rv-brand").value}"
             const apps = {};
             const globalKeys = new Set([
                 "parallel-jobs", "compression-level", "remove-rv-integrations-checks",
-                "riplib", "enable-aapt2-optimize", "arch", "build-mode",
+                "riplib", "enable-aapt2-optimize", "aapt2-source", "use-custom-aapt2",
+                "enable-media-optimizer", "enable-apk-optimizer", "enable-string-cleaner",
+                "enable-dtlx", "enable-lspatch", "enable-rkpairip", "enable-whatsapp-patcher",
+                "arch", "build-mode",
                 "patches-version", "cli-version", "version", "patches-source",
-                "cli-source", "rv-brand",
+                "cli-source", "cli-profile", "rv-brand",
             ]);
             for (const rawLine of lines) {
                 const line = rawLine.trim();
@@ -734,11 +815,21 @@ rv-brand = "${g("rv-brand").value}"
             setVal("remove-checks", globals["remove-rv-integrations-checks"]);
             setVal("riplib", globals.riplib);
             setVal("aapt2", globals["enable-aapt2-optimize"]);
+            setVal("use-custom-aapt2", globals["use-custom-aapt2"]);
+            setVal("aapt2-source", globals["aapt2-source"]);
+            setVal("engine-media-optimizer", globals["enable-media-optimizer"]);
+            setVal("engine-apk-optimizer", globals["enable-apk-optimizer"]);
+            setVal("engine-string-cleaner", globals["enable-string-cleaner"]);
+            setVal("engine-dtlx", globals["enable-dtlx"]);
+            setVal("engine-lspatch", globals["enable-lspatch"]);
+            setVal("engine-rkpairip", globals["enable-rkpairip"]);
+            setVal("engine-whatsapp-patcher", globals["enable-whatsapp-patcher"]);
             setVal("arch", globals.arch);
             setVal("patches-version", globals["patches-version"]);
             setVal("cli-version", globals["cli-version"]);
             setVal("patches-source", globals["patches-source"]);
             setVal("cli-source", globals["cli-source"]);
+            setVal("cli-profile", globals["cli-profile"]);
             setVal("rv-brand", globals["rv-brand"]);
             // Clear existing apps
             document.getElementById("apps-container").querySelectorAll(".app-card").forEach((c) => { c.remove(); });

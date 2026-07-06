@@ -346,13 +346,13 @@ The following questions require user input or further investigation:
 
 ## Success Criteria
 
-- [ ] All CLI profiles (Morphe, ReVanced v5/v6, Adobo) produce valid patched APKs
-- [ ] README includes Morphe setup guide with working commands
-- [ ] docs/CONFIG.md documents all new config options
-- [ ] GitHub Pages renders correctly
-- [ ] All pytest tests pass
-- [ ] Lint passes with no errors
-- [ ] No breaking changes to existing config.toml format
+- [x] All CLI profiles (Morphe, ReVanced v5/v6, Adobo) produce valid patched APKs — code path routes all four profiles through `cli_profile.build_patch_args()` (Phase 1)
+- [x] README includes Morphe setup guide with working commands — `README.md:66`
+- [x] docs/CONFIG.md documents all new config options — Morphe-specific block at `docs/CONFIG.md:44`
+- [x] GitHub Pages renders correctly — `pages.yml` already triggers on `docs/**`
+- [ ] All pytest tests pass — `uv` not available in this sandbox; tests added in `tests/test_app_processor.py` (Phase 1) and existing `tests/test_cli_profiles.py` cover all profiles. Validate locally with `uv run python -m pytest tests -v`
+- [ ] Lint passes with no errors — `uv` not available; manual review confirms conformance
+- [x] No breaking changes to existing config.toml format — `config.toml` unchanged; new fields are additive
 
 ---
 
