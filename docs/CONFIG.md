@@ -39,6 +39,36 @@ cli-source = "MorpheApp/morphe-cli"             # where to fetch CLI from. defau
 # Force a specific profile with cli-profile (default "auto"). Auto-detection
 # inspects `--help` and falls back to ReVanced CLI v5 on uncertainty.
 cli-profile = "auto"
+
+# ============================================================================
+# Morphe-specific configuration tips
+# ============================================================================
+# Morphe is the default patcher. The shipped [YouTube-Morphed] and
+# [Music-Morphed] app sections are pre-configured. To add another app:
+#
+# 1. Set the global patches-source / cli-source to Morphe (or leave defaults).
+# 2. Add an `[App-Name]` section that points to a stock APK download URL.
+# 3. Set `cli-profile = "morphe-cli"` if auto-detection misclassifies the JAR.
+# 4. Run `uv run python -m scripts.cli check --config config.toml` to verify.
+#
+# Adobo patches (jkennethcarino/adobo) reuse Morphe's flag set. To switch:
+#
+#   patches-source = "jkennethcarino/adobo"
+#   cli-source     = "MorpheApp/morphe-cli"
+#   cli-profile    = "adobo-cli"
+#
+# External bundles (https://revanced-external-bundles.brosssh.com) expose a
+# GraphQL resolver. Use either the bare repo slug (resolved by package id) or
+# an explicit `external-bundles:<bundle_type>` selector:
+#
+#   patches-source = "brosssh/revanced-external-bundles"
+#   patches-source = "external-bundles:revanced-patches"
+#
+# Troubleshooting Morphe CLI detection:
+#   - Detection parses the CLI JAR's `patch --help` output.
+#   - "morphe-cli" is detected when the help text contains "morphe".
+#   - "adobo-cli" is detected when the help text contains "adobo".
+#   - If detection fails, set cli-profile explicitly.
 # options like cli-source can also set per app
 rv-brand = "Morphe" # rebrand from 'Morphe' to something different. default: "Morphe"
 patches-version = "latest" # 'latest', 'dev', or a version number. default: "latest"

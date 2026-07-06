@@ -20,6 +20,13 @@ from pathlib import Path
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
+from scripts.builder.cli_profiles import (
+    BUILTIN_PROFILES,
+    CLIProfile,
+    CLIProfileType,
+    PatchCommandConfig,
+    detect_cli_profile,
+)
 from scripts.builder.engines import EngineContext, EngineRunner, EngineStage
 from scripts.lib.plugins import dispatch_plugins
 
@@ -457,7 +464,6 @@ class AppProcessor:
         self.download_manager = download_manager
         self.module_generator = module_generator
         self._job_runner: JobRunner | None = None
-        self._cli_rip_lib_cache: dict[str, bool] = {}
 
     @property
     def parallel_jobs(self) -> int:
@@ -952,10 +958,13 @@ class AppProcessor:
         if not context.cli_jar:
             return []
 
+        cli_profile = self._resolve_cli_profile(context)
+        list_args = cli_profile.build_list_patches_args(context.patches_jars)
+
         try:
             result = self.java_runner.run_jar(
                 str(context.cli_jar),
-                ["list-patches"] + [str(p) for p in context.patches_jars],
+                ["list-patches"] + list_args,
                 timeout=60,
             )
             if result.returncode == 0:
@@ -995,29 +1004,29 @@ class AppProcessor:
                 raise RuntimeError(f"Patching failed: {result.stderr}")
             return context.output_path
 
-        patch_args = [
-            "-i",
-            str(stock_apk),
-            "-o",
-            str(context.output_path),
-        ]
-
-        for patches_jar in context.patches_jars:
-            patch_args.extend(["-e", str(patches_jar)])
-
-        for exclude_patch in context.excluded_patches:
-            patch_args.extend(["-d", exclude_patch])
-
-        for include_patch in context.included_patches:
-            patch_args.extend(["-e", include_patch])
-
+        cli_profile = self._resolve_cli_profile(context)
         keystore = self._get_keystore_path()
-        if keystore:
-            patch_args.extend(["-k", str(keystore)])
+        riplib_libs: list[str] = []
+        if context.riplib and self._profile_supports_riplib(cli_profile):
+            riplib_libs = []
 
-        riplib = self._check_riplib_support(context)
-        if riplib:
-            patch_args.append("--rip-lib")
+        patch_config = PatchCommandConfig(
+            apk_path=stock_apk,
+            output_path=context.output_path,
+            patches_jars=context.patches_jars,
+            exclude=context.excluded_patches if not context.exclusive_patches else [],
+            include=context.included_patches if context.exclusive_patches else [],
+            merge=context.merge_patches,
+            keystore=keystore,
+            rip_lib=riplib_libs,
+        )
+        patch_args = cli_profile.build_patch_args(patch_config)
+
+        if context.riplib and self._profile_supports_riplib(cli_profile):
+            riplib_mapping = cli_profile.patch_args.get("RIP_LIB")
+            if riplib_mapping:
+                patch_args.extend(riplib_mapping.prepend_args)
+                patch_args.append(riplib_mapping.flag)
 
         result = self.java_runner.run_jar(
             str(context.cli_jar),
@@ -1030,34 +1039,41 @@ class AppProcessor:
 
         return context.output_path
 
-    def _check_riplib_support(self, context: AppBuildContext) -> bool:
-        """Check if CLI supports riplib.
+    def _resolve_cli_profile(self, context: AppBuildContext) -> CLIProfile:
+        """Resolve the CLI profile for a build context.
+
+        Honors the global ``cli_profile`` setting (default ``"auto"``) by
+        inspecting the CLI JAR when needed. Falls back to ``MORPHE_CLI`` when
+        detection fails or no JAR is available, which is consistent with the
+        default ``cli_source`` in the repository's ``config.toml``.
 
         Args:
-            context: Build context.
+            context: Build context with a downloaded ``cli_jar``.
 
         Returns:
-            True if riplib is supported.
+            The resolved :class:`CLIProfile` to use for building args.
         """
-        if not context.cli_jar:
-            return False
+        requested = getattr(self.config.global_settings, "cli_profile", "auto")
+        normalized = (requested or "auto").strip().lower()
 
-        cli_str = str(context.cli_jar)
-        if cli_str in self._cli_rip_lib_cache:
-            return self._cli_rip_lib_cache[cli_str]
+        if normalized != "auto":
+            for profile_type, profile in BUILTIN_PROFILES.items():
+                if profile_type.value == normalized or profile_type.name.lower() == normalized:
+                    return profile
+            logger.warning("Unknown cli_profile %r; falling back to auto-detect", requested)
 
-        try:
-            result = self.java_runner.run_jar(
-                str(context.cli_jar),
-                ["patch", "--help"],
-                timeout=30,
-            )
-            supports_riplib = "rip-lib" in result.stdout or "rip-lib" in result.stderr
-        except Exception:
-            supports_riplib = False
+        if context.cli_jar and context.cli_jar.exists():
+            try:
+                return detect_cli_profile(context.cli_jar)
+            except Exception as e:  # noqa: BLE001 - detection is best-effort
+                logger.debug("CLI profile detection failed (%s); using MORPHE_CLI", e)
 
-        self._cli_rip_lib_cache[cli_str] = supports_riplib
-        return supports_riplib
+        return BUILTIN_PROFILES[CLIProfileType.MORPHE_CLI]
+
+    @staticmethod
+    def _profile_supports_riplib(profile: CLIProfile) -> bool:
+        """Return True when the profile declares a RIP_LIB arg mapping."""
+        return "RIP_LIB" in profile.patch_args and profile.patch_args["RIP_LIB"] is not None
 
     def _get_keystore_path(self) -> Path | None:
         """Get keystore path from configuration.

@@ -94,8 +94,14 @@ On mobile (< 768px), the navigation collapses into a hamburger menu.
 
 - [Main README](../README.md) — Project overview
 - [Configuration Reference](./CONFIG.md) — Detailed config documentation
+- [Patch sources & indexes](./PATCHES.md) — Curated list of supported patch sources, CLIs, and Morphe patch indexes
 
 ## External Links
 
+- [Morphe Website](https://morphe.software)
+- [Morphe Patches](https://morphe-patches.software)
+- [Morphe Documentation](https://github.com/MorpheApp/morphe-documentation)
+- [Awesome for Morphe](https://github.com/nvbangg/awesome-for-morphe)
+- [Patch Explorer](https://patch-explorer.web.app/)
 - [ReVanced Project](https://github.com/ReVanced)
 - [ReVanced Extended (RVX)](https://github.com/inotia00/revanced-patches)
