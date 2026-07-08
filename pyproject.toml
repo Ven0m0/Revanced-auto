@@ -7,7 +7,7 @@ readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "ReVanced Builder Contributors" }]
 dependencies = [
-  "httpx>=0.28.1",
+  "httpx[http2]>=0.28.1",
   "orjson>=3.11.8",
   "selectolax>=0.3.21",
 ]
