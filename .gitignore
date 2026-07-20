@@ -41,3 +41,8 @@ dist/
 node_modules/
 package-lock.json
 yarn.lock
+
+.omc/
+.serena/
+!.serena/project.yml
+.codegraph/
