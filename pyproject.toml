@@ -10,6 +10,8 @@ dependencies = [
   "httpx[http2]>=0.28.1",
   "orjson>=3.11.8",
   "selectolax>=0.4.11",
+  "beautifulsoup4>=4.15.0",
+  "curl-cffi>=0.15.0",
 ]
 
 [dependency-groups]
@@ -44,7 +46,7 @@ dev = [
 ]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 strict = true
 strict_optional = true
 disallow_any_generics = true
@@ -69,7 +71,7 @@ enable_error_code = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py313"
+target-version = "py314"
 fix = true
 exclude = [
   ".git",
