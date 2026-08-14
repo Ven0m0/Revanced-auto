@@ -1,0 +1,88 @@
+ci:
+  skip: [renovate-config-validator]
+
+repos:
+  # Ruff - Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.3
+    hooks:
+      # Run linter and auto-fix issues
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+        stages: [pre-commit]
+      - id: ruff-format
+        types_or: [python, pyi]
+        stages: [pre-commit]
+  - repo: https://github.com/DetachHead/basedpyright-prek-mirror
+    rev: 1.39.10
+    hooks:
+      - id: basedpyright
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
+    hooks:
+      - id: pyupgrade
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.12.3
+    hooks:
+      - id: uv-lock
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: fix-byte-order-marker
+        exclude: \.(ps1|psm1|psd1)$
+      - id: mixed-line-ending
+      - id: detect-private-key
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-illegal-windows-names
+      - id: check-symlinks
+
+  - repo: https://github.com/renovatebot/pre-commit-hooks
+    rev: 44.30.2
+    hooks:
+      - id: renovate-config-validator
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: [-x, --severity=warning]
+        files: \.(sh|bash)$
+
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v2.5.8
+    hooks:
+      - id: biome-ci
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.38.0
+    hooks:
+      - id: check-dependabot
+      - id: check-github-actions
+      - id: check-github-workflows
+      
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.21.0
+    hooks:
+      - id: yamlfmt
+      
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+  
+  - repo: https://github.com/mangiucugna/gha-updater-pre-commit
+    rev: v0.1
+    hooks:
+      - id: gha-update
+        stages: [manual]
