@@ -332,7 +332,7 @@ class GitHubReleaseNotifier(BaseNotifier):
                 )
                 response.raise_for_status()
                 return True
-        except (httpx.HTTPError, OSError):
+        except httpx.HTTPError, OSError:
             return False
 
     def send(self, notification: BuildNotification) -> bool:

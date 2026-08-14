@@ -19,7 +19,7 @@ _RAW_PATTERNS: list[tuple[str, str, str]] = [
     ),
     (
         r'"(https?://|//).*?(googleads|googlesyndication|doubleclick|admob|'
-        r'adservice|adsystem|advertising|analytics|crashlytics|firebase|'
+        r"adservice|adsystem|advertising|analytics|crashlytics|firebase|"
         r'facebook\.com/tr|app-measurement).*?"',
         '"="',
         "Common ad/tracker URL neutralization",

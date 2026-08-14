@@ -305,7 +305,7 @@ def detect_cli_profile(cli_jar_path: Path) -> CLIProfile:
             check=True,
             timeout=30,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired:
         try:
             result = subprocess.run(
                 ["java", "-jar", str(cli_jar_path), "--help"],

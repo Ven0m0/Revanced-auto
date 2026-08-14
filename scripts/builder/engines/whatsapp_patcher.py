@@ -68,7 +68,7 @@ class WhatsAppPatcherEngine:
                     check=True,
                     timeout=120,
                 )
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            except subprocess.CalledProcessError, subprocess.TimeoutExpired:
                 ctx.log("WhatsApp patcher: failed to install dependencies, continuing anyway")
 
         main_script = patcher_dir / "whatsapp_patcher" / "main.py"
@@ -133,5 +133,5 @@ class WhatsAppPatcherEngine:
                 timeout=120,
             )
             return True
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        except subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError:
             return False

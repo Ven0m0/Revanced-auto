@@ -11,8 +11,9 @@ import importlib
 import logging
 import pkgutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from scripts.builder.engines import EngineContext

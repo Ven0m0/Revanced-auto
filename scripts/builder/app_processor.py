@@ -720,10 +720,7 @@ class AppProcessor:
         # Determine whether to skip ReVanced patching when LSPatch is in
         # alternative mode.
         lspatch_mode = context.engine_options.get("lspatch", {}).get("mode", "complement")
-        skip_revanced = (
-            self._is_engine_enabled(context, "lspatch")
-            and lspatch_mode == "alternative"
-        )
+        skip_revanced = self._is_engine_enabled(context, "lspatch") and lspatch_mode == "alternative"
 
         if skip_revanced:
             patched_apk = current_apk
@@ -1065,7 +1062,7 @@ class AppProcessor:
         if context.cli_jar and context.cli_jar.exists():
             try:
                 return detect_cli_profile(context.cli_jar)
-            except Exception as e:  # noqa: BLE001 - detection is best-effort
+            except Exception as e:
                 logger.debug("CLI profile detection failed (%s); using MORPHE_CLI", e)
 
         return BUILTIN_PROFILES[CLIProfileType.MORPHE_CLI]

@@ -159,8 +159,11 @@ class UptodownScraper(ScraperBase):
                     if fv.version == version:
                         return fv
                 return UptodownVersion(
-                    version=version, url=v_info.url, arch=v_info.arch,
-                    file_id="", is_xapk=False,
+                    version=version,
+                    url=v_info.url,
+                    arch=v_info.arch,
+                    file_id="",
+                    is_xapk=False,
                 )
         return None
 
@@ -224,7 +227,9 @@ class UptodownScraper(ScraperBase):
                 namelist = zf.namelist()
                 apk_files = [n for n in namelist if n.endswith(".apk")]
                 if not apk_files:
-                    return DownloadResult(success=False, file_path=None, version=version, error="No APK found in XAPK bundle")
+                    return DownloadResult(
+                        success=False, file_path=None, version=version, error="No APK found in XAPK bundle"
+                    )
                 main_apk = apk_files[0]
                 apk_content = await asyncio.to_thread(zf.read, main_apk)
                 await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)

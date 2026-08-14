@@ -141,14 +141,12 @@ class TestArtifactNameDerivation:
         ("repo", "expected"),
         [
             ("  MorpheApp/morphe-cli  ", "morphe-cli"),  # whitespace
-            ("MorpheApp/morphe-cli/", "morphe-cli"),      # trailing slash
-            ("  crimera/piko/  ", "piko"),                 # both
-            ("/owner/repo", "repo"),                        # leading slash
+            ("MorpheApp/morphe-cli/", "morphe-cli"),  # trailing slash
+            ("  crimera/piko/  ", "piko"),  # both
+            ("/owner/repo", "repo"),  # leading slash
         ],
     )
-    def test_cli_artifact_name_trims_whitespace_and_slashes(
-        self, repo: str, expected: str
-    ) -> None:
+    def test_cli_artifact_name_trims_whitespace_and_slashes(self, repo: str, expected: str) -> None:
         assert _cli_artifact_name(repo) == expected
 
     @pytest.mark.parametrize(
@@ -159,9 +157,7 @@ class TestArtifactNameDerivation:
             ("  crimera/piko/  ", "piko"),
         ],
     )
-    def test_patches_artifact_name_trims_whitespace_and_slashes(
-        self, repo: str, expected: str
-    ) -> None:
+    def test_patches_artifact_name_trims_whitespace_and_slashes(self, repo: str, expected: str) -> None:
         assert _patches_artifact_name(repo) == expected
 
 
@@ -206,9 +202,7 @@ class TestResolveCliProfile:
         ctx = self._context(tmp_path)
         assert processor._resolve_cli_profile(ctx) is ADOBO_CLI
 
-    def test_auto_falls_back_to_morphe_when_no_jar(
-        self, processor: AppProcessor, tmp_path
-    ) -> None:
+    def test_auto_falls_back_to_morphe_when_no_jar(self, processor: AppProcessor, tmp_path) -> None:
         processor.config.global_settings = GlobalConfig(cli_profile="auto")
         ctx = self._context(tmp_path)
         ctx.cli_jar = None
@@ -300,9 +294,7 @@ class TestRunPatcherUsesProfile:
         assert "-d" in args
         assert "bad-patch" in args
 
-    def test_riplib_skipped_when_profile_lacks_support(
-        self, tmp_path, monkeypatch
-    ) -> None:
+    def test_riplib_skipped_when_profile_lacks_support(self, tmp_path, monkeypatch) -> None:
         processor, java_runner = self._build_processor("auto")
         ctx = self._context(tmp_path)
         ctx.cli_jar.write_text("")
@@ -315,9 +307,7 @@ class TestRunPatcherUsesProfile:
             name="NoRip",
             profile_type=CLIProfileType.REVANCED_CLI_V5,
             list_patches_args=REVANCED_CLI_V5.list_patches_args,
-            patch_args=PatchArgs(
-                **{k: v for k, v in REVANCED_CLI_V5.patch_args.items() if k != "RIP_LIB"}
-            ),
+            patch_args=PatchArgs(**{k: v for k, v in REVANCED_CLI_V5.patch_args.items() if k != "RIP_LIB"}),
         )
         monkeypatch.setattr(
             "scripts.builder.app_processor.detect_cli_profile",

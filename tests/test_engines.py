@@ -1,6 +1,6 @@
 """Tests for the apk-tweak engine integration."""
 
-# ruff: noqa: S101, TC003, EM101, TRY003
+# ruff: noqa: S101, TC003
 
 from __future__ import annotations
 
@@ -8,10 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from scripts.builder.config import AppConfig, Config, GlobalConfig
+from scripts.builder.config import AppConfig, GlobalConfig
 from scripts.builder.engines import (
     EngineContext,
-    EngineResult,
     EngineRunner,
     EngineStage,
     create_engine,
@@ -68,10 +67,12 @@ class TestEngineConfig:
         assert cfg.enable_lspatch is False
 
     def test_global_engine_from_dict(self) -> None:
-        cfg = GlobalConfig.from_dict({
-            "enable_media_optimizer": True,
-            "enable_apk_optimizer": True,
-        })
+        cfg = GlobalConfig.from_dict(
+            {
+                "enable_media_optimizer": True,
+                "enable_apk_optimizer": True,
+            }
+        )
         assert cfg.enable_media_optimizer is True
         assert cfg.enable_apk_optimizer is True
 

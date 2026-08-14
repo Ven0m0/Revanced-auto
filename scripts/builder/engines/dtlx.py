@@ -139,12 +139,14 @@ class DTLXEngine:
                 "",
             ]
             if result.stderr:
-                report_content.extend([
-                    "STDERR:",
-                    "-" * 60,
-                    result.stderr,
-                    "",
-                ])
+                report_content.extend(
+                    [
+                        "STDERR:",
+                        "-" * 60,
+                        result.stderr,
+                        "",
+                    ]
+                )
             report_file.write_text("\n".join(report_content), encoding="utf-8")
             ctx.log(f"DTL-X: analysis report saved to {report_file}")
             return True
@@ -223,10 +225,7 @@ class DTLXEngine:
                 return candidate
 
         # Fallback: newest APK in work dir, excluding the input APK.
-        apk_files = [
-            p for p in work_dir.glob("*.apk")
-            if p.is_file() and p.name != input_apk.name
-        ]
+        apk_files = [p for p in work_dir.glob("*.apk") if p.is_file() and p.name != input_apk.name]
         if apk_files:
             return max(apk_files, key=lambda p: p.stat().st_mtime)
         return None

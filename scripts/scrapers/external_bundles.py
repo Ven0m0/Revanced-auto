@@ -56,7 +56,7 @@ def parse_bundle_selector(source: str) -> str | None:
 
 def _graphql_query(query: str, variables: dict[str, object] | None = None) -> dict[str, object]:
     payload = json.dumps({"query": query, "variables": variables or {}}).encode("utf-8")
-    req = urllib.request.Request(  # noqa: S310 — fixed https endpoint
+    req = urllib.request.Request(
         EXTERNAL_BUNDLES_GRAPHQL_URL,
         data=payload,
         headers={"Content-Type": "application/json", "Accept": "application/json"},

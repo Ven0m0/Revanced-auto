@@ -1,7 +1,5 @@
 """Compatibility wrapper for invoking the legacy build shell script."""
 
-import subprocess
-
 from scripts.lib.config import Config
 
 

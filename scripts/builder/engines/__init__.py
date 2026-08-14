@@ -57,8 +57,6 @@ class EngineContext:
             message: Message to log.
             level: Logging level (default: INFO).
         """
-        from scripts.lib import logging as log
-
         formatted = f"[{self.app_name}] {message}"
         if level >= 40:
             log.error(formatted)
@@ -107,7 +105,6 @@ class Engine(Protocol):
 
 from scripts.lib import logging as log
 from scripts.lib.plugins import dispatch_plugins
-
 
 # Engine name -> (module_path, class_name, stage)
 _ENGINE_REGISTRY: dict[str, tuple[str, str, EngineStage]] = {
@@ -168,9 +165,7 @@ class EngineRunner:
             enabled_engines: List of engine names enabled for this build.
         """
         self.stage = stage
-        self.enabled_engines = [
-            name for name in enabled_engines if get_engine_stage(name) == stage
-        ]
+        self.enabled_engines = [name for name in enabled_engines if get_engine_stage(name) == stage]
 
     def run(self, ctx: EngineContext) -> Path:
         """Execute all enabled engines for this stage in order.

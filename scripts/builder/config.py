@@ -172,6 +172,7 @@ class AppConfig:
             enable_whatsapp_patcher=data.pop("enable_whatsapp_patcher", data.pop("enable-whatsapp-patcher", None)),
             lspatch_mode=data.pop("lspatch_mode", data.pop("lspatch-mode", "complement")),
         )
+
     def engine_enabled(self, engine_name: str, global_value: bool) -> bool:
         """Resolve whether an engine is enabled for this app.
 
@@ -458,7 +459,7 @@ class ConfigLoader:
                 if isinstance(module_config, dict):
                     try:
                         modules[module_name] = ModuleConfig.from_dict(module_name, module_config)
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         continue
 
         return modules

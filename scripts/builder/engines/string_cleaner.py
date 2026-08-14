@@ -119,7 +119,7 @@ class StringCleanerEngine:
                 timeout=300,
             )
             return True
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        except subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError:
             return False
 
     def _recompile_apk(self, input_dir: Path, output_apk: Path, apktool_path: str) -> bool:
@@ -133,7 +133,7 @@ class StringCleanerEngine:
                 timeout=300,
             )
             return output_apk.exists()
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        except subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError:
             return False
 
     def _extract_string_names(self, xml_content: str) -> set[str]:
@@ -187,7 +187,7 @@ class StringCleanerEngine:
             try:
                 content = source_file.read_text(encoding="utf-8", errors="ignore")
                 used_strings.update(self._find_string_references(content))
-            except (OSError, UnicodeDecodeError):
+            except OSError, UnicodeDecodeError:
                 pass
 
         used_strings.update(reserved)

@@ -105,6 +105,7 @@ class APKMirror(ScraperBase):
     def temp_dir(self) -> Path:
         if self._temp_dir is None:
             import tempfile
+
             self._temp_dir = Path(tempfile.mkdtemp(prefix="apkmirror_"))
         return self._temp_dir
 
@@ -216,9 +217,16 @@ class APKMirror(ScraperBase):
         try:
             subprocess.run(
                 [
-                    "java", "-jar", str(apkeditor_jar), "merge",
-                    "-i", str(bundle_path), "-o", f"{bundle_path}.mzip",
-                    "-clean-meta", "-f",
+                    "java",
+                    "-jar",
+                    str(apkeditor_jar),
+                    "merge",
+                    "-i",
+                    str(bundle_path),
+                    "-o",
+                    f"{bundle_path}.mzip",
+                    "-clean-meta",
+                    "-f",
                 ],
                 capture_output=True,
                 text=True,
@@ -256,8 +264,11 @@ class APKMirror(ScraperBase):
         try:
             if version is None:
                 versions = await self.get_versions(
-                    pkg_name=pkg_name, arch=arch, dpi=dpi,
-                    bundle_type=bundle_type, exclude_alpha_beta=exclude_alpha_beta,
+                    pkg_name=pkg_name,
+                    arch=arch,
+                    dpi=dpi,
+                    bundle_type=bundle_type,
+                    exclude_alpha_beta=exclude_alpha_beta,
                 )
                 if not versions:
                     return DownloadResult(success=False, error="No versions found")
