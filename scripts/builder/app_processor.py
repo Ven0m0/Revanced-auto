@@ -1022,6 +1022,7 @@ class AppProcessor:
 
         cli_profile = self._resolve_cli_profile(context)
         keystore = self._get_keystore_path()
+        alias, keystore_password, keystore_entry_password, signer = self._get_keystore_credentials()
         riplib_libs: list[str] = []
         if context.riplib and self._profile_supports_riplib(cli_profile):
             keep_semantics = cli_profile.profile_type in (CLIProfileType.MORPHE_CLI, CLIProfileType.ADOBO_CLI)
@@ -1035,6 +1036,10 @@ class AppProcessor:
             include=context.included_patches if context.exclusive_patches else [],
             merge=context.merge_patches,
             keystore=keystore,
+            keystore_alias=alias,
+            keystore_password=keystore_password,
+            keystore_entry_password=keystore_entry_password,
+            signer=signer,
             rip_lib=riplib_libs,
             exclusive=context.exclusive_patches,
         )
@@ -1101,6 +1106,22 @@ class AppProcessor:
             return default_keystore
 
         return None
+
+    def _get_keystore_credentials(self) -> tuple[str, str, str, str]:
+        """Get keystore alias/passwords/signer, matching scripts/lib/patching.sh's defaults.
+
+        Passwords come from the same KEYSTORE_PASSWORD/KEYSTORE_ENTRY_PASSWORD
+        env vars the CI workflows set (empty string if unset -- build_cli_args
+        skips a flag entirely when its value is falsy, matching morphe-desktop's
+        own "empty (no password)" default rather than passing an empty flag).
+
+        Returns:
+            Tuple of (keystore_alias, keystore_password, keystore_entry_password, signer).
+        """
+        alias = self.config.global_settings.keystore_alias or "jhc"
+        keystore_password = os.environ.get("KEYSTORE_PASSWORD", "")
+        keystore_entry_password = os.environ.get("KEYSTORE_ENTRY_PASSWORD", "")
+        return alias, keystore_password, keystore_entry_password, alias
 
     def _parse_architecture(self, app_config: AppConfig) -> Architecture:
         """Parse architecture from app config.

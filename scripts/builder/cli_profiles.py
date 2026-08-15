@@ -56,6 +56,10 @@ class PatchArgs(TypedDict, total=False):
     OPTIONS: ArgMapping | None
     PURGE: ArgMapping | None
     KEYSTORE: ArgMapping | None
+    KEYSTORE_ALIAS: ArgMapping | None
+    KEYSTORE_PASSWORD: ArgMapping | None
+    KEYSTORE_ENTRY_PASSWORD: ArgMapping | None
+    SIGNER: ArgMapping | None
     APK: ArgMapping | None
     OUTPUT: ArgMapping | None
     FORCE: ArgMapping | None
@@ -91,6 +95,10 @@ class PatchCommandConfig:
         include: List of patches to include.
         merge: List of merge JAR files.
         keystore: Path to keystore file.
+        keystore_alias: Alias of the key entry inside the keystore.
+        keystore_password: Password for the keystore file itself.
+        keystore_entry_password: Password for the keystore entry.
+        signer: Signer name embedded in the APK signature.
         force: Force overwrite existing output.
         purge: Purge decompiled resources.
         rip_lib: List of libs to rip.
@@ -109,6 +117,10 @@ class PatchCommandConfig:
     include: list[str] = field(default_factory=list)
     merge: list[Path] = field(default_factory=list)
     keystore: Path | None = None
+    keystore_alias: str | None = None
+    keystore_password: str | None = None
+    keystore_entry_password: str | None = None
+    signer: str | None = None
     force: bool = False
     purge: bool = False
     rip_lib: list[str] = field(default_factory=list)
@@ -256,6 +268,10 @@ def _morphe_patch_args() -> PatchArgs:
         OPTIONS=ArgMapping(flag="-O", requires_value=True),
         PURGE=None,
         KEYSTORE=ArgMapping(flag="--keystore", requires_value=True),
+        KEYSTORE_ALIAS=ArgMapping(flag="--keystore-entry-alias", requires_value=True),
+        KEYSTORE_PASSWORD=ArgMapping(flag="--keystore-password", requires_value=True),
+        KEYSTORE_ENTRY_PASSWORD=ArgMapping(flag="--keystore-entry-password", requires_value=True),
+        SIGNER=ArgMapping(flag="--signer", requires_value=True),
         APK=ArgMapping(flag="", requires_value=True, positional=True),
         OUTPUT=ArgMapping(flag="-o", requires_value=True),
         FORCE=ArgMapping(flag="-f", requires_value=False),
@@ -466,6 +482,38 @@ def build_cli_args(
                 args.append(keystore_mapping.flag)
                 if keystore_mapping.requires_value:
                     args.append(str(config.keystore))
+
+        if config.keystore_alias:
+            alias_mapping = patch_args.get("KEYSTORE_ALIAS")
+            if alias_mapping:
+                args.extend(alias_mapping.prepend_args)
+                args.append(alias_mapping.flag)
+                if alias_mapping.requires_value:
+                    args.append(config.keystore_alias)
+
+        if config.keystore_password:
+            ks_pass_mapping = patch_args.get("KEYSTORE_PASSWORD")
+            if ks_pass_mapping:
+                args.extend(ks_pass_mapping.prepend_args)
+                args.append(ks_pass_mapping.flag)
+                if ks_pass_mapping.requires_value:
+                    args.append(config.keystore_password)
+
+        if config.keystore_entry_password:
+            entry_pass_mapping = patch_args.get("KEYSTORE_ENTRY_PASSWORD")
+            if entry_pass_mapping:
+                args.extend(entry_pass_mapping.prepend_args)
+                args.append(entry_pass_mapping.flag)
+                if entry_pass_mapping.requires_value:
+                    args.append(config.keystore_entry_password)
+
+        if config.signer:
+            signer_mapping = patch_args.get("SIGNER")
+            if signer_mapping:
+                args.extend(signer_mapping.prepend_args)
+                args.append(signer_mapping.flag)
+                if signer_mapping.requires_value:
+                    args.append(config.signer)
 
         if config.rip_lib:
             rip_mapping = patch_args.get("RIP_LIB")
