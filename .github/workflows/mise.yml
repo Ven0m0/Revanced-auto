@@ -16,5 +16,5 @@ jobs:
           install: true # [default: true] run `mise install`
           experimental: true
           cache: false
-          version: "2026.8.5"
+          version: "2026.8.6"
       - run: shellcheck scripts/*.sh scripts/lib/*.sh
