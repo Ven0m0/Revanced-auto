@@ -29,6 +29,11 @@ class ArgMapping:
     flag: str
     requires_value: bool = True
     prepend_args: list[str] = field(default_factory=list)
+    positional: bool = False
+    """No flag at all -- the value is a bare positional argument (e.g. Morphe's input APK)."""
+    join_with: str | None = None
+    """Join all values into one flag with this separator instead of repeating the flag per value
+    (e.g. Morphe's ``--striplibs arch1,arch2`` vs. classic CLI's repeated ``--rip-lib x --rip-lib y``)."""
 
 
 class ListPatchesArgs(TypedDict, total=False):
@@ -60,6 +65,7 @@ class PatchArgs(TypedDict, total=False):
     INPLACE: ArgMapping | None
     WERROR: ArgMapping | None
     PATCHES_POST: ArgMapping | None
+    EXCLUSIVE: ArgMapping | None
 
 
 def _list_patches_args_default() -> ListPatchesArgs:
@@ -91,6 +97,7 @@ class PatchCommandConfig:
         bare: Bare APK mode.
         inplace: Inplace modification mode.
         werror: Treat warnings as errors.
+        exclusive: Disable all patches except those explicitly enabled via ``include``.
         options: Additional options dict.
     """
 
@@ -108,6 +115,7 @@ class PatchCommandConfig:
     bare: bool = False
     inplace: bool = False
     werror: bool = False
+    exclusive: bool = False
     options: dict[str, Any] = field(default_factory=dict)
 
 
@@ -214,34 +222,50 @@ def _v6_patch_args() -> PatchArgs:
 
 
 def _morphe_list_patches_args() -> ListPatchesArgs:
-    """Morphe CLI list-patches argument mappings."""
+    """Morphe CLI (morphe-desktop) list-patches argument mappings.
+
+    Source: https://raw.githubusercontent.com/MorpheApp/morphe-desktop/refs/heads/main/docs/documentation.md
+    """
     return ListPatchesArgs(
-        INDEX=ArgMapping(flag="--index", requires_value=True),
-        PACKAGES=ArgMapping(flag="--package", requires_value=True),
-        VERSIONS=ArgMapping(flag="--version", requires_value=True),
-        OPTIONS=ArgMapping(flag="--options", requires_value=True),
+        INDEX=ArgMapping(flag="-i", requires_value=False),
+        PACKAGES=ArgMapping(flag="-p", requires_value=False),
+        VERSIONS=ArgMapping(flag="-v", requires_value=False),
+        OPTIONS=ArgMapping(flag="-o", requires_value=False),
         PATCHES=ArgMapping(flag="--patches", requires_value=True),
-        UNIVERSAL=ArgMapping(flag="--universal", requires_value=False),
+        UNIVERSAL=ArgMapping(flag="-u", requires_value=False),
     )
 
 
 def _morphe_patch_args() -> PatchArgs:
-    """Morphe CLI patch argument mappings."""
+    """Morphe CLI (morphe-desktop) patch argument mappings.
+
+    Source: https://raw.githubusercontent.com/MorpheApp/morphe-desktop/refs/heads/main/docs/documentation.md
+
+    morphe-desktop is a picocli app with a "patch" subcommand -- unlike
+    classic ReVanced CLI, the input APK is a bare positional argument (no
+    flag), and native-lib architectures to *keep* are one comma-joined
+    --striplibs value rather than a repeated --rip-lib flag. PURGE/MERGE/
+    BARE/INPLACE/WERROR have no morphe-desktop equivalent (its default is
+    always to purge scratch files; --disable-purge is the inverse of PURGE,
+    not modeled here since nothing currently sets that config field).
+    """
     return PatchArgs(
-        PATCHES=ArgMapping(flag="--patch", requires_value=True),
-        ENABLED=ArgMapping(flag="--enable", requires_value=True),
-        DISABLED=ArgMapping(flag="--disable", requires_value=True),
-        OPTIONS=ArgMapping(flag="--options", requires_value=True),
-        PURGE=ArgMapping(flag="--purge", requires_value=False),
+        PATCHES=ArgMapping(flag="-p", requires_value=True),
+        ENABLED=ArgMapping(flag="-e", requires_value=True),
+        DISABLED=ArgMapping(flag="-d", requires_value=True),
+        OPTIONS=ArgMapping(flag="-O", requires_value=True),
+        PURGE=None,
         KEYSTORE=ArgMapping(flag="--keystore", requires_value=True),
-        APK=ArgMapping(flag="--input", requires_value=True),
-        OUTPUT=ArgMapping(flag="--output", requires_value=True),
-        FORCE=ArgMapping(flag="--force", requires_value=False),
-        RIP_LIB=ArgMapping(flag="--rip-lib", requires_value=True),
-        MERGE=ArgMapping(flag="--merge", requires_value=True),
-        BARE=ArgMapping(flag="--bare", requires_value=False),
-        INPLACE=ArgMapping(flag="--inplace", requires_value=False),
-        WERROR=ArgMapping(flag="--Werror", requires_value=False),
+        APK=ArgMapping(flag="", requires_value=True, positional=True),
+        OUTPUT=ArgMapping(flag="-o", requires_value=True),
+        FORCE=ArgMapping(flag="-f", requires_value=False),
+        RIP_LIB=ArgMapping(flag="--striplibs", requires_value=True, join_with=","),
+        MERGE=None,
+        BARE=None,
+        INPLACE=None,
+        WERROR=None,
+        PATCHES_POST=None,
+        EXCLUSIVE=ArgMapping(flag="--exclusive", requires_value=False),
     )
 
 
@@ -365,7 +389,8 @@ def build_cli_args(
     Returns:
         List of command arguments.
     """
-    args: list[str] = []
+    args: list[str] = [command]
+    positional_args: list[str] = []
 
     if command == "patch":
         patch_args = profile.patch_args
@@ -373,10 +398,13 @@ def build_cli_args(
         if config.apk_path:
             apk_mapping = patch_args.get("APK")
             if apk_mapping:
-                args.extend(apk_mapping.prepend_args)
-                args.append(apk_mapping.flag)
-                if apk_mapping.requires_value:
-                    args.append(str(config.apk_path))
+                if apk_mapping.positional:
+                    positional_args.append(str(config.apk_path))
+                else:
+                    args.extend(apk_mapping.prepend_args)
+                    args.append(apk_mapping.flag)
+                    if apk_mapping.requires_value:
+                        args.append(str(config.apk_path))
 
         if config.output_path:
             output_mapping = patch_args.get("OUTPUT")
@@ -442,11 +470,17 @@ def build_cli_args(
         if config.rip_lib:
             rip_mapping = patch_args.get("RIP_LIB")
             if rip_mapping:
-                for lib in config.rip_lib:
+                if rip_mapping.join_with is not None:
                     args.extend(rip_mapping.prepend_args)
                     args.append(rip_mapping.flag)
                     if rip_mapping.requires_value:
-                        args.append(lib)
+                        args.append(rip_mapping.join_with.join(config.rip_lib))
+                else:
+                    for lib in config.rip_lib:
+                        args.extend(rip_mapping.prepend_args)
+                        args.append(rip_mapping.flag)
+                        if rip_mapping.requires_value:
+                            args.append(lib)
 
         if config.force:
             force_mapping = patch_args.get("FORCE")
@@ -478,6 +512,12 @@ def build_cli_args(
                 args.extend(werror_mapping.prepend_args)
                 args.append(werror_mapping.flag)
 
+        if config.exclusive:
+            exclusive_mapping = patch_args.get("EXCLUSIVE")
+            if exclusive_mapping:
+                args.extend(exclusive_mapping.prepend_args)
+                args.append(exclusive_mapping.flag)
+
     elif command == "list-patches":
         list_patches_args = profile.list_patches_args
 
@@ -490,4 +530,5 @@ def build_cli_args(
                     if patches_mapping.requires_value:
                         args.append(str(jar))
 
+    args.extend(positional_args)
     return args

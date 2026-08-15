@@ -13,8 +13,7 @@ from scripts.builder.app_processor import (
     AppProcessor,
     Architecture,
     DownloadSource,
-    _cli_artifact_name,
-    _patches_artifact_name,
+    _is_morphe_patches_source,
 )
 from scripts.builder.cli_profiles import (
     ADOBO_CLI,
@@ -102,63 +101,29 @@ class TestAppProcessorDownloadSource:
         assert source == expected_source
 
 
-class TestArtifactNameDerivation:
-    """Tests for CLI / patches artifact name derivation from repo slugs.
+class TestIsMorphePatchesSource:
+    """Tests for _is_morphe_patches_source.
 
-    These guard the regression where the hardcoded ``revanced-cli-`` and
-    ``revanced-patches-`` URLs broke downloads for Morphe, Piko, and other
-    non-ReVanced sources.
+    Selects .mpp vs .rvp when resolving patches assets from GitHub releases
+    (see _resolve_github_release_asset in app_processor.py).
     """
 
     @pytest.mark.parametrize(
         ("repo", "expected"),
         [
-            ("MorpheApp/morphe-cli", "morphe-cli"),
-            ("ReVanced/revanced-cli", "revanced-cli"),
-            ("inotia00/revanced-cli", "revanced-cli"),
-            ("j-hc/revanced-cli", "revanced-cli"),
-            ("jkennethcarino/adobo", "adobo"),
+            ("MorpheApp/morphe-patches", True),
+            ("MorpheApp/morphe-cli", True),
+            ("someone/morphe-fork", True),
+            ("wchill/rvx-morphed", True),
+            ("someone/anddea-rvx-morphed", True),
+            ("wchill/patcheddit", True),
+            ("ReVanced/revanced-patches", False),
+            ("anddea/revanced-patches", False),
+            ("crimera/piko", False),
         ],
     )
-    def test_cli_artifact_name(self, repo: str, expected: str) -> None:
-        assert _cli_artifact_name(repo) == expected
-
-    @pytest.mark.parametrize(
-        ("repo", "expected"),
-        [
-            ("MorpheApp/morphe-patches", "morphe-patches"),
-            ("ReVanced/revanced-patches", "revanced-patches"),
-            ("anddea/revanced-patches", "revanced-patches"),
-            ("crimera/piko", "piko"),
-            ("wchill/patcheddit", "patcheddit"),
-            ("jkennethcarino/adobo", "adobo"),
-        ],
-    )
-    def test_patches_artifact_name(self, repo: str, expected: str) -> None:
-        assert _patches_artifact_name(repo) == expected
-
-    @pytest.mark.parametrize(
-        ("repo", "expected"),
-        [
-            ("  MorpheApp/morphe-cli  ", "morphe-cli"),  # whitespace
-            ("MorpheApp/morphe-cli/", "morphe-cli"),  # trailing slash
-            ("  crimera/piko/  ", "piko"),  # both
-            ("/owner/repo", "repo"),  # leading slash
-        ],
-    )
-    def test_cli_artifact_name_trims_whitespace_and_slashes(self, repo: str, expected: str) -> None:
-        assert _cli_artifact_name(repo) == expected
-
-    @pytest.mark.parametrize(
-        ("repo", "expected"),
-        [
-            ("  MorpheApp/morphe-patches  ", "morphe-patches"),
-            ("MorpheApp/morphe-patches/", "morphe-patches"),
-            ("  crimera/piko/  ", "piko"),
-        ],
-    )
-    def test_patches_artifact_name_trims_whitespace_and_slashes(self, repo: str, expected: str) -> None:
-        assert _patches_artifact_name(repo) == expected
+    def test_is_morphe_patches_source(self, repo: str, *, expected: bool) -> None:
+        assert _is_morphe_patches_source(repo) is expected
 
 
 class TestResolveCliProfile:
@@ -239,6 +204,7 @@ class TestRunPatcherUsesProfile:
         config_mock = MagicMock()
         config_mock.global_settings = GlobalConfig(cli_profile=cli_profile_name)
         java_runner_mock = MagicMock()
+        java_runner_mock.run_jar.return_value.returncode = 0
         return AppProcessor(config=config_mock, java_runner=java_runner_mock), java_runner_mock
 
     def _context(self, tmp_path) -> AppBuildContext:
@@ -255,7 +221,8 @@ class TestRunPatcherUsesProfile:
             excluded_patches=["bad-patch"],
         )
 
-    def test_morphe_profile_uses_long_flags(self, tmp_path, monkeypatch) -> None:
+    def test_morphe_profile_uses_real_morphe_desktop_flags(self, tmp_path, monkeypatch) -> None:
+        """morphe-desktop's real syntax (docs/documentation.md, MorpheApp/morphe-desktop): "patch" subcommand, positional APK (no --input flag), -o/--out, -p/--patches, -d/--disable."""
         processor, java_runner = self._build_processor("morphe-cli")
         ctx = self._context(tmp_path)
         assert ctx.cli_jar is not None
@@ -266,16 +233,20 @@ class TestRunPatcherUsesProfile:
             lambda _p: MORPHE_CLI,
         )
 
-        processor._run_patcher(ctx, stock_apk=tmp_path / "stock.apk")
+        stock_apk = tmp_path / "stock.apk"
+        processor._run_patcher(ctx, stock_apk=stock_apk)
         call = java_runner.run_jar.call_args
         args = call.args[1]
-        assert "--input" in args
-        assert "--output" in args
-        assert "--patch" in args
-        assert "--disable" in args
+        assert args[0] == "patch"
+        assert args[-1] == str(stock_apk)
+        assert "--input" not in args
+        assert "-o" in args
+        assert "--output" not in args
+        assert "-p" in args
+        assert "--patch" not in args
+        assert "-d" in args
+        assert "--disable" not in args
         assert "bad-patch" in args
-        assert "-i" not in args
-        assert "-d" not in args
 
     def test_v6_profile_uses_short_flags(self, tmp_path, monkeypatch) -> None:
         processor, java_runner = self._build_processor("revanced-cli-v6")

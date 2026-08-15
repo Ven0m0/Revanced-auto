@@ -108,7 +108,13 @@ def test_v6_patch_args() -> None:
 
 
 def test_morphe_patch_args() -> None:
-    """Verify Morphe CLI argument generation."""
+    """Verify Morphe CLI (morphe-desktop) argument generation.
+
+    morphe-desktop's actual syntax (docs/documentation.md in
+    MorpheApp/morphe-desktop): "patch" subcommand, input APK as a bare
+    positional argument (no --input flag), -o/--out for output, -p/--patches
+    for patch bundles.
+    """
     config = PatchCommandConfig(
         apk_path=Path("input.apk"),
         output_path=Path("output.apk"),
@@ -116,12 +122,16 @@ def test_morphe_patch_args() -> None:
     )
     args = MORPHE_CLI.build_patch_args(config)
 
-    assert "--input" in args
+    assert args[0] == "patch"
     assert "input.apk" in args
-    assert "--output" in args
+    assert args[-1] == "input.apk"
+    assert "--input" not in args
+    assert "-o" in args
     assert "output.apk" in args
-    assert "--patch" in args
+    assert "--output" not in args
+    assert "-p" in args
     assert "patches.jar" in args
+    assert "--patch" not in args
 
 
 def test_list_patches_args() -> None:
@@ -145,7 +155,7 @@ def test_list_patches_args() -> None:
 
 
 def test_empty_config() -> None:
-    """Verify argument generation with empty config."""
+    """Verify argument generation with empty config still includes the "patch" subcommand keyword."""
     config = PatchCommandConfig()
     args = REVANCED_CLI_V6.build_patch_args(config)
-    assert args == []
+    assert args == ["patch"]

@@ -161,10 +161,12 @@ def test_build_patch_args_v6_uses_short_flags(tmp_path: Path) -> None:
     assert "-o" in args
 
 
-def test_build_patch_args_morphe_uses_long_flags(tmp_path: Path) -> None:
+def test_build_patch_args_morphe_uses_real_morphe_desktop_flags(tmp_path: Path) -> None:
+    """morphe-desktop's real syntax has no --input/--output/--purge flags: positional APK, -o/--out, and no purge equivalent (see scripts/builder/cli_profiles.py's _morphe_patch_args())."""
     p = _make_patcher(tmp_path, MORPHE_CLI)
+    stock_apk = tmp_path / "in.apk"
     args = p._build_patch_args(
-        stock_apk=tmp_path / "in.apk",
+        stock_apk=stock_apk,
         output_apk=tmp_path / "out.apk",
         patches_jars=[tmp_path / "p.jar"],
         exclude_patches=[],
@@ -173,6 +175,9 @@ def test_build_patch_args_morphe_uses_long_flags(tmp_path: Path) -> None:
         patches_post=[],
         force=False,
     )
-    assert "--input" in args
-    assert "--output" in args
-    assert "--purge" in args
+    assert args[0] == "patch"
+    assert str(stock_apk) in args
+    assert "--input" not in args
+    assert "-o" in args
+    assert "--output" not in args
+    assert "--purge" not in args

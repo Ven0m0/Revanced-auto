@@ -327,6 +327,27 @@ def _derive_scraper_pkg_name(download_url: str, source: DownloadSource) -> str:
     return path.rsplit("/", 1)[-1]
 
 
+_KNOWN_NATIVE_ARCHS = ("arm64-v8a", "armeabi-v7a")
+
+
+def _normalize_native_arch(arch: str) -> str:
+    """Map ``Architecture`` enum values to real Android native-lib ABI folder names."""
+    return "armeabi-v7a" if arch == "arm-v7a" else arch
+
+
+def _riplib_values(target_arch: str, *, keep_semantics: bool) -> list[str]:
+    """Native-lib architecture values for the patcher's rip/strip-libs flag.
+
+    Two incompatible conventions exist: Morphe's ``--striplibs`` lists archs
+    to *keep* (one value); classic ReVanced CLI's ``--rip-lib``/``-r`` lists
+    archs to *strip*, repeated per value. ``keep_semantics`` selects which.
+    """
+    normalized = _normalize_native_arch(target_arch)
+    if keep_semantics:
+        return [normalized]
+    return [arch for arch in _KNOWN_NATIVE_ARCHS if arch != normalized]
+
+
 class JobRunner:
     """Manages parallel job execution with concurrency limiting.
 
@@ -959,7 +980,7 @@ class AppProcessor:
         try:
             result = self.java_runner.run_jar(
                 str(context.cli_jar),
-                ["list-patches"] + list_args,
+                list_args,
                 timeout=60,
             )
             if result.returncode == 0:
@@ -1003,7 +1024,8 @@ class AppProcessor:
         keystore = self._get_keystore_path()
         riplib_libs: list[str] = []
         if context.riplib and self._profile_supports_riplib(cli_profile):
-            riplib_libs = []
+            keep_semantics = cli_profile.profile_type in (CLIProfileType.MORPHE_CLI, CLIProfileType.ADOBO_CLI)
+            riplib_libs = _riplib_values(context.arch, keep_semantics=keep_semantics)
 
         patch_config = PatchCommandConfig(
             apk_path=stock_apk,
@@ -1014,14 +1036,9 @@ class AppProcessor:
             merge=context.merge_patches,
             keystore=keystore,
             rip_lib=riplib_libs,
+            exclusive=context.exclusive_patches,
         )
         patch_args = cli_profile.build_patch_args(patch_config)
-
-        if context.riplib and self._profile_supports_riplib(cli_profile):
-            riplib_mapping = cli_profile.patch_args.get("RIP_LIB")
-            if riplib_mapping:
-                patch_args.extend(riplib_mapping.prepend_args)
-                patch_args.append(riplib_mapping.flag)
 
         result = self.java_runner.run_jar(
             str(context.cli_jar),
