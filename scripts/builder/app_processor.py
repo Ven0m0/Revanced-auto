@@ -1108,19 +1108,23 @@ class AppProcessor:
         return None
 
     def _get_keystore_credentials(self) -> tuple[str, str, str, str]:
-        """Get keystore alias/passwords/signer, matching scripts/lib/patching.sh's defaults.
+        """Get keystore alias/passwords/signer.
 
-        Passwords come from the same KEYSTORE_PASSWORD/KEYSTORE_ENTRY_PASSWORD
-        env vars the CI workflows set (empty string if unset -- build_cli_args
-        skips a flag entirely when its value is falsy, matching morphe-desktop's
-        own "empty (no password)" default rather than passing an empty flag).
+        Defaults ("Morphe"/"Morphe") match both morphe-desktop's own
+        documented default keystore and assets/ks.keystore's real alias/
+        password (a keystore generated for this repo with
+        ``keytool -genkeypair -alias Morphe ... -storepass Morphe -keypass
+        Morphe``). Falls back to KEYSTORE_PASSWORD/KEYSTORE_ENTRY_PASSWORD env
+        vars (already set by the CI workflows) or GlobalConfig.keystore_alias
+        first, so a real production keystore + secrets can override this
+        without a code change.
 
         Returns:
             Tuple of (keystore_alias, keystore_password, keystore_entry_password, signer).
         """
-        alias = self.config.global_settings.keystore_alias or "jhc"
-        keystore_password = os.environ.get("KEYSTORE_PASSWORD", "")
-        keystore_entry_password = os.environ.get("KEYSTORE_ENTRY_PASSWORD", "")
+        alias = self.config.global_settings.keystore_alias or "Morphe"
+        keystore_password = os.environ.get("KEYSTORE_PASSWORD") or "Morphe"
+        keystore_entry_password = os.environ.get("KEYSTORE_ENTRY_PASSWORD") or "Morphe"
         return alias, keystore_password, keystore_entry_password, alias
 
     def _parse_architecture(self, app_config: AppConfig) -> Architecture:
