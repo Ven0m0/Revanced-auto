@@ -12,7 +12,7 @@ from scripts.scrapers.apkmonk import APKMonkScraper
 from scripts.scrapers.apkpure import APKPureScraper
 from scripts.scrapers.aptoide import AptoideScraper
 from scripts.scrapers.archive import ArchiveScraper
-from scripts.scrapers.base import DownloadSource, ScraperBase
+from scripts.scrapers.base import DownloadSource, ScraperBase, VersionInfo
 from scripts.scrapers.uptodown import UptodownScraper
 from scripts.utils.network import HttpClient
 
@@ -109,8 +109,18 @@ class DownloadManager:
         """
         del timeout
         scraper = self._get_scraper(source)
-        _reset_scraper_session(scraper)
-        versions = asyncio.run(scraper.get_versions(app_id))
+        versions: list[VersionInfo] = []
+        # Not every app ships a plain single-APK "universal" build -- e.g.
+        # APKMirror's YouTube Music releases are BUNDLE-only. resolve() only
+        # needs *a* version number, not a specific variant, so try both
+        # bundle types before giving up. bundle_type is an APKMirror-only
+        # kwarg; other scrapers ignore unknown kwargs via **kwargs.
+        for bundle_type in ("APK", "BUNDLE"):
+            _reset_scraper_session(scraper)
+            kwargs: dict[str, str] = {"bundle_type": bundle_type}
+            versions = asyncio.run(scraper.get_versions(app_id, **kwargs))
+            if versions:
+                break
         if not versions:
             msg = f"No versions found for {app_id!r} on {source.value}"
             raise ValueError(msg)
