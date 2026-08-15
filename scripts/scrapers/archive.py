@@ -22,7 +22,7 @@ class ArchiveScraper(ScraperBase):
     """Scraper for Archive.org j-hc-apks collection."""
 
     VERSION_PATTERN = re.compile(
-        r"^(?P<package>[a-zA-Z0-9_.-]+?)[-_](?P<version>[0-9]+(?:\.[0-9]+)*)[-_](?P<arch>\w+)(?:\.apk)?$",
+        r"^(?P<package>[a-zA-Z0-9_.-]+?)[-_](?P<version>[0-9]+(?:\.[0-9]+)*)[-_](?P<arch>[\w-]+)(?:\.apk)?$",
         re.IGNORECASE,
     )
 
@@ -37,7 +37,7 @@ class ArchiveScraper(ScraperBase):
         seen: set[str] = set()
         for link in parser.css("a"):
             href = link.attributes.get("href", "")
-            if not href or href.startswith("?") or "/" not in href:
+            if not href or href.startswith("?") or href == "../":
                 continue
             filename = href.rstrip("/").split("/")[-1]
             if not filename.endswith(".apk"):

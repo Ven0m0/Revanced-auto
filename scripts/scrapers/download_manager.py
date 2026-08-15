@@ -21,6 +21,19 @@ ARCH_NORMALIZATION: dict[str, str] = {
 }
 
 
+def _reset_scraper_session(scraper: ScraperBase) -> None:
+    """Drop a scraper's cached httpx.AsyncClient before a new asyncio.run() call.
+
+    ScraperBase.session lazily creates and caches an AsyncClient bound to
+    whatever event loop is running at creation time. DownloadManager makes
+    one asyncio.run() call per resolve()/download() invocation -- each call
+    gets its own fresh event loop -- so a session cached from a prior call
+    breaks with "Event loop is closed". Resetting forces a fresh client bound
+    to the loop that's about to run.
+    """
+    scraper._session = None  # noqa: SLF001
+
+
 def _version_sort_key(version: str) -> tuple[int, ...]:
     """Sort key for dotted version strings, e.g. ``19.09.36`` > ``9.9.9``.
 
@@ -96,6 +109,7 @@ class DownloadManager:
         """
         del timeout
         scraper = self._get_scraper(source)
+        _reset_scraper_session(scraper)
         versions = asyncio.run(scraper.get_versions(app_id))
         if not versions:
             msg = f"No versions found for {app_id!r} on {source.value}"
@@ -130,6 +144,7 @@ class DownloadManager:
         """
         del timeout
         scraper = self._get_scraper(source)
+        _reset_scraper_session(scraper)
         kwargs: dict[str, str] = {}
         if arch:
             kwargs["arch"] = self._normalize_arch(arch)

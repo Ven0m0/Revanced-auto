@@ -1093,20 +1093,26 @@ class AppProcessor:
         """
         options = app_config.options
 
-        if options.get("apkmirror_dlurl"):
-            return DownloadSource.APKMIRROR
+        # Archive.org first: its scraper targets a static directory listing,
+        # which is far more stable than the other sources' JS-heavy pages.
+        # ponytail: APKMirror is checked last (rather than removed) since its
+        # scraper's HTML selectors are currently stale against the live site
+        # (apkmirror.com dropped the version-list sidebar this scraper
+        # expects) -- fix that scraper, then reconsider this ordering.
+        if options.get("archive_dlurl"):
+            return DownloadSource.ARCHIVE
         if options.get("uptodown_dlurl"):
             return DownloadSource.UPTODOWN
         if options.get("apkpure_dlurl"):
             return DownloadSource.APKPURE
-        if options.get("archive_dlurl"):
-            return DownloadSource.ARCHIVE
         if options.get("aptoide_dlurl"):
             return DownloadSource.APTOIDE
         if options.get("apkmonk_dlurl"):
             return DownloadSource.APKMonk
+        if options.get("apkmirror_dlurl"):
+            return DownloadSource.APKMIRROR
 
-        return DownloadSource.APKMIRROR
+        return DownloadSource.ARCHIVE
 
     def _get_download_url(self, app_config: AppConfig, source: DownloadSource) -> str:
         """Get download URL from app config.
