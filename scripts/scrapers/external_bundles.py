@@ -56,7 +56,7 @@ def parse_bundle_selector(source: str) -> str | None:
 
 def _graphql_query(query: str, variables: dict[str, object] | None = None) -> dict[str, object]:
     payload = json.dumps({"query": query, "variables": variables or {}}).encode("utf-8")
-    req = urllib.request.Request(  # noqa: S310 — fixed https endpoint
+    req = urllib.request.Request(
         EXTERNAL_BUNDLES_GRAPHQL_URL,
         data=payload,
         headers={"Content-Type": "application/json", "Accept": "application/json"},
@@ -132,7 +132,8 @@ def resolve_bundle(bundle_type: str, version: str = "latest") -> BundleEntry:
     else:
         data = _graphql_query(_BUNDLE_QUERY, {"bundleType": bundle_type, "version": version})
 
-    bundles = data.get("bundle", []) if isinstance(data, dict) else []
+    bundles_raw = data.get("bundle", []) if isinstance(data, dict) else []
+    bundles = bundles_raw if isinstance(bundles_raw, list) else []
     if not bundles:
         raise RuntimeError(
             f"external-bundles: no bundle found for type={bundle_type!r} version={version!r}",

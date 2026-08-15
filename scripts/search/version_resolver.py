@@ -5,11 +5,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 
 _BETA_PATTERN: re.Pattern[str] = re.compile(r"beta|b\d+|rc\d*|alpha|\-b\d+|pre\d*", re.IGNORECASE)
 
@@ -251,33 +246,6 @@ class VersionResolver:
             return False
 
         return True
-
-
-def get_patch_last_supported_ver(
-    patches_output: str,
-    pkg_name: str,
-    include_patches: Sequence[str] | None = None,
-    exclude_patches: Sequence[str] | None = None,
-) -> str | None:
-    """AWK-style parsing equivalent to get_patch_last_supported_ver() in helpers.sh.
-
-    Args:
-        patches_output: Output from list-patches command.
-        pkg_name: Package name to resolve.
-        include_patches: Optional list of required patches.
-        exclude_patches: Optional list of excluded patches.
-
-    Returns:
-        Last supported version string, or None.
-    """
-    resolver = VersionResolver()
-    return resolver.get_version(
-        pkg_name=pkg_name,
-        version_mode="auto",
-        patches_output=patches_output,
-        include_patches=list(include_patches) if include_patches else None,
-        exclude_patches=list(exclude_patches) if exclude_patches else None,
-    )
 
 
 if __name__ == "__main__":

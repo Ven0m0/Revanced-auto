@@ -29,12 +29,6 @@ class ArchiveScraper(ScraperBase):
     def __init__(self) -> None:
         super().__init__(DownloadSource.ARCHIVE)
 
-    def get_package_name(self, url: str) -> str | None:
-        match = re.search(r"/apks/([a-zA-Z0-9_.-]+?)(?:[-_]|$)", url)
-        if match:
-            return match.group(1)
-        return None
-
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         url = f"{ARCHIVE_BASE_URL}/{pkg_name}"
         response = await self.get(url)
@@ -82,12 +76,13 @@ class ArchiveScraper(ScraperBase):
         output_path: Path,
         **kwargs: object,
     ) -> DownloadResult:
-        arch: str | None = kwargs.get("arch")
+        arch_raw = kwargs.get("arch")
+        arch: str | None = arch_raw if isinstance(arch_raw, str) else None
         if version is None:
             return DownloadResult(success=False, error="Version is required for Archive.org downloads")
         versions = await self.get_versions(pkg_name, **kwargs)
         for v in versions:
-            if v.version == version and (arch is None or v.arch == arch):
+            if v.version == version and (arch is None or v.arch == arch) and v.url is not None:
                 return await self._download_file(v.url, output_path, v.version)
         return DownloadResult(success=False, error=f"Version {version} not found for package {pkg_name}")
 

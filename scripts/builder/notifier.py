@@ -43,7 +43,7 @@ class BuildNotification:
 class NotificationConfig:
     """Configuration for notifier with environment variable substitution."""
 
-    def __init__(self, config_dict: dict | None = None) -> None:
+    def __init__(self, config_dict: dict[str, str] | None = None) -> None:
         """Initialize configuration with optional dict."""
         self._config = config_dict or {}
 
@@ -58,8 +58,8 @@ class NotificationConfig:
         """Replace ${VAR} or $VAR patterns with environment variable values."""
         pattern = r"\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)"
 
-        def replacer(match: re.Match) -> str:
-            var_name = match.group(1) or match.group(2)
+        def replacer(match: re.Match[str]) -> str:
+            var_name = match.group(1) or match.group(2) or ""
             return os.environ.get(var_name, match.group(0))
 
         return re.sub(pattern, replacer, value)
@@ -217,7 +217,7 @@ class AppriseNotifier(BaseNotifier):
             True if notification was sent successfully, False otherwise.
         """
         try:
-            import apprise
+            import apprise  # type: ignore[import-not-found]
 
             appr = apprise.Apprise()
             appr.add(self._apprise_url)
@@ -332,7 +332,7 @@ class GitHubReleaseNotifier(BaseNotifier):
                 )
                 response.raise_for_status()
                 return True
-        except (httpx.HTTPError, OSError):
+        except httpx.HTTPError, OSError:
             return False
 
     def send(self, notification: BuildNotification) -> bool:
@@ -359,7 +359,7 @@ class NotifierFactory:
     """Factory class for creating notifier instances based on configuration."""
 
     @staticmethod
-    def create(config: NotificationConfig | dict) -> Notifier:
+    def create(config: NotificationConfig | dict[str, str]) -> Notifier:
         """Create appropriate notifier based on config.
 
         Args:

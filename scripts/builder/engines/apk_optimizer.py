@@ -168,7 +168,7 @@ class APKOptimizerEngine:
                 )
                 if result.returncode == 0:
                     stripped_count += 1
-            except (OSError, subprocess.SubprocessError):
+            except OSError, subprocess.SubprocessError:
                 pass
 
         return stripped_count

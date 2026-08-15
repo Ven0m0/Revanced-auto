@@ -1,7 +1,7 @@
 """Tests for the patcher module."""
 
 # ruff: noqa: S101
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,6 +20,9 @@ from scripts.builder.patcher import (
     ReVancedPatcher,
 )
 from scripts.utils.java import JavaRunner
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -56,12 +59,11 @@ def test_get_cached_patches_list_read_text_oserror(patcher: ReVancedPatcher, tmp
     patches_jar.write_bytes(b"patches")
 
     with (
-        patch("scripts.builder.patcher._get_file_hash") as mock_hash,
+        patch("scripts.builder.patcher._get_file_hash") as _mock_hash,
         patch("scripts.builder.patcher.subprocess.run") as mock_run,
         patch.object(patcher._cache_manager, "cache_is_valid", return_value=True),
         patch("pathlib.Path.read_text", side_effect=OSError("Permission denied")),
     ):
-        mock_hash.side_effect = ["hash1", "hash2"]
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "generated patches"
         mock_run.return_value.stderr = ""
@@ -81,13 +83,11 @@ def test_get_cached_patches_list_read_text_success(patcher: ReVancedPatcher, tmp
     patches_jar.write_bytes(b"patches")
 
     with (
-        patch("scripts.builder.patcher._get_file_hash") as mock_hash,
+        patch("scripts.builder.patcher._get_file_hash") as _mock_hash,
         patch("scripts.builder.patcher.subprocess.run") as mock_run,
         patch.object(patcher._cache_manager, "cache_is_valid", return_value=True),
         patch("pathlib.Path.read_text", return_value="cached patches"),
     ):
-        mock_hash.side_effect = ["hash1", "hash2"]
-
         result = patcher.get_cached_patches_list(cli_jar, [patches_jar])
 
         assert result == "cached patches"

@@ -1,8 +1,9 @@
 """Compatibility wrapper for invoking the legacy build shell script."""
 
-import subprocess
+from typing import TYPE_CHECKING
 
-from scripts.lib.config import Config
+if TYPE_CHECKING:
+    from scripts.lib.config import Config
 
 
 class Builder:

@@ -148,7 +148,6 @@ class TestSplitAPKHandler:
         assert jar is None
 
     def test_extract_splits_skips_malicious_paths(self, tmp_path: Path) -> None:
-        # ruff: noqa: PLC0415
         import zipfile
 
         bundle = tmp_path / "malicious.xapk"

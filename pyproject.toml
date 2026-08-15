@@ -99,6 +99,7 @@ ignore = [
   "T201",  # print() in CLI scripts is intentional
   "BLE001",  # broad exception in CLI error handlers is acceptable
   "COM812",  # trailing comma conflicts with formatter
+  "CPY001",  # repo has no copyright header convention
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -108,6 +109,9 @@ ignore = [
   "ARG002",
   "B905",
   "C901",
+  "D101",
+  "D102",
+  "D103",
   "D107",
   "EM101",
   "EM102",
@@ -123,6 +127,7 @@ ignore = [
   "PLR0912",
   "PLR0913",
   "PLR0915",
+  "PLR0917",
   "PLR1714",
   "PLR2004",
   "PLW1510",
@@ -141,15 +146,21 @@ ignore = [
   "TRY400",
   "UP036",
 ]
-"scripts/lib/cache.py" = ["FBT001", "FBT002", "PLR2004", "SIM103"]
-"scripts/cli.py" = ["PLC0415", "RET503", "TRY300"]
-"scripts/lib/config.py" = ["PLC0415"]
+"scripts/lib/cache.py" = ["D101", "D102", "D107", "FBT001", "FBT002", "PLR2004", "SIM103"]
+"scripts/lib/builder.py" = ["PLC0415"]
+"scripts/lib/plugins.py" = ["PLC0415"]
+"scripts/cli.py" = ["C901", "PLC0415", "PLR0912", "RET503", "TRY300"]
+"scripts/lib/config.py" = ["ANN401", "FBT001", "PLC0415"]
 "scripts/lib/version_tracker.py" = ["PLC0415"]
+"scripts/version_tracker.py" = ["D100", "D101", "D103"]
 "scripts/scrapers/*.py" = [
+  "ANN401",
   "ARG002",
+  "B024",
   "C901",
   "D101",
   "D102",
+  "D103",
   "D105",
   "D107",
   "D417",
@@ -160,7 +171,9 @@ ignore = [
   "FBT003",
   "F841",
   "PLC0415",
+  "PLR0912",
   "PLR0913",
+  "PLR0917",
   "PLR1714",
   "RUF012",
   "S603",
@@ -182,13 +195,16 @@ ignore = [
   "ASYNC230",
   "ASYNC240",
   "C901",
+  "D102",
   "D105",
+  "D107",
   "EM101",
   "EM102",
   "PLC0415",
   "PLR0911",
   "PLR0912",
   "PLR0913",
+  "PLR0917",
   "PLR2004",
   "PYI034",
   "PYI036",
@@ -204,7 +220,19 @@ ignore = [
   "TRY300",
   "TRY400",
 ]
-"tests/*.py" = ["D101", "D102", "D103", "PLR2004", "RUF005", "SLF001"]
+"tests/*.py" = [
+  "ANN001",
+  "ANN202",
+  "D101",
+  "D102",
+  "D103",
+  "FBT003",
+  "PLC0415",
+  "PLR2004",
+  "PT011",
+  "RUF005",
+  "SLF001",
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["scripts"]

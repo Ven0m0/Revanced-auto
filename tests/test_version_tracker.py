@@ -1,6 +1,6 @@
 """Tests for scripts/version_tracker.py and scripts/lib/version_tracker.py."""
 
-# ruff: noqa: S101, PLC0415, TC003, TC002
+# ruff: noqa: S101, TC003, TC002
 
 from __future__ import annotations
 
@@ -97,28 +97,28 @@ class TestDetectChanges:
 
 class TestExtractCurrentVersions:
     def test_extracts_global_cli_version(self) -> None:
-        config: dict = {"cli-version": "5.0.0"}
+        config: dict[str, object] = {"cli-version": "5.0.0"}
         versions = extract_current_versions(config)
         assert versions["global_cli_version"] == "5.0.0"
 
     def test_extracts_global_patches_version(self) -> None:
-        config: dict = {"patches-version": "4.0.0"}
+        config: dict[str, object] = {"patches-version": "4.0.0"}
         versions = extract_current_versions(config)
         assert versions["global_patches_version"] == "4.0.0"
 
     def test_extracts_patches_source_string(self) -> None:
-        config: dict = {"patches-source": "owner/repo"}
+        config: dict[str, object] = {"patches-source": "owner/repo"}
         versions = extract_current_versions(config)
         assert versions["global_patches_source"] == "owner/repo"
 
     def test_extracts_patches_source_list(self) -> None:
-        config: dict = {"patches-source": ["owner/a", "owner/b"]}
+        config: dict[str, object] = {"patches-source": ["owner/a", "owner/b"]}
         versions = extract_current_versions(config)
         assert "owner/a" in versions["global_patches_source"]
         assert "owner/b" in versions["global_patches_source"]
 
     def test_extracts_app_version(self) -> None:
-        config: dict = {
+        config: dict[str, object] = {
             "cli-version": "5.0.0",
             "YouTube": {"enabled": True, "version": "18.0.0"},
         }
@@ -126,7 +126,7 @@ class TestExtractCurrentVersions:
         assert versions.get("app_youtube_version") == "18.0.0"
 
     def test_skips_disabled_app(self) -> None:
-        config: dict = {
+        config: dict[str, object] = {
             "Twitter": {"enabled": False, "version": "9.0.0"},
         }
         versions = extract_current_versions(config)
@@ -177,7 +177,7 @@ class TestVersionTrackerWrapper:
         patches_version: str = "4.0.0",
         cli_version: str = "5.0.0",
         patches_source: str = "ReVanced/revanced-patches",
-    ) -> dict:
+    ) -> dict[str, str]:
         """Build a minimal TOML-like config dict for the version tracker."""
         return {
             "patches-version": patches_version,

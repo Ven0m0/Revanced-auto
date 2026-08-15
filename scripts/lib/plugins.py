@@ -11,13 +11,11 @@ import importlib
 import logging
 import pkgutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import cast
 
-if TYPE_CHECKING:
-    from scripts.builder.engines import EngineContext
-
-PluginHandler = Callable[["EngineContext", str], None]
+PluginHandler = Callable[[object, str], None]
 
 logger = logging.getLogger(__name__)
 _PLUGIN_DIR = Path(__file__).parent.parent / "plugins"
@@ -52,7 +50,7 @@ def _discover_plugins() -> list[PluginHandler]:
             module = importlib.import_module(f"{plugins_pkg.__name__}.{name}")
             handler = getattr(module, "handle_hook", None)
             if callable(handler):
-                handlers.append(handler)
+                handlers.append(cast("PluginHandler", handler))
                 logger.debug("Loaded plugin: %s", name)
         except Exception as e:
             logger.warning("Plugin '%s' load failed: %s", name, e)
@@ -73,7 +71,7 @@ class PluginManager:
             self._handlers = _discover_plugins()
         return self._handlers
 
-    def dispatch(self, ctx: EngineContext, stage: str) -> None:
+    def dispatch(self, ctx: object, stage: str) -> None:
         """Dispatch a hook to all plugins.
 
         Errors from individual plugins are isolated so that one failing
@@ -86,10 +84,10 @@ class PluginManager:
         for handler in self._load():
             try:
                 handler(ctx, stage)
-            except Exception as e:
-                logger.error("Plugin hook error at '%s': %s", stage, e)
+            except Exception:
+                logger.exception("Plugin hook error at '%s'", stage)
 
 
-def dispatch_plugins(ctx: EngineContext, stage: str) -> None:
+def dispatch_plugins(ctx: object, stage: str) -> None:
     """Convenience function to dispatch a plugin hook."""
     PluginManager().dispatch(ctx, stage)

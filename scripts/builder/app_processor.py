@@ -27,8 +27,10 @@ from scripts.builder.cli_profiles import (
     PatchCommandConfig,
     detect_cli_profile,
 )
+from scripts.builder.config import AppConfig, Config
 from scripts.builder.engines import EngineContext, EngineRunner, EngineStage
 from scripts.lib.plugins import dispatch_plugins
+from scripts.utils.java import JavaRunner
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -231,27 +233,6 @@ class DownloadManager(Protocol):
 
 class ModuleGenerator(Protocol):
     """Protocol for module generation implementations."""
-
-    def generate(
-        self,
-        apk_paths: list[Path],
-        output_path: Path,
-        *,
-        module_name: str | None = None,
-        options: dict[str, Any] | None = None,
-    ) -> Path:
-        """Generate a module ZIP from patched APKs.
-
-        Args:
-            apk_paths: List of patched APK paths.
-            output_path: Where to save the module ZIP.
-            module_name: Optional module name.
-            options: Additional generation options.
-
-        Returns:
-            Path to generated module ZIP.
-        """
-        ...
 
 
 class Notifier(Protocol):
@@ -463,39 +444,11 @@ class AppProcessor:
         self.version_resolver = version_resolver
         self.download_manager = download_manager
         self.module_generator = module_generator
-        self._job_runner: JobRunner | None = None
 
     @property
     def parallel_jobs(self) -> int:
         """Get configured parallel job count."""
         return self.config.global_settings.parallel_jobs or 2
-
-    def process_app(self, app_config: AppConfig) -> list[BuildResult]:
-        """Process a single app configuration.
-
-        Returns list of build results (one per architecture).
-
-        Args:
-            app_config: App configuration to process.
-
-        Returns:
-            List of BuildResult objects for each architecture build.
-        """
-        if not app_config.enabled:
-            logger.info("Skipping disabled app: %s", app_config.name)
-            return []
-
-        logger.info("Processing app: %s", app_config.name)
-
-        arch = self._parse_architecture(app_config)
-        arch_list = self._get_architecture_list(arch)
-
-        results: list[BuildResult] = []
-        for arch_variant in arch_list:
-            result = self._build_app_variant(app_config, arch_variant)
-            results.append(result)
-
-        return results
 
     def process_all(self) -> BuildSummary:
         """Process all enabled apps from config.
@@ -611,7 +564,6 @@ class AppProcessor:
 
         try:
             result = self._execute_build(context)
-            result.build_time = time.time() - start_time
             return result
         except Exception as e:
             logger.error("Build failed: %s", e)
@@ -720,10 +672,7 @@ class AppProcessor:
         # Determine whether to skip ReVanced patching when LSPatch is in
         # alternative mode.
         lspatch_mode = context.engine_options.get("lspatch", {}).get("mode", "complement")
-        skip_revanced = (
-            self._is_engine_enabled(context, "lspatch")
-            and lspatch_mode == "alternative"
-        )
+        skip_revanced = self._is_engine_enabled(context, "lspatch") and lspatch_mode == "alternative"
 
         if skip_revanced:
             patched_apk = current_apk
@@ -760,8 +709,6 @@ class AppProcessor:
         Returns:
             True if the engine should run.
         """
-        from scripts.builder.config import AppConfig
-
         app_config = self.config.apps.get(context.app_id)
         if not isinstance(app_config, AppConfig):
             return False
@@ -998,7 +945,7 @@ class AppProcessor:
                 exclude=context.excluded_patches if not context.exclusive_patches else None,
                 include=context.included_patches if context.exclusive_patches else None,
                 keystore=keystore,
-                rip_lib=list(context.riplib) if context.riplib else None,
+                rip_lib=[] if context.riplib else None,
             )
             if result.returncode != 0:
                 raise RuntimeError(f"Patching failed: {result.stderr}")
@@ -1065,7 +1012,7 @@ class AppProcessor:
         if context.cli_jar and context.cli_jar.exists():
             try:
                 return detect_cli_profile(context.cli_jar)
-            except Exception as e:  # noqa: BLE001 - detection is best-effort
+            except Exception as e:
                 logger.debug("CLI profile detection failed (%s); using MORPHE_CLI", e)
 
         return BUILTIN_PROFILES[CLIProfileType.MORPHE_CLI]
@@ -1183,90 +1130,6 @@ class AppProcessor:
             results=summary.succeeded + summary.failed,
         )
 
-    def generate_changelog(
-        self,
-        results: list[BuildResult],
-    ) -> str:
-        """Generate changelog from build results.
-
-        Args:
-            results: List of build results.
-
-        Returns:
-            Markdown-formatted changelog string.
-        """
-        lines = ["# Changelog\n"]
-
-        for result in results:
-            if not result.success:
-                continue
-
-            lines.append(f"## {result.app_name} {result.version} ({result.arch})")
-            lines.append("")
-
-            if result.changelog:
-                for patch in result.changelog:
-                    lines.append(f"- {patch}")
-            else:
-                lines.append("_No patches listed_")
-
-            lines.append("")
-
-        return "\n".join(lines)
-
-
-class Config:
-    """Placeholder for Config type. Actual type is from config module."""
-
-    global_settings: GlobalConfig
-    apps: dict[str, AppConfig]
-
-
-class GlobalConfig:
-    """Placeholder for GlobalConfig type."""
-
-    parallel_jobs: int = 0
-    build_mode: str = "apk"
-    patches_version: str = "latest"
-    cli_version: str = "latest"
-    patches_source: str | list[str] = "MorpheApp/morphe-patches"
-    riplib: bool = True
-    keystore_path: str | None = None
-
-
-class AppConfig:
-    """Placeholder for AppConfig type."""
-
-    name: str
-    enabled: bool = True
-    version: str | None = None
-    patches_source: str | list[str] | None = None
-    patches: list[str] = field(default_factory=list)
-    exclude_patches: list[str] = field(default_factory=list)
-    exclusive: bool = False
-    options: dict[str, Any] = field(default_factory=dict)
-
-
-class JavaRunner:
-    """Placeholder for JavaRunner type. Actual type is from utils.java module."""
-
-    def run(
-        self,
-        args: list[str],
-        *,
-        timeout: int | None = None,
-    ) -> subprocess.CompletedProcess[str]:
-        """Run a subprocess."""
-
-    def run_jar(
-        self,
-        jar_path: str,
-        jar_args: list[str],
-        *,
-        timeout: int | None = None,
-    ) -> subprocess.CompletedProcess[str]:
-        """Run a JAR file."""
-
 
 def main(argv: list[str]) -> int:
     """Main entry point for app processor CLI.
@@ -1285,7 +1148,6 @@ def main(argv: list[str]) -> int:
         from scripts.builder.config import load_config
 
         config = load_config(*argv[1:])
-        from scripts.utils.java import JavaRunner
 
         processor = AppProcessor(config, JavaRunner())
 

@@ -42,6 +42,7 @@ class JavaRunner:
     java_args: list[str] = field(default_factory=JAVA_ARGS.copy)
     env: dict[str, str] | None = None
     timeout: int | None = None
+    _base_env: dict[str, str] = field(init=False, default_factory=dict)
 
     def __post_init__(self) -> None:
         self._base_env = os.environ.copy()

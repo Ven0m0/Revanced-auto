@@ -126,7 +126,7 @@ def _optimize_png(path: Path, pngquant_quality: str, optipng_level: int) -> bool
                 timeout=30,
             )
             return True
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        except subprocess.CalledProcessError, subprocess.TimeoutExpired:
             pass
 
     if shutil.which("optipng"):
@@ -139,7 +139,7 @@ def _optimize_png(path: Path, pngquant_quality: str, optipng_level: int) -> bool
                 timeout=30,
             )
             return True
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        except subprocess.CalledProcessError, subprocess.TimeoutExpired:
             return False
 
     return False
@@ -166,7 +166,7 @@ def _optimize_jpg(path: Path, quality: int) -> bool:
             timeout=30,
         )
         return True
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired:
         return False
 
 
@@ -216,7 +216,7 @@ def _optimize_audio(path: Path, bitrate: str) -> bool:
         if temp_file.exists() and temp_file.stat().st_size > 0:
             shutil.move(str(temp_file), str(path))
             return True
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired:
         pass
     finally:
         temp_file.unlink(missing_ok=True)
@@ -355,7 +355,9 @@ class MediaOptimizerEngine:
                     ctx.log(f"Media optimizer: optimizing {len(media['audio'])} audio files")
                     max_workers = _get_optimal_thread_workers()
                     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                        futures = {executor.submit(_optimize_audio, path, audio_bitrate): "audio" for path in media["audio"]}
+                        futures = {
+                            executor.submit(_optimize_audio, path, audio_bitrate): "audio" for path in media["audio"]
+                        }
                         for future in as_completed(futures):
                             try:
                                 if future.result():

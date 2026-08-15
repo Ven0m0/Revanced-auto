@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -41,12 +40,10 @@ class JobStatus:
     Attributes:
         name: Name identifier for the job.
         future: The future associated with this job.
-        submitted: Whether the job has been submitted to the executor.
     """
 
     name: str
     future: Any = field(default=None, init=False)
-    submitted: bool = field(default=False, init=False)
 
 
 class JobRunner:
@@ -146,7 +143,6 @@ class JobRunner:
 
         status = JobStatus(name=name)
         status.future = self._executor.submit(func, *args, **kwargs)
-        status.submitted = True
         self._jobs[name] = status
 
         return status
@@ -176,26 +172,6 @@ class JobRunner:
 
         return results
 
-    def get_result(self, name: str, timeout: float | None = None) -> JobResult[Any] | None:
-        """Get the result of a specific job.
-
-        Args:
-            name: Name of the job.
-            timeout: Maximum time to wait in seconds.
-
-        Returns:
-            JobResult if the job exists and is complete, None otherwise.
-        """
-        status = self._jobs.get(name)
-        if status is None or status.future is None:
-            return None
-
-        try:
-            result = status.future.result(timeout=timeout)
-            return JobResult(name=name, success=True, result=result)
-        except Exception as e:
-            return JobResult(name=name, success=False, error=str(e))
-
     def shutdown(self, *, wait: bool = True) -> None:
         """Shutdown the executor and clean up resources.
 
@@ -216,93 +192,6 @@ class JobRunner:
     def executor_type(self) -> str:
         """Type of executor ('process' or 'thread')."""
         return self._executor_type
-
-    @property
-    def pending_count(self) -> int:
-        """Number of pending jobs."""
-        return sum(1 for s in self._jobs.values() if s.future is not None and not s.future.done())
-
-
-class AsyncJobRunner:
-    """Async wrapper for JobRunner providing awaitable job execution.
-
-    Suitable for I/O-bound tasks that need async/await syntax.
-
-    Example:
-        >>> async with AsyncJobRunner(max_workers=4) as runner:
-        ...     await runner.submit_async(io_function, args, name="download")
-        ...     results = await runner.wait_all_async()
-    """
-
-    def __init__(self, max_workers: int | None = None) -> None:
-        """Initialize the AsyncJobRunner.
-
-        Args:
-            max_workers: Maximum number of worker threads. Defaults to CPU count.
-        """
-        self._runner = JobRunner(max_workers=max_workers, executor_type="thread")
-        self._loop: asyncio.AbstractEventLoop | None = None
-
-    async def __aenter__(self) -> Self:
-        """Enter the async context manager."""
-        self._runner.__enter__()
-        self._loop = asyncio.get_running_loop()
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        """Exit the async context manager."""
-        await asyncio.to_thread(self._runner.shutdown, wait=True)
-
-    async def submit_async(
-        self,
-        func: Callable[..., T],
-        args: tuple[Any, ...] = (),
-        kwargs: dict[str, Any] | None = None,
-        name: str | None = None,
-    ) -> JobStatus:
-        """Submit a job for async execution.
-
-        Args:
-            func: The function to execute.
-            args: Positional arguments to pass to the function.
-            kwargs: Keyword arguments to pass to the function.
-            name: Optional name identifier for the job.
-
-        Returns:
-            JobStatus object tracking the job.
-        """
-        if kwargs is None:
-            kwargs = {}
-
-        return await asyncio.to_thread(self._runner.submit, func, args, kwargs, name)
-
-    async def wait_all_async(self) -> list[JobResult[Any]]:
-        """Wait for all submitted jobs to complete asynchronously.
-
-        Use `asyncio.timeout` for timing out the operation.
-
-        Returns:
-            List of JobResult objects for all completed jobs.
-        """
-        return await asyncio.to_thread(self._runner.wait_all)
-
-    async def get_result_async(self, name: str) -> JobResult[Any] | None:
-        """Get the result of a specific job asynchronously.
-
-        Use `asyncio.timeout` for timing out the operation.
-
-        Args:
-            name: Name of the job.
-
-        Returns:
-            JobResult if the job exists and is complete, None otherwise.
-        """
-        return await asyncio.to_thread(self._runner.get_result, name)
 
 
 def sample_job(value: int) -> int:

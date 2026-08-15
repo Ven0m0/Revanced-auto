@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import httpx
@@ -23,24 +22,13 @@ APTOIDE_API = "https://ws75.aptoide.com/api/7"
 class AptoideScraper(ScraperBase):
     """Scraper for Aptoide."""
 
-    ARCH_MAP = {
-        "armeabi-v7a": "armeabi-v7a",
-        "arm64-v8a": "arm64-v8a",
-        "x86": "x86",
-        "x86_64": "x86_64",
-        "universal": "universal",
-    }
-
     def __init__(self) -> None:
         super().__init__(DownloadSource.APTOIDE)
-
-    def _build_info_url(self, package: str) -> str:
-        return f"{APTOIDE_API}/app/{package}/getInfo"
 
     def _build_versions_url(self, package: str) -> str:
         return f"{APTOIDE_API}/app/{package}/getVersions"
 
-    def _parse_version_info(self, data: dict) -> list[VersionInfo]:
+    def _parse_version_info(self, data: dict[str, Any]) -> list[VersionInfo]:
         versions: list[VersionInfo] = []
         versions_list = data.get("data", {}).get("versions", [])
         for item in versions_list:
@@ -106,12 +94,3 @@ class AptoideScraper(ScraperBase):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("wb") as f:
             f.writelines(response.iter_bytes(chunk_size=8192))
-
-    def get_package_name(self, url: str) -> str | None:
-        pattern = r"aptoide\.com/([a-zA-Z0-9_.]+)"
-        match = re.search(pattern, url)
-        if match:
-            pkg = match.group(1)
-            if "." in pkg:
-                return pkg
-        return None

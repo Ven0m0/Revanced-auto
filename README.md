@@ -231,8 +231,7 @@ uv run python -m scripts.cli build --config config.toml --enable-media-optimizer
 Plugins in `scripts/plugins/` are auto-discovered. Each plugin module must expose:
 
 ```python
-def handle_hook(ctx, stage: str) -> None:
-    ...
+def handle_hook(ctx, stage: str) -> None: ...
 ```
 
 Stages: `pre_pipeline`, `post_pipeline`, `pre_engine:<name>`, `post_engine:<name>`.

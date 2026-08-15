@@ -1,10 +1,11 @@
 """Base scraper class and common types for all APK download sources."""
 
 import asyncio
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -69,14 +70,11 @@ class ScraperBase(ABC):
     def _set_cache(self, key: str, value: object) -> None:
         self._cache[key] = (_time.time(), value)
 
-    def _clear_cache(self) -> None:
-        self._cache.clear()
-
     async def _request_with_retry(
         self,
         url: str,
         method: str = "GET",
-        **kwargs: object,
+        **kwargs: Any,
     ) -> httpx.Response:
         delay = self.BASE_DELAY
         last_error: Exception | None = None
@@ -107,7 +105,7 @@ class ScraperBase(ABC):
             self._set_cache(cache_key, response)
         return response
 
-    async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
+    async def get_versions(self, pkg_name: str) -> list[VersionInfo]:
         raise NotImplementedError
 
     async def download(
@@ -115,13 +113,8 @@ class ScraperBase(ABC):
         pkg_name: str,
         version: str | None,
         output_path: Path,
-        **kwargs: object,
     ) -> DownloadResult:
         raise NotImplementedError
-
-    @abstractmethod
-    def get_package_name(self, url: str) -> str | None:
-        """Extract package name from URL."""
 
     def close(self) -> None:
         if self._session is not None:

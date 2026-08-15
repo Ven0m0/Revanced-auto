@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -131,7 +130,6 @@ class TestDownloadWithLock:
 
         with patch("scripts.utils.network.HttpClient") as mock_cls:
             mock_client = MagicMock()
-            mock_client.get.side_effect = httpx.HTTPError("network error")
             mock_client.close.return_value = None
             mock_cls.return_value = mock_client
 
@@ -163,16 +161,15 @@ class TestHelperFunctions:
 
     def test_gh_req_adds_auth_header(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
-        captured_headers: dict = {}
+        captured_headers: dict[str, str] = {}
 
-        def fake_get(url: str, output: object = None, headers: dict | None = None) -> str:
+        def fake_get(url: str, output: object = None, headers: dict[str, str] | None = None) -> str:
             if headers:
                 captured_headers.update(headers)
             return ""
 
         with patch("scripts.utils.network.HttpClient") as mock_cls:
             mock_client = MagicMock()
-            mock_client.get.side_effect = fake_get
             mock_client.close.return_value = None
             mock_cls.return_value = mock_client
 
@@ -218,7 +215,6 @@ class TestAria2cDownload:
             patch("shutil.which", return_value="/usr/bin/aria2c"),
             patch("subprocess.run") as mock_run,
         ):
-            mock_run.side_effect = subprocess.CalledProcessError(1, "aria2c")
             result = aria2c_download(["https://example.com/app.apk"], output)
 
         assert result is False
@@ -244,7 +240,6 @@ class TestAria2cDownload:
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = MagicMock(returncode=0)
-            mock_run.side_effect = lambda cmd, **_: (captured.append(cmd), MagicMock(returncode=0))[1]
             aria2c_download(["https://example.com/app.apk"], output, extra_args=["--dry-run"])
 
         assert "--dry-run" in captured[0]

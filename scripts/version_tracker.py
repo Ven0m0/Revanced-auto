@@ -7,27 +7,15 @@ import argparse
 import os
 import sys
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from functools import lru_cache
 from pathlib import Path
-from typing import Final, TypedDict
+from typing import Final
 
 import orjson
 
 STATE_FILE: Final[Path] = Path(".github/last_built_versions.json")
-
-
-class AppVersionInfo(TypedDict, total=False):
-    patches_source: str
-    cli_source: str
-    version: str
-
-
-class StateDict(TypedDict, total=False):
-    global_cli_version: str
-    global_patches_version: str
-    global_patches_source: str
 
 
 class Command(Enum):
@@ -35,22 +23,6 @@ class Command(Enum):
     SAVE = auto()
     SHOW = auto()
     RESET = auto()
-
-
-@dataclass(frozen=True, slots=True)
-class AppVersionState:
-    patches_source: str
-    cli_source: str
-    version: str
-    integrations_version: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class BuildState:
-    global_cli_version: str
-    global_patches_version: str
-    global_patches_source: str
-    app_versions: dict[str, AppVersionState] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,33 +112,6 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
             versions[app_prefix + "integrations_version"] = str(integrations_ver)
 
     return versions
-
-
-def extract_build_state(config: dict[str, object]) -> BuildState:
-    global_cli_ver = str(config.get("cli-version", "latest"))
-    global_patches_ver = str(config.get("patches-version", "latest"))
-    global_patches_src = config.get("patches-source", "")
-    normalized_global_patches = _normalize_patches_source(global_patches_src) or ""
-    app_versions: dict[str, AppVersionState] = {}
-    for key, value in config.items():
-        if not isinstance(value, dict) or not value.get("enabled", True):
-            continue
-
-        app_key = key.lower().replace(" ", "-")
-
-        patches_normalized = _normalize_patches_source(value.get("patches-source", global_patches_src)) or ""
-        app_versions[app_key] = AppVersionState(
-            patches_source=patches_normalized,
-            cli_source=str(value["cli-source"]) if "cli-source" in value else "",
-            version=str(value.get("version", "auto")),
-            integrations_version=str(value["integrations-version"]) if "integrations-version" in value else None,
-        )
-    return BuildState(
-        global_cli_version=global_cli_ver,
-        global_patches_version=global_patches_ver,
-        global_patches_source=normalized_global_patches,
-        app_versions=app_versions,
-    )
 
 
 def detect_changes(current: VersionMap, saved: VersionMap) -> list[VersionDiff]:

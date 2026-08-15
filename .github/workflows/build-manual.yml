@@ -20,17 +20,17 @@ on:
         default: arm64-v8a
         type: choice
         options:
-        - arm64-v8a
-        - armeabi-v7a
-        - both
+          - arm64-v8a
+          - armeabi-v7a
+          - both
       build_mode:
         description: Build target (patches version)
         required: false
         default: stable
         type: choice
         options:
-        - stable
-        - dev
+          - stable
+          - dev
       publish_release:
         description: Publish to GitHub Releases
         required: false
@@ -47,88 +47,90 @@ jobs:
       contents: write
       actions: read
     steps:
-    - name: Checkout
-      uses: actions/checkout@v7.0.1
-      with:
-        fetch-depth: 0
-        submodules: true
-    - name: Setup build environment
-      uses: ./.github/actions/setup-environment
-    - name: Generate config for ${{ inputs.app_name }}
-      env:
-        APP_NAME: ${{ inputs.app_name }}
-        INPUT_VERSION: ${{ inputs.version }}
-        INPUT_ARCH: ${{ inputs.architecture }}
-      run: |
-        echo "Generating config for: ${APP_NAME}"
-        ./extras.sh separate-config config.toml "${APP_NAME}" sep_config.toml
-        # Override version if specified
-        if [[ "${INPUT_VERSION}" != "auto" ]]; then
-          echo "Overriding version to: ${INPUT_VERSION}"
-          python3 - <<'PYEOF'
-import os
-with open('sep_config.toml') as f:
-    content = f.read()
-ver = os.environ['INPUT_VERSION']
-lines = [f'version = "{ver}"' if l.strip().startswith('version =') else l for l in content.split('\n')]
-with open('sep_config.toml', 'w') as f:
-    f.write('\n'.join(lines))
-PYEOF
-        fi
-        # Override architecture if not "both"
-        if [[ "${INPUT_ARCH}" != "both" ]]; then
-          echo "Setting architecture to: ${INPUT_ARCH}"
-          python3 - <<'PYEOF'
-import os
-with open('sep_config.toml') as f:
-    content = f.read()
-arch = os.environ['INPUT_ARCH']
-lines = [f'arch = "{arch}"' if l.strip().startswith('arch =') else l for l in content.split('\n')]
-with open('sep_config.toml', 'w') as f:
-    f.write('\n'.join(lines))
-PYEOF
-        fi
-        echo "Final config:"
-        cat sep_config.toml
-    - name: Build APK
-      run: ./build.sh sep_config.toml
-      env:
-        BUILD_MODE: ${{ inputs.build_mode }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
-    - name: Upload APK as artifact
-      uses: actions/upload-artifact@v7
-      with:
-        name: ${{ inputs.app_name }}-${{ inputs.architecture }}-manual
-        path: ./build/*.apk
-        if-no-files-found: warn
-        retention-days: 7
-    - name: Upload build log
-      uses: actions/upload-artifact@v7
-      with:
-        name: build-log-${{ inputs.app_name }}-manual
-        path: build.md
-        if-no-files-found: warn
-        retention-days: 7
-    - name: Publish to Release
-      if: inputs.publish_release && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Prepare version tag
-        VER=$(date +%y.%m.%d)
-        if [ "${{ inputs.build_mode }}" == "dev" ]; then
-          VER="${VER}-pre"
-        fi
-        # Upload to latest release (create if doesn't exist)
-        gh release view "latest" 2>/dev/null || gh release create "latest" --title "Latest Builds" --notes "Automated builds from ReVanced Builder"
-        # Upload APKs
-        for apk in build/*.apk; do
-          if [[ -f "$apk" ]]; then
-            echo "Uploading: $apk"
-            gh release upload "latest" "$apk" --clobber
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-environment
+      - name: Generate config for ${{ inputs.app_name }}
+        env:
+          APP_NAME: ${{ inputs.app_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_ARCH: ${{ inputs.architecture }}
+        run: |
+          echo "Generating config for: ${APP_NAME}"
+          ./extras.sh separate-config config.toml "${APP_NAME}" sep_config.toml
+          # Override version if specified
+          if [[ "${INPUT_VERSION}" != "auto" ]]; then
+            echo "Overriding version to: ${INPUT_VERSION}"
+            python3 - <<'PYEOF'
+          if True:
+              import os
+              with open('sep_config.toml') as f:
+                  content = f.read()
+              ver = os.environ['INPUT_VERSION']
+              lines = [f'version = "{ver}"' if l.strip().startswith('version =') else l for l in content.split('\n')]
+              with open('sep_config.toml', 'w') as f:
+                  f.write('\n'.join(lines))
+          PYEOF
           fi
-        done
-        echo "✓ Published to release: latest"
+          # Override architecture if not "both"
+          if [[ "${INPUT_ARCH}" != "both" ]]; then
+            echo "Setting architecture to: ${INPUT_ARCH}"
+            python3 - <<'PYEOF'
+          if True:
+              import os
+              with open('sep_config.toml') as f:
+                  content = f.read()
+              arch = os.environ['INPUT_ARCH']
+              lines = [f'arch = "{arch}"' if l.strip().startswith('arch =') else l for l in content.split('\n')]
+              with open('sep_config.toml', 'w') as f:
+                  f.write('\n'.join(lines))
+          PYEOF
+          fi
+          echo "Final config:"
+          cat sep_config.toml
+      - name: Build APK
+        run: ./build.sh sep_config.toml
+        env:
+          BUILD_MODE: ${{ inputs.build_mode }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.app_name }}-${{ inputs.architecture }}-manual
+          path: ./build/*.apk
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload build log
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-log-${{ inputs.app_name }}-manual
+          path: build.md
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Publish to Release
+        if: inputs.publish_release && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Prepare version tag
+          VER=$(date +%y.%m.%d)
+          if [ "${{ inputs.build_mode }}" == "dev" ]; then
+            VER="${VER}-pre"
+          fi
+          # Upload to latest release (create if doesn't exist)
+          gh release view "latest" 2>/dev/null || gh release create "latest" --title "Latest Builds" --notes "Automated builds from ReVanced Builder"
+          # Upload APKs
+          for apk in build/*.apk; do
+            if [[ -f "$apk" ]]; then
+              echo "Uploading: $apk"
+              gh release upload "latest" "$apk" --clobber
+            fi
+          done
+          echo "✓ Published to release: latest"

@@ -7,7 +7,6 @@ versions and downloading APKs from APKMonk.
 from __future__ import annotations
 
 import asyncio
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -114,10 +113,3 @@ class APKMonkScraper(ScraperBase):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("wb") as f:
             f.writelines(response.iter_bytes(chunk_size=8192))
-
-    def get_package_name(self, url: str) -> str | None:
-        pattern = r"apkmonk\.com/app/([a-zA-Z0-9_.]+)"
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-        return None

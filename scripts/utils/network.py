@@ -605,12 +605,12 @@ async def async_download_with_lock(
 
     from typing import IO
 
-    def _acquire_lock() -> IO:
+    def _acquire_lock() -> IO[str]:
         fd = open(lock_file, "w")
         fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
         return fd
 
-    def _release_lock(fd: IO) -> None:
+    def _release_lock(fd: IO[str]) -> None:
         try:
             fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
             fd.close()
@@ -806,7 +806,7 @@ def aria2c_download(
     try:
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
-    except (subprocess.CalledProcessError, OSError):
+    except subprocess.CalledProcessError, OSError:
         return False
 
 

@@ -22,16 +22,26 @@ class APKSigner:
 
     def sign(self, input_path: Path, output_path: Path) -> bool:
         cmd = [
-            "apksigner", "sign",
-            "--ks", str(self.keystore),
-            "--ks-pass", f"pass:{self.keystore_password}",
-            "--key-pass", f"pass:{self.key_password}",
-            "--ks-key-alias", self.key_alias,
-            "--v1-signing-enabled", "true",
-            "--v2-signing-enabled", "true",
-            "--v3-signing-enabled", "false",
-            "--v4-signing-enabled", "false",
-            "--out", str(output_path),
+            "apksigner",
+            "sign",
+            "--ks",
+            str(self.keystore),
+            "--ks-pass",
+            f"pass:{self.keystore_password}",
+            "--key-pass",
+            f"pass:{self.key_password}",
+            "--ks-key-alias",
+            self.key_alias,
+            "--v1-signing-enabled",
+            "true",
+            "--v2-signing-enabled",
+            "true",
+            "--v3-signing-enabled",
+            "false",
+            "--v4-signing-enabled",
+            "false",
+            "--out",
+            str(output_path),
             str(input_path),
         ]
         try:
@@ -49,7 +59,7 @@ def _validate_path(path: Path, base_dir: Path | None = None) -> bool:
             base_resolved = base_dir.resolve()
             return str(resolved).startswith(str(base_resolved))
         return True
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return False
 
 
@@ -121,7 +131,7 @@ def verify_signature(apk_path: Path) -> str | None:
             return fingerprint.replace(":", "").lower()
 
         return None
-    except (subprocess.CalledProcessError, OSError):
+    except subprocess.CalledProcessError, OSError:
         return None
 
 
@@ -193,7 +203,7 @@ class SplitAPKHandler:
                     stderr=subprocess.DEVNULL,
                 )
                 return output_path.exists()
-            except (subprocess.CalledProcessError, OSError):
+            except subprocess.CalledProcessError, OSError:
                 return False
         return False
 
@@ -219,7 +229,7 @@ class SplitAPKHandler:
                         shutil.move(str(extracted), dest)
                     splits.append(dest)
             return splits
-        except (zipfile.BadZipFile, OSError):
+        except zipfile.BadZipFile, OSError:
             return []
 
 
@@ -279,7 +289,7 @@ class AAPT2Manager:
         try:
             subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return output_path.exists()
-        except (subprocess.CalledProcessError, OSError):
+        except subprocess.CalledProcessError, OSError:
             return False
 
 
@@ -291,11 +301,16 @@ def check_signature(apk_path: Path) -> bool:
         return False
 
     cmd = [
-        "apksigner", "verify",
-        "--v1-signing-enabled", "true",
-        "--v2-signing-enabled", "true",
-        "--v3-signing-enabled", "false",
-        "--v4-signing-enabled", "false",
+        "apksigner",
+        "verify",
+        "--v1-signing-enabled",
+        "true",
+        "--v2-signing-enabled",
+        "true",
+        "--v3-signing-enabled",
+        "false",
+        "--v4-signing-enabled",
+        "false",
         str(apk_path),
     ]
     try:

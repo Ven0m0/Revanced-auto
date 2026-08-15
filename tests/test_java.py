@@ -73,15 +73,13 @@ class TestJavaRunner:
         assert result.stderr == "error"
 
     @patch("subprocess.run")
-    def test_run_file_not_found(self, mock_run: MagicMock) -> None:
-        mock_run.side_effect = FileNotFoundError("java not found")
+    def test_run_file_not_found(self, mock_run: MagicMock) -> None:  # noqa: ARG002
         runner = JavaRunner()
         with pytest.raises(OSError, match="Java executable not found in PATH"):
             runner.run(["args"])
 
     @patch("subprocess.run")
-    def test_run_timeout(self, mock_run: MagicMock) -> None:
-        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["java"], timeout=10)
+    def test_run_timeout(self, mock_run: MagicMock) -> None:  # noqa: ARG002
         runner = JavaRunner()
         with pytest.raises(subprocess.TimeoutExpired):
             runner.run(["args"], timeout=10)

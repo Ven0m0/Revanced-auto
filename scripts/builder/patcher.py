@@ -33,13 +33,6 @@ logger = logging.getLogger(__name__)
 
 CACHE_TTL_DEFAULT = 86400
 
-RIP_LIB_ARCH_PATTERNS = {
-    "arm64-v8a": ["armeabi-v7a"],
-    "arm-v7a": ["arm64-v8a"],
-    "x86_64": ["x86"],
-    "x86": ["x86_64"],
-}
-
 
 @dataclass
 class PatcherConfig:
@@ -49,10 +42,7 @@ class PatcherConfig:
     keystore_password: str
     key_alias: str
     key_password: str
-    enable_riplib: bool = True
-    enable_aapt2_optimize: bool = True
     custom_aapt2_binary: Path | None = None
-    rv_brand: str = "rv"
 
 
 @dataclass
@@ -303,78 +293,6 @@ class ReVancedPatcher:
 
         return args
 
-    def list_patches(self, patches_jar: Path, cli_jar: Path) -> str:
-        cmd = ["java"] + self.java_runner.java_args + ["-jar", str(cli_jar), "list-patches", str(patches_jar), "-v"]
-
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-            return result.stdout + result.stderr
-        except (subprocess.TimeoutExpired, OSError) as e:
-            logger.error("Failed to list patches: %s", e)
-            return ""
-
-    def get_supported_version(
-        self,
-        pkg_name: str,
-        patches_jars: list[Path],
-        cli_jar: Path,
-        include_patches: list[str] | None = None,
-        exclude_patches: list[str] | None = None,
-    ) -> str | None:
-        list_output = self.get_cached_patches_list(cli_jar, patches_jars)
-        if not list_output:
-            return None
-
-        return self._parse_version_from_patches(list_output, pkg_name, include_patches, exclude_patches)
-
-    def _parse_version_from_patches(
-        self,
-        list_output: str,
-        pkg_name: str,
-        include_patches: list[str] | None = None,
-        exclude_patches: list[str] | None = None,
-    ) -> str | None:
-        lines = list_output.splitlines()
-        in_package = False
-        version: str | None = None
-
-        for line in lines:
-            if line.startswith("Package: ") and pkg_name in line:
-                in_package = True
-                continue
-
-            if in_package:
-                if line.startswith("Package: "):
-                    break
-                if line.startswith("Version: "):
-                    ver = line.split("Version: ", 1)[1].strip()
-                    if version is None or self._version_compare(ver, version) > 0:
-                        version = ver
-
-        return version
-
-    def _version_compare(self, v1: str, v2: str) -> int:
-        parts1 = [int(p) for p in v1.split(".") if p.isdigit()]
-        parts2 = [int(p) for p in v2.split(".") if p.isdigit()]
-
-        for p1, p2 in zip(parts1, parts2):
-            if p1 < p2:
-                return -1
-            if p1 > p2:
-                return 1
-
-        if len(parts1) < len(parts2):
-            return -1
-        if len(parts1) > len(parts2):
-            return 1
-
-        return 0
-
     def get_cached_patches_list(
         self,
         cli_jar: Path,
@@ -441,93 +359,6 @@ class ReVancedPatcher:
             logger.warning("Failed to generate patch list cache: %s", e)
             temp_file.unlink(missing_ok=True)
             return ""
-
-    def determine_version(
-        self,
-        version_mode: str,
-        pkg_name: str,
-        patches_jars: list[Path],
-        cli_jar: Path,
-        include_patches: list[str] | None = None,
-        exclude_patches: list[str] | None = None,
-        version_override: str | None = None,
-    ) -> str | None:
-        if version_mode == "auto":
-            logger.info("Auto-detecting compatible version")
-            version = self.get_supported_version(
-                pkg_name=pkg_name,
-                patches_jars=patches_jars,
-                cli_jar=cli_jar,
-                include_patches=include_patches,
-                exclude_patches=exclude_patches,
-            )
-            if version:
-                logger.info("Detected version: %s", version)
-                return version
-            logger.debug("No specific version required, using latest")
-            version_mode = "latest"
-        else:
-            version = version_override
-
-        return version
-
-    def handle_microg_patch(
-        self,
-        patches_jars: list[Path],
-        cli_jar: Path,
-        exclude_patches: list[str],
-        include_patches: list[str],
-    ) -> tuple[list[str], list[str], str | None]:
-        list_output = self.get_cached_patches_list(cli_jar, patches_jars)
-        microg_patch: str | None = None
-
-        for line in list_output.splitlines():
-            if line.startswith("Name: "):
-                patch_name = line.split("Name: ", 1)[1].strip().lower()
-                if "gmscore" in patch_name or "microg" in patch_name:
-                    microg_patch = line.split("Name: ", 1)[1].strip()
-                    break
-
-        if microg_patch:
-            if microg_patch in exclude_patches:
-                exclude_patches = [p for p in exclude_patches if p != microg_patch]
-                logger.warning(
-                    "Cannot exclude microg patch '%s', removing from exclusions",
-                    microg_patch,
-                )
-            if microg_patch in include_patches:
-                include_patches = [p for p in include_patches if p != microg_patch]
-                logger.warning(
-                    "Cannot include microg patch '%s', removing from inclusions",
-                    microg_patch,
-                )
-
-        return exclude_patches, include_patches, microg_patch
-
-    def apply_riplib_optimization(self, arch: str) -> list[str]:
-        if not self.patcher_config.enable_riplib:
-            return []
-
-        logger.info("Applying library stripping optimization")
-        rip_libs: list[str] = []
-
-        if arch in RIP_LIB_ARCH_PATTERNS:
-            for pattern in RIP_LIB_ARCH_PATTERNS[arch]:
-                rip_libs.append(pattern)
-
-        return rip_libs
-
-    def get_output_filename(
-        self,
-        app_name: str,
-        version: str,
-        arch: str,
-    ) -> str:
-        brand = self.patcher_config.rv_brand.lower().replace(" ", "-")
-        app_clean = app_name.lower().replace(" ", "-")
-        version_clean = version.replace(".", "_")
-        arch_clean = arch.replace(" ", "")
-        return f"{app_clean}-{brand}-v{version_clean}-{arch_clean}.apk"
 
 
 def main(argv: list[str]) -> int:

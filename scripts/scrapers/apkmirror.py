@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import re
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from selectolax.parser import HTMLParser
+from selectolax.parser import HTMLParser, Node
 
 from scripts.scrapers.base import (
     DownloadResult,
@@ -37,7 +36,6 @@ class RowData:
     size: str
     bundle: str
     arch: str
-    android_ver: str
     dpi: str
 
 
@@ -53,7 +51,7 @@ def get_target_archs(arch: ArchType) -> list[str]:
             return [arch, *base_archs]
 
 
-def _row_text_nodes(row: HTMLParser) -> list[str]:
+def _row_text_nodes(row: Node) -> list[str]:
     texts: list[str] = []
     for node in row.css("*"):
         t = node.text(deep=False)
@@ -70,7 +68,6 @@ def _parse_row_data(text_nodes: list[str]) -> RowData | None:
         size=text_nodes[1],
         bundle=text_nodes[2],
         arch=text_nodes[3],
-        android_ver=text_nodes[4],
         dpi=text_nodes[5],
     )
 
@@ -79,7 +76,7 @@ def _row_matches(row_data: RowData, config: SearchConfig, target_archs: list[str
     return row_data.bundle == config.apk_bundle and row_data.dpi == config.dpi and row_data.arch in target_archs
 
 
-def _extract_download_url(row: HTMLParser) -> str | None:
+def _extract_download_url(row: Node) -> str | None:
     link = row.css_first("div > a")
     if link is None:
         return None
@@ -89,7 +86,7 @@ def _extract_download_url(row: HTMLParser) -> str | None:
     return f"https://www.apkmirror.com{href}"
 
 
-def _parse_rows(tree: HTMLParser) -> list[HTMLParser]:
+def _parse_rows(tree: HTMLParser) -> list[Node]:
     return tree.css("div.table-row.headerFont")
 
 
@@ -105,15 +102,9 @@ class APKMirror(ScraperBase):
     def temp_dir(self) -> Path:
         if self._temp_dir is None:
             import tempfile
+
             self._temp_dir = Path(tempfile.mkdtemp(prefix="apkmirror_"))
         return self._temp_dir
-
-    def get_package_name(self, url: str) -> str | None:
-        pattern = r"apkmirror\.com/apk/([^/]+)/([^/]+)/?"
-        match = re.search(pattern, url)
-        if match:
-            return match.group(2)
-        return None
 
     def _get_versions_page_url(self, pkg_name: str) -> str:
         return f"{self.APK_ARCH_PATH}/{pkg_name}/"
@@ -216,9 +207,16 @@ class APKMirror(ScraperBase):
         try:
             subprocess.run(
                 [
-                    "java", "-jar", str(apkeditor_jar), "merge",
-                    "-i", str(bundle_path), "-o", f"{bundle_path}.mzip",
-                    "-clean-meta", "-f",
+                    "java",
+                    "-jar",
+                    str(apkeditor_jar),
+                    "merge",
+                    "-i",
+                    str(bundle_path),
+                    "-o",
+                    f"{bundle_path}.mzip",
+                    "-clean-meta",
+                    "-f",
                 ],
                 capture_output=True,
                 text=True,
@@ -256,14 +254,19 @@ class APKMirror(ScraperBase):
         try:
             if version is None:
                 versions = await self.get_versions(
-                    pkg_name=pkg_name, arch=arch, dpi=dpi,
-                    bundle_type=bundle_type, exclude_alpha_beta=exclude_alpha_beta,
+                    pkg_name=pkg_name,
+                    arch=arch,
+                    dpi=dpi,
+                    bundle_type=bundle_type,
+                    exclude_alpha_beta=exclude_alpha_beta,
                 )
                 if not versions:
                     return DownloadResult(success=False, error="No versions found")
                 version_info = versions[0]
                 download_url = version_info.url
                 version = version_info.version
+                if download_url is None:
+                    return DownloadResult(success=False, error="No download URL found")
             else:
                 versions_url = self._get_versions_page_url(pkg_name)
                 response = await self.get(versions_url)

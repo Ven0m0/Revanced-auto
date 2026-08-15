@@ -4,9 +4,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
-import tempfile
-import zipfile
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -43,98 +40,6 @@ class ModuleGenerator:
             module_type: The type of module to generate (MAGISK or KERNSU).
         """
         self.module_type = module_type
-
-    def generate(
-        self,
-        apk_path: Path,
-        app_name: str,
-        brand: str,
-        version: str,
-        output_dir: Path | None = None,
-    ) -> Path:
-        """Generate module ZIP.
-
-        Args:
-            apk_path: Path to the patched APK file.
-            app_name: Name of the application.
-            brand: Brand/version identifier.
-            version: Module version string.
-            output_dir: Optional output directory. Defaults to current directory.
-
-        Returns:
-            Path to the generated module ZIP file.
-        """
-        apk_path = Path(apk_path)
-        if not apk_path.exists():
-            raise FileNotFoundError(f"APK not found: {apk_path}")
-
-        metadata = ModuleMetadata(
-            app_name=app_name,
-            brand=brand,
-            version=version,
-            version_code=self._version_to_code(version),
-        )
-
-        with self._create_structure(apk_path) as temp_dir:
-            temp_path = Path(temp_dir)
-            self._write_module_files(temp_path, apk_path, metadata)
-            output_path = self._create_zip(temp_path, app_name, output_dir)
-
-        return output_path
-
-    def _create_structure(self, apk_path: Path) -> tempfile.TemporaryDirectory:
-        """Create module directory structure.
-
-        Args:
-            apk_path: Path to the APK file.
-
-        Returns:
-            TemporaryDirectory containing the module structure.
-        """
-        temp_dir = tempfile.mkdtemp(prefix="module_")
-        temp_path = Path(temp_dir)
-
-        meta_inf = temp_path / "META-INF" / "com" / "google" / "android"
-        meta_inf.mkdir(parents=True, exist_ok=True)
-
-        system_app = temp_path / "system" / "app" / apk_path.stem
-        system_app.mkdir(parents=True, exist_ok=True)
-
-        return tempfile.TemporaryDirectory(prefix="module_")
-
-    def _write_module_files(
-        self,
-        temp_path: Path,
-        apk_path: Path,
-        metadata: ModuleMetadata,
-    ) -> None:
-        """Write all module files to the temporary directory.
-
-        Args:
-            temp_path: Path to the temporary module directory.
-            apk_path: Path to the source APK file.
-            metadata: Module metadata.
-        """
-        meta_inf = temp_path / "META-INF" / "com" / "google" / "android"
-        system_app = temp_path / "system" / "app" / apk_path.stem
-
-        shutil.copy2(apk_path, system_app / apk_path.name)
-
-        module_prop = self._generate_module_prop(metadata)
-        (temp_path / "module.prop").write_text(module_prop, encoding="utf-8")
-
-        service_sh = self._generate_service_sh(apk_path)
-        (temp_path / "service.sh").write_text(service_sh, encoding="utf-8")
-
-        updater_script = self._generate_update_script()
-        (meta_inf / "updater-script").write_text(updater_script, encoding="utf-8")
-
-        if self.module_type == ModuleType.KERNSU:
-            ksu_config = self._generate_ksu_config()
-            (temp_path / "ksu_allow_su").write_text(ksu_config, encoding="utf-8")
-
-            system_prop = self._generate_system_prop(metadata)
-            (temp_path / "system.prop").write_text(system_prop, encoding="utf-8")
 
     def _generate_module_prop(self, metadata: ModuleMetadata) -> str:
         """Generate module.prop content.
@@ -289,57 +194,3 @@ class ModuleGenerator:
             f"persist.{metadata.brand.lower()}.{metadata.app_name.lower()}.version={metadata.version}",
         ]
         return "\n".join(lines) + "\n"
-
-    def _create_zip(
-        self,
-        temp_path: Path,
-        app_name: str,
-        output_dir: Path | None = None,
-    ) -> Path:
-        """Create the module ZIP file.
-
-        Args:
-            temp_path: Path to the temporary module directory.
-            app_name: Name of the application.
-            output_dir: Optional output directory.
-
-        Returns:
-            Path to the created ZIP file.
-        """
-        if output_dir is None:
-            output_dir = Path.cwd()
-        else:
-            output_dir = Path(output_dir)
-            output_dir.mkdir(parents=True, exist_ok=True)
-
-        zip_name = f"{app_name.lower()}_{self.module_type.name.lower()}_module.zip"
-        zip_path = output_dir / zip_name
-
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for file_path in temp_path.rglob("*"):
-                if file_path.is_file():
-                    arcname = file_path.relative_to(temp_path)
-                    zf.write(file_path, arcname)
-
-        return zip_path
-
-    @staticmethod
-    def _version_to_code(version: str) -> str:
-        """Convert version string to version code.
-
-        Args:
-            version: Version string (e.g., "1.2.3").
-
-        Returns:
-            Numeric version code.
-        """
-        parts = version.split(".")
-        if len(parts) >= 3:
-            try:
-                major = int(parts[0]) * 10000
-                minor = int(parts[1]) * 100
-                patch = int(parts[2]) if len(parts) > 2 else 0
-                return str(major + minor + patch)
-            except ValueError:
-                logger.warning("Failed to parse version '%s' into numeric parts", version)
-        return "1000"

@@ -31,11 +31,6 @@ def error(msg: str) -> None:
     print(f"[ERROR] {msg}", file=sys.stderr)
 
 
-def epr(msg: str) -> None:
-    """Print an error message to stderr."""
-    print(f"[ERROR] {msg}", file=sys.stderr)
-
-
 def pr(msg: str) -> None:
     """Print a plain message to stdout."""
     print(msg, file=sys.stdout)

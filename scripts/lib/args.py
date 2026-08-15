@@ -1,6 +1,9 @@
 """Argparse subparsers for the CLI."""
 
-import argparse
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import argparse
 
 
 def build_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:

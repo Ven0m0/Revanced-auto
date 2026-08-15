@@ -46,7 +46,7 @@ def extract_apk(apk: Path, extract_dir: Path) -> bool:
                     raise OSError(f"Illegal file path in APK archive: {member.filename}") from None
             zf.extractall(extract_dir)
         return True
-    except (OSError, zipfile.BadZipFile, subprocess.SubprocessError):
+    except OSError, zipfile.BadZipFile, subprocess.SubprocessError:
         return False
 
 
@@ -70,5 +70,5 @@ def repack_apk(extract_dir: Path, output_apk: Path) -> bool:
                     arcname = str(file_path.relative_to(extract_dir))
                     zf.write(file_path, arcname)
         return True
-    except (OSError, zipfile.BadZipFile):
+    except OSError, zipfile.BadZipFile:
         return False

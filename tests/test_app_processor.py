@@ -141,14 +141,12 @@ class TestArtifactNameDerivation:
         ("repo", "expected"),
         [
             ("  MorpheApp/morphe-cli  ", "morphe-cli"),  # whitespace
-            ("MorpheApp/morphe-cli/", "morphe-cli"),      # trailing slash
-            ("  crimera/piko/  ", "piko"),                 # both
-            ("/owner/repo", "repo"),                        # leading slash
+            ("MorpheApp/morphe-cli/", "morphe-cli"),  # trailing slash
+            ("  crimera/piko/  ", "piko"),  # both
+            ("/owner/repo", "repo"),  # leading slash
         ],
     )
-    def test_cli_artifact_name_trims_whitespace_and_slashes(
-        self, repo: str, expected: str
-    ) -> None:
+    def test_cli_artifact_name_trims_whitespace_and_slashes(self, repo: str, expected: str) -> None:
         assert _cli_artifact_name(repo) == expected
 
     @pytest.mark.parametrize(
@@ -159,9 +157,7 @@ class TestArtifactNameDerivation:
             ("  crimera/piko/  ", "piko"),
         ],
     )
-    def test_patches_artifact_name_trims_whitespace_and_slashes(
-        self, repo: str, expected: str
-    ) -> None:
+    def test_patches_artifact_name_trims_whitespace_and_slashes(self, repo: str, expected: str) -> None:
         assert _patches_artifact_name(repo) == expected
 
 
@@ -206,9 +202,7 @@ class TestResolveCliProfile:
         ctx = self._context(tmp_path)
         assert processor._resolve_cli_profile(ctx) is ADOBO_CLI
 
-    def test_auto_falls_back_to_morphe_when_no_jar(
-        self, processor: AppProcessor, tmp_path
-    ) -> None:
+    def test_auto_falls_back_to_morphe_when_no_jar(self, processor: AppProcessor, tmp_path) -> None:
         processor.config.global_settings = GlobalConfig(cli_profile="auto")
         ctx = self._context(tmp_path)
         ctx.cli_jar = None
@@ -218,6 +212,7 @@ class TestResolveCliProfile:
         processor.config.global_settings = GlobalConfig(cli_profile="auto")
         ctx = self._context(tmp_path)
         ctx.cli_jar = tmp_path / "fake.jar"
+        assert ctx.cli_jar is not None
         ctx.cli_jar.write_text("")
         monkeypatch.setattr(
             "scripts.builder.app_processor.detect_cli_profile",
@@ -263,6 +258,7 @@ class TestRunPatcherUsesProfile:
     def test_morphe_profile_uses_long_flags(self, tmp_path, monkeypatch) -> None:
         processor, java_runner = self._build_processor("morphe-cli")
         ctx = self._context(tmp_path)
+        assert ctx.cli_jar is not None
         ctx.cli_jar.write_text("")
 
         monkeypatch.setattr(
@@ -284,6 +280,7 @@ class TestRunPatcherUsesProfile:
     def test_v6_profile_uses_short_flags(self, tmp_path, monkeypatch) -> None:
         processor, java_runner = self._build_processor("revanced-cli-v6")
         ctx = self._context(tmp_path)
+        assert ctx.cli_jar is not None
         ctx.cli_jar.write_text("")
 
         monkeypatch.setattr(
@@ -300,24 +297,27 @@ class TestRunPatcherUsesProfile:
         assert "-d" in args
         assert "bad-patch" in args
 
-    def test_riplib_skipped_when_profile_lacks_support(
-        self, tmp_path, monkeypatch
-    ) -> None:
+    def test_riplib_skipped_when_profile_lacks_support(self, tmp_path, monkeypatch) -> None:
         processor, java_runner = self._build_processor("auto")
         ctx = self._context(tmp_path)
+        assert ctx.cli_jar is not None
         ctx.cli_jar.write_text("")
-        ctx.riplib = ["libfoo"]
+        ctx.riplib = True
 
         # Build a profile whose patch_args lack the RIP_LIB mapping.
-        from scripts.builder.cli_profiles import PatchArgs
+        from typing import cast
 
+        from scripts.builder.cli_profiles import ArgMapping, PatchArgs
+
+        filtered_patch_args = cast(
+            "dict[str, ArgMapping | None]",
+            {k: v for k, v in REVANCED_CLI_V5.patch_args.items() if k != "RIP_LIB"},
+        )
         no_rip_profile = REVANCED_CLI_V5.__class__(
             name="NoRip",
             profile_type=CLIProfileType.REVANCED_CLI_V5,
             list_patches_args=REVANCED_CLI_V5.list_patches_args,
-            patch_args=PatchArgs(
-                **{k: v for k, v in REVANCED_CLI_V5.patch_args.items() if k != "RIP_LIB"}
-            ),
+            patch_args=PatchArgs(**filtered_patch_args),
         )
         monkeypatch.setattr(
             "scripts.builder.app_processor.detect_cli_profile",

@@ -8,7 +8,7 @@ import re
 import zipfile
 from dataclasses import dataclass
 from io import BytesIO
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from selectolax.parser import HTMLParser
 
@@ -29,14 +29,6 @@ from scripts.scrapers.base import (
 
 SUPPORTED_ARCHS = frozenset({"arm64-v8a", "armeabi-v7a", "x86", "x86_64"})
 
-XAPK_MIME_TYPES = frozenset(
-    {
-        "application/vnd.android.package-archive",
-        "application/xapk",
-        "application/octet-stream",
-    }
-)
-
 
 @dataclass
 class UptodownVersion:
@@ -54,13 +46,6 @@ class UptodownScraper(ScraperBase):
         super().__init__(DownloadSource.UPTODOWN)
         self.base_url = "https://{app}.en.uptodown.com/android"
         self.max_pages = 5
-
-    def get_package_name(self, url: str) -> str | None:
-        pattern = r"https://([^.]+)\.en\.uptodown\.com/android"
-        match = re.match(pattern, url)
-        if match:
-            return match.group(1)
-        return None
 
     def _build_app_url(self, app: str) -> str:
         return self.base_url.format(app=app)
@@ -83,7 +68,7 @@ class UptodownScraper(ScraperBase):
             if version_link is None:
                 return None
             version = version_link.text(strip=True)
-            href = version_link.attrs.get("href", "")
+            href = version_link.attrs.get("href") or ""
             file_id_match = re.search(r"/download/([^/]+)", href)
             file_id = file_id_match.group(1) if file_id_match else ""
             file_type = node.css_first("span.file-type")
@@ -121,7 +106,8 @@ class UptodownScraper(ScraperBase):
         return versions
 
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
-        target_arch: str | None = kwargs.get("arch")
+        target_arch_raw = kwargs.get("arch")
+        target_arch: str | None = target_arch_raw if isinstance(target_arch_raw, str) else None
         all_versions: list[UptodownVersion] = []
         for page in range(1, self.max_pages + 1):
             url = self._build_version_page_url(pkg_name, page)
@@ -159,8 +145,11 @@ class UptodownScraper(ScraperBase):
                     if fv.version == version:
                         return fv
                 return UptodownVersion(
-                    version=version, url=v_info.url, arch=v_info.arch,
-                    file_id="", is_xapk=False,
+                    version=version,
+                    url=v_info.url,
+                    arch=v_info.arch,
+                    file_id="",
+                    is_xapk=False,
                 )
         return None
 
@@ -224,7 +213,9 @@ class UptodownScraper(ScraperBase):
                 namelist = zf.namelist()
                 apk_files = [n for n in namelist if n.endswith(".apk")]
                 if not apk_files:
-                    return DownloadResult(success=False, file_path=None, version=version, error="No APK found in XAPK bundle")
+                    return DownloadResult(
+                        success=False, file_path=None, version=version, error="No APK found in XAPK bundle"
+                    )
                 main_apk = apk_files[0]
                 apk_content = await asyncio.to_thread(zf.read, main_apk)
                 await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
@@ -235,12 +226,12 @@ class UptodownScraper(ScraperBase):
         except Exception as e:
             return DownloadResult(success=False, file_path=None, version=version, error=f"XAPK extraction failed: {e}")
 
-    async def _request_with_retry(self, url: str) -> httpx.Response:
+    async def _request_with_retry(self, url: str, method: str = "GET", **kwargs: Any) -> httpx.Response:
         delay = self.BASE_DELAY
         last_error: Exception | None = None
         for attempt in range(self.MAX_RETRIES):
             try:
-                response = await self.session.get(url)
+                response = await self.session.request(method, url, **kwargs)
                 response.raise_for_status()
             except Exception as e:
                 last_error = e

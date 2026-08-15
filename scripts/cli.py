@@ -6,11 +6,12 @@ import re
 import signal
 import sys
 from pathlib import Path
-from types import FrameType
 
 # Allow running as a direct script: `python scripts/cli.py`
 # Inserts the project root so `scripts.*` imports resolve correctly.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from typing import TYPE_CHECKING
 
 from scripts.lib import logging as log
 from scripts.lib.args import (
@@ -24,6 +25,9 @@ from scripts.lib.cache import (
     CacheManager,
     format_cache_size,
 )
+
+if TYPE_CHECKING:
+    from types import FrameType
 
 
 def _signal_handler(signum: int, _frame: FrameType | None) -> None:
