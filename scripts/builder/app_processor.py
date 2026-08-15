@@ -254,26 +254,59 @@ class Notifier(Protocol):
         ...
 
 
-def _cli_artifact_name(cli_source: str) -> str:
-    """Derive the CLI JAR artifact prefix from a ``owner/repo`` slug.
+def _is_morphe_patches_source(source: str) -> bool:
+    """Detect Morphe-style patch sources, which publish ``.mpp`` bundles instead of ``.rvp``.
 
-    Examples:
-        ``MorpheApp/morphe-cli`` → ``morphe-cli``
-        ``ReVanced/revanced-cli`` → ``revanced-cli``
-        ``inotia00/revanced-cli`` → ``revanced-cli``
+    Mirrors the source-pattern match in scripts/lib/prebuilts.sh's
+    resolve_rv_artifact (``MorpheApp/* | */morphe-* | */rvx-morphed |
+    */anddea-rvx-morphed | */patcheddit``).
     """
-    return cli_source.strip().rstrip("/").rsplit("/", 1)[-1]
+    lower = source.strip().lower()
+    return (
+        lower.startswith("morpheapp/")
+        or "/morphe-" in lower
+        or lower.endswith(("/rvx-morphed", "/anddea-rvx-morphed", "/patcheddit"))
+    )
 
 
-def _patches_artifact_name(patches_source: str) -> str:
-    """Derive the patches JAR artifact prefix from a ``owner/repo`` slug.
+def _resolve_github_release_asset(source: str, ext: str, fallback_ext: str | None = None) -> tuple[str, str]:
+    """Find the newest GitHub release of ``source`` with a ``.ext`` (or ``.fallback_ext``) asset.
 
-    Examples:
-        ``MorpheApp/morphe-patches`` → ``morphe-patches``
-        ``ReVanced/revanced-patches`` → ``revanced-patches``
-        ``crimera/piko`` → ``piko``
+    Ports scripts/lib/prebuilts.sh's resolve_rv_artifact: GitHub's
+    ``/releases`` endpoint (not ``/releases/latest``, which excludes
+    prereleases) returns releases newest-first, so both "latest" and "dev"
+    version modes resolve to whatever's newest -- these repos publish dev
+    builds as ordinary (pre-)releases, same as the bash implementation.
+    Asset filenames aren't matched by prefix (they vary per fork, e.g.
+    MorpheApp's CLI asset is ``morphe-desktop-*-all.jar``, not
+    ``morphe-cli-*``); only the newest release's file extension matters.
+
+    Returns:
+        Tuple of (asset_filename, asset_api_url). The API asset URL (not
+        browser_download_url) requires an octet-stream Accept header to
+        stream binary content, which gh_dl() already sets.
     """
-    return patches_source.strip().rstrip("/").rsplit("/", 1)[-1]
+    import json
+
+    from scripts.utils.network import gh_req
+
+    releases_raw = gh_req(f"https://api.github.com/repos/{source}/releases")
+    releases = json.loads(releases_raw)
+    if not releases:
+        msg = f"No releases found for {source}"
+        raise RuntimeError(msg)
+
+    release = releases[0]
+    for candidate_ext in (ext, fallback_ext) if fallback_ext else (ext,):
+        for asset in release.get("assets", []):
+            name = asset.get("name", "")
+            if name.endswith(f".{candidate_ext}"):
+                return name, asset["url"]
+
+    tag = release.get("tag_name", "?")
+    wanted = f".{ext}" + (f" or .{fallback_ext}" if fallback_ext else "")
+    msg = f"No {wanted} asset found in {source} release {tag}"
+    raise RuntimeError(msg)
 
 
 def _derive_scraper_pkg_name(download_url: str, source: DownloadSource) -> str:
@@ -870,14 +903,10 @@ class AppProcessor:
         from scripts.utils.network import gh_dl
 
         if not cli_jar.exists():
-            cli_artifact = _cli_artifact_name(context.cli_source)
-            cli_url = (
-                f"https://github.com/{context.cli_source}/releases/download/"
-                f"v{context.cli_version}/{cli_artifact}-{context.cli_version}-all.jar"
-            )
+            _asset_name, cli_url = _resolve_github_release_asset(context.cli_source, "jar")
             success = gh_dl(cli_jar, cli_url)
             if not success:
-                raise RuntimeError(f"Failed to download CLI from {cli_url}")
+                raise RuntimeError(f"Failed to download CLI from {context.cli_source}")
 
         patches_sources = (
             [context.patches_source] if isinstance(context.patches_source, str) else context.patches_source
@@ -890,7 +919,9 @@ class AppProcessor:
         )
 
         for idx, patches_src in enumerate(patches_sources):
-            patches_jar = prebuilts_dir / f"patches-{context.patches_version}-{idx}.jar"
+            is_morphe = _is_morphe_patches_source(patches_src)
+            ext = "mpp" if is_morphe else "rvp"
+            patches_jar = prebuilts_dir / f"patches-{context.patches_version}-{idx}.{ext}"
             patches_jars.append(patches_jar)
 
             if patches_jar.exists():
@@ -901,11 +932,8 @@ class AppProcessor:
                 entry = resolve_bundle(selector, context.patches_version)
                 patches_url = entry.download_url
             else:
-                patches_artifact = _patches_artifact_name(patches_src)
-                patches_url = (
-                    f"https://github.com/{patches_src}/releases/download/v{context.patches_version}/"
-                    f"{patches_artifact}-{context.patches_version}.jar"
-                )
+                fallback_ext = "rvp" if is_morphe else "mpp"
+                _asset_name, patches_url = _resolve_github_release_asset(patches_src, ext, fallback_ext)
 
             success = gh_dl(patches_jar, patches_url)
             if not success:

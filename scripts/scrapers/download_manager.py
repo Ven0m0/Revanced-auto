@@ -147,7 +147,11 @@ class DownloadManager:
         _reset_scraper_session(scraper)
         kwargs: dict[str, str] = {}
         if arch:
-            kwargs["arch"] = self._normalize_arch(arch)
+            # Only APKMirror's ArchType expects "armeabi-v7a"; other scrapers
+            # (e.g. Archive.org) key VersionInfo.arch off the raw filename
+            # convention ("arm-v7a"), so normalizing there would break the
+            # exact-match lookup in their download().
+            kwargs["arch"] = self._normalize_arch(arch) if source == DownloadSource.APKMIRROR else arch
         if dpi:
             kwargs["dpi"] = dpi
 
