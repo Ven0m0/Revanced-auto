@@ -1230,6 +1230,39 @@ class AppProcessor:
         )
 
 
+def _write_build_log(summary: BuildSummary, path: Path | None = None) -> None:
+    """Write a build.md summary of this build for the GitHub release notes.
+
+    The Python builder never wrote this file, unlike build.sh (the legacy
+    bash path), so the release job's "Combine build logs" step always had
+    nothing to combine -- confirmed in CI (no build-log-* artifacts were
+    ever produced, well before that step even runs).
+    """
+    path = path or Path("build.md")
+    lines: list[str] = []
+    for result in summary.succeeded:
+        lines.append(f"### {result.app_name} ({result.brand}) {result.version} - {result.arch}")
+        lines.extend(f"- {patch}" for patch in result.changelog)
+        lines.append("")
+
+    lines.extend(
+        [
+            "### MicroG / GmsCore (Required for YouTube & YT Music)",
+            "Download and install one of the following GmsCore providers:",
+            "- [ReVanced GmsCore](https://github.com/ReVanced/GmsCore/releases/latest)",
+            "- [Wst_Xda GmsCore (Morphe)](https://github.com/MorpheApp/MicroG-RE/releases/latest)",
+            "- [YT-Advanced GmsCore (Rex)](https://github.com/YT-Advanced/GmsCore/releases/latest)",
+            "",
+        ]
+    )
+
+    if summary.failed:
+        lines.append("Skipped:")
+        lines.extend(f"- {result.app_name}: {result.error}" for result in summary.failed)
+
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main(argv: list[str]) -> int:
     """Main entry point for app processor CLI.
 
@@ -1268,6 +1301,8 @@ def main(argv: list[str]) -> int:
             print("Failed apps:")
             for result in summary.failed:
                 print(f"  - {result.app_name}: {result.error}")
+
+        _write_build_log(summary)
 
         return 0 if summary.failure_count == 0 else 1
 
