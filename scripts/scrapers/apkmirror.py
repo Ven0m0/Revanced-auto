@@ -40,7 +40,7 @@ class RowData:
     dpi: str
 
 
-_MIN_ROW_FIELDS: int = 6
+_MIN_ROW_CELLS: int = 5
 
 
 def get_target_archs(arch: ArchType) -> list[str]:
@@ -52,24 +52,29 @@ def get_target_archs(arch: ArchType) -> list[str]:
             return [arch, *base_archs]
 
 
-def _row_text_nodes(row: Node) -> list[str]:
-    texts: list[str] = []
-    for node in row.css("*"):
-        t = node.text(deep=False)
-        if t and (s := t.strip()):
-            texts.append(s)
-    return texts
+def _parse_row_data(row: Node) -> RowData | None:
+    """Extract variant fields from a real variant table row.
 
-
-def _parse_row_data(text_nodes: list[str]) -> RowData | None:
-    if len(text_nodes) < _MIN_ROW_FIELDS:
+    Cells are ``[version+badges, arch, min-Android-version, dpi, download]``.
+    The version cell packs several nested elements (a version link, a bundle
+    type badge, a signature badge, an upload timestamp) -- flattening all
+    text nodes in DOM order (the previous approach) interleaves these and
+    breaks positional field mapping. Reading each field from its own cell
+    (and the version from its link's own text, not the cell's) is exact.
+    """
+    cells = row.css(".table-cell")
+    if len(cells) < _MIN_ROW_CELLS:
         return None
+    version_link = cells[0].css_first("a")
+    version = (version_link or cells[0]).text(strip=True)
+    bundle_badge = cells[0].css_first(".apkm-badge")
+    bundle = bundle_badge.text(strip=True) if bundle_badge else ""
     return RowData(
-        version=text_nodes[0],
-        size=text_nodes[1],
-        bundle=text_nodes[2],
-        arch=text_nodes[3],
-        dpi=text_nodes[5],
+        version=version,
+        size="",
+        bundle=bundle,
+        arch=cells[1].text(strip=True),
+        dpi=cells[3].text(strip=True),
     )
 
 
@@ -117,8 +122,7 @@ class APKMirror(ScraperBase):
             return None
         target_archs = get_target_archs(config.arch)
         for row in rows:
-            text_nodes = _row_text_nodes(row)
-            row_data = _parse_row_data(text_nodes)
+            row_data = _parse_row_data(row)
             if row_data is None:
                 continue
             if config.exclude_alpha_beta and (
