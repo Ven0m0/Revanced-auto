@@ -1110,19 +1110,23 @@ class AppProcessor:
     def _get_keystore_credentials(self) -> tuple[str, str, str, str]:
         """Get keystore alias/passwords/signer.
 
-        Defaults ("Morphe"/"Morphe") match both morphe-desktop's own
-        documented default keystore and assets/ks.keystore's real alias/
-        password (a keystore generated for this repo with
-        ``keytool -genkeypair -alias Morphe ... -storepass Morphe -keypass
-        Morphe``). Falls back to KEYSTORE_PASSWORD/KEYSTORE_ENTRY_PASSWORD env
-        vars (already set by the CI workflows) or GlobalConfig.keystore_alias
+        Default alias is lowercase "morphe": `keytool -genkeypair` always
+        lowercases the alias it stores regardless of the case passed to
+        `-alias` (confirmed: `keytool -list` on assets/ks.keystore, generated
+        with `-alias Morphe`, shows the entry as "morphe"), and
+        morphe-desktop's own alias lookup is exact-match, not the
+        case-insensitive lookup java.security.KeyStore itself does --
+        confirmed live: "Keystore does not contain entry with alias Morphe"
+        even though standard KeyStore.getKey("Morphe", ...) resolves fine.
+        Falls back to KEYSTORE_PASSWORD/KEYSTORE_ENTRY_PASSWORD env vars
+        (already set by the CI workflows) or GlobalConfig.keystore_alias
         first, so a real production keystore + secrets can override this
         without a code change.
 
         Returns:
             Tuple of (keystore_alias, keystore_password, keystore_entry_password, signer).
         """
-        alias = self.config.global_settings.keystore_alias or "Morphe"
+        alias = self.config.global_settings.keystore_alias or "morphe"
         keystore_password = os.environ.get("KEYSTORE_PASSWORD") or "Morphe"
         keystore_entry_password = os.environ.get("KEYSTORE_ENTRY_PASSWORD") or "Morphe"
         return alias, keystore_password, keystore_entry_password, alias
