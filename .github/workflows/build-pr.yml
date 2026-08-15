@@ -131,15 +131,15 @@ jobs:
           echo "Testing build with app: **$TEST_APP**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           # Generate config for test app
-          ./extras.sh separate-config config.toml "$TEST_APP" test_config.toml
+          ./extras.sh separate-config config.toml "$TEST_APP" test_config.json
           echo "Test configuration:" >> $GITHUB_STEP_SUMMARY
-          echo '```toml' >> $GITHUB_STEP_SUMMARY
-          cat test_config.toml >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat test_config.json >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           # Try to build (will likely fail without keystore, but validates pipeline)
           echo "Note: Build will validate pipeline but may fail at signing step (expected in PR)" >> $GITHUB_STEP_SUMMARY
-          if timeout 600 ./build.sh test_config.toml 2>&1 | tee build-output.txt; then
+          if timeout 600 ./build.sh test_config.json 2>&1 | tee build-output.txt; then
             echo "✅ Build completed successfully" >> $GITHUB_STEP_SUMMARY
           else
             # Check if it's just the signing step that failed (expected)

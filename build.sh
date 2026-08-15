@@ -83,6 +83,12 @@ fi
 
 if check_python; then
   print_deprecation_warning
+  # Legacy positional config arg -> --config (scripts.cli only accepts --config)
+  if [[ ${1-} && ${1} != --* ]]; then
+    config_arg="$1"
+    shift
+    exec python -m scripts.cli build --config "$config_arg" "$@"
+  fi
   exec python -m scripts.cli build "$@"
 fi
 
