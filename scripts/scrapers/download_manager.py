@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from scripts.scrapers.apkmirror import APKMirror
 from scripts.scrapers.apkmonk import APKMonkScraper
@@ -16,6 +19,17 @@ from scripts.utils.network import HttpClient
 ARCH_NORMALIZATION: dict[str, str] = {
     "arm-v7a": "armeabi-v7a",
 }
+
+
+def _version_sort_key(version: str) -> tuple[int, ...]:
+    """Sort key for dotted version strings, e.g. ``19.09.36`` > ``9.9.9``.
+
+    ponytail: numeric-only comparison, ignores suffixes like "-beta3" beyond
+    their leading digits. Good enough for picking the newest stable release;
+    revisit with proper semver parsing if pre-release ordering matters.
+    """
+    parts = re.findall(r"\d+", version)
+    return tuple(int(p) for p in parts) if parts else (0,)
 
 
 @dataclass
@@ -59,6 +73,75 @@ class DownloadManager:
                     msg = f"Unsupported download source: {source}"
                     raise ValueError(msg)
         return self._scrapers[source]
+
+    def resolve(
+        self,
+        app_id: str,
+        source: DownloadSource,
+        *,
+        timeout: int = 300,
+    ) -> tuple[str, str]:
+        """Resolve the latest available (non-alpha/beta) version for an app.
+
+        Args:
+            app_id: Package identifier as expected by the source's scraper
+                (e.g. an APKMirror URL slug like ``google-inc/youtube``).
+            source: Download source to query.
+            timeout: Unused; scrapers manage their own request timeouts.
+
+        Returns:
+            Tuple of (version_string, version_string). No scraper exposes a
+            separate Android versionCode, so both elements carry the version
+            string; callers that need a real versionCode must look elsewhere.
+        """
+        del timeout
+        scraper = self._get_scraper(source)
+        versions = asyncio.run(scraper.get_versions(app_id))
+        if not versions:
+            msg = f"No versions found for {app_id!r} on {source.value}"
+            raise ValueError(msg)
+        latest = max(versions, key=lambda v: _version_sort_key(v.version))
+        return latest.version, latest.version
+
+    def download(
+        self,
+        app_id: str,
+        version: str,
+        output_path: Path,
+        source: DownloadSource,
+        *,
+        arch: str | None = None,
+        dpi: str | None = None,
+        timeout: int = 300,
+    ) -> Path:
+        """Download a stock APK from the given source.
+
+        Args:
+            app_id: Package identifier as expected by the source's scraper.
+            version: Version to download.
+            output_path: Where to save the downloaded APK.
+            source: Download source to use.
+            arch: Target architecture, if the source supports filtering by it.
+            dpi: Target DPI, if the source supports filtering by it.
+            timeout: Unused; scrapers manage their own request timeouts.
+
+        Returns:
+            Path to the downloaded APK.
+        """
+        del timeout
+        scraper = self._get_scraper(source)
+        kwargs: dict[str, str] = {}
+        if arch:
+            kwargs["arch"] = self._normalize_arch(arch)
+        if dpi:
+            kwargs["dpi"] = dpi
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        result = asyncio.run(scraper.download(app_id, version, output_path, **kwargs))
+        if not result.success or result.file_path is None:
+            msg = result.error or f"Failed to download {app_id!r} {version} from {source.value}"
+            raise RuntimeError(msg)
+        return result.file_path
 
     def _normalize_arch(self, arch: str) -> str:
         """Normalize architecture string.

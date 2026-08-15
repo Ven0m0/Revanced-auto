@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -30,6 +31,7 @@ from scripts.builder.cli_profiles import (
 from scripts.builder.config import AppConfig, Config
 from scripts.builder.engines import EngineContext, EngineRunner, EngineStage
 from scripts.lib.plugins import dispatch_plugins
+from scripts.scrapers.base import DownloadSource
 from scripts.utils.java import JavaRunner
 
 if TYPE_CHECKING:
@@ -66,15 +68,10 @@ class Architecture(Enum):
         raise ValueError(f"Invalid architecture: {value}")
 
 
-class DownloadSource(Enum):
-    """Supported download sources for stock APKs."""
-
-    APKPURE = "apkpure"
-    APKMIRROR = "apkmirror"
-    UPTODOWN = "uptodown"
-    ARCHIVE = "archive"
-    APTOIDE = "aptoide"
-    APKMonk = "apkmonk"
+# Re-exported for backwards compatibility: this used to be a locally defined
+# duplicate Enum with the same members, which broke identity/equality checks
+# against scrapers (DownloadManager._get_scraper() matches on this exact
+# Enum class). Use the scrapers' canonical DownloadSource everywhere.
 
 
 @dataclass
@@ -279,6 +276,24 @@ def _patches_artifact_name(patches_source: str) -> str:
     return patches_source.strip().rstrip("/").rsplit("/", 1)[-1]
 
 
+def _derive_scraper_pkg_name(download_url: str, source: DownloadSource) -> str:
+    """Derive the package identifier a scraper expects from a configured ``*-dlurl`` listing-page URL.
+
+    Each download source encodes the package differently in its URL:
+    APKMirror uses a two-segment ``owner-slug/app-slug`` path (e.g.
+    ``https://apkmirror.com/apk/google-inc/youtube-music`` -> the scraper
+    wants ``google-inc/youtube-music``); most other sources put the real
+    Android package id as the final path segment (e.g.
+    ``.../apks/com.google.android.apps.youtube.music``).
+    """
+    path = urllib.parse.urlparse(download_url).path.strip("/")
+    if not path:
+        return download_url
+    if source == DownloadSource.APKMIRROR:
+        return path.removeprefix("apk/")
+    return path.rsplit("/", 1)[-1]
+
+
 class JobRunner:
     """Manages parallel job execution with concurrency limiting.
 
@@ -361,6 +376,8 @@ class AppBuildContext:
         output_path: Output APK path.
         source: Download source.
         download_url: Pre-configured download URL.
+        scraper_pkg_name: Package identifier as expected by the download source's
+            scraper (e.g. the APKMirror URL slug), derived from download_url.
         patches_source: Patches source repository(s).
         patches_version: Patches version.
         cli_source: CLI source repository.
@@ -384,6 +401,7 @@ class AppBuildContext:
     output_path: Path
     source: DownloadSource
     download_url: str = ""
+    scraper_pkg_name: str = ""
     patches_source: str | list[str] = "MorpheApp/morphe-patches"
     patches_version: str = "latest"
     cli_source: str = "MorpheApp/morphe-cli"
@@ -474,7 +492,7 @@ class AppProcessor:
             )
 
         with JobRunner(max_workers=self.parallel_jobs) as runner:
-            futures: dict[Future[list[BuildResult]], str] = {}
+            futures: dict[Future[BuildResult], str] = {}
 
             for app_config in enabled_apps:
                 arch = self._parse_architecture(app_config)
@@ -490,8 +508,8 @@ class AppProcessor:
 
             for future, app_name in futures.items():
                 try:
-                    results = future.result()
-                    all_results.extend(results)
+                    result = future.result()
+                    all_results.append(result)
                 except Exception as e:
                     logger.error("Build failed with exception: %s", e)
                     all_results.append(
@@ -597,10 +615,11 @@ class AppProcessor:
         source = self._determine_download_source(app_config)
 
         download_url = self._get_download_url(app_config, source)
+        scraper_pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else app_config.name
 
         version = app_config.version or "auto"
         if version == "auto" and self.version_resolver:
-            version, _ = self.version_resolver.resolve(app_config.name, source)
+            version, _ = self.version_resolver.resolve(scraper_pkg_name, source)
 
         patches_source = app_config.patches_source or self.config.global_settings.patches_source
         patches_version = self.config.global_settings.patches_version
@@ -640,6 +659,7 @@ class AppProcessor:
             output_path=output_path,
             source=source,
             download_url=download_url,
+            scraper_pkg_name=scraper_pkg_name,
             patches_source=patches_source,
             patches_version=patches_version,
             cli_source=cli_source,
@@ -806,7 +826,7 @@ class AppProcessor:
         """
         if self.download_manager:
             return self.download_manager.download(
-                context.app_id,
+                context.scraper_pkg_name or context.app_id,
                 context.version,
                 context.output_path.parent / f"stock-{context.app_name}-{context.version}.apk",
                 context.source,
@@ -1146,10 +1166,21 @@ def main(argv: list[str]) -> int:
 
     try:
         from scripts.builder.config import load_config
+        from scripts.scrapers.download_manager import DownloadManager
+        from scripts.utils.network import HttpClient
 
         config = load_config(*argv[1:])
 
-        processor = AppProcessor(config, JavaRunner())
+        # DownloadManager also implements the VersionResolver protocol
+        # (.resolve()) via the same underlying scrapers, so one instance
+        # covers both roles.
+        download_manager = DownloadManager(HttpClient())
+        processor = AppProcessor(
+            config,
+            JavaRunner(),
+            version_resolver=download_manager,
+            download_manager=download_manager,
+        )
 
         summary = processor.process_all()
 

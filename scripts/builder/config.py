@@ -35,6 +35,11 @@ class ConfigError(Exception):
         super().__init__(message)
 
 
+def _normalize_table_keys(table: dict[str, Any]) -> dict[str, Any]:
+    """Normalize kebab-case TOML keys (e.g. ``patches-source``) to the snake_case field names used by ``GlobalConfig``/``AppConfig`` dataclasses."""
+    return {k.replace("-", "_"): v for k, v in table.items()}
+
+
 @dataclass
 class GlobalConfig:
     """Global configuration settings applied across all apps."""
@@ -398,6 +403,13 @@ class ConfigLoader:
         if not isinstance(global_data, dict):
             raise ConfigError("GlobalConfig must be a table/dictionary")
 
+        # Back-compat with this repo's config.toml layout: global settings are
+        # plain top-level scalar keys (patches-version, arch, riplib, ...),
+        # not nested under an explicit [GlobalConfig] table. An explicit
+        # [GlobalConfig] table (if present) takes precedence per key.
+        flat_globals = {k: v for k, v in data.items() if not isinstance(v, dict) and k != "GlobalConfig"}
+        global_data = {**_normalize_table_keys(flat_globals), **_normalize_table_keys(global_data)}
+
         try:
             global_settings = GlobalConfig.from_dict(global_data)
         except (TypeError, ValueError) as e:
@@ -424,7 +436,7 @@ class ConfigLoader:
                     modules[app_name] = self._parse_modules(app_name, value)
                 else:
                     try:
-                        app_config = AppConfig.from_dict(app_name, value)
+                        app_config = AppConfig.from_dict(app_name, _normalize_table_keys(value))
                         apps[app_name] = app_config
                     except ConfigError:
                         raise
