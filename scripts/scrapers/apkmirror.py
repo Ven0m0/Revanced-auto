@@ -29,6 +29,16 @@ class SearchConfig:
     dpi: str
     arch: ArchType
     exclude_alpha_beta: bool = True
+    match_any: bool = False
+    """Skip bundle/dpi/arch filtering, accept the first variant row.
+
+    Modern releases increasingly ship only arch-split BUNDLE variants with
+    dpi *ranges* (e.g. "120-480dpi") rather than a "universal"/"nodpi" row,
+    so exact SearchConfig equality can match nothing even though the release
+    has installable variants. Callers that only need *a* variant to exist
+    (confirming a version is real, not picking a specific download) should
+    set this instead of guessing bundle/dpi/arch values.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +89,8 @@ def _parse_row_data(row: Node) -> RowData | None:
 
 
 def _row_matches(row_data: RowData, config: SearchConfig, target_archs: list[str]) -> bool:
+    if config.match_any:
+        return True
     return row_data.bundle == config.apk_bundle and row_data.dpi == config.dpi and row_data.arch in target_archs
 
 
@@ -215,12 +227,14 @@ class APKMirror(ScraperBase):
         dpi: str = "nodpi",
         bundle_type: BundleType = "APK",
         exclude_alpha_beta: bool = True,
+        match_any: bool = False,
     ) -> list[VersionInfo]:
         config = SearchConfig(
             apk_bundle=bundle_type,
             dpi=dpi,
             arch=arch,
             exclude_alpha_beta=exclude_alpha_beta,
+            match_any=match_any,
         )
         releases = await self._list_release_pages(pkg_name)
         results: list[VersionInfo] = []

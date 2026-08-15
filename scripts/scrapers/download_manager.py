@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from scripts.scrapers.apkmonk import APKMonkScraper
 from scripts.scrapers.apkpure import APKPureScraper
 from scripts.scrapers.aptoide import AptoideScraper
 from scripts.scrapers.archive import ArchiveScraper
-from scripts.scrapers.base import DownloadSource, ScraperBase, VersionInfo
+from scripts.scrapers.base import DownloadSource, ScraperBase
 from scripts.scrapers.uptodown import UptodownScraper
 from scripts.utils.network import HttpClient
 
@@ -57,6 +58,15 @@ class DownloadManager:
 
         """
         self._scrapers: dict[DownloadSource, ScraperBase] = {}
+        # resolve()/download() are called concurrently across
+        # ThreadPoolExecutor worker threads (one per app/arch build
+        # variant), but each call's asyncio.run() creates a fresh event
+        # loop while reusing the same cached scraper (and its
+        # httpx.AsyncClient / internal locks). Serializing calls here is
+        # simpler and more correct than making the scrapers themselves
+        # thread-safe, and avoids self-inflicted rate limiting from
+        # hammering a source concurrently.
+        self._lock = threading.Lock()
 
     def _get_scraper(self, source: DownloadSource) -> ScraperBase:
         """Get or create scraper instance for source.
@@ -108,19 +118,19 @@ class DownloadManager:
             string; callers that need a real versionCode must look elsewhere.
         """
         del timeout
-        scraper = self._get_scraper(source)
-        versions: list[VersionInfo] = []
-        # Not every app ships a plain single-APK "universal" build -- e.g.
-        # APKMirror's YouTube Music releases are BUNDLE-only. resolve() only
-        # needs *a* version number, not a specific variant, so try both
-        # bundle types before giving up. bundle_type is an APKMirror-only
-        # kwarg; other scrapers ignore unknown kwargs via **kwargs.
-        for bundle_type in ("APK", "BUNDLE"):
+        with self._lock:
+            scraper = self._get_scraper(source)
             _reset_scraper_session(scraper)
-            kwargs: dict[str, str] = {"bundle_type": bundle_type}
+            # resolve() only needs *a* version number, not a specific
+            # installable variant -- not every app ships a plain
+            # "universal"/"nodpi"/"APK" build (e.g. APKMirror's YouTube Music
+            # releases are BUNDLE-only, split per-arch, with dpi *ranges*
+            # instead of "nodpi"). match_any skips APKMirror's bundle/dpi/arch
+            # equality checks, accepting whatever variant a release has. It's
+            # an APKMirror-only kwarg; other scrapers ignore unknown kwargs
+            # via **kwargs.
+            kwargs: dict[str, bool] = {"match_any": True}
             versions = asyncio.run(scraper.get_versions(app_id, **kwargs))
-            if versions:
-                break
         if not versions:
             msg = f"No versions found for {app_id!r} on {source.value}"
             raise ValueError(msg)
@@ -153,20 +163,21 @@ class DownloadManager:
             Path to the downloaded APK.
         """
         del timeout
-        scraper = self._get_scraper(source)
-        _reset_scraper_session(scraper)
-        kwargs: dict[str, str] = {}
-        if arch:
-            # Only APKMirror's ArchType expects "armeabi-v7a"; other scrapers
-            # (e.g. Archive.org) key VersionInfo.arch off the raw filename
-            # convention ("arm-v7a"), so normalizing there would break the
-            # exact-match lookup in their download().
-            kwargs["arch"] = self._normalize_arch(arch) if source == DownloadSource.APKMIRROR else arch
-        if dpi:
-            kwargs["dpi"] = dpi
-
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        result = asyncio.run(scraper.download(app_id, version, output_path, **kwargs))
+        with self._lock:
+            scraper = self._get_scraper(source)
+            _reset_scraper_session(scraper)
+            kwargs: dict[str, str] = {}
+            if arch:
+                # Only APKMirror's ArchType expects "armeabi-v7a"; other
+                # scrapers (e.g. Archive.org) key VersionInfo.arch off the raw
+                # filename convention ("arm-v7a"), so normalizing there would
+                # break the exact-match lookup in their download().
+                kwargs["arch"] = self._normalize_arch(arch) if source == DownloadSource.APKMIRROR else arch
+            if dpi:
+                kwargs["dpi"] = dpi
+
+            result = asyncio.run(scraper.download(app_id, version, output_path, **kwargs))
         if not result.success or result.file_path is None:
             msg = result.error or f"Failed to download {app_id!r} {version} from {source.value}"
             raise RuntimeError(msg)
