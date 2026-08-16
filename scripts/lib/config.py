@@ -69,7 +69,7 @@ class Config:
     @build_mode.setter
     def build_mode(self, value: str) -> None:
         """Set build mode."""
-        self._inner.global_settings.build_mode = value  # type: ignore[assignment]
+        self._inner.global_settings.build_mode = value  # type: ignore  # noqa: PGH003
 
     @property
     def parallel_jobs(self) -> int:

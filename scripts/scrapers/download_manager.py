@@ -15,7 +15,6 @@ from scripts.scrapers.aptoide import AptoideScraper
 from scripts.scrapers.archive import ArchiveScraper
 from scripts.scrapers.base import DownloadSource, ScraperBase
 from scripts.scrapers.uptodown import UptodownScraper
-from scripts.utils.network import HttpClient
 
 ARCH_NORMALIZATION: dict[str, str] = {
     "arm-v7a": "armeabi-v7a",
@@ -50,13 +49,8 @@ def _version_sort_key(version: str) -> tuple[int, ...]:
 class DownloadManager:
     """Coordinates APK downloads across multiple sources with failover."""
 
-    def __init__(self, http_client: HttpClient) -> None:
-        """Initialize DownloadManager.
-
-        Args:
-            http_client: HTTP client for requests.
-
-        """
+    def __init__(self) -> None:
+        """Initialize DownloadManager."""
         self._scrapers: dict[DownloadSource, ScraperBase] = {}
         # resolve()/download() are called concurrently across
         # ThreadPoolExecutor worker threads (one per app/arch build

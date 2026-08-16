@@ -57,7 +57,7 @@ class TestValidateApkPath:
 
     def test_rejects_non_path_object(self) -> None:
         with pytest.raises((ValueError, AttributeError)):
-            _validate_apk_path("app.apk", "test")  # type: ignore[arg-type]
+            _validate_apk_path("app.apk", "test")  # type: ignore  # noqa: PGH003
 
 
 # ---------------------------------------------------------------------------

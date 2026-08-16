@@ -98,7 +98,7 @@ class ScraperBase(ABC):
         if use_cache:
             cached = self._get_cache(cache_key)
             if cached is not None:
-                return cached  # type: ignore[return-value]
+                return cached  # type: ignore  # noqa: PGH003
 
         response = await self._request_with_retry(url)
         if use_cache:

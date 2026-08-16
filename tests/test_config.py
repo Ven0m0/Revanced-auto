@@ -97,7 +97,7 @@ class TestAppConfigFromDict:
 
     def test_invalid_name_type_raises(self) -> None:
         with pytest.raises(ConfigError):
-            AppConfig.from_dict(123, {})  # type: ignore[arg-type]
+            AppConfig.from_dict(123, {})  # type: ignore  # noqa: PGH003
 
     def test_cli_source_default(self) -> None:
         assert AppConfig.from_dict("YouTube", {}).cli_source is None

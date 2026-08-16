@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import fcntl
 import hashlib
 import os
 import shutil
@@ -16,11 +15,21 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import IO, TYPE_CHECKING, Any, ClassVar
 
 import httpx
 
 from scripts.lib import logging as log
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -395,6 +404,26 @@ SECURE_WORK_DIR_MODE = 0o700
 INSECURE_PERMISSION_MASK = 0o077
 
 
+def _lock_fd(fd: IO[str]) -> None:
+    """Acquire an exclusive lock on a file descriptor (POSIX or Windows)."""
+    if fcntl is not None:
+        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)  # type: ignore  # noqa: PGH003
+    elif msvcrt is not None:
+        fd.write("\0")
+        fd.flush()
+        fd.seek(0)
+        msvcrt.locking(fd.fileno(), msvcrt.LK_LOCK, 1)
+
+
+def _unlock_fd(fd: IO[str]) -> None:
+    """Release a lock acquired by `_lock_fd`."""
+    if fcntl is not None:
+        fcntl.flock(fd.fileno(), fcntl.LOCK_UN)  # type: ignore  # noqa: PGH003
+    elif msvcrt is not None:
+        fd.seek(0)
+        msvcrt.locking(fd.fileno(), msvcrt.LK_UNLCK, 1)
+
+
 def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
     """Create and validate a secure, deterministic work directory.
 
@@ -418,24 +447,25 @@ def _get_secure_work_dir(temp_dir: Path, output_path: str | Path) -> Path:
         msg = f"Security error: temporary directory is invalid: {work_dir}"
         raise RuntimeError(msg)
 
-    # Check ownership (UID match)
-    if work_dir.stat().st_uid != os.getuid():
+    # Check ownership (UID match) - not applicable on Windows
+    if hasattr(os, "getuid") and work_dir.stat().st_uid != os.getuid():
         msg = f"Security error: temporary directory ownership mismatch: {work_dir}"
         raise RuntimeError(msg)
 
-    # Ensure restricted permissions
-    try:
-        work_dir.chmod(SECURE_WORK_DIR_MODE)
-    except PermissionError as exc:
-        mode = work_dir.stat().st_mode & 0o777
-        if mode & INSECURE_PERMISSION_MASK:
-            msg = f"Security error: temporary directory has insecure permissions: {work_dir}"
-            raise RuntimeError(msg) from exc
-    else:
-        mode = work_dir.stat().st_mode & 0o777
-        if mode != SECURE_WORK_DIR_MODE:
-            msg = f"Security error: temporary directory permissions mismatch: {work_dir}"
-            raise RuntimeError(msg)
+    # Ensure restricted permissions - POSIX mode bits don't apply on Windows
+    if os.name == "posix":
+        try:
+            work_dir.chmod(SECURE_WORK_DIR_MODE)
+        except PermissionError as exc:
+            mode = work_dir.stat().st_mode & 0o777
+            if mode & INSECURE_PERMISSION_MASK:
+                msg = f"Security error: temporary directory has insecure permissions: {work_dir}"
+                raise RuntimeError(msg) from exc
+        else:
+            mode = work_dir.stat().st_mode & 0o777
+            if mode != SECURE_WORK_DIR_MODE:
+                msg = f"Security error: temporary directory permissions mismatch: {work_dir}"
+                raise RuntimeError(msg)
 
     return work_dir
 
@@ -535,7 +565,7 @@ def download_with_lock(
     lock_fd = None
     try:
         lock_fd = open(lock_file, "w")
-        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+        _lock_fd(lock_fd)
 
         if output_path.exists():
             if _verify_or_remove(output_path, sha256):
@@ -558,7 +588,7 @@ def download_with_lock(
         return False
     finally:
         if lock_fd:
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+            _unlock_fd(lock_fd)
             lock_fd.close()
         if lock_file.exists():
             lock_file.unlink()
@@ -603,16 +633,14 @@ async def async_download_with_lock(
         if verified:
             return True
 
-    from typing import IO
-
     def _acquire_lock() -> IO[str]:
         fd = open(lock_file, "w")
-        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
+        _lock_fd(fd)
         return fd
 
     def _release_lock(fd: IO[str]) -> None:
         try:
-            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+            _unlock_fd(fd)
             fd.close()
         except OSError:
             pass

@@ -217,7 +217,7 @@ class AppriseNotifier(BaseNotifier):
             True if notification was sent successfully, False otherwise.
         """
         try:
-            import apprise  # type: ignore[import-not-found]
+            import apprise  # type: ignore  # noqa: PGH003
 
             appr = apprise.Apprise()
             appr.add(self._apprise_url)

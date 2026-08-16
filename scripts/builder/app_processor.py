@@ -1279,14 +1279,13 @@ def main(argv: list[str]) -> int:
     try:
         from scripts.builder.config import load_config
         from scripts.scrapers.download_manager import DownloadManager
-        from scripts.utils.network import HttpClient
 
         config = load_config(*argv[1:])
 
         # DownloadManager also implements the VersionResolver protocol
         # (.resolve()) via the same underlying scrapers, so one instance
         # covers both roles.
-        download_manager = DownloadManager(HttpClient())
+        download_manager = DownloadManager()
         processor = AppProcessor(
             config,
             JavaRunner(),
