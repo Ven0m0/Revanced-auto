@@ -7,6 +7,11 @@ from scripts.version_tracker.
 
 from __future__ import annotations
 
+import json
+import tomllib
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from scripts.version_tracker import (
     CheckResult,
     extract_current_versions,
@@ -14,7 +19,23 @@ from scripts.version_tracker import (
     save_state,
 )
 
+if TYPE_CHECKING:
+    from scripts.lib.config import Config
+
 __all__ = ["VersionTracker"]
+
+
+def _load_raw_config(config_file: str) -> dict[str, object]:
+    """Load the source config file as a plain dict (JSON or TOML).
+
+    ``extract_current_versions`` expects a plain mapping (it calls ``.get()``
+    and iterates ``.items()``), not the ``scripts.lib.config.Config`` wrapper.
+    """
+    path = Path(config_file)
+    if path.suffix.lower() == ".json":
+        return json.loads(path.read_text(encoding="utf-8"))
+    with path.open("rb") as f:
+        return dict(tomllib.load(f))
 
 
 class VersionTracker:
@@ -25,14 +46,14 @@ class VersionTracker:
 
     """
 
-    def __init__(self, config: object) -> None:
+    def __init__(self, config: Config) -> None:
         """Initialize the VersionTracker.
 
         Args:
             config: Configuration object containing version info.
 
         """
-        self._config = config
+        self._config: Config = config
 
     def check(self) -> bool:
         """Check if a build is needed based on version changes.
@@ -46,7 +67,8 @@ class VersionTracker:
 
     def save(self) -> None:
         """Save current version state."""
-        versions = extract_current_versions(self._config)  # type: ignore[arg-type]
+        raw_config = _load_raw_config(self._config.config_file)
+        versions = extract_current_versions(raw_config)
         save_state(versions)
 
     def get_state(self) -> dict[str, str]:
@@ -71,7 +93,8 @@ class VersionTracker:
         """
         from scripts.version_tracker import detect_changes
 
-        current = extract_current_versions(self._config)  # type: ignore[arg-type]
+        raw_config = _load_raw_config(self._config.config_file)
+        current = extract_current_versions(raw_config)
         saved = load_state()
 
         if not saved:

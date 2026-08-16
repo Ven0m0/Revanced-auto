@@ -61,39 +61,32 @@ jobs:
           INPUT_ARCH: ${{ inputs.architecture }}
         run: |
           echo "Generating config for: ${APP_NAME}"
-          ./extras.sh separate-config config.toml "${APP_NAME}" sep_config.toml
-          # Override version if specified
-          if [[ "${INPUT_VERSION}" != "auto" ]]; then
-            echo "Overriding version to: ${INPUT_VERSION}"
-            python3 - <<'PYEOF'
-          if True:
-              import os
-              with open('sep_config.toml') as f:
-                  content = f.read()
-              ver = os.environ['INPUT_VERSION']
-              lines = [f'version = "{ver}"' if l.strip().startswith('version =') else l for l in content.split('\n')]
-              with open('sep_config.toml', 'w') as f:
-                  f.write('\n'.join(lines))
+          ./extras.sh separate-config config.toml "${APP_NAME}" sep_config.json
+          # Override version / architecture on the app table if requested
+          python3 - <<'PYEOF'
+          import json
+          import os
+
+          with open('sep_config.json') as f:
+              config = json.load(f)
+
+          app = config[os.environ['APP_NAME']]
+
+          version = os.environ['INPUT_VERSION']
+          if version != 'auto':
+              app['version'] = version
+
+          arch = os.environ['INPUT_ARCH']
+          if arch != 'both':
+              app['arch'] = arch
+
+          with open('sep_config.json', 'w') as f:
+              json.dump(config, f)
           PYEOF
-          fi
-          # Override architecture if not "both"
-          if [[ "${INPUT_ARCH}" != "both" ]]; then
-            echo "Setting architecture to: ${INPUT_ARCH}"
-            python3 - <<'PYEOF'
-          if True:
-              import os
-              with open('sep_config.toml') as f:
-                  content = f.read()
-              arch = os.environ['INPUT_ARCH']
-              lines = [f'arch = "{arch}"' if l.strip().startswith('arch =') else l for l in content.split('\n')]
-              with open('sep_config.toml', 'w') as f:
-                  f.write('\n'.join(lines))
-          PYEOF
-          fi
           echo "Final config:"
-          cat sep_config.toml
+          cat sep_config.json
       - name: Build APK
-        run: ./build.sh sep_config.toml
+        run: ./build.sh sep_config.json
         env:
           BUILD_MODE: ${{ inputs.build_mode }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -101,6 +94,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
       - name: Upload APK as artifact
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.app_name }}-${{ inputs.architecture }}-manual
@@ -108,6 +102,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Upload build log
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: build-log-${{ inputs.app_name }}-manual

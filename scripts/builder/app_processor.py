@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -30,6 +31,7 @@ from scripts.builder.cli_profiles import (
 from scripts.builder.config import AppConfig, Config
 from scripts.builder.engines import EngineContext, EngineRunner, EngineStage
 from scripts.lib.plugins import dispatch_plugins
+from scripts.scrapers.base import DownloadSource
 from scripts.utils.java import JavaRunner
 
 if TYPE_CHECKING:
@@ -66,15 +68,10 @@ class Architecture(Enum):
         raise ValueError(f"Invalid architecture: {value}")
 
 
-class DownloadSource(Enum):
-    """Supported download sources for stock APKs."""
-
-    APKPURE = "apkpure"
-    APKMIRROR = "apkmirror"
-    UPTODOWN = "uptodown"
-    ARCHIVE = "archive"
-    APTOIDE = "aptoide"
-    APKMonk = "apkmonk"
+# Re-exported for backwards compatibility: this used to be a locally defined
+# duplicate Enum with the same members, which broke identity/equality checks
+# against scrapers (DownloadManager._get_scraper() matches on this exact
+# Enum class). Use the scrapers' canonical DownloadSource everywhere.
 
 
 @dataclass
@@ -257,26 +254,98 @@ class Notifier(Protocol):
         ...
 
 
-def _cli_artifact_name(cli_source: str) -> str:
-    """Derive the CLI JAR artifact prefix from a ``owner/repo`` slug.
+def _is_morphe_patches_source(source: str) -> bool:
+    """Detect Morphe-style patch sources, which publish ``.mpp`` bundles instead of ``.rvp``.
 
-    Examples:
-        ``MorpheApp/morphe-cli`` → ``morphe-cli``
-        ``ReVanced/revanced-cli`` → ``revanced-cli``
-        ``inotia00/revanced-cli`` → ``revanced-cli``
+    Mirrors the source-pattern match in scripts/lib/prebuilts.sh's
+    resolve_rv_artifact (``MorpheApp/* | */morphe-* | */rvx-morphed |
+    */anddea-rvx-morphed | */patcheddit``).
     """
-    return cli_source.strip().rstrip("/").rsplit("/", 1)[-1]
+    lower = source.strip().lower()
+    return (
+        lower.startswith("morpheapp/")
+        or "/morphe-" in lower
+        or lower.endswith(("/rvx-morphed", "/anddea-rvx-morphed", "/patcheddit"))
+    )
 
 
-def _patches_artifact_name(patches_source: str) -> str:
-    """Derive the patches JAR artifact prefix from a ``owner/repo`` slug.
+def _resolve_github_release_asset(source: str, ext: str, fallback_ext: str | None = None) -> tuple[str, str]:
+    """Find the newest GitHub release of ``source`` with a ``.ext`` (or ``.fallback_ext``) asset.
 
-    Examples:
-        ``MorpheApp/morphe-patches`` → ``morphe-patches``
-        ``ReVanced/revanced-patches`` → ``revanced-patches``
-        ``crimera/piko`` → ``piko``
+    Ports scripts/lib/prebuilts.sh's resolve_rv_artifact: GitHub's
+    ``/releases`` endpoint (not ``/releases/latest``, which excludes
+    prereleases) returns releases newest-first, so both "latest" and "dev"
+    version modes resolve to whatever's newest -- these repos publish dev
+    builds as ordinary (pre-)releases, same as the bash implementation.
+    Asset filenames aren't matched by prefix (they vary per fork, e.g.
+    MorpheApp's CLI asset is ``morphe-desktop-*-all.jar``, not
+    ``morphe-cli-*``); only the newest release's file extension matters.
+
+    Returns:
+        Tuple of (asset_filename, asset_api_url). The API asset URL (not
+        browser_download_url) requires an octet-stream Accept header to
+        stream binary content, which gh_dl() already sets.
     """
-    return patches_source.strip().rstrip("/").rsplit("/", 1)[-1]
+    import json
+
+    from scripts.utils.network import gh_req
+
+    releases_raw = gh_req(f"https://api.github.com/repos/{source}/releases")
+    releases = json.loads(releases_raw)
+    if not releases:
+        msg = f"No releases found for {source}"
+        raise RuntimeError(msg)
+
+    release = releases[0]
+    for candidate_ext in (ext, fallback_ext) if fallback_ext else (ext,):
+        for asset in release.get("assets", []):
+            name = asset.get("name", "")
+            if name.endswith(f".{candidate_ext}"):
+                return name, asset["url"]
+
+    tag = release.get("tag_name", "?")
+    wanted = f".{ext}" + (f" or .{fallback_ext}" if fallback_ext else "")
+    msg = f"No {wanted} asset found in {source} release {tag}"
+    raise RuntimeError(msg)
+
+
+def _derive_scraper_pkg_name(download_url: str, source: DownloadSource) -> str:
+    """Derive the package identifier a scraper expects from a configured ``*-dlurl`` listing-page URL.
+
+    Each download source encodes the package differently in its URL:
+    APKMirror uses a two-segment ``owner-slug/app-slug`` path (e.g.
+    ``https://apkmirror.com/apk/google-inc/youtube-music`` -> the scraper
+    wants ``google-inc/youtube-music``); most other sources put the real
+    Android package id as the final path segment (e.g.
+    ``.../apks/com.google.android.apps.youtube.music``).
+    """
+    path = urllib.parse.urlparse(download_url).path.strip("/")
+    if not path:
+        return download_url
+    if source == DownloadSource.APKMIRROR:
+        return path.removeprefix("apk/")
+    return path.rsplit("/", 1)[-1]
+
+
+_KNOWN_NATIVE_ARCHS = ("arm64-v8a", "armeabi-v7a")
+
+
+def _normalize_native_arch(arch: str) -> str:
+    """Map ``Architecture`` enum values to real Android native-lib ABI folder names."""
+    return "armeabi-v7a" if arch == "arm-v7a" else arch
+
+
+def _riplib_values(target_arch: str, *, keep_semantics: bool) -> list[str]:
+    """Native-lib architecture values for the patcher's rip/strip-libs flag.
+
+    Two incompatible conventions exist: Morphe's ``--striplibs`` lists archs
+    to *keep* (one value); classic ReVanced CLI's ``--rip-lib``/``-r`` lists
+    archs to *strip*, repeated per value. ``keep_semantics`` selects which.
+    """
+    normalized = _normalize_native_arch(target_arch)
+    if keep_semantics:
+        return [normalized]
+    return [arch for arch in _KNOWN_NATIVE_ARCHS if arch != normalized]
 
 
 class JobRunner:
@@ -361,6 +430,8 @@ class AppBuildContext:
         output_path: Output APK path.
         source: Download source.
         download_url: Pre-configured download URL.
+        scraper_pkg_name: Package identifier as expected by the download source's
+            scraper (e.g. the APKMirror URL slug), derived from download_url.
         patches_source: Patches source repository(s).
         patches_version: Patches version.
         cli_source: CLI source repository.
@@ -384,6 +455,7 @@ class AppBuildContext:
     output_path: Path
     source: DownloadSource
     download_url: str = ""
+    scraper_pkg_name: str = ""
     patches_source: str | list[str] = "MorpheApp/morphe-patches"
     patches_version: str = "latest"
     cli_source: str = "MorpheApp/morphe-cli"
@@ -474,7 +546,7 @@ class AppProcessor:
             )
 
         with JobRunner(max_workers=self.parallel_jobs) as runner:
-            futures: dict[Future[list[BuildResult]], str] = {}
+            futures: dict[Future[BuildResult], str] = {}
 
             for app_config in enabled_apps:
                 arch = self._parse_architecture(app_config)
@@ -490,8 +562,8 @@ class AppProcessor:
 
             for future, app_name in futures.items():
                 try:
-                    results = future.result()
-                    all_results.extend(results)
+                    result = future.result()
+                    all_results.append(result)
                 except Exception as e:
                     logger.error("Build failed with exception: %s", e)
                     all_results.append(
@@ -597,10 +669,11 @@ class AppProcessor:
         source = self._determine_download_source(app_config)
 
         download_url = self._get_download_url(app_config, source)
+        scraper_pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else app_config.name
 
         version = app_config.version or "auto"
         if version == "auto" and self.version_resolver:
-            version, _ = self.version_resolver.resolve(app_config.name, source)
+            version, _ = self.version_resolver.resolve(scraper_pkg_name, source)
 
         patches_source = app_config.patches_source or self.config.global_settings.patches_source
         patches_version = self.config.global_settings.patches_version
@@ -640,6 +713,7 @@ class AppProcessor:
             output_path=output_path,
             source=source,
             download_url=download_url,
+            scraper_pkg_name=scraper_pkg_name,
             patches_source=patches_source,
             patches_version=patches_version,
             cli_source=cli_source,
@@ -806,7 +880,7 @@ class AppProcessor:
         """
         if self.download_manager:
             return self.download_manager.download(
-                context.app_id,
+                context.scraper_pkg_name or context.app_id,
                 context.version,
                 context.output_path.parent / f"stock-{context.app_name}-{context.version}.apk",
                 context.source,
@@ -850,14 +924,10 @@ class AppProcessor:
         from scripts.utils.network import gh_dl
 
         if not cli_jar.exists():
-            cli_artifact = _cli_artifact_name(context.cli_source)
-            cli_url = (
-                f"https://github.com/{context.cli_source}/releases/download/"
-                f"v{context.cli_version}/{cli_artifact}-{context.cli_version}-all.jar"
-            )
+            _asset_name, cli_url = _resolve_github_release_asset(context.cli_source, "jar")
             success = gh_dl(cli_jar, cli_url)
             if not success:
-                raise RuntimeError(f"Failed to download CLI from {cli_url}")
+                raise RuntimeError(f"Failed to download CLI from {context.cli_source}")
 
         patches_sources = (
             [context.patches_source] if isinstance(context.patches_source, str) else context.patches_source
@@ -870,7 +940,9 @@ class AppProcessor:
         )
 
         for idx, patches_src in enumerate(patches_sources):
-            patches_jar = prebuilts_dir / f"patches-{context.patches_version}-{idx}.jar"
+            is_morphe = _is_morphe_patches_source(patches_src)
+            ext = "mpp" if is_morphe else "rvp"
+            patches_jar = prebuilts_dir / f"patches-{context.patches_version}-{idx}.{ext}"
             patches_jars.append(patches_jar)
 
             if patches_jar.exists():
@@ -881,11 +953,8 @@ class AppProcessor:
                 entry = resolve_bundle(selector, context.patches_version)
                 patches_url = entry.download_url
             else:
-                patches_artifact = _patches_artifact_name(patches_src)
-                patches_url = (
-                    f"https://github.com/{patches_src}/releases/download/v{context.patches_version}/"
-                    f"{patches_artifact}-{context.patches_version}.jar"
-                )
+                fallback_ext = "rvp" if is_morphe else "mpp"
+                _asset_name, patches_url = _resolve_github_release_asset(patches_src, ext, fallback_ext)
 
             success = gh_dl(patches_jar, patches_url)
             if not success:
@@ -911,7 +980,7 @@ class AppProcessor:
         try:
             result = self.java_runner.run_jar(
                 str(context.cli_jar),
-                ["list-patches"] + list_args,
+                list_args,
                 timeout=60,
             )
             if result.returncode == 0:
@@ -953,9 +1022,11 @@ class AppProcessor:
 
         cli_profile = self._resolve_cli_profile(context)
         keystore = self._get_keystore_path()
+        alias, keystore_password, keystore_entry_password, signer = self._get_keystore_credentials()
         riplib_libs: list[str] = []
         if context.riplib and self._profile_supports_riplib(cli_profile):
-            riplib_libs = []
+            keep_semantics = cli_profile.profile_type in (CLIProfileType.MORPHE_CLI, CLIProfileType.ADOBO_CLI)
+            riplib_libs = _riplib_values(context.arch, keep_semantics=keep_semantics)
 
         patch_config = PatchCommandConfig(
             apk_path=stock_apk,
@@ -965,15 +1036,14 @@ class AppProcessor:
             include=context.included_patches if context.exclusive_patches else [],
             merge=context.merge_patches,
             keystore=keystore,
+            keystore_alias=alias,
+            keystore_password=keystore_password,
+            keystore_entry_password=keystore_entry_password,
+            signer=signer,
             rip_lib=riplib_libs,
+            exclusive=context.exclusive_patches,
         )
         patch_args = cli_profile.build_patch_args(patch_config)
-
-        if context.riplib and self._profile_supports_riplib(cli_profile):
-            riplib_mapping = cli_profile.patch_args.get("RIP_LIB")
-            if riplib_mapping:
-                patch_args.extend(riplib_mapping.prepend_args)
-                patch_args.append(riplib_mapping.flag)
 
         result = self.java_runner.run_jar(
             str(context.cli_jar),
@@ -1037,6 +1107,30 @@ class AppProcessor:
 
         return None
 
+    def _get_keystore_credentials(self) -> tuple[str, str, str, str]:
+        """Get keystore alias/passwords/signer.
+
+        Default alias is lowercase "morphe": `keytool -genkeypair` always
+        lowercases the alias it stores regardless of the case passed to
+        `-alias` (confirmed: `keytool -list` on assets/ks.keystore, generated
+        with `-alias Morphe`, shows the entry as "morphe"), and
+        morphe-desktop's own alias lookup is exact-match, not the
+        case-insensitive lookup java.security.KeyStore itself does --
+        confirmed live: "Keystore does not contain entry with alias Morphe"
+        even though standard KeyStore.getKey("Morphe", ...) resolves fine.
+        Falls back to KEYSTORE_PASSWORD/KEYSTORE_ENTRY_PASSWORD env vars
+        (already set by the CI workflows) or GlobalConfig.keystore_alias
+        first, so a real production keystore + secrets can override this
+        without a code change.
+
+        Returns:
+            Tuple of (keystore_alias, keystore_password, keystore_entry_password, signer).
+        """
+        alias = self.config.global_settings.keystore_alias or "morphe"
+        keystore_password = os.environ.get("KEYSTORE_PASSWORD") or "Morphe"
+        keystore_entry_password = os.environ.get("KEYSTORE_ENTRY_PASSWORD") or "Morphe"
+        return alias, keystore_password, keystore_entry_password, alias
+
     def _parse_architecture(self, app_config: AppConfig) -> Architecture:
         """Parse architecture from app config.
 
@@ -1073,14 +1167,19 @@ class AppProcessor:
         """
         options = app_config.options
 
+        # APKMirror first (preferred: most complete/official listings; its
+        # scraper's stale selectors against the live site were fixed --
+        # see _list_release_pages()/_get_download_url() in apkmirror.py).
+        # Archive.org is the fallback: a stable static directory listing,
+        # but a much smaller catalog than APKMirror's.
         if options.get("apkmirror_dlurl"):
             return DownloadSource.APKMIRROR
+        if options.get("archive_dlurl"):
+            return DownloadSource.ARCHIVE
         if options.get("uptodown_dlurl"):
             return DownloadSource.UPTODOWN
         if options.get("apkpure_dlurl"):
             return DownloadSource.APKPURE
-        if options.get("archive_dlurl"):
-            return DownloadSource.ARCHIVE
         if options.get("aptoide_dlurl"):
             return DownloadSource.APTOIDE
         if options.get("apkmonk_dlurl"):
@@ -1131,6 +1230,39 @@ class AppProcessor:
         )
 
 
+def _write_build_log(summary: BuildSummary, path: Path | None = None) -> None:
+    """Write a build.md summary of this build for the GitHub release notes.
+
+    The Python builder never wrote this file, unlike build.sh (the legacy
+    bash path), so the release job's "Combine build logs" step always had
+    nothing to combine -- confirmed in CI (no build-log-* artifacts were
+    ever produced, well before that step even runs).
+    """
+    path = path or Path("build.md")
+    lines: list[str] = []
+    for result in summary.succeeded:
+        lines.append(f"### {result.app_name} ({result.brand}) {result.version} - {result.arch}")
+        lines.extend(f"- {patch}" for patch in result.changelog)
+        lines.append("")
+
+    lines.extend(
+        [
+            "### MicroG / GmsCore (Required for YouTube & YT Music)",
+            "Download and install one of the following GmsCore providers:",
+            "- [ReVanced GmsCore](https://github.com/ReVanced/GmsCore/releases/latest)",
+            "- [Wst_Xda GmsCore (Morphe)](https://github.com/MorpheApp/MicroG-RE/releases/latest)",
+            "- [YT-Advanced GmsCore (Rex)](https://github.com/YT-Advanced/GmsCore/releases/latest)",
+            "",
+        ]
+    )
+
+    if summary.failed:
+        lines.append("Skipped:")
+        lines.extend(f"- {result.app_name}: {result.error}" for result in summary.failed)
+
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main(argv: list[str]) -> int:
     """Main entry point for app processor CLI.
 
@@ -1146,10 +1278,21 @@ def main(argv: list[str]) -> int:
 
     try:
         from scripts.builder.config import load_config
+        from scripts.scrapers.download_manager import DownloadManager
+        from scripts.utils.network import HttpClient
 
         config = load_config(*argv[1:])
 
-        processor = AppProcessor(config, JavaRunner())
+        # DownloadManager also implements the VersionResolver protocol
+        # (.resolve()) via the same underlying scrapers, so one instance
+        # covers both roles.
+        download_manager = DownloadManager(HttpClient())
+        processor = AppProcessor(
+            config,
+            JavaRunner(),
+            version_resolver=download_manager,
+            download_manager=download_manager,
+        )
 
         summary = processor.process_all()
 
@@ -1158,6 +1301,8 @@ def main(argv: list[str]) -> int:
             print("Failed apps:")
             for result in summary.failed:
                 print(f"  - {result.app_name}: {result.error}")
+
+        _write_build_log(summary)
 
         return 0 if summary.failure_count == 0 else 1
 

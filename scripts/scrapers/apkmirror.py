@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -28,6 +29,16 @@ class SearchConfig:
     dpi: str
     arch: ArchType
     exclude_alpha_beta: bool = True
+    match_any: bool = False
+    """Skip bundle/dpi/arch filtering, accept the first variant row.
+
+    Modern releases increasingly ship only arch-split BUNDLE variants with
+    dpi *ranges* (e.g. "120-480dpi") rather than a "universal"/"nodpi" row,
+    so exact SearchConfig equality can match nothing even though the release
+    has installable variants. Callers that only need *a* variant to exist
+    (confirming a version is real, not picking a specific download) should
+    set this instead of guessing bundle/dpi/arch values.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +50,7 @@ class RowData:
     dpi: str
 
 
-_MIN_ROW_FIELDS: int = 6
+_MIN_ROW_CELLS: int = 5
 
 
 def get_target_archs(arch: ArchType) -> list[str]:
@@ -51,28 +62,35 @@ def get_target_archs(arch: ArchType) -> list[str]:
             return [arch, *base_archs]
 
 
-def _row_text_nodes(row: Node) -> list[str]:
-    texts: list[str] = []
-    for node in row.css("*"):
-        t = node.text(deep=False)
-        if t and (s := t.strip()):
-            texts.append(s)
-    return texts
+def _parse_row_data(row: Node) -> RowData | None:
+    """Extract variant fields from a real variant table row.
 
-
-def _parse_row_data(text_nodes: list[str]) -> RowData | None:
-    if len(text_nodes) < _MIN_ROW_FIELDS:
+    Cells are ``[version+badges, arch, min-Android-version, dpi, download]``.
+    The version cell packs several nested elements (a version link, a bundle
+    type badge, a signature badge, an upload timestamp) -- flattening all
+    text nodes in DOM order (the previous approach) interleaves these and
+    breaks positional field mapping. Reading each field from its own cell
+    (and the version from its link's own text, not the cell's) is exact.
+    """
+    cells = row.css(".table-cell")
+    if len(cells) < _MIN_ROW_CELLS:
         return None
+    version_link = cells[0].css_first("a")
+    version = (version_link or cells[0]).text(strip=True)
+    bundle_badge = cells[0].css_first(".apkm-badge")
+    bundle = bundle_badge.text(strip=True) if bundle_badge else ""
     return RowData(
-        version=text_nodes[0],
-        size=text_nodes[1],
-        bundle=text_nodes[2],
-        arch=text_nodes[3],
-        dpi=text_nodes[5],
+        version=version,
+        size="",
+        bundle=bundle,
+        arch=cells[1].text(strip=True),
+        dpi=cells[3].text(strip=True),
     )
 
 
 def _row_matches(row_data: RowData, config: SearchConfig, target_archs: list[str]) -> bool:
+    if config.match_any:
+        return True
     return row_data.bundle == config.apk_bundle and row_data.dpi == config.dpi and row_data.arch in target_archs
 
 
@@ -116,8 +134,7 @@ class APKMirror(ScraperBase):
             return None
         target_archs = get_target_archs(config.arch)
         for row in rows:
-            text_nodes = _row_text_nodes(row)
-            row_data = _parse_row_data(text_nodes)
+            row_data = _parse_row_data(row)
             if row_data is None:
                 continue
             if config.exclude_alpha_beta and (
@@ -132,8 +149,11 @@ class APKMirror(ScraperBase):
         return None
 
     def _find_download_link(self, variant_page_html: str) -> str | None:
+        # Real class is "accent_bg btn btn-flat downloadButton sSo" -- the
+        # site markup drifted from the "download-btn" class this used to
+        # match. This link goes to a confirm/key page, not the final file.
         tree = HTMLParser(variant_page_html)
-        download_btn = tree.css_first("a.btn-flat.download-btn")
+        download_btn = tree.css_first("a.downloadButton")
         if download_btn is None:
             return None
         href = download_btn.attrs.get("href")
@@ -141,9 +161,64 @@ class APKMirror(ScraperBase):
             return None
         return f"{self.BASE_URL}{href}"
 
+    def _find_final_download_link(self, confirm_page_html: str) -> str | None:
+        """Extract the real download URL from a variant's confirm/key page.
+
+        The confirm page (``.../download/?key=...``) is itself not the file
+        -- it has an ``id="download-link"`` anchor pointing at
+        ``/wp-content/themes/APKMirror/download.php?id=...&key=...``, which
+        redirects (via a signed Cloudflare R2 URL) to the actual APK/APKM
+        bytes. httpx follows that redirect automatically when downloading.
+        """
+        tree = HTMLParser(confirm_page_html)
+        link = tree.css_first("a#download-link")
+        if link is None:
+            return None
+        href = link.attrs.get("href")
+        if not href:
+            return None
+        return f"{self.BASE_URL}{href}"
+
     async def _get_download_url(self, variant_url: str) -> str | None:
         response = await self.get(variant_url)
-        return self._find_download_link(response.text)
+        confirm_url = self._find_download_link(response.text)
+        if confirm_url is None:
+            return None
+        confirm_response = await self.get(confirm_url, use_cache=False)
+        return self._find_final_download_link(confirm_response.text)
+
+    async def _list_release_pages(self, pkg_name: str) -> list[tuple[str, str]]:
+        """List an app's releases newest-first as (version_text, release_url) pairs.
+
+        Replaces the old ``div.version-fed-list`` sidebar, which no longer
+        exists on apkmirror.com. The app page (``/apk/{pkg_name}/``) instead
+        has several ``.listWidget`` sections built from the same ``.appRow``
+        row markup (this app's own release history, "Popular in last 30
+        days", "Latest Uploads", ...) -- only the "All versions" widget is
+        this app's own releases, so it must be located by its heading text
+        rather than matching ``.appRow`` page-wide.
+        """
+        url = self._get_versions_page_url(pkg_name)
+        response = await self.get(url)
+        tree = HTMLParser(response.text)
+        releases: list[tuple[str, str]] = []
+        all_versions_widget = None
+        for widget in tree.css(".listWidget"):
+            header = widget.css_first(".widgetHeader")
+            if header and "all versions" in header.text(strip=True).lower():
+                all_versions_widget = widget
+                break
+        if all_versions_widget is None:
+            return releases
+        for row in all_versions_widget.css(".appRow"):
+            link = row.css_first("a.fontBlack")
+            if link is None:
+                continue
+            href = link.attrs.get("href")
+            if not href:
+                continue
+            releases.append((link.text(strip=True), f"{self.BASE_URL}{href}"))
+        return releases
 
     async def get_versions(
         self,
@@ -152,36 +227,36 @@ class APKMirror(ScraperBase):
         dpi: str = "nodpi",
         bundle_type: BundleType = "APK",
         exclude_alpha_beta: bool = True,
+        match_any: bool = False,
     ) -> list[VersionInfo]:
         config = SearchConfig(
             apk_bundle=bundle_type,
             dpi=dpi,
             arch=arch,
             exclude_alpha_beta=exclude_alpha_beta,
+            match_any=match_any,
         )
-        versions_url = self._get_versions_page_url(pkg_name)
-        response = await self.get(versions_url)
-        tree = HTMLParser(response.text)
-        version_links = tree.css("div.version-fed-list > div")
+        releases = await self._list_release_pages(pkg_name)
         results: list[VersionInfo] = []
-        for link_container in version_links:
-            link = link_container.css_first("a")
-            if link is None:
+        for display_text, release_url in releases:
+            if exclude_alpha_beta and ("alpha" in display_text.lower() or "beta" in display_text.lower()):
                 continue
-            href = link.attrs.get("href")
-            if not href:
+            version_match = re.search(r"\d+(?:\.\d+)+", display_text)
+            if version_match is None:
                 continue
-            version_text = link.css_first("span")
-            version = version_text.text() if version_text else ""
-            if exclude_alpha_beta and ("alpha" in version.lower() or "beta" in version.lower()):
+            version = version_match.group()
+            try:
+                release_html = await self.get(release_url, False)
+            except RuntimeError:
+                # A single throttled/removed release page shouldn't abort
+                # enumerating the rest (e.g. a rate limit from fetching many
+                # release pages back-to-back).
                 continue
-            variant_url = f"{self.BASE_URL}{href}"
-            variant_html = await self.get(variant_url, False)
-            download_url = self._search_variant(variant_html.text, config)
+            download_url = self._search_variant(release_html.text, config)
             if download_url:
                 results.append(
                     VersionInfo(
-                        version=version.strip(),
+                        version=version,
                         url=download_url,
                         arch=arch,
                         dpi=dpi,
@@ -268,27 +343,16 @@ class APKMirror(ScraperBase):
                 if download_url is None:
                     return DownloadResult(success=False, error="No download URL found")
             else:
-                versions_url = self._get_versions_page_url(pkg_name)
-                response = await self.get(versions_url)
-                tree = HTMLParser(response.text)
-                version_links = tree.css("div.version-fed-list > div")
+                releases = await self._list_release_pages(pkg_name)
                 download_url = None
-                for link_container in version_links:
-                    link = link_container.css_first("a")
-                    if link is None:
+                for display_text, release_url in releases:
+                    if exclude_alpha_beta and ("alpha" in display_text.lower() or "beta" in display_text.lower()):
                         continue
-                    href = link.attrs.get("href")
-                    if not href:
+                    version_match = re.search(r"\d+(?:\.\d+)+", display_text)
+                    if version_match is None or version_match.group() != version:
                         continue
-                    version_text = link.css_first("span")
-                    version_str = version_text.text() if version_text else ""
-                    if version_str.strip() != version:
-                        continue
-                    if exclude_alpha_beta and ("alpha" in version_str.lower() or "beta" in version_str.lower()):
-                        continue
-                    variant_url = f"{self.BASE_URL}{href}"
-                    variant_html = await self.get(variant_url, False)
-                    download_url = self._search_variant(variant_html.text, config)
+                    release_html = await self.get(release_url, False)
+                    download_url = self._search_variant(release_html.text, config)
                     break
                 if download_url is None:
                     return DownloadResult(

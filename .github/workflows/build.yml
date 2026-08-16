@@ -66,10 +66,10 @@ jobs:
             ${{ runner.os }}-revanced-prebuilts-
       - name: Generate ${{ matrix.id }} config
         run: |
-          ./extras.sh separate-config config.toml ${{ matrix.id }} sep_config.toml
-          cat sep_config.toml
+          ./extras.sh separate-config config.toml "${{ matrix.id }}" sep_config.json
+          cat sep_config.json
       - name: Build APKs
-        run: ./build.sh sep_config.toml
+        run: ./build.sh sep_config.json
         env:
           BUILD_MODE: ${{ inputs.build_mode }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,6 +77,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
       - name: Upload APKs as artifact
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: apks-${{ matrix.id }}
@@ -84,6 +85,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 1
       - name: Upload build log as artifact
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: build-log-${{ matrix.id }}
@@ -92,7 +94,7 @@ jobs:
           retention-days: 1
   release:
     needs: apk_matrix
-    if: ${{ needs.apk_matrix.result == 'success' && !cancelled() && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name }}
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

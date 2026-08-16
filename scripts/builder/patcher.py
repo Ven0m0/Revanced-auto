@@ -182,15 +182,22 @@ class ReVancedPatcher:
         return None
 
     def _execute_patch_command(self, cli_jar: Path, cli_args: list[str]) -> PatcherResult | None:
-        """Execute the ReVanced CLI patch command."""
-        logger.info("Executing: java -jar %s patch %s", cli_jar.name, " ".join(cli_args))
+        """Execute the ReVanced CLI patch command.
+
+        Args:
+            cli_jar: Path to the CLI JAR.
+            cli_args: Args from _build_patch_args(), which already leads
+                with the "patch" subcommand keyword (via
+                CLIProfile.build_patch_args() -> build_cli_args()).
+        """
+        logger.info("Executing: java -jar %s %s", cli_jar.name, " ".join(cli_args))
 
         env = os.environ.copy()
         env.pop("GITHUB_REPOSITORY", None)
         env["RV_KEYSTORE_PASSWORD"] = self.patcher_config.keystore_password
         env["RV_KEYSTORE_ENTRY_PASSWORD"] = self.patcher_config.key_password
 
-        cmd = ["java"] + self.java_runner.java_args + ["-jar", str(cli_jar), "patch"] + cli_args
+        cmd = ["java"] + self.java_runner.java_args + ["-jar", str(cli_jar)] + cli_args
 
         try:
             result = subprocess.run(

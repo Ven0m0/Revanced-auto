@@ -48,7 +48,9 @@ combine_logs() {
   local logs_dir=$1
   log_info "Combining build logs from: $logs_dir"
   if [[ ! -d "$logs_dir" ]]; then
-    abort "Logs directory not found: $logs_dir"
+    log_warn "Logs directory not found: $logs_dir (no build-log-* artifacts uploaded)"
+    echo "No builds completed"
+    return 0
   fi
   # Find all build.md files and combine them
   local log_files

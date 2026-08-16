@@ -167,28 +167,40 @@ class TestVersionDiff:
 
 # ---------------------------------------------------------------------------
 # VersionTracker wrapper (scripts/lib/version_tracker.py)
-# Uses raw TOML dict as config since extract_current_versions expects a dict
+# Wraps a real Config (VersionTracker reads config.config_file itself, since
+# extract_current_versions() needs the raw dict, not the Config wrapper).
 # ---------------------------------------------------------------------------
 
 
 class TestVersionTrackerWrapper:
-    def _make_config_dict(
+    def _make_config(
         self,
+        tmp_path: Path,
+        *,
         patches_version: str = "4.0.0",
         cli_version: str = "5.0.0",
         patches_source: str = "ReVanced/revanced-patches",
-    ) -> dict[str, str]:
-        """Build a minimal TOML-like config dict for the version tracker."""
-        return {
-            "patches-version": patches_version,
-            "cli-version": cli_version,
-            "patches-source": patches_source,
-        }
+    ):
+        import json
+
+        from scripts.lib.config import Config
+
+        config_path = tmp_path / "config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "patches-version": patches_version,
+                    "cli-version": cli_version,
+                    "patches-source": patches_source,
+                }
+            )
+        )
+        return Config.from_file(config_path)
 
     def test_check_returns_true_when_no_saved_state(self, tmp_path: Path) -> None:
         from scripts.lib.version_tracker import VersionTracker
 
-        config = self._make_config_dict()
+        config = self._make_config(tmp_path)
         state_file = tmp_path / "versions.json"
         # Don't create the state file — no prior state means build needed
         tracker = VersionTracker(config)
@@ -217,7 +229,7 @@ class TestVersionTrackerWrapper:
         vt_mod.STATE_FILE = state_file  # type: ignore[misc]
         vt_mod.load_state.cache_clear()  # clear lru_cache so patched path is used
         try:
-            config = self._make_config_dict(cli_version="5.0.0")
+            config = self._make_config(tmp_path, cli_version="5.0.0")
             tracker = VersionTracker(config)
             state = tracker.get_state()
         finally:
