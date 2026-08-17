@@ -4,8 +4,6 @@
 - use the [morphe jar cli](https://github.com/MorpheApp/morphe-desktop) patcher to patch apks. Revanced is outdated
 - use java temurin 21 lts jre to patch
 - add [morphe mcp](https://github.com/brosssh/morphe-mcp) to project claude config:
-  
-- **Claude Code:**
   ```bash
   claude mcp add --transport http morphe-mcp https://morphe-mcp.brosssh.com/mcp
   ```
@@ -14,3 +12,4 @@
   { "mcpServers": { "morphe-mcp": { "type": "http", "url": "https://morphe-mcp.brosssh.com/mcp" } } }
   ```
 
+- cleanup and update the @docs/ . Remove stale infos and improve the github pages to reflect the curreny state of the repo
