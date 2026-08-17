@@ -1,4 +1,5 @@
 - remove whatsapp_patcher rkpairip dtlx
+- fix the build workflows. read "https://raw.githubusercontent.com/krvstek/uni-apks/refs/heads/main/.github/workflows/build.yml" for comparison
 - add the patch pundles from @morphe_manager_settings.json
 - use the patch selections from @morphe_all_selections-2026-08-17-205849.json
 - use the [morphe jar cli](https://github.com/MorpheApp/morphe-desktop) patcher to patch apks. Revanced is outdated
