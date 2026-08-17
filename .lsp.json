@@ -46,5 +46,11 @@
       ".mjs": "javascript",
       ".cjs": "javascript"
     }
+  },
+  "jdtls": {
+    "command": "jdtls",
+    "extensionToLanguage": {
+      ".java": "java"
+    }
   }
 }
