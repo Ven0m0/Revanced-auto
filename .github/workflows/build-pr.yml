@@ -27,7 +27,7 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Install mise-managed toolchain (Java, Python, uv)
         uses: jdx/mise-action@v4.2.5
         with:

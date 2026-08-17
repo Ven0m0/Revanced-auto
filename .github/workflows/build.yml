@@ -53,7 +53,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-environment
