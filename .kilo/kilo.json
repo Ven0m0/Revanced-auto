@@ -17,14 +17,6 @@
 	"agent": {
 		"compaction": { "model": "kilo-auto/free" }
 	},
-	"provider": {
-		"openai": {
-			"options": { "apiKey": "{env:OPENAI_API_KEY}" }
-		},
-		"anthropic": {
-			"options": { "apiKey": "{env:ANTHROPIC_API_KEY}" }
-		}
-	},
 	"disabled_providers": ["openai", "google", "anthropic"],
 	"plugin": [
 		"opencode-ignore@1.1.0",
