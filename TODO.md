@@ -1,0 +1,1 @@
+- remove whatsapp_patcher rkpairip dtlx
