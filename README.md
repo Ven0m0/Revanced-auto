@@ -4,7 +4,7 @@ ReVanced-auto builds patched Android APKs from a TOML config: resolve compatible
 
 ## Requirements
 
-- Python **3.13+**
+- Python **3.14+**
 - Java **21+**
 - `uv`, `jq`, `zip`
 - Optional but useful: `curl` or `wget`, `zipalign`, `optipng`
