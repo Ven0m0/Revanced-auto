@@ -1,1 +1,3 @@
 - remove whatsapp_patcher rkpairip dtlx
+- add the patch pundles from @morphe_manager_settings.json
+- use the patch selections from @morphe_all_selections-2026-08-17-205849.json
