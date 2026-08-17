@@ -14,3 +14,4 @@
 
 - cleanup and update the @docs/ . Remove stale infos and improve the github pages to reflect the curreny state of the repo
 - use morphe-mcp to improve the patching process and to ensure everything works properly by actually verifying it
+- improve the .claude/ folder by integrating these skills: "https://raw.githubusercontent.com/Paresh-Maheshwari/morphe-ai/refs/heads/main/.kiro/skills/morphe-faq/SKILL.md" "https://raw.githubusercontent.com/Paresh-Maheshwari/morphe-ai/refs/heads/main/.kiro/skills/tool-reference/SKILL.md"
