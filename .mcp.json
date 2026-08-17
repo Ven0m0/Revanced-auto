@@ -10,7 +10,7 @@
       "url": "https://mcp.grep.app",
       "enabled": true
     },
-    "morphe-mcp": { 
+    "morphe-mcp": {
       "type": "http",
       "url": "https://morphe-mcp.brosssh.com/mcp",
       "enabled": true
