@@ -1,9 +1,7 @@
 [settings]
-experimental = true
 color = true
 yes = true
 auto_install = true
-lockfile = true
 
 [settings.python]
 uv_venv_auto = "create|source"
