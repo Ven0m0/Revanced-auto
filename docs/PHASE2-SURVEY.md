@@ -38,7 +38,7 @@ Custom aapt2 binary integration and APK tweaks.
 | --- | --- |
 | `aapt2-source` | `scripts/builder/config.py` already accepts aapt2 options |
 | `use-custom-aapt2` | Config flag already wired |
-| APK tweaks (media optimizer, APK optimizer, etc.) | All 7 engines from the apk-tweak project are integrated (see `scripts/builder/engines/`) |
+| APK tweaks (media optimizer, APK optimizer, etc.) | Historical note: the apk-tweak engine integration (`scripts/builder/engines/`) was later removed entirely; this repo no longer has an engine system |
 
 **Net delta:** None. Already covered.
 

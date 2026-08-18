@@ -8,7 +8,6 @@ ReVanced-auto builds patched Android APKs from a TOML config: resolve compatible
 - Java **21+**
 - `uv`, `jq`, `zip`
 - Optional but useful: `curl` or `wget`, `zipalign`, `optipng`
-- Optional engines: `pngquant`, `jpegoptim`, `ffmpeg`, `apktool`, `lspatch`, `strip`
 
 This repo uses `uv` for dependency management and is not distributed as a standalone Python package.
 
@@ -78,7 +77,7 @@ This repo ships with **Morphe** as the default patcher (`MorpheApp/morphe-patche
 ```bash
 git clone <repo-url>
 cd Revanced-auto
-mise install            # optional: provisions Python 3.13 + Java 21 via mise
+mise install            # optional: provisions Python 3.14 + Java 21 via mise
 uv sync --locked --all-groups
 bash ./check-env.sh     # verifies tools, downloads bin/* jars, validates config.toml
 export KEYSTORE_PASSWORD='...'
@@ -181,52 +180,7 @@ Config docs and generators:
 - [`docs/generator.html`](./docs/generator.html) — local config generator
 - Hosted generator used by this repo's config format: <https://j-hc.github.io/rvmm-config-gen/>
 
-## Optional APK-tweak engines
-
-ReVanced-auto integrates the optional APK processing engines from the archived [apk-tweak](https://github.com/Ven0m0/apk-tweak) project. All engines are **disabled by default** and are enabled globally in `config.toml` or per-app.
-
-Available engines:
-
-| Engine | Stage | What it does |
-| --- | --- | --- |
-| `media_optimizer` | post-patch | Compress PNG/JPEG, re-encode MP3/OGG, filter DPI resources |
-| `apk_optimizer` | post-patch | Strip debug symbols, native libs, manifest comments, unused locales |
-| `string_cleaner` | post-patch | Analyze and remove unused `strings.xml` resources via apktool |
-| `dtlx` | pre-patch | Run DTL-X analysis/optimization (ad removal, tracker removal, SSL bypass, etc.) |
-| `lspatch` | pre-patch | Apply LSPatch (binary CLI or JAR). `lspatch-mode = "complement"` runs before ReVanced; `"alternative"` replaces ReVanced |
-| `rkpairip` | pre-patch | Advanced APK decompilation/rebuilding with RKPairip |
-| `whatsapp_patcher` | pre-patch | Patch WhatsApp via Schwartzblat/WhatsAppPatcher |
-
-Enable an engine globally:
-
-```toml
-enable-media-optimizer = true
-```
-
-Per-app example:
-
-```toml
-[YouTube-Morphed]
-enable-media-optimizer = true
-enable-apk-optimizer = true
-
-[YouTube-Morphed.media-optimizer]
-optimize-images = true
-optimize-audio = false
-target-dpi = "xxhdpi"
-
-[YouTube-Morphed.apk-optimizer]
-remove-debug-symbols = true
-keep-locales = ["en"]
-```
-
-CLI overrides:
-
-```bash
-uv run python -m scripts.cli build --config config.toml --enable-media-optimizer --target-dpi xxhdpi --optimize-images
-```
-
-### Plugin hooks
+## Plugin hooks
 
 Plugins in `scripts/plugins/` are auto-discovered. Each plugin module must expose:
 
@@ -234,19 +188,7 @@ Plugins in `scripts/plugins/` are auto-discovered. Each plugin module must expos
 def handle_hook(ctx, stage: str) -> None: ...
 ```
 
-Stages: `pre_pipeline`, `post_pipeline`, `pre_engine:<name>`, `post_engine:<name>`.
-
-### External tool dependencies
-
-Engines that need external tools detect them at runtime and skip gracefully if missing:
-
-- `media_optimizer`: `pngquant` or `optipng`, `jpegoptim`, `ffmpeg`
-- `apk_optimizer`: `strip`
-- `string_cleaner`: `apktool`
-- `dtlx`: DTL-X (`dtlx.py`)
-- `lspatch`: `lspatch` binary or `lspatch.jar`
-- `rkpairip`: `RKPairip`
-- `whatsapp_patcher`: `java`, `git`, `pip`
+Stages: `pre_pipeline`, `post_pipeline`.
 
 ## Signing and build flow
 

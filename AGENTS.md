@@ -33,13 +33,11 @@ uv run python -m pytest tests -v
 | `scripts/lib/version_tracker.py` | Version state tracking |
 | `scripts/lib/builder.py` | Build orchestration |
 | `scripts/builder/` | Build pipeline components |
-| `scripts/builder/engines/` | Optional APK processing engines (media optimizer, APK optimizer, DTL-X, LSPatch, etc.) |
 | `scripts/lib/plugins.py` | Auto-discovered plugin hook dispatcher |
 | `scripts/plugins/` | User plugin directory |
 | `scripts/scrapers/` | Source-specific APK retrieval |
 | `scripts/search/` | Version resolution |
 | `scripts/utils/` | Shared APK, Java, process, and network helpers |
-| `scripts/utils/apk_io.py` | APK extract/repack helpers used by engines |
 | `build.sh` | Legacy compatibility path |
 | `utils.sh` | Shared Bash loader |
 | `config.toml` | Global + per-app configuration |
@@ -85,7 +83,6 @@ uv run python -m pytest tests -v
 - Config / args / version tracking: `uv run python -m pytest tests/test_config.py tests/test_version_tracker.py -v`
 - Network / scraper logic: `uv run python -m pytest tests/test_network.py -v`
 - APK / signing logic: `uv run python -m pytest tests/test_apk.py -v`
-- Engine logic: `uv run python -m pytest tests/test_engines.py -v`
 - Notifier logic: `uv run python -m pytest tests/test_notifier.py -v`
 - Broad Python changes: `uv run python -m pytest tests -v`
 - Bash changes: `bash -n <changed.sh>` and `./scripts/lint.sh`
@@ -94,9 +91,3 @@ uv run python -m pytest tests -v
 - Keep secrets (`GITHUB_TOKEN`, signing credentials, private keys, passwords) out of commits; use env vars or GitHub secrets instead.
 - Leave CI-generated version-tracking state under `.github/` untouched unless the task explicitly requires editing it.
 - Keep changes scoped and minimal; avoid unrelated cleanup.
-
-## Engine System (apk-tweak integration)
-
-Optional APK processing engines live in `scripts/builder/engines/`, opt-in via
-`enable-<engine>` flags in `config.toml`. See `scripts/builder/engines/README.md`
-for the engine list, config wiring, and steps to add a new one.

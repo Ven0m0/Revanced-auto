@@ -28,14 +28,14 @@ from scripts.builder.cli_profiles import (
     PatchCommandConfig,
     detect_cli_profile,
 )
-from scripts.builder.config import AppConfig, Config
-from scripts.builder.engines import EngineContext, EngineRunner, EngineStage
 from scripts.lib.plugins import dispatch_plugins
 from scripts.scrapers.base import DownloadSource
 from scripts.utils.java import JavaRunner
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from scripts.builder.config import AppConfig, Config
 
 logger = logging.getLogger(__name__)
 
@@ -445,6 +445,7 @@ class AppBuildContext:
         riplib: Whether to use riplib.
         merge_patches: Patches to merge.
         options: Additional patcher options.
+        patch_options: Per-patch option values (name -> {key: value}).
     """
 
     app_name: str
@@ -469,7 +470,7 @@ class AppBuildContext:
     riplib: bool = True
     merge_patches: list[Path] = field(default_factory=list)
     options: dict[str, Any] = field(default_factory=dict)
-    engine_options: dict[str, Any] = field(default_factory=dict)
+    patch_options: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class AppProcessor:
@@ -687,23 +688,6 @@ class AppProcessor:
         output_name = f"{app_name}-{version}-{arch}"
         output_path = output_dir / f"{output_name}.apk"
 
-        # Extract engine-specific sub-tables from options so engines receive
-        # their own options cleanly. Remaining options stay as patcher options.
-        engine_names = [
-            "media_optimizer",
-            "apk_optimizer",
-            "string_cleaner",
-            "dtlx",
-            "lspatch",
-            "rkpairip",
-            "whatsapp_patcher",
-        ]
-        engine_options: dict[str, Any] = {}
-        remaining_options = app_config.options.copy()
-        for engine_name in engine_names:
-            if engine_name in remaining_options:
-                engine_options[engine_name] = remaining_options.pop(engine_name)
-
         return AppBuildContext(
             app_name=app_name,
             app_id=app_config.name,
@@ -722,8 +706,8 @@ class AppProcessor:
             included_patches=app_config.patches,
             exclusive_patches=app_config.exclusive,
             riplib=self.config.global_settings.riplib,
-            options=remaining_options,
-            engine_options=engine_options,
+            options=app_config.options,
+            patch_options=app_config.patch_options,
         )
 
     def _execute_build(self, context: AppBuildContext) -> BuildResult:
@@ -735,138 +719,26 @@ class AppProcessor:
         Returns:
             BuildResult of the build.
         """
-        pipeline_ctx = self._build_pipeline_context(context, context.output_path.parent)
-        dispatch_plugins(pipeline_ctx, "pre_pipeline")
+        dispatch_plugins(context, "pre_pipeline")
 
         stock_apk = self._download_stock_apk(context)
 
-        # Run pre-patch engines (e.g., LSPatch, DTL-X, RKPairip)
-        current_apk = self._run_engines(context, stock_apk, EngineStage.PRE_PATCH)
+        cli_jar, patches_jars = self._ensure_prebuilts(context)
+        context.cli_jar = cli_jar
+        context.patches_jars = patches_jars
+        changelog = self._get_changelog(context)
+        patched_apk = self._run_patcher(context, stock_apk)
 
-        # Determine whether to skip ReVanced patching when LSPatch is in
-        # alternative mode.
-        lspatch_mode = context.engine_options.get("lspatch", {}).get("mode", "complement")
-        skip_revanced = self._is_engine_enabled(context, "lspatch") and lspatch_mode == "alternative"
-
-        if skip_revanced:
-            patched_apk = current_apk
-            changelog: list[str] = []
-        else:
-            cli_jar, patches_jars = self._ensure_prebuilts(context)
-            context.cli_jar = cli_jar
-            context.patches_jars = patches_jars
-            changelog = self._get_changelog(context)
-            patched_apk = self._run_patcher(context, current_apk)
-
-        # Run post-patch engines (e.g., Media Optimizer, APK Optimizer, String Cleaner)
-        final_apk = self._run_engines(context, patched_apk, EngineStage.POST_PATCH)
-
-        dispatch_plugins(pipeline_ctx, "post_pipeline")
+        dispatch_plugins(context, "post_pipeline")
 
         return BuildResult(
             app_name=context.app_name,
             brand=context.brand,
             version=context.version,
             arch=context.arch,
-            output_path=final_apk,
+            output_path=patched_apk,
             success=True,
             changelog=changelog,
-        )
-
-    def _is_engine_enabled(self, context: AppBuildContext, engine_name: str) -> bool:
-        """Check if an engine is enabled for the current app.
-
-        Args:
-            context: Build context.
-            engine_name: Engine identifier.
-
-        Returns:
-            True if the engine should run.
-        """
-        app_config = self.config.apps.get(context.app_id)
-        if not isinstance(app_config, AppConfig):
-            return False
-
-        global_value = getattr(self.config.global_settings, f"enable_{engine_name}", False)
-        return app_config.engine_enabled(engine_name, global_value)
-
-    def _run_engines(
-        self,
-        context: AppBuildContext,
-        input_apk: Path,
-        stage: EngineStage,
-    ) -> Path:
-        """Run all enabled engines for a pipeline stage.
-
-        Args:
-            context: Build context.
-            input_apk: Input APK path for this stage.
-            stage: Pipeline stage to execute.
-
-        Returns:
-            Path to the APK after engines have run.
-        """
-        enabled_engines = [
-            name
-            for name in [
-                "media_optimizer",
-                "apk_optimizer",
-                "string_cleaner",
-                "dtlx",
-                "lspatch",
-                "rkpairip",
-                "whatsapp_patcher",
-            ]
-            if self._is_engine_enabled(context, name)
-        ]
-
-        if not enabled_engines:
-            return input_apk
-
-        work_dir = context.output_path.parent / "engine_work" / context.app_id / stage.value
-        work_dir.mkdir(parents=True, exist_ok=True)
-
-        engine_ctx = EngineContext(
-            app_name=context.app_name,
-            app_id=context.app_id,
-            version=context.version,
-            arch=context.arch,
-            current_apk=input_apk,
-            output_dir=context.output_path.parent,
-            work_dir=work_dir,
-            global_options={
-                "lspatch_mode": context.engine_options.get("lspatch", {}).get("mode", "complement"),
-            },
-            app_options=context.engine_options,
-        )
-
-        runner = EngineRunner(stage, enabled_engines)
-        return runner.run(engine_ctx)
-
-    def _build_pipeline_context(
-        self,
-        context: AppBuildContext,
-        output_dir: Path,
-    ) -> EngineContext:
-        """Create an EngineContext for plugin hooks.
-
-        Args:
-            context: App build context.
-            output_dir: Output directory for artifacts.
-
-        Returns:
-            EngineContext for plugin dispatch.
-        """
-        return EngineContext(
-            app_name=context.app_name,
-            app_id=context.app_id,
-            version=context.version,
-            arch=context.arch,
-            current_apk=context.output_path,
-            output_dir=output_dir,
-            work_dir=output_dir / "engine_work" / context.app_id,
-            global_options={},
-            app_options=context.engine_options,
         )
 
     def _download_stock_apk(self, context: AppBuildContext) -> Path:
@@ -1015,6 +887,7 @@ class AppProcessor:
                 include=context.included_patches if context.exclusive_patches else None,
                 keystore=keystore,
                 rip_lib=[] if context.riplib else None,
+                options=context.patch_options or None,
             )
             if result.returncode != 0:
                 raise RuntimeError(f"Patching failed: {result.stderr}")
@@ -1042,6 +915,7 @@ class AppProcessor:
             signer=signer,
             rip_lib=riplib_libs,
             exclusive=context.exclusive_patches,
+            options=context.patch_options,
         )
         patch_args = cli_profile.build_patch_args(patch_config)
 

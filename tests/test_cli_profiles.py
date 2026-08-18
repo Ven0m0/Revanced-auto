@@ -134,6 +134,34 @@ def test_morphe_patch_args() -> None:
     assert "--patch" not in args
 
 
+def test_morphe_patch_args_inline_options_follow_their_enable_flag() -> None:
+    """Inline -O flags follow their enable flag.
+
+    The -O flag sets an option on whichever -e patch precedes it, so option
+    flags must be emitted immediately after their patch's -e, in patch order.
+    """
+    config = PatchCommandConfig(
+        apk_path=Path("input.apk"),
+        output_path=Path("output.apk"),
+        patches_jars=[Path("patches.jar")],
+        include=["Patch A", "Patch B"],
+        exclusive=True,
+        options={
+            "Patch A": {"appName": '"Foo"', "disableAds": None},
+            "Patch B": {},
+        },
+    )
+    args = MORPHE_CLI.build_patch_args(config)
+
+    a_idx = args.index("Patch A")
+    assert args[a_idx - 1] == "-e"
+    assert args[a_idx + 1 : a_idx + 5] == ["-O", 'appName="Foo"', "-O", "disableAds"]
+
+    b_idx = args.index("Patch B")
+    assert args[b_idx - 1] == "-e"
+    assert args[b_idx + 1] == "-e" or b_idx == len(args) - 1 or args[b_idx + 1] == "--exclusive"
+
+
 def test_list_patches_args() -> None:
     """Verify list-patches argument generation."""
     patches = [Path("p1.jar"), Path("p2.jar")]

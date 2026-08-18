@@ -128,7 +128,9 @@ class PatchCommandConfig:
     inplace: bool = False
     werror: bool = False
     exclusive: bool = False
-    options: dict[str, Any] = field(default_factory=dict)
+    options: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """Per-patch option values: ``{patch_name: {option_key: value}}``. A ``None`` value emits
+    the option flag with no value (sets it to null)."""
 
 
 @dataclass(frozen=True)
@@ -459,12 +461,21 @@ def build_cli_args(
 
         if config.include:
             enabled_mapping = patch_args.get("ENABLED")
+            options_mapping = patch_args.get("OPTIONS")
+            # Morphe/Adobo's -O flag sets an option on whichever -e patch precedes it,
+            # so option flags must be emitted immediately after their patch's -e (see
+            # https://raw.githubusercontent.com/MorpheApp/morphe-desktop/refs/heads/main/docs/documentation.md).
+            inline_options = profile.profile_type in (CLIProfileType.MORPHE_CLI, CLIProfileType.ADOBO_CLI)
             if enabled_mapping:
                 for patch_name in config.include:
                     args.extend(enabled_mapping.prepend_args)
                     args.append(enabled_mapping.flag)
                     if enabled_mapping.requires_value:
                         args.append(patch_name)
+                    if inline_options and options_mapping:
+                        for key, value in config.options.get(patch_name, {}).items():
+                            args.append(options_mapping.flag)
+                            args.append(key if value is None else f"{key}={value}")
 
         if config.merge:
             merge_mapping = patch_args.get("MERGE")

@@ -28,6 +28,7 @@ Thumbs.db
 
 # AI/Copilot files
 .claude/
+.remember/
 
 # Python caches and build artifacts
 *.pyc
@@ -44,5 +45,4 @@ yarn.lock
 
 .omc/
 .serena/
-!.serena/project.yml
 .codegraph/

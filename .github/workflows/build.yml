@@ -177,11 +177,20 @@ jobs:
           prerelease: ${{ inputs.build_mode == 'dev' }}
           file_glob: true
           overwrite: true
+      - name: Install mise-managed toolchain (Python, uv)
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        uses: jdx/mise-action@v4.2.5
+        with:
+          install: true
+          cache: true
+      - name: Install Python dependencies
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        run: uv sync --locked --all-groups
       - name: Save build state
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
         continue-on-error: true
         run: |
-          python3 scripts/version_tracker.py save --config config.toml
+          uv run python -m scripts.cli version-tracker save --config config.toml
       - name: Commit build state
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
         continue-on-error: true

@@ -64,7 +64,7 @@
             <div class="nav-menu" id="nav-menu">
                 <a href="index.html" class="nav-link">Home</a>
                 <a href="generator.html" class="nav-link active">Generator</a>
-                <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/CONFIG.md" class="nav-link nav-link-external" target="_blank" rel="noopener noreferrer">Config Docs</a>
+                <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/docs/CONFIG.md" class="nav-link nav-link-external" target="_blank" rel="noopener noreferrer">Config Docs</a>
                 <a href="https://github.com/Ven0m0/Revanced-auto" class="nav-link nav-link-external" target="_blank" rel="noopener noreferrer">GitHub</a>
                 <button class="nav-theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
                     <span id="theme-icon" aria-hidden="true"></span>
@@ -109,7 +109,7 @@
                     <div class="form-group">
                         <label for="cli-source">Default CLI Source</label>
                         <input type="text" id="cli-source" value="MorpheApp/morphe-cli">
-                        <p class="help-text">GitHub repo for the patcher CLI. Use `MorpheApp/morphe-cli`, `ReVanced/revanced-cli`, `j-hc/revanced-cli`, or `inotia00/revanced-cli`. CLI flavor is auto-detected from <code>--help</code>; force a profile with <code>cli-profile</code> in TOML if needed.</p>
+                        <p class="help-text">GitHub repo for the patcher CLI. Use `MorpheApp/morphe-cli`, `ReVanced/revanced-cli`, or `inotia00/revanced-cli`. CLI flavor is auto-detected from <code>--help</code>; force a profile with <code>cli-profile</code> in TOML if needed.</p>
                     </div>
                     <div class="form-group">
                         <label for="patches-version">Patches Version</label>
@@ -139,8 +139,8 @@
                     </div>
                     <div class="form-group">
                         <label for="rv-brand">RV Brand</label>
-                        <input type="text" id="rv-brand" value="RVX">
-                        <p class="help-text">Brand name (RVX, ReVanced, etc.)</p>
+                        <input type="text" id="rv-brand" value="Morphe">
+                        <p class="help-text">Brand name (Morphe, RVX, ReVanced, etc.)</p>
                     </div>
                     <div class="form-group">
                         <label for="arch">Default Architecture</label>
@@ -172,48 +172,6 @@
                         <label for="aapt2-source">AAPT2 source repo</label>
                         <input type="text" id="aapt2-source" value="Graywizard888/Custom-Enhancify-aapt2-binary">
                         <p class="help-text">GitHub <code>owner/repo</code> for the custom AAPT2 binary (used when <code>use-custom-aapt2</code> is enabled).</p>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="engine-media-optimizer">
-                            <span>Enable media_optimizer engine (post-patch)</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="engine-apk-optimizer">
-                            <span>Enable apk_optimizer engine (post-patch)</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="engine-string-cleaner">
-                            <span>Enable string_cleaner engine (post-patch)</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="engine-dtlx">
-                            <span>Enable dtlx engine (pre-patch)</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="engine-lspatch">
-                            <span>Enable lspatch engine (pre-patch)</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="engine-rkpairip">
-                            <span>Enable rkpairip engine (pre-patch)</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="engine-whatsapp-patcher">
-                            <span>Enable whatsapp_patcher engine (pre-patch)</span>
-                        </label>
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
@@ -266,7 +224,7 @@
         <div class="container">
             <nav class="footer-links" aria-label="Footer navigation">
                 <a href="https://github.com/Ven0m0/Revanced-auto" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
-                <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/CONFIG.md" target="_blank" rel="noopener noreferrer">Config Reference</a>
+                <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/docs/CONFIG.md" target="_blank" rel="noopener noreferrer">Config Reference</a>
                 <a href="https://github.com/ReVanced" target="_blank" rel="noopener noreferrer">ReVanced Project</a>
                 <a href="https://github.com/inotia00/revanced-patches" target="_blank" rel="noopener noreferrer">RVX Patches</a>
             </nav>
@@ -645,7 +603,7 @@
             let toml = `# =============================================================================
 # ReVanced Auto-Build Configuration
 # =============================================================================
-# Documentation: https://github.com/Ven0m0/Revanced-auto/blob/main/CONFIG.md
+# Documentation: https://github.com/Ven0m0/Revanced-auto/blob/main/docs/CONFIG.md
 # =============================================================================
 # GLOBAL BUILD SETTINGS
 # =============================================================================
@@ -663,14 +621,6 @@ enable-aapt2-optimize = ${g("aapt2").checked}
 aapt2-source = "${g("aapt2-source").value}"
 # Use Custom AAPT2
 use-custom-aapt2 = ${g("use-custom-aapt2").checked}
-# Optional APK-tweak engines (off by default)
-enable-media-optimizer = ${g("engine-media-optimizer").checked}
-enable-apk-optimizer = ${g("engine-apk-optimizer").checked}
-enable-string-cleaner = ${g("engine-string-cleaner").checked}
-enable-dtlx = ${g("engine-dtlx").checked}
-enable-lspatch = ${g("engine-lspatch").checked}
-enable-rkpairip = ${g("engine-rkpairip").checked}
-enable-whatsapp-patcher = ${g("engine-whatsapp-patcher").checked}
 # Default Architecture
 arch = "${g("arch").value}"
 # Build Mode
@@ -770,8 +720,6 @@ rv-brand = "${g("rv-brand").value}"
             const globalKeys = new Set([
                 "parallel-jobs", "compression-level", "remove-rv-integrations-checks",
                 "riplib", "enable-aapt2-optimize", "aapt2-source", "use-custom-aapt2",
-                "enable-media-optimizer", "enable-apk-optimizer", "enable-string-cleaner",
-                "enable-dtlx", "enable-lspatch", "enable-rkpairip", "enable-whatsapp-patcher",
                 "arch", "build-mode",
                 "patches-version", "cli-version", "version", "patches-source",
                 "cli-source", "cli-profile", "rv-brand",
@@ -817,13 +765,6 @@ rv-brand = "${g("rv-brand").value}"
             setVal("aapt2", globals["enable-aapt2-optimize"]);
             setVal("use-custom-aapt2", globals["use-custom-aapt2"]);
             setVal("aapt2-source", globals["aapt2-source"]);
-            setVal("engine-media-optimizer", globals["enable-media-optimizer"]);
-            setVal("engine-apk-optimizer", globals["enable-apk-optimizer"]);
-            setVal("engine-string-cleaner", globals["enable-string-cleaner"]);
-            setVal("engine-dtlx", globals["enable-dtlx"]);
-            setVal("engine-lspatch", globals["enable-lspatch"]);
-            setVal("engine-rkpairip", globals["enable-rkpairip"]);
-            setVal("engine-whatsapp-patcher", globals["enable-whatsapp-patcher"]);
             setVal("arch", globals.arch);
             setVal("patches-version", globals["patches-version"]);
             setVal("cli-version", globals["cli-version"]);
