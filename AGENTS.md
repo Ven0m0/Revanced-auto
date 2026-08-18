@@ -38,7 +38,7 @@ uv run python -m pytest tests -v
 | `scripts/plugins/` | User plugin directory |
 | `scripts/scrapers/` | Source-specific APK retrieval |
 | `scripts/search/` | Version resolution |
-| `scripts/utils/` | Shared APK/Java/process/network helpers |
+| `scripts/utils/` | Shared APK, Java, process, and network helpers |
 | `scripts/utils/apk_io.py` | APK extract/repack helpers used by engines |
 | `build.sh` | Legacy compatibility path |
 | `utils.sh` | Shared Bash loader |
@@ -49,24 +49,24 @@ uv run python -m pytest tests -v
 - Prefer Python-path changes for new features or fixes; keep `build.sh` aligned for compatibility.
 - Keep edits localized to the owning module/directory.
 - Reuse existing helpers and wrappers before adding new abstractions.
-- Avoid broad refactors unless explicitly requested.
+- Keep refactors scoped to what the task requires; broad refactors need explicit user request.
 
 ## Language & Tooling Rules
 
 ### Python
-- Target Python `>=3.13`; dependencies are `uv`-managed.
+- Target Python 3.13 or newer; dependencies are `uv`-managed.
 - Match repository tooling: Ruff (`line-length=120`, `select=["ALL"]` with repo-specific ignores) and MyPy strict mode.
 - Use `from scripts.lib import logging as log` for logging.
-- Reuse existing network helpers (`scripts.utils.network`); avoid ad-hoc new HTTP stacks.
+- Reuse existing network helpers (`scripts/utils/network.py`); avoid ad-hoc new HTTP stacks.
 - Prefer `selectolax` for HTML, `tomllib` for TOML reads, and `orjson`/`json` for JSON.
-- Keep `sys.exit()` in `main()` only; return status codes from helpers.
+- Keep sys.exit in `main()` only; return status codes from helpers.
 - Favor testable functions over growing `main()` flow logic.
 
 ### Bash
 - Use `#!/usr/bin/env bash` and `set -euo pipefail`.
-- Source shared shell modules via `source utils.sh`; do not source `scripts/lib/*.sh` directly.
+- Source shared shell modules via `source utils.sh`; do not source files under `scripts/lib/` directly.
 - In runtime paths, use repo logging helpers (`log_info`, `log_warn`, `log_debug`, `pr`, `epr`, `abort`) and `req` / `gh_req`.
-- Quote expansions, prefer `mapfile -t`, use arithmetic expansion for counters, and never use `eval`.
+- Quote expansions, prefer `mapfile -t`, use arithmetic expansion for counters, skip `eval` entirely.
 - Run `bash -n` on any changed shell script.
 
 ### GitHub Actions
@@ -76,7 +76,7 @@ uv run python -m pytest tests -v
 - `config.toml` uses top-level defaults plus per-app override sections.
 - Every enabled app must define at least one supported download source.
 - Preserve the core flow: config -> version check -> download -> patch -> sign -> output.
-- Keep signing hardening intact: output APKs must be re-signed via `bin/apksigner.jar` with v1+v2 only.
+- Keep signing hardening intact: output APKs must be re-signed via apksigner.jar (fetched by `check-env.sh` into a local bin directory at setup time) with v1+v2 only.
 - Keep `build.sh` behavior compatible with `python -m scripts.cli`.
 - Treat cached/network/archive handling changes as high risk and validate carefully.
 
@@ -91,25 +91,12 @@ uv run python -m pytest tests -v
 - Bash changes: `bash -n <changed.sh>` and `./scripts/lint.sh`
 
 ## Safety
-- Never commit secrets (`GITHUB_TOKEN`, signing credentials, private keys, passwords).
-- Do not modify generated/state files such as `.github/last_built_versions.json` unless the task explicitly requires it.
+- Keep secrets (`GITHUB_TOKEN`, signing credentials, private keys, passwords) out of commits; use env vars or GitHub secrets instead.
+- Leave CI-generated version-tracking state under `.github/` untouched unless the task explicitly requires editing it.
 - Keep changes scoped and minimal; avoid unrelated cleanup.
 
 ## Engine System (apk-tweak integration)
 
-Optional APK processing engines live in `scripts/builder/engines/`. Each engine is a
-class with `name`, `stage`, and `run(ctx: EngineContext) -> EngineResult`.
-
-- **Pre-patch engines** run before ReVanced patching: `dtlx`, `lspatch`, `rkpairip`, `whatsapp_patcher`.
-- **Post-patch engines** run after patching, before signing: `media_optimizer`, `apk_optimizer`, `string_cleaner`.
-- Engines are opt-in via `enable-<engine> = true` in `config.toml` (global default or per-app override).
-- Engine-specific options are configured in per-engine sub-tables, e.g. `[YouTube-Morphed.media-optimizer]`.
-- CLI overrides: `--enable-media-optimizer`, `--disable-media-optimizer`, `--target-dpi`, `--optimize-images`, etc.
-- Plugins can hook pipeline stages by implementing `handle_hook(ctx: EngineContext, stage: str) -> None` in `scripts/plugins/`.
-
-### Adding a new engine
-1. Create `scripts/builder/engines/<name>.py` with an `Engine` class.
-2. Register it in `scripts/builder/engines/__init__.py` `_ENGINE_REGISTRY`.
-3. Add `enable_<name>` fields to `GlobalConfig` and `AppConfig` in `scripts/builder/config.py`.
-4. Document options in `config.toml` and `AGENTS.md`.
-5. Add tests in `tests/test_engines.py` or `tests/test_<name>.py`.
+Optional APK processing engines live in `scripts/builder/engines/`, opt-in via
+`enable-<engine>` flags in `config.toml`. See `scripts/builder/engines/README.md`
+for the engine list, config wiring, and steps to add a new one.
