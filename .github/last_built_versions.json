@@ -1,0 +1,23 @@
+{
+  "global_cli_version": "latest",
+  "global_patches_version": "latest",
+  "global_patches_source": "MorpheApp/morphe-patches",
+  "app_tiktok_patches_source": "BlazeFTL/FTL-Patches,icysymmetra/tiktok-patches-for-morphe",
+  "app_tiktok_cli_source": "MorpheApp/morphe-cli",
+  "app_tiktok_version": "auto",
+  "app_youtube-morphed_patches_source": "jkennethcarino/adobo,BlazeFTL/FTL-Patches,MorpheApp/morphe-patches",
+  "app_youtube-morphed_cli_source": "MorpheApp/morphe-cli",
+  "app_youtube-morphed_version": "auto",
+  "app_music-morphed_patches_source": "BlazeFTL/FTL-Patches,MorpheApp/morphe-patches",
+  "app_music-morphed_cli_source": "MorpheApp/morphe-cli",
+  "app_music-morphed_version": "auto",
+  "app_reddit-morphed_patches_source": "jkennethcarino/adobo,BlazeFTL/FTL-Patches,MorpheApp/morphe-patches,rushiranpise/morphe-patches",
+  "app_reddit-morphed_cli_source": "MorpheApp/morphe-cli",
+  "app_reddit-morphed_version": "auto",
+  "app_brave_patches_source": "jkennethcarino/adobo,dh6k/morphe-patches,BlazeFTL/FTL-Patches",
+  "app_brave_cli_source": "MorpheApp/morphe-cli",
+  "app_brave_version": "auto",
+  "app_sdmaid_patches_source": "BlazeFTL/FTL-Patches,rushiranpise/morphe-patches",
+  "app_sdmaid_cli_source": "MorpheApp/morphe-cli",
+  "app_sdmaid_version": "auto"
+}
