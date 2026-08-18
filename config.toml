@@ -25,10 +25,10 @@ build-mode = "apk"
 # Default Patches Version
 # - latest: Most recent stable release
 # - dev: Latest development version (may be unstable)
-patches-version = "dev"
+patches-version = "latest"
 # Default CLI Version
 # ReVanced CLI version: "latest", "dev", or specific version tag
-cli-version = "dev"
+cli-version = "latest"
 # Default App Version
 # App version selection: "auto", "latest", "beta", or specific version
 # - auto: Automatically select version compatible with patches
@@ -89,54 +89,6 @@ use-custom-aapt2 = true
 # Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, archive-dlurl, apkpure-dlurl, or aptoide-dlurl)
 # Optional fields: All global settings can be overridden per-app
 # =============================================================================
-# YouTube Music Extended (RVX) — opt-in alternative to Morphe defaults.
-[Music-Extended]
-enabled = true
-app-name = "Music"
-patches-source = "anddea/revanced-patches"
-cli-source = "inotia00/revanced-cli"
-rv-brand = "RVX"
-version = "8.30.54"
-patcher-args = [
-  "-e",
-  "Custom branding icon for YouTube Music",
-  "-OappIcon=mnt",
-  "-e",
-  "Visual preferences icons for YouTube Music",
-  "-OsettingsMenuIcon=revanced",
-  "-OdarkThemeBackgroundColor=@android:color/black",
-  "-OlightThemeBackgroundColor=@android:color/white",
-]
-excluded-patches = "'Enable debug logging'"
-uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
-archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
-apkpure-dlurl = "https://apkpure.net/youtube-music/com.google.android.apps.youtube.music"
-
-# YouTube Extended (RVX) — opt-in alternative to Morphe defaults.
-[YouTube-Extended]
-enabled = true
-app-name = "YouTube"
-patches-source = "anddea/revanced-patches"
-cli-source = "inotia00/revanced-cli"
-rv-brand = "RVX"
-version = "20.21.37"
-patcher-args = [
-  "-e",
-  "Custom branding icon for YouTube",
-  "-OappIcon=mnt",
-  "-OdarkThemeBackgroundColor=@android:color/black",
-  "-OlightThemeBackgroundColor=@android:color/white",
-  "-e",
-  "Visual preferences icons for YouTube",
-  "-OsettingsMenuIcon=revanced",
-]
-excluded-patches = "'Enable debug logging'"
-uptodown-dlurl = "https://youtube.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
-archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
-apkpure-dlurl = "https://apkpure.net/youtube/com.google.android.youtube"
-
 # Spotify
 [Spotify]
 enabled = false
@@ -149,29 +101,6 @@ patcher-args = [
   "Custom branding name for Spotify",
   "-OappName=RVX Spotify",
 ]
-
-# Reddit
-[Reddit]
-enabled = false
-uptodown-dlurl = "https://reddit-official-app.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
-apkpure-dlurl = "https://apkpure.net/reddit/com.reddit.frontpage"
-patcher-args = [
-  "-e",
-  "Custom branding name for Reddit",
-  "-OappName=RVX Reddit",
-]
-dpi = "320-480dpi"
-
-# X (Twitter)
-[X]
-enabled = false
-uptodown-dlurl = "https://twitter.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
-patches-source = "crimera/piko"
-rv-brand = "Piko"
-included-patches = "'Dynamic color'"
-dpi = "120-640dpi"
 
 [TikTok]
 enabled = true
@@ -220,12 +149,6 @@ targetDensity = "\"xxhdpi\""
 
 [TikTok.patch-options."Remove Languages"]
 keepLanguages = "[\"en\"]"
-
-[Instagram]
-enabled = false
-apkmirror-dlurl = "https://apkmirror.com/apk/instagram/instagram-instagram/"
-included-patches = "'Hide ads' 'Sanitize sharing links' 'Disable signature check'"
-exclusive-patches = true
 
 [GooglePhotos]
 enabled = false
@@ -336,22 +259,6 @@ targetDensity = "\"xxhdpi\""
 
 [YouTube-Morphed.patch-options."Remove Languages"]
 keepLanguages = "[\"en\"]"
-
-# YouTube Legacy (Android 6-7)
-[YouTube-Legacy]
-enabled = false
-app-name = "YouTube"
-patches-source = "kitadai31/revanced-patches-android6-7"
-rv-brand = "RVX-Legacy"
-apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
-
-# Reddit Patcheddit
-[Reddit-Patcheddit]
-enabled = false
-app-name = "Reddit"
-patches-source = "wchill/patcheddit"
-rv-brand = "Patcheddit"
-apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
 
 # YouTube Music Morphed (default Morphe build).
 [Music-Morphed]
@@ -491,7 +398,7 @@ apkmirror-dpi = "120-640dpi"
 # Brave (Beta channel; the Adobo/Brave-patches/BlazeFTL bundles below target
 # com.brave.browser_beta specifically). Opt-in: not previously a build target.
 [Brave]
-enabled = false
+enabled = true
 app-name = "Brave"
 patches-source = ["jkennethcarino/adobo", "dh6k/morphe-patches", "BlazeFTL/FTL-Patches"]
 cli-source = "MorpheApp/morphe-cli"
@@ -525,7 +432,7 @@ keepLanguages = "[\"en\"]"
 
 # SD Maid 2/SE. Opt-in: not previously a build target.
 [SDMaid]
-enabled = false
+enabled = true
 app-name = "SDMaid"
 patches-source = ["BlazeFTL/FTL-Patches", "rushiranpise/morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
