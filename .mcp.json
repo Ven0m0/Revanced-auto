@@ -5,11 +5,6 @@
       "url": "https://mcp.context7.com/mcp",
       "enabled": true
     },
-    "grep": {
-      "type": "http",
-      "url": "https://mcp.grep.app",
-      "enabled": true
-    },
     "morphe-mcp": {
       "type": "http",
       "url": "https://morphe-mcp.brosssh.com/mcp",
