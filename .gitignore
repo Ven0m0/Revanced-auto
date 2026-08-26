@@ -6,8 +6,10 @@
 /bin/apksigner.jar
 /bin/dexlib2.jar
 /bin/paccer.jar
+.env
 /temp
 /build
+/logs
 build.md
 
 # Logs and temporary files
@@ -32,11 +34,13 @@ Thumbs.db
 
 # Python caches and build artifacts
 *.pyc
+.venv/
 __pycache__/
 .ruff_cache/
 .mypy_cache/
 *.egg-info/
 dist/
+*.py[cod]
 
 # Linting and formatting tool caches
 node_modules/
