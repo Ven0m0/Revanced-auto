@@ -9,13 +9,13 @@ description = "ReVanced Builder: Automated APK patching and building system"
 requires-python = ">=3.14,<3.15"
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [{ name = "ReVanced Builder Contributors" }]
+authors = [{ name = "Ven0m0" }]
 dependencies = [
   "httpx[http2]>=0.28.1",
   "orjson>=3.11.8",
   "selectolax>=0.4.11",
   "beautifulsoup4>=4.15.0",
-  "curl-cffi>=0.15.0",
+  "curl-cffi>=0.16.1",
 ]
 
 [dependency-groups]
