@@ -14,7 +14,7 @@ uv_venv_create_args = ["--seed", "--system-site-packages"]
 # stays fast and reproducible.
 python = "3.14"
 uv = "latest"
-java = "temurin-21"
+java = "temurin-25.0.4+101.0.LTS"
 
 [env]
 _.file = { path = ".env", tools = true }
