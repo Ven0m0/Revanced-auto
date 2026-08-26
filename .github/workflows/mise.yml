@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1 # v7.0.1
-      - uses: jdx/mise-action@v4.2.5 # v4.2.5
+      - uses: jdx/mise-action@v4.3.0
         with:
           install: true # [default: true] run `mise install`
           experimental: true
           cache: true
-          version: "2026.8.10"
+          version: "2026.8.14"
       - run: shellcheck scripts/*.sh scripts/lib/*.sh
