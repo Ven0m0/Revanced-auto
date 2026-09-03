@@ -1,5 +1,7 @@
 # ReVanced-auto
 
+![GitHub repo size](https://img.shields.io/github/repo-size/Ven0m0/Revanced-auto)
+
 ReVanced-auto builds patched Android APKs from a TOML config: resolve compatible app versions, download stock APKs, apply ReVanced/RVX-compatible CLI + patches, re-sign the result, and write artifacts to `build/`.
 
 ## Requirements
