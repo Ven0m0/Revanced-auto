@@ -1,0 +1,2 @@
+- [ ] remove AAPT2 Optimization as it tends to corrupt apks
+- [ ] update and cleanup @config.toml based on the morphe settings and patch selections
