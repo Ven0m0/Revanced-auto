@@ -18,6 +18,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v5
+        id: release_please
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      # release-please rewrites the version in pyproject.toml but not uv.lock,
+      # which records the same version. Without this, `uv sync --locked` in
+      # build.yml fails on every build after a release.
+      - name: Checkout release PR branch
+        if: steps.release_please.outputs.prs_created == 'true'
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ fromJson(steps.release_please.outputs.pr).headBranchName }}
+      - name: Install mise-managed toolchain (uv)
+        if: steps.release_please.outputs.prs_created == 'true'
+        uses: jdx/mise-action@v4.3.0
+        with:
+          install: true
+          cache: true
+      - name: Sync uv.lock with bumped version
+        if: steps.release_please.outputs.prs_created == 'true'
+        run: uv lock
+      - name: Commit uv.lock
+        if: steps.release_please.outputs.prs_created == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore: sync uv.lock with released version"
+          file_pattern: uv.lock
