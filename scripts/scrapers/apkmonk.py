@@ -6,12 +6,8 @@ versions and downloading APKs from APKMonk.
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import httpx
 from selectolax.parser import HTMLParser
 
 from scripts.scrapers.base import (
@@ -102,14 +98,9 @@ class APKMonkScraper(ScraperBase):
                     return DownloadResult(success=False, error="Download link not found")
                 dl_response = await self._request_with_retry(download_url, "GET")
 
-            await asyncio.to_thread(self._save_apk, dl_response, output_path)
+            await self.write(dl_response, output_path)
 
             return DownloadResult(success=True, file_path=output_path, version=version)
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
-
-    def _save_apk(self, response: httpx.Response, output_path: Path) -> None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("wb") as f:
-            f.writelines(response.iter_bytes(chunk_size=8192))

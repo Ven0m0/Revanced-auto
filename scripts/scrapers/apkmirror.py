@@ -18,6 +18,7 @@ from scripts.scrapers.base import (
     ScraperBase,
     VersionInfo,
 )
+from scripts.utils.java import JAVA_ARGS
 
 type ArchType = Literal["universal", "noarch", "arm64-v8a", "armeabi-v7a", "arm64-v8a + armeabi-v7a"]
 type BundleType = Literal["APK", "BUNDLE"]
@@ -108,6 +109,60 @@ def _parse_rows(tree: HTMLParser) -> list[Node]:
     return tree.css("div.table-row.headerFont")
 
 
+def is_apk_bundle(file_path: Path) -> bool:
+    return file_path.suffix.lower() in (".apkm", ".xapk")
+
+
+def merge_apkm_splits(temp_dir: Path, bundle_path: Path, output_path: Path) -> bool:
+    """Merge an APKM/XAPK bundle's per-arch splits into one installable APK.
+
+    Shared by any scraper that hands back a split bundle (APKMirror, GitHub
+    releases) so there is one APKEditor-based merger, not one per scraper.
+    """
+    from scripts.utils.network import gh_dl
+
+    apkeditor_jar = temp_dir / "apkeditor.jar"
+    if not gh_dl(
+        apkeditor_jar,
+        "https://github.com/REAndroid/APKEditor/releases/download/V1.4.2/APKEditor-1.4.2.jar",
+        sha256="706297058a52862d53603403337f400782782e4f0163353e4142f9a76785265a",
+    ):
+        msg = "Failed to download or verify APKEditor.jar"
+        raise RuntimeError(msg)
+
+    try:
+        subprocess.run(
+            [
+                "java",
+                *JAVA_ARGS,
+                "-jar",
+                str(apkeditor_jar),
+                "merge",
+                "-i",
+                str(bundle_path),
+                "-o",
+                f"{bundle_path}.mzip",
+                "-clean-meta",
+                "-f",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"APKEditor failed: {e.stderr}") from e
+
+    extract_dir = bundle_path.with_suffix("")
+    extract_dir.mkdir(exist_ok=True)
+    subprocess.run(["unzip", "-qo", f"{bundle_path}.mzip", "-d", str(extract_dir)], check=True)
+    zip_path = bundle_path.with_suffix(".zip")
+    subprocess.run(["zip", "-0rq", str(zip_path), "."], cwd=extract_dir, check=True)
+    shutil.move(str(zip_path), str(output_path))
+    for cleanup in (extract_dir, bundle_path.with_suffix(".mzip")):
+        shutil.rmtree(cleanup, ignore_errors=True)
+    return True
+
+
 class APKMirror(ScraperBase):
     BASE_URL = "https://www.apkmirror.com"
     APK_ARCH_PATH = BASE_URL + "/apk"
@@ -168,7 +223,7 @@ class APKMirror(ScraperBase):
         -- it has an ``id="download-link"`` anchor pointing at
         ``/wp-content/themes/APKMirror/download.php?id=...&key=...``, which
         redirects (via a signed Cloudflare R2 URL) to the actual APK/APKM
-        bytes. httpx follows that redirect automatically when downloading.
+        bytes. The session follows that redirect automatically when downloading.
         """
         tree = HTMLParser(confirm_page_html)
         link = tree.css_first("a#download-link")
@@ -265,50 +320,10 @@ class APKMirror(ScraperBase):
         return results
 
     def _is_bundle(self, file_path: Path) -> bool:
-        return file_path.suffix.lower() in (".apkm", ".xapk")
+        return is_apk_bundle(file_path)
 
     def _merge_splits(self, bundle_path: Path, output_path: Path) -> bool:
-        from scripts.utils.network import gh_dl
-
-        apkeditor_jar = self.temp_dir / "apkeditor.jar"
-        if not gh_dl(
-            apkeditor_jar,
-            "https://github.com/REAndroid/APKEditor/releases/download/V1.4.2/APKEditor-1.4.2.jar",
-            sha256="706297058a52862d53603403337f400782782e4f0163353e4142f9a76785265a",
-        ):
-            msg = "Failed to download or verify APKEditor.jar"
-            raise RuntimeError(msg)
-
-        try:
-            subprocess.run(
-                [
-                    "java",
-                    "-jar",
-                    str(apkeditor_jar),
-                    "merge",
-                    "-i",
-                    str(bundle_path),
-                    "-o",
-                    f"{bundle_path}.mzip",
-                    "-clean-meta",
-                    "-f",
-                ],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"APKEditor failed: {e.stderr}") from e
-
-        extract_dir = bundle_path.with_suffix("")
-        extract_dir.mkdir(exist_ok=True)
-        subprocess.run(["unzip", "-qo", f"{bundle_path}.mzip", "-d", str(extract_dir)], check=True)
-        zip_path = bundle_path.with_suffix(".zip")
-        subprocess.run(["zip", "-0rq", str(zip_path), "."], cwd=extract_dir, check=True)
-        shutil.move(str(zip_path), str(output_path))
-        for cleanup in (extract_dir, bundle_path.with_suffix(".mzip")):
-            shutil.rmtree(cleanup, ignore_errors=True)
-        return True
+        return merge_apkm_splits(self.temp_dir, bundle_path, output_path)
 
     async def download(
         self,
@@ -364,7 +379,7 @@ class APKMirror(ScraperBase):
             if final_download_url is None:
                 return DownloadResult(success=False, error="Failed to get download URL")
 
-            await self._download_file(final_download_url, output_path)
+            await self.save(final_download_url, output_path)
 
             if self._is_bundle(output_path):
                 merged_path = output_path.with_suffix(".apk")
@@ -375,11 +390,6 @@ class APKMirror(ScraperBase):
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
-
-    async def _download_file(self, url: str, output_path: Path) -> None:
-        response = await self.get(url, use_cache=False)
-        await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
-        await asyncio.to_thread(output_path.write_bytes, response.content)
 
     def close(self) -> None:
         super().close()

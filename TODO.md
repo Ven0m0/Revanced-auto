@@ -1,2 +1,0 @@
-- check out "https://github.com/sarperavci/CloudflareBypassForScraping" and "https://github.com/nvbangg/builder-for-morphe"
-- add "https://github.com/nvbangg/builder-for-morphe/blob/main/src/scrapers/github.py" "https://github.com/nvbangg/builder-for-morphe/tree/main/src/scrapers"

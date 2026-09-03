@@ -8,7 +8,7 @@ import re
 import zipfile
 from dataclasses import dataclass
 from io import BytesIO
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from selectolax.parser import HTMLParser
 
@@ -17,7 +17,6 @@ from scripts.lib import logging as log
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import httpx
     from selectolax.parser import Node
 
 from scripts.scrapers.base import (
@@ -225,20 +224,3 @@ class UptodownScraper(ScraperBase):
             return DownloadResult(success=False, file_path=None, version=version, error="Invalid XAPK file format")
         except Exception as e:
             return DownloadResult(success=False, file_path=None, version=version, error=f"XAPK extraction failed: {e}")
-
-    async def _request_with_retry(self, url: str, method: str = "GET", **kwargs: Any) -> httpx.Response:
-        delay = self.BASE_DELAY
-        last_error: Exception | None = None
-        for attempt in range(self.MAX_RETRIES):
-            try:
-                response = await self.session.request(method, url, **kwargs)
-                response.raise_for_status()
-            except Exception as e:
-                last_error = e
-                if attempt < self.MAX_RETRIES - 1:
-                    await asyncio.sleep(delay)
-                    delay *= 2
-            else:
-                return response
-        msg = f"Request failed after {self.MAX_RETRIES} retries: {url}"
-        raise RuntimeError(msg) from last_error

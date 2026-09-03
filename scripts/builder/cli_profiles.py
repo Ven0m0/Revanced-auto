@@ -11,6 +11,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, TypedDict
 
+from scripts.utils.java import JAVA_ARGS
+
 
 class CLIProfileType(Enum):
     """ReVanced CLI profile types."""
@@ -350,7 +352,7 @@ def detect_cli_profile(cli_jar_path: Path) -> CLIProfile:
     except subprocess.CalledProcessError, subprocess.TimeoutExpired:
         try:
             result = subprocess.run(
-                ["java", "-jar", str(cli_jar_path), "--help"],
+                ["java", *JAVA_ARGS, "-jar", str(cli_jar_path), "--help"],
                 capture_output=True,
                 text=True,
                 check=True,

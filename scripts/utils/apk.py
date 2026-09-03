@@ -8,6 +8,8 @@ import zipfile
 from enum import Enum
 from pathlib import Path
 
+from scripts.utils.java import JAVA_ARGS
+
 logger = logging.getLogger(__name__)
 
 
@@ -197,7 +199,7 @@ class SplitAPKHandler:
                 return False
             try:
                 subprocess.run(
-                    ["java", "-jar", str(jar), "merge", "-i", str(bundle_path), "-o", str(output_path)],
+                    ["java", *JAVA_ARGS, "-jar", str(jar), "merge", "-i", str(bundle_path), "-o", str(output_path)],
                     check=True,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,

@@ -86,7 +86,8 @@ use-custom-aapt2 = true
 # APP CONFIGURATIONS
 # =============================================================================
 # Each app section can override global settings
-# Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, archive-dlurl, apkpure-dlurl, or aptoide-dlurl)
+# Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, archive-dlurl,
+# apkpure-dlurl, aptoide-dlurl, apkmonk-dlurl, or github-dlurl = "https://github.com/owner/repo")
 # Optional fields: All global settings can be overridden per-app
 # =============================================================================
 # Spotify

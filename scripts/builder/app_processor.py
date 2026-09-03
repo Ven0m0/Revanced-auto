@@ -313,17 +313,19 @@ def _derive_scraper_pkg_name(download_url: str, source: DownloadSource) -> str:
     """Derive the package identifier a scraper expects from a configured ``*-dlurl`` listing-page URL.
 
     Each download source encodes the package differently in its URL:
-    APKMirror uses a two-segment ``owner-slug/app-slug`` path (e.g.
-    ``https://apkmirror.com/apk/google-inc/youtube-music`` -> the scraper
-    wants ``google-inc/youtube-music``); most other sources put the real
-    Android package id as the final path segment (e.g.
-    ``.../apks/com.google.android.apps.youtube.music``).
+    APKMirror and GitHub both use a two-segment path (e.g.
+    ``https://apkmirror.com/apk/google-inc/youtube-music`` ->
+    ``google-inc/youtube-music``; ``https://github.com/owner/repo`` ->
+    ``owner/repo``); most other sources put the real Android package id as
+    the final path segment (e.g. ``.../apks/com.google.android.apps.youtube.music``).
     """
     path = urllib.parse.urlparse(download_url).path.strip("/")
     if not path:
         return download_url
     if source == DownloadSource.APKMIRROR:
         return path.removeprefix("apk/")
+    if source == DownloadSource.GITHUB:
+        return path
     return path.rsplit("/", 1)[-1]
 
 
@@ -1031,14 +1033,7 @@ class AppProcessor:
         return [arch.value]
 
     def _determine_download_source(self, app_config: AppConfig) -> DownloadSource:
-        """Determine download source from app config.
-
-        Args:
-            app_config: App configuration.
-
-        Returns:
-            DownloadSource enum value.
-        """
+        """Determine the download source from the app's configured ``*-dlurl`` options."""
         options = app_config.options
 
         # APKMirror first (preferred: most complete/official listings; its
@@ -1058,19 +1053,13 @@ class AppProcessor:
             return DownloadSource.APTOIDE
         if options.get("apkmonk_dlurl"):
             return DownloadSource.APKMonk
+        if options.get("github_dlurl"):
+            return DownloadSource.GITHUB
 
         return DownloadSource.APKMIRROR
 
     def _get_download_url(self, app_config: AppConfig, source: DownloadSource) -> str:
-        """Get download URL from app config.
-
-        Args:
-            app_config: App configuration.
-            source: Download source.
-
-        Returns:
-            Download URL string.
-        """
+        """Get the configured ``*-dlurl`` option value for ``source``."""
         options = app_config.options
 
         url_map = {
@@ -1080,16 +1069,13 @@ class AppProcessor:
             DownloadSource.ARCHIVE: options.get("archive_dlurl", ""),
             DownloadSource.APTOIDE: options.get("aptoide_dlurl", ""),
             DownloadSource.APKMonk: options.get("apkmonk_dlurl", ""),
+            DownloadSource.GITHUB: options.get("github_dlurl", ""),
         }
 
         return url_map.get(source, "")
 
     def _send_notification(self, summary: BuildSummary) -> None:
-        """Send build completion notification.
-
-        Args:
-            summary: Build summary.
-        """
+        """Send a build completion notification."""
         if not self.notifier:
             return
 

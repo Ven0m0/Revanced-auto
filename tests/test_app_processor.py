@@ -85,6 +85,7 @@ class TestAppProcessorDownloadSource:
             ({"archive_dlurl": "https://archive.org/some/path"}, DownloadSource.ARCHIVE),
             ({"aptoide_dlurl": "https://aptoide.com/some/path"}, DownloadSource.APTOIDE),
             ({"apkmonk_dlurl": "https://apkmonk.com/some/path"}, DownloadSource.APKMonk),
+            ({"github_dlurl": "https://github.com/owner/repo"}, DownloadSource.GITHUB),
             ({}, DownloadSource.APKMIRROR),
             ({"other_dlurl": "https://example.com/"}, DownloadSource.APKMIRROR),
         ],

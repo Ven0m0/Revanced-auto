@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -83,15 +82,9 @@ class ArchiveScraper(ScraperBase):
         versions = await self.get_versions(pkg_name, **kwargs)
         for v in versions:
             if v.version == version and (arch is None or v.arch == arch) and v.url is not None:
-                return await self._download_file(v.url, output_path, v.version)
+                try:
+                    await self.save(v.url, output_path)
+                except Exception as e:
+                    return DownloadResult(success=False, error=str(e))
+                return DownloadResult(success=True, file_path=output_path, version=v.version)
         return DownloadResult(success=False, error=f"Version {version} not found for package {pkg_name}")
-
-    async def _download_file(self, url: str, output_path: Path, version: str) -> DownloadResult:
-        try:
-            response = await self.session.get(url, follow_redirects=True)
-            response.raise_for_status()
-            await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
-            await asyncio.to_thread(output_path.write_bytes, response.content)
-            return DownloadResult(success=True, file_path=output_path, version=version)
-        except Exception as e:
-            return DownloadResult(success=False, error=str(e))

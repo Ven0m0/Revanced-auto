@@ -14,7 +14,6 @@ dependencies = [
   "httpx[http2]>=0.28.1",
   "orjson>=3.11.8",
   "selectolax>=0.4.11",
-  "beautifulsoup4>=4.15.0",
   "curl-cffi>=0.16.1",
 ]
 

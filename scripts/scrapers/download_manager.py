@@ -14,6 +14,7 @@ from scripts.scrapers.apkpure import APKPureScraper
 from scripts.scrapers.aptoide import AptoideScraper
 from scripts.scrapers.archive import ArchiveScraper
 from scripts.scrapers.base import DownloadSource, ScraperBase
+from scripts.scrapers.github import GitHubScraper
 from scripts.scrapers.uptodown import UptodownScraper
 
 ARCH_NORMALIZATION: dict[str, str] = {
@@ -63,15 +64,7 @@ class DownloadManager:
         self._lock = threading.Lock()
 
     def _get_scraper(self, source: DownloadSource) -> ScraperBase:
-        """Get or create scraper instance for source.
-
-        Args:
-            source: Download source identifier.
-
-        Returns:
-            ScraperBase instance for the source.
-
-        """
+        """Get or create the scraper instance for ``source``."""
         if source not in self._scrapers:
             match source:
                 case DownloadSource.APKMIRROR:
@@ -86,6 +79,8 @@ class DownloadManager:
                     self._scrapers[source] = AptoideScraper()
                 case DownloadSource.ARCHIVE:
                     self._scrapers[source] = ArchiveScraper()
+                case DownloadSource.GITHUB:
+                    self._scrapers[source] = GitHubScraper()
                 case _:
                     msg = f"Unsupported download source: {source}"
                     raise ValueError(msg)
@@ -178,17 +173,7 @@ class DownloadManager:
         return result.file_path
 
     def _normalize_arch(self, arch: str) -> str:
-        """Normalize architecture string.
-
-        Converts shorthand architecture names to their canonical form.
-
-        Args:
-            arch: Architecture string (e.g., "arm-v7a").
-
-        Returns:
-            Normalized architecture string (e.g., "armeabi-v7a").
-
-        """
+        """Normalize a shorthand architecture name (e.g. ``arm-v7a``) to its canonical form."""
         return ARCH_NORMALIZATION.get(arch, arch)
 
     def close(self) -> None:

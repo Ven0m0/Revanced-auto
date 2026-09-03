@@ -11,14 +11,28 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 JAVA_ARGS = [
+    # Deterministic UTF-8 output regardless of host locale/console codepage
+    # (stdout.encoding/stderr.encoding are the JDK 18+ supported properties;
+    # captured subprocess output would default to these anyway, but pinning
+    # them keeps behavior identical across JDK versions and OSes).
     "-Dfile.encoding=UTF-8",
-    "-Duser.country=US",
+    "-Dstdout.encoding=UTF-8",
+    "-Dstderr.encoding=UTF-8",
     "-Duser.language=en",
-    "-Dsun.stdout.encoding=UTF-8",
-    "-Dsun.stderr.encoding=UTF-8",
+    "-Duser.country=US",
+    # No GUI is ever used; avoids any accidental AWT/headful init.
+    "-Djava.awt.headless=true",
+    # Throughput over latency: each invocation is a short batch job, not a
+    # long-lived server, so pause-time-optimized G1 buys nothing here.
     "-XX:+UseParallelGC",
-    "-XX:+AggressiveOpts",
-    "-XX:+UseStringDeduplication",
+    # Scale the heap to the machine/container instead of the JVM's 25%
+    # default -- this process usually runs alone (or a couple in parallel
+    # via the build's ThreadPoolExecutor), so it can safely claim most of
+    # available memory for speed while still leaving headroom.
+    "-XX:MaxRAMPercentage=75.0",
+    # Fail fast and loud on OOM instead of hanging until the caller's
+    # subprocess timeout fires.
+    "-XX:+ExitOnOutOfMemoryError",
     "-XX:+IgnoreUnrecognizedVMOptions",
 ]
 
@@ -48,20 +62,9 @@ class JavaRunner:
         self._base_env = os.environ.copy()
 
     def _build_env(self) -> dict[str, str]:
-        """Build the environment for the subprocess.
-
-        Returns:
-            Dictionary of environment variables with GITHUB_REPOSITORY cleared
-            and keystore passwords added if available.
-        """
+        """Build the subprocess environment: base env, minus GITHUB_REPOSITORY, plus overrides."""
         env = self._base_env.copy()
-
         env.pop("GITHUB_REPOSITORY", None)
-
-        if "RV_KEYSTORE_PASSWORD" in env:
-            env["RV_KEYSTORE_PASSWORD"] = env["RV_KEYSTORE_PASSWORD"]
-        if "RV_KEYSTORE_ENTRY_PASSWORD" in env:
-            env["RV_KEYSTORE_ENTRY_PASSWORD"] = env["RV_KEYSTORE_ENTRY_PASSWORD"]
 
         if self.env:
             env.update(self.env)

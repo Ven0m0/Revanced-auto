@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
+import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import httpx
+from typing import Any
 
 from scripts.scrapers.base import (
     DownloadResult,
@@ -49,7 +46,7 @@ class AptoideScraper(ScraperBase):
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         url = self._build_versions_url(pkg_name)
         response = await self.get(url)
-        data = response.json()
+        data: dict[str, Any] = json.loads(response.text)
         versions = self._parse_version_info(data)
         arch = str(kwargs.get("arch", "universal"))
         if arch and arch != "universal":
@@ -85,12 +82,7 @@ class AptoideScraper(ScraperBase):
             content_type = dl_response.headers.get("content-type", "")
             if "text/html" in content_type.lower():
                 return DownloadResult(success=False, error="Received HTML instead of APK")
-            await asyncio.to_thread(self._save_apk, dl_response, output_path)
+            await self.write(dl_response, output_path)
             return DownloadResult(success=True, file_path=output_path, version=version)
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
-
-    def _save_apk(self, response: httpx.Response, output_path: Path) -> None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("wb") as f:
-            f.writelines(response.iter_bytes(chunk_size=8192))
