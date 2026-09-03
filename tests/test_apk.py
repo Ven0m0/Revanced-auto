@@ -1,6 +1,6 @@
 """Tests for scripts/utils/apk.py."""
 
-# ruff: noqa: S101, ARG001, ARG002, RUF043, S108
+# ruff: noqa: S101, ARG002, RUF043, S108
 from __future__ import annotations
 
 import subprocess
@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from scripts.utils.apk import (
-    AAPT2Manager,
     BundleType,
     SplitAPKHandler,
     _validate_apk_path,
@@ -167,99 +166,6 @@ class TestSplitAPKHandler:
         assert len(splits) == 1
         assert splits[0].name == "good.apk"
         assert not (tmp_path / "evil.apk").exists()
-
-
-# ---------------------------------------------------------------------------
-# AAPT2Manager
-# ---------------------------------------------------------------------------
-
-
-class TestAAPT2Manager:
-    def test_init_creates_cache_dir(self, tmp_path: Path) -> None:
-        cache = tmp_path / "aapt2_cache"
-        mgr = AAPT2Manager(cache_dir=cache)
-        assert cache.is_dir()
-        assert mgr.cache_dir == cache
-
-    def test_get_aapt2_returns_cached_binary(self, tmp_path: Path) -> None:
-        cache = tmp_path / "aapt2"
-        cache.mkdir()
-        binary = cache / "aapt2-arm64-v8a"
-        binary.write_bytes(b"fake")
-        mgr = AAPT2Manager(cache_dir=cache)
-        result = mgr.get_aapt2("arm64-v8a")
-        assert result == binary
-
-    def test_get_aapt2_returns_none_when_unavailable(self, tmp_path: Path) -> None:
-        cache = tmp_path / "aapt2"
-        cache.mkdir()
-        mgr = AAPT2Manager(cache_dir=cache)
-        with (
-            patch("scripts.utils.apk.AAPT2Manager.get_aapt2", wraps=mgr.get_aapt2),
-            patch("scripts.utils.network.gh_dl", return_value=False),
-            patch("shutil.which", return_value=None),
-        ):
-            result = mgr.get_aapt2("arm64-v8a")
-        assert result is None
-
-    def test_optimize_apk_returns_false_when_no_input(self, tmp_path: Path) -> None:
-        mgr = AAPT2Manager(cache_dir=tmp_path / "aapt2")
-        result = mgr.optimize_apk(tmp_path / "missing.apk", tmp_path / "out.apk")
-        assert result is False
-
-    def test_optimize_apk_returns_false_when_no_aapt2(self, tmp_path: Path, sample_apk: Path) -> None:
-        mgr = AAPT2Manager(cache_dir=tmp_path / "aapt2")
-        with patch.object(mgr, "get_aapt2", return_value=None):
-            result = mgr.optimize_apk(sample_apk, tmp_path / "out.apk")
-        assert result is False
-
-    def test_optimize_apk_passes_language_and_density(self, tmp_path: Path, sample_apk: Path) -> None:
-        mgr = AAPT2Manager(cache_dir=tmp_path / "aapt2")
-        fake_bin = tmp_path / "aapt2_bin"
-        fake_bin.write_bytes(b"fake")
-        fake_bin.chmod(0o755)
-
-        captured_cmd: list[list[str]] = []
-
-        def capture_run(cmd: list[str], **kwargs: object) -> MagicMock:
-            captured_cmd.append(cmd)
-            return MagicMock(returncode=0)
-
-        with (
-            patch.object(mgr, "get_aapt2", return_value=fake_bin),
-            patch("subprocess.run", side_effect=capture_run),
-        ):
-            mgr.optimize_apk(
-                sample_apk,
-                tmp_path / "out.apk",
-                languages=["en"],
-                densities=["xxhdpi"],
-            )
-
-        assert len(captured_cmd) == 1
-        cmd = captured_cmd[0]
-        assert "--target-locales" in cmd
-        assert "en" in cmd
-        assert "--target-densities" in cmd
-        assert "xxhdpi" in cmd
-
-    def test_optimize_apk_subprocess_failure(self, tmp_path: Path, sample_apk: Path) -> None:
-        mgr = AAPT2Manager(cache_dir=tmp_path / "aapt2")
-        fake_bin = tmp_path / "aapt2_bin"
-        fake_bin.write_bytes(b"fake")
-        fake_bin.chmod(0o755)
-
-        with (
-            patch.object(mgr, "get_aapt2", return_value=fake_bin),
-            patch(
-                "subprocess.run",
-                side_effect=subprocess.CalledProcessError(1, "aapt2"),
-            ) as mock_run,
-        ):
-            result = mgr.optimize_apk(sample_apk, tmp_path / "out.apk")
-        assert result is False
-        mock_run.assert_called_once()
-        assert mock_run.call_args.kwargs.get("check") is True
 
 
 # ---------------------------------------------------------------------------

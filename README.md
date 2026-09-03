@@ -71,7 +71,7 @@ This repo ships with **Morphe** as the default patcher (`MorpheApp/morphe-patche
 ### Prerequisites
 
 - Java **21+** (Morphe CLI is built and tested on Java 21 LTS)
-- Python **3.13+**
+- Python **3.14+**
 - `uv` for dependency management (or `mise` to provision the toolchain)
 
 ### First-time setup
@@ -136,7 +136,7 @@ uv run python -m pytest tests -v
 
 ## Configuration
 
-The shipped `config.toml` uses top-level global settings plus per-app sections such as `[YouTube-Extended]` or `[YouTube-Morphed]`. Each enabled app needs at least one download source:
+The shipped `config.toml` uses top-level global settings plus per-app sections such as `[YouTube-Morphed]` or `[Reddit-Morphed]`. Each enabled app needs at least one download source:
 
 - `apkmirror-dlurl`
 - `uptodown-dlurl`
@@ -144,6 +144,7 @@ The shipped `config.toml` uses top-level global settings plus per-app sections s
 - `apkpure-dlurl`
 - `aptoide-dlurl`
 - `apkmonk-dlurl`
+- `github-dlurl` (e.g. `"https://github.com/owner/repo"`)
 
 Common global settings include:
 
@@ -156,11 +157,14 @@ Common global settings include:
 - `cli-profile` (defaults to `"auto"`; detects `revanced-cli-v5`, `revanced-cli-v6`, `morphe-cli`, or `adobo-cli` from `--help`)
 - `arch`
 - `riplib`
-- `enable-aapt2-optimize`
-- `aapt2-source`
-- `use-custom-aapt2`
 
-The sample config enables `Music-Morphed` and `YouTube-Morphed` (Morphe default). Other sections (`Music-Extended`, `YouTube-Extended`, `X`, `Spotify`, etc.) are included as examples and are disabled by default — flip `enabled = true` to use them.
+Per-app settings worth knowing:
+
+- `patches` — explicit list of patch names to include for that app (patches not listed are excluded)
+- `patch-options."Patch Name"` — a sub-table of `key = "value"` options passed to a specific patch
+- `exclusive` — when `true`, only the app's own `patches` list applies; global default patches are not merged in
+
+The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-Morphed`, `Brave`, and `SDMaid`. Other sections (`Spotify`, `GooglePhotos`, `Instagram-Piko`, `Twitter-Piko`) are included as disabled examples — flip `enabled = true` to use them.
 
 ### Patch sources
 
@@ -168,7 +172,7 @@ The sample config enables `Music-Morphed` and `YouTube-Morphed` (Morphe default)
 
 - **Morphe (current default)** — `MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`. Active app sections are `YouTube-Morphed` and `Music-Morphed`.
 - **ReVanced** — `ReVanced/revanced-patches` + `ReVanced/revanced-cli` (upstream).
-- **ReVanced Extended (RVX)** — `anddea/revanced-patches` + `inotia00/revanced-cli`. Sample sections `YouTube-Extended` / `Music-Extended` are shipped disabled; flip `enabled = true` to use them.
+- **ReVanced Extended (RVX)** — `anddea/revanced-patches` + `inotia00/revanced-cli`.
 - **Piko** (Twitter/X) — `crimera/piko`.
 - **Patcheddit** (Reddit) — `wchill/patcheddit`.
 - **External bundles** — `brosssh/revanced-external-bundles` resolves a patch JAR via the community aggregator's GraphQL API (https://revanced-external-bundles.brosssh.com). Use `external-bundles:<bundle_type>` to pin a specific bundle type; the bare repo slug falls back to selecting by the app's package id.
@@ -180,6 +184,7 @@ Config docs and generators:
 - [`docs/README.md`](./docs/README.md) — docs index
 - [`docs/index.html`](./docs/index.html) — local docs landing page
 - [`docs/generator.html`](./docs/generator.html) — local config generator
+- [`CHANGELOG.md`](./CHANGELOG.md) — release history (maintained by release-please)
 - Hosted generator used by this repo's config format: <https://j-hc.github.io/rvmm-config-gen/>
 
 ## Plugin hooks

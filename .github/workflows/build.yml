@@ -11,6 +11,25 @@ on:
         default: stable
   workflow_dispatch:
     inputs:
+      app_name:
+        description: App to build (leave empty to build all enabled apps)
+        required: false
+        default: ""
+        type: string
+      version:
+        description: App version (auto, latest, or specific version like 18.48.39)
+        required: false
+        default: auto
+        type: string
+      architecture:
+        description: Target architecture (only applied when app_name is set)
+        required: false
+        default: arm64-v8a
+        type: choice
+        options:
+          - arm64-v8a
+          - armeabi-v7a
+          - both
       build_mode:
         description: Build target
         required: false
@@ -19,8 +38,13 @@ on:
         options:
           - stable
           - dev
+      publish_release:
+        description: Publish to GitHub Releases
+        required: false
+        default: true
+        type: boolean
 concurrency:
-  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.app_name }}
   cancel-in-progress: true
 jobs:
   setup_matrix:
@@ -37,7 +61,7 @@ jobs:
         id: set-matrix
         run: |
           chmod +x scripts/generate_matrix.sh
-          MATRIX=$(./scripts/generate_matrix.sh)
+          MATRIX=$(./scripts/generate_matrix.sh "${{ inputs.app_name }}")
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
   apk_matrix:
     needs: setup_matrix
@@ -65,8 +89,35 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-revanced-prebuilts-
       - name: Generate ${{ matrix.id }} config
+        env:
+          APP_NAME: ${{ matrix.id }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_ARCH: ${{ inputs.architecture }}
         run: |
-          ./extras.sh separate-config config.toml "${{ matrix.id }}" sep_config.json
+          ./extras.sh separate-config config.toml "${APP_NAME}" sep_config.json
+          # Apply manual-dispatch version/arch overrides, if given
+          if [[ -n "${INPUT_VERSION:-}" && "${INPUT_VERSION}" != "auto" ]] || [[ -n "${INPUT_ARCH:-}" && "${INPUT_ARCH}" != "both" ]]; then
+            python3 - <<'PYEOF'
+          import json
+          import os
+
+          with open("sep_config.json") as f:
+              config = json.load(f)
+
+          app = config[os.environ["APP_NAME"]]
+
+          version = os.environ.get("INPUT_VERSION", "")
+          if version and version != "auto":
+              app["version"] = version
+
+          arch = os.environ.get("INPUT_ARCH", "")
+          if arch and arch != "both":
+              app["arch"] = arch
+
+          with open("sep_config.json", "w") as f:
+              json.dump(config, f)
+          PYEOF
+          fi
           cat sep_config.json
       - name: Build APKs
         run: ./build.sh sep_config.json
@@ -94,7 +145,7 @@ jobs:
           retention-days: 1
   release:
     needs: apk_matrix
-    if: ${{ !cancelled() && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name }}
+    if: ${{ !cancelled() && inputs.publish_release != false && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -157,9 +208,11 @@ jobs:
           VERSION_PREFIX="${{ steps.version.outputs.version }}"
           # Extract year-month prefix for cleanup (e.g., "26.03.")
           YM_PREFIX=$(echo "$VERSION_PREFIX" | cut -d. -f1-2)
-          # Delete releases from previous months, keep latest 3
+          # Delete releases from previous months, keep latest 3.
+          # Skip "v*" tags - those belong to release-please, not the date-based APK releases.
           gh release list --json tagName -q ".[].tagName" | \
             grep -v "^${YM_PREFIX}\." | \
+            grep -v "^v" | \
             head -n 20 | \
             while read -r tag; do
               echo "Cleaning old release: $tag"

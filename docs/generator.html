@@ -97,11 +97,6 @@
                         <p class="help-text">Number of apps to build simultaneously (1 = sequential)</p>
                     </div>
                     <div class="form-group">
-                        <label for="compression-level">Compression Level</label>
-                        <input type="number" id="compression-level" value="9" min="0" max="9">
-                        <p class="help-text">ZIP compression (0 = none, 9 = maximum)</p>
-                    </div>
-                    <div class="form-group">
                         <label for="patches-source">Default Patches Source</label>
                         <input type="text" id="patches-source" value="MorpheApp/morphe-patches">
                         <p class="help-text">GitHub repo (owner/name) for patches. Accepts `MorpheApp/morphe-patches`, `ReVanced/revanced-patches`, `jkennethcarino/adobo`, `brosssh/revanced-external-bundles`, or `external-bundles:&lt;type&gt;`.</p>
@@ -155,23 +150,6 @@
                             <input type="checkbox" id="riplib" checked>
                             <span>Enable riplib (strip unnecessary libraries)</span>
                         </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="aapt2" checked>
-                            <span>Enable AAPT2 optimization</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="use-custom-aapt2">
-                            <span>Use custom AAPT2 binary</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label for="aapt2-source">AAPT2 source repo</label>
-                        <input type="text" id="aapt2-source" value="Graywizard888/Custom-Enhancify-aapt2-binary">
-                        <p class="help-text">GitHub <code>owner/repo</code> for the custom AAPT2 binary (used when <code>use-custom-aapt2</code> is enabled).</p>
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
@@ -609,18 +587,10 @@
 # =============================================================================
 # Parallel Build Jobs
 parallel-jobs = ${g("parallel-jobs").value}
-# Compression Level
-compression-level = ${g("compression-level").value}
 # ReVanced Integrations Checks
 remove-rv-integrations-checks = ${g("remove-checks").checked}
 # Library Stripping (riplib)
 riplib = ${g("riplib").checked}
-# AAPT2 Optimization
-enable-aapt2-optimize = ${g("aapt2").checked}
-# AAPT2 Source (custom aapt2 binary)
-aapt2-source = "${g("aapt2-source").value}"
-# Use Custom AAPT2
-use-custom-aapt2 = ${g("use-custom-aapt2").checked}
 # Default Architecture
 arch = "${g("arch").value}"
 # Build Mode
@@ -718,8 +688,8 @@ rv-brand = "${g("rv-brand").value}"
             const globals = {};
             const apps = {};
             const globalKeys = new Set([
-                "parallel-jobs", "compression-level", "remove-rv-integrations-checks",
-                "riplib", "enable-aapt2-optimize", "aapt2-source", "use-custom-aapt2",
+                "parallel-jobs", "remove-rv-integrations-checks",
+                "riplib",
                 "arch", "build-mode",
                 "patches-version", "cli-version", "version", "patches-source",
                 "cli-source", "cli-profile", "rv-brand",
@@ -759,12 +729,8 @@ rv-brand = "${g("rv-brand").value}"
                 }
             };
             setVal("parallel-jobs", globals["parallel-jobs"]);
-            setVal("compression-level", globals["compression-level"]);
             setVal("remove-checks", globals["remove-rv-integrations-checks"]);
             setVal("riplib", globals.riplib);
-            setVal("aapt2", globals["enable-aapt2-optimize"]);
-            setVal("use-custom-aapt2", globals["use-custom-aapt2"]);
-            setVal("aapt2-source", globals["aapt2-source"]);
             setVal("arch", globals.arch);
             setVal("patches-version", globals["patches-version"]);
             setVal("cli-version", globals["cli-version"]);
@@ -964,7 +930,7 @@ rv-brand = "${g("rv-brand").value}"
             renderCatalog();
             updatePreview();
             // Global settings: update preview on any change
-            document.querySelectorAll("#parallel-jobs, #compression-level, #patches-source, #cli-source, #patches-version, #cli-version, #rv-brand, #arch, #riplib, #aapt2, #remove-checks")
+            document.querySelectorAll("#parallel-jobs, #patches-source, #cli-source, #patches-version, #cli-version, #rv-brand, #arch, #riplib, #remove-checks")
                 .forEach((el) => {
                     el.addEventListener("input", updatePreview);
                     el.addEventListener("change", updatePreview);

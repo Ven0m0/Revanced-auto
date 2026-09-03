@@ -1,23 +1,208 @@
-name: PR Validation
+name: CI
 permissions:
   contents: read
   pull-requests: write
   actions: read
 on:
-  pull_request:
-    branches:
-      - main
-      - master
+  push:
+    branches: [main, master]
     paths:
+      - '**.py'
       - '**.sh'
+      - '**.yml'
+      - '**.yaml'
       - '**.toml'
-      - scripts/**
-      - .github/workflows/**
+      - '**.json'
+      - '**.html'
+      - pyproject.toml
+      - biome.json
+      - .yamllint.yml
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
 concurrency:
-  group: pr-validation-${{ github.event.pull_request.number }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  lint-python:
+    name: Python (Ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+      - name: Run Ruff Linter
+        run: uv run ruff check  --output-format=github .
+        continue-on-error: true
+      - name: Run Ruff Formatter Check
+        run: uv run ruff format --check .
+        continue-on-error: true
+  lint-shell:
+    name: Shell Scripts
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Setup local bin
+        run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cache linting tools
+        uses: actions/cache@v6
+        id: cache-tools
+        with:
+          path: ~/.local/bin
+          key: ${{ runner.os }}-shell-tools-sc0.10.0-shfmt3.10.0-sh4.3.1
+      - name: Install ShellCheck
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: |
+          wget -qO- "https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz" \
+            | tar xJ --strip-components=1 -C "$HOME/.local/bin" shellcheck-v0.10.0/shellcheck
+          chmod +x "$HOME/.local/bin/shellcheck"
+      - name: Install shfmt
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: |
+          wget -qO "$HOME/.local/bin/shfmt" \
+            "https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64"
+          chmod +x "$HOME/.local/bin/shfmt"
+      - name: Install shellharden
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: |
+          wget -qO- "https://github.com/anordal/shellharden/releases/download/v4.3.1/shellharden-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar xz -C "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/shellharden"
+      - name: Run ShellCheck
+        run: |
+          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
+            | xargs shellcheck --color=always
+        continue-on-error: true
+      - name: Run shfmt (check only)
+        run: |
+          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
+            | xargs shfmt -d -i 2 -bn -ci -s -ln bash
+        continue-on-error: true
+      - name: Run shellharden (check only)
+        run: |
+          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
+            | xargs shellharden --check
+        continue-on-error: true
+  lint-yaml:
+    name: YAML
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Setup local bin
+        run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cache yamlfmt
+        uses: actions/cache@v6
+        id: cache-yamlfmt
+        with:
+          path: ~/.local/bin/yamlfmt
+          key: ${{ runner.os }}-yamlfmt-v0.14.0
+      - name: Install yamllint
+        run: uv sync --frozen --all-extras
+      - name: Install yamlfmt
+        if: steps.cache-yamlfmt.outputs.cache-hit != 'true'
+        run: |
+          wget -qO- "https://github.com/google/yamlfmt/releases/download/v0.14.0/yamlfmt_0.14.0_Linux_x86_64.tar.gz" \
+            | tar xz -C "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/yamlfmt"
+      - name: Run yamllint
+        run: |
+          find . \( -name "*.yml" -o -name "*.yaml" \) -not -path "./.git/*" -not -path "./build/*" \
+            | xargs uv run yamllint
+        continue-on-error: true
+      - name: Run yamlfmt
+        run: yamlfmt -dry .
+        continue-on-error: true
+  lint-toml:
+    name: TOML (Tombi)
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+      - name: Install Tombi
+        run: uv tool install tombi
+      - name: Ensure uv tool bin is on PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Run Tombi Format Check
+        run: tombi format --check .
+        continue-on-error: true
+      - name: Run Tombi Lint
+        run: tombi lint pyproject.toml config.toml
+        continue-on-error: true
+  lint-web:
+    name: Web (Biome)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Setup local bin
+        run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cache Biome
+        uses: actions/cache@v6
+        id: cache-biome
+        with:
+          path: ~/.local/bin/biome
+          key: ${{ runner.os }}-biome-v2.3.11
+      - name: Install Biome
+        if: steps.cache-biome.outputs.cache-hit != 'true'
+        run: |
+          wget -qO "$HOME/.local/bin/biome" \
+            "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.3.11/biome-linux-x64"
+          chmod +x "$HOME/.local/bin/biome"
+      - name: Run Biome
+        run: biome check --reporter=github .
+        continue-on-error: true
+  lint-summary:
+    name: Lint Summary
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    needs: [lint-python, lint-shell, lint-yaml, lint-toml, lint-web]
+    if: always()
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Lint Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Python (Ruff) | ${{ needs.lint-python.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Shell Scripts | ${{ needs.lint-shell.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| YAML | ${{ needs.lint-yaml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TOML (Tombi) | ${{ needs.lint-toml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web (Biome) | ${{ needs.lint-web.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run \`./scripts/lint.sh\` locally to auto-fix issues." >> $GITHUB_STEP_SUMMARY
   validate:
+    name: PR Validation
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

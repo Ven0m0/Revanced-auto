@@ -1,5 +1,5 @@
-- [ ] remove AAPT2 Optimization as it tends to corrupt apks
-- [ ] update and cleanup @config.toml based on the morphe settings and patch selections
-- [ ] the @README.md is outdated, update it based on the current repo state
-- [ ] consolidate the redundand workflows in @.github/workflows/
-- [ ] add a CHANGELOG.md which automatically updates. ive previously used release-please in https://github.com/Ven0m0/steelseriesgg-rs
+- [x] remove AAPT2 Optimization as it tends to corrupt apks
+- [x] update and cleanup @config.toml based on the morphe settings and patch selections
+- [x] the @README.md is outdated, update it based on the current repo state
+- [x] consolidate the redundand workflows in @.github/workflows/
+- [x] add a CHANGELOG.md which automatically updates. ive previously used release-please in https://github.com/Ven0m0/steelseriesgg-rs

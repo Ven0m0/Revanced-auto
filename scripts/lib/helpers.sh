@@ -331,58 +331,9 @@ get_patch_last_supported_ver() {
   log_warn "No compatible versions found"
   return 1
 }
-# Set prebuilt binary paths based on architecture
-# Resolution order for aapt2:
-#   1. System aapt2 in PATH
-#   2. Dynamically fetched from GitHub (Graywizard888/Custom-Enhancify-aapt2-binary)
-#   3. Bundled binary in bin/aapt2/
+# Set prebuilt binary paths
 set_prebuilts() {
   export APKSIGNER="${BIN_DIR}/apksigner.jar"
-  local arch
-  arch=$(uname -m)
-  if [[ "$arch" = aarch64 ]]; then
-    arch=arm64
-  elif [[ "${arch:0:5}" = "armv7" ]]; then
-    arch=arm
-  elif [[ "$arch" = x86_64 ]]; then
-    arch=x86_64
-  fi
-
-  # Auto-detect aapt2 with dynamic fetch fallback
-  local system_aapt2
-  system_aapt2=$(command -v aapt2 || true)
-  if [[ -n "$system_aapt2" ]] && [[ -x "$system_aapt2" ]]; then
-    export AAPT2="$system_aapt2"
-    log_debug "Using system aapt2: $system_aapt2"
-  else
-    # Try dynamic fetch from GitHub
-    local aapt2_repo="${AAPT2_SOURCE:-${AAPT2_SOURCE_DEFAULT:-Graywizard888/Custom-Enhancify-aapt2-binary}}"
-    local fetched_aapt2=""
-    if fetched_aapt2=$(fetch_aapt2_binary "$aapt2_repo" 2> /dev/null) && [[ -n "$fetched_aapt2" ]] && [[ -x "$fetched_aapt2" ]]; then
-      export AAPT2="$fetched_aapt2"
-      log_info "Using dynamically fetched aapt2: $fetched_aapt2"
-    else
-      # Fall back to bundled binary
-      local bundled_aapt2="${BIN_DIR}/aapt2/aapt2-${arch}"
-      if [[ -f "$bundled_aapt2" ]] && [[ -x "$bundled_aapt2" ]]; then
-        export AAPT2="$bundled_aapt2"
-        log_debug "Using bundled aapt2 for architecture: $arch"
-      elif [[ "$arch" = "x86_64" ]]; then
-        local arm64_aapt2="${BIN_DIR}/aapt2/aapt2-arm64"
-        if [[ -f "$arm64_aapt2" ]] && [[ -x "$arm64_aapt2" ]]; then
-          export AAPT2="$arm64_aapt2"
-          log_warn "Using arm64 aapt2 on x86_64 (requires emulation)"
-        else
-          log_warn "No compatible aapt2 found - aapt2 optimization will be disabled"
-          export AAPT2=""
-        fi
-      else
-        log_warn "No aapt2 found - optimization will be disabled"
-        export AAPT2=""
-      fi
-    fi
-  fi
-  log_debug "Set prebuilts for architecture: $arch (AAPT2=${AAPT2:-none})"
 }
 # Scrape text content from HTML using a CSS selector
 # Args:

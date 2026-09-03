@@ -134,13 +134,6 @@ patch_apk() {
       [[ -n "$arg" ]] && cmd+=("$arg")
     done < <(xargs -n1 <<< "$patcher_args")
   fi
-  # Pass custom aapt2 binary to ReVanced/Morphe CLI
-  if [[ "${USE_CUSTOM_AAPT2:-true}" == "true" && -n "${AAPT2:-}" && -x "${AAPT2:-}" ]]; then
-    cmd+=("--custom-aapt2-binary=${AAPT2}")
-    log_debug "Using custom aapt2 binary: ${AAPT2}"
-  elif [[ "$OS" = "Android" && -n "${AAPT2:-}" ]]; then
-    cmd+=("--custom-aapt2-binary=${AAPT2}")
-  fi
   # Log command with secrets redacted
   local -a redacted_cmd=("${cmd[@]}")
   for i in "${!redacted_cmd[@]}"; do
@@ -518,21 +511,6 @@ build_rv() {
   fi
   # Prepare APK output
   local apk_output="${BUILD_DIR}/${app_name_l}-${rv_brand_f}-v${version_f}-${arch_f}.apk"
-  # Apply aapt2 optimization if enabled and architecture is arm64-v8a
-  local apk_to_move="$patched_apk"
-  if [[ "${ENABLE_AAPT2_OPTIMIZE:-false}" = "true" && "$arch" = "arm64-v8a" ]]; then
-    log_info "Applying aapt2 optimization (en, xxhdpi, arm64-v8a only)"
-    local optimized_apk="${patched_apk%.apk}-optimized.apk"
-    if [[ -f "scripts/aapt2-optimize.sh" ]]; then
-      if ./scripts/aapt2-optimize.sh "$patched_apk" "$optimized_apk"; then
-        apk_to_move="$optimized_apk"
-      else
-        log_info "aapt2 optimization failed, using unoptimized APK"
-      fi
-    else
-      log_info "aapt2-optimize.sh not found, skipping optimization"
-    fi
-  fi
-  mv -f "$apk_to_move" "$apk_output"
+  mv -f "$patched_apk" "$apk_output"
   pr "Built ${table}: '${apk_output}'"
 }

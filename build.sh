@@ -127,12 +127,6 @@ load_configuration() {
   DEF_RV_BRAND=$(toml_get "$main_config_t" rv-brand) || DEF_RV_BRAND="ReVanced"
   DEF_ARCH=$(toml_get "$main_config_t" arch) || DEF_ARCH="arm64-v8a"
   DEF_RIPLIB=$(toml_get "$main_config_t" riplib) || DEF_RIPLIB="true"
-  ENABLE_AAPT2_OPTIMIZE=$(toml_get "$main_config_t" enable-aapt2-optimize) || ENABLE_AAPT2_OPTIMIZE=false
-  export ENABLE_AAPT2_OPTIMIZE
-  AAPT2_SOURCE=$(toml_get "$main_config_t" aapt2-source) || AAPT2_SOURCE="Graywizard888/Custom-Enhancify-aapt2-binary"
-  export AAPT2_SOURCE
-  USE_CUSTOM_AAPT2=$(toml_get "$main_config_t" use-custom-aapt2) || USE_CUSTOM_AAPT2=true
-  export USE_CUSTOM_AAPT2
   log_info "Configuration loaded successfully"
   log_debug "Patches: ${DEF_PATCHES_SRC} @ ${DEF_PATCHES_VER}"
   log_debug "CLI: ${DEF_CLI_SRC} @ ${DEF_CLI_VER}"

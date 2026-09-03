@@ -52,7 +52,6 @@ class GlobalConfig:
     patches_source: str | list[str] = "MorpheApp/morphe-patches"
     cli_source: str = "MorpheApp/morphe-cli"
     riplib: bool = True
-    enable_aapt2_optimize: bool = True
     exclusive_load: bool = False
     merge_manifest: bool = False
     skip_download: bool = False

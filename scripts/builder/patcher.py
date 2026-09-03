@@ -42,7 +42,6 @@ class PatcherConfig:
     keystore_password: str
     key_alias: str
     key_password: str
-    custom_aapt2_binary: Path | None = None
 
 
 @dataclass
@@ -293,10 +292,6 @@ class ReVancedPatcher:
                 self.patcher_config.key_alias,
             ]
         )
-
-        if self.patcher_config.custom_aapt2_binary and self.patcher_config.custom_aapt2_binary.exists():
-            args.append(f"--custom-aapt2-binary={self.patcher_config.custom_aapt2_binary}")
-            logger.debug("Using custom aapt2 binary: %s", self.patcher_config.custom_aapt2_binary)
 
         return args
 

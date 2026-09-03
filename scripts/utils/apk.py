@@ -235,66 +235,6 @@ class SplitAPKHandler:
             return []
 
 
-class AAPT2Manager:
-    """Manager for downloading and using AAPT2 binaries for APK optimization."""
-
-    SOURCES: list[str] = [
-        "Graywizard888/Custom-Enhancify-aapt2-binary",
-        "ReVanced-Extended-Organization/AAPT2",
-    ]
-
-    def __init__(self, cache_dir: Path | None = None) -> None:
-        self.cache_dir = cache_dir or Path.home() / ".cache" / "revanced" / "aapt2"
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
-
-    def get_aapt2(self, arch: str = "arm64-v8a") -> Path | None:
-        from scripts.utils.network import gh_dl
-
-        cached = self.cache_dir / f"aapt2-{arch}"
-        if cached.exists():
-            return cached
-
-        for source in self.SOURCES:
-            url = f"https://github.com/{source}/releases/latest/download/aapt2-{arch}"
-            if gh_dl(cached, url):
-                cached.chmod(0o755)
-                return cached
-
-        system_aapt2 = shutil.which("aapt2")
-        if system_aapt2:
-            return Path(system_aapt2)
-
-        return None
-
-    def optimize_apk(
-        self,
-        apk_path: Path,
-        output_path: Path,
-        *,
-        arch: str = "arm64-v8a",
-        languages: list[str] | None = None,
-        densities: list[str] | None = None,
-    ) -> bool:
-        if not apk_path.exists():
-            return False
-
-        aapt2 = self.get_aapt2(arch)
-        if aapt2 is None:
-            return False
-
-        cmd = [str(aapt2), "optimize", "-o", str(output_path), str(apk_path)]
-        if languages:
-            cmd += ["--target-locales", ",".join(languages)]
-        if densities:
-            cmd += ["--target-densities", ",".join(densities)]
-
-        try:
-            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            return output_path.exists()
-        except subprocess.CalledProcessError, OSError:
-            return False
-
-
 def check_signature(apk_path: Path) -> bool:
     """Check if APK has valid v1+v2 signatures."""
     _validate_apk_path(apk_path, "check_signature")
