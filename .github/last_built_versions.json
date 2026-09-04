@@ -19,5 +19,5 @@
   "app_brave_version": "auto",
   "app_sdmaid_patches_source": "rushiranpise/morphe-patches",
   "app_sdmaid_cli_source": "MorpheApp/morphe-cli",
-  "app_sdmaid_version": "2.0.3-rc0"
+  "app_sdmaid_version": "2.0.3"
 }
