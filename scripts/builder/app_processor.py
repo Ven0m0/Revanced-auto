@@ -796,7 +796,7 @@ class AppProcessor:
         """
         if self.download_manager:
             candidates = context.candidates or [(context.source, context.download_url)]
-            output_path = context.output_path.parent / f"stock-{context.app_name}-{context.version}.apk"
+            output_path = Path(tempfile.gettempdir()) / f"stock-{context.app_name}-{context.version}.apk"
             errors: list[str] = []
             for source, download_url in candidates:
                 pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else context.app_id

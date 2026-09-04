@@ -178,6 +178,11 @@ class TestDownloadStockApkFailover:
         assert result == tmp_path
         assert download_manager.download.call_count == 2
 
+        # Stock download must never land under the build/output directory --
+        # it would get swept up by the `build/*.apk` artifact/release glob.
+        call_output_path = download_manager.download.call_args_list[0].args[2]
+        assert call_output_path.parent != context.output_path.parent
+
     def test_raises_when_all_candidates_fail(self, tmp_path: Path) -> None:
         download_manager = MagicMock()
         download_manager.download.side_effect = RuntimeError("failed")

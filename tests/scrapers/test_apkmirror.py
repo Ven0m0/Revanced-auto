@@ -3,6 +3,8 @@
 # ruff: noqa: S101
 
 import re
+import zipfile
+from typing import TYPE_CHECKING
 
 import pytest
 from selectolax.parser import HTMLParser, Node
@@ -15,7 +17,11 @@ from scripts.scrapers.apkmirror import (
     _parse_row_data,
     _parse_rows,
     get_target_archs,
+    is_apk_bundle,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _HEADER_ROW = """
 <div class="table-row headerFont">
@@ -146,3 +152,35 @@ def test_get_target_archs(arch: ArchType, expected: list[str]) -> None:
     to a list of acceptable architectures, including fallbacks.
     """
     assert get_target_archs(arch) == expected
+
+
+def test_is_apk_bundle_detects_split_bundle(sample_xapk: Path) -> None:
+    """A bundle zip (splits, no root AndroidManifest.xml) is detected."""
+    assert is_apk_bundle(sample_xapk) is True
+
+
+def test_is_apk_bundle_rejects_apk_named_bundle_bytes(sample_xapk: Path, tmp_path: Path) -> None:
+    """The real regression: APKMirror always saves to a ``.apk``-suffixed path.
+
+    Even when the downloaded bytes are actually a split bundle. Detection must
+    look at content, not the filename the caller happened to choose.
+    """
+    apk_named_bundle = tmp_path / "downloaded.apk"
+    apk_named_bundle.write_bytes(sample_xapk.read_bytes())
+    assert is_apk_bundle(apk_named_bundle) is True
+
+
+def test_is_apk_bundle_rejects_real_apk(tmp_path: Path) -> None:
+    """A zip containing a root AndroidManifest.xml is a real installable APK."""
+    real_apk = tmp_path / "real.apk"
+    with zipfile.ZipFile(real_apk, "w") as zf:
+        zf.writestr("AndroidManifest.xml", b"\x00")
+        zf.writestr("classes.dex", b"\x00")
+    assert is_apk_bundle(real_apk) is False
+
+
+def test_is_apk_bundle_rejects_non_zip(tmp_path: Path) -> None:
+    """A non-zip file (e.g. a truncated/failed download) is not a bundle."""
+    not_a_zip = tmp_path / "broken.apk"
+    not_a_zip.write_bytes(b"not a zip file")
+    assert is_apk_bundle(not_a_zip) is False

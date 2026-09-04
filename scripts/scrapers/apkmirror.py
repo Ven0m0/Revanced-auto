@@ -6,6 +6,7 @@ import asyncio
 import re
 import shutil
 import subprocess
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -144,7 +145,18 @@ def _parse_rows(tree: HTMLParser) -> list[Node]:
 
 
 def is_apk_bundle(file_path: Path) -> bool:
-    return file_path.suffix.lower() in (".apkm", ".xapk")
+    """True if the file is an APKM/XAPK split bundle rather than a plain APK.
+
+    Detected by content, not suffix: a source hands back bundle bytes under
+    whatever filename the caller chose (always ``.apk`` here), so a suffix
+    check silently passes an unmergeable bundle to the patcher.
+    """
+    try:
+        with zipfile.ZipFile(file_path) as zf:
+            names = zf.namelist()
+    except OSError, zipfile.BadZipFile:
+        return False
+    return "AndroidManifest.xml" not in names and any(n.endswith(".apk") for n in names)
 
 
 def merge_apkm_splits(temp_dir: Path, bundle_path: Path, output_path: Path) -> bool:
@@ -365,9 +377,6 @@ class APKMirror(ScraperBase):
                 )
         return results
 
-    def _is_bundle(self, file_path: Path) -> bool:
-        return is_apk_bundle(file_path)
-
     def _merge_splits(self, bundle_path: Path, output_path: Path) -> bool:
         return merge_apkm_splits(self.temp_dir, bundle_path, output_path)
 
@@ -426,10 +435,10 @@ class APKMirror(ScraperBase):
 
             await self.save(final_download_url, output_path)
 
-            if self._is_bundle(output_path):
-                merged_path = output_path.with_suffix(".apk")
-                await asyncio.to_thread(self._merge_splits, output_path, merged_path)
-                output_path = merged_path
+            if is_apk_bundle(output_path):
+                bundle_path = output_path.with_suffix(".apkm")
+                await asyncio.to_thread(output_path.rename, bundle_path)
+                await asyncio.to_thread(self._merge_splits, bundle_path, output_path)
 
             return DownloadResult(success=True, file_path=output_path, version=version)
 

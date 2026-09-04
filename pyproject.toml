@@ -1,7 +1,3 @@
-[build-system]
-requires = ["uv_build>=0.12.3", "setuptools>=84.0.0"]
-build-backend = "uv_build"
-
 [project]
 name = "revanced-auto"
 version = "1.1.0"
@@ -11,28 +7,12 @@ readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Ven0m0" }]
 dependencies = [
+  "curl-cffi>=0.16.1",
   "httpx[http2]>=0.28.1",
   "orjson>=3.11.8",
   "selectolax>=0.4.11",
-  "curl-cffi>=0.16.1",
 ]
 
-[dependency-groups]
-dev = [
-  "hypothesis>=6.165.1",
-  "mypy>=2.3.0",
-  "basedpyright>=1.39.3",
-  "ty>=0.0.66",
-  "prek>=0.4.11",
-  "tombi>=1.2.6",
-  "pytest>=9.1.1",
-  "pytest-asyncio>=1.3.0",
-  "pytest-cov>=6.0.0",
-  "pytest-durations>=1.7.0",
-  "ruff>=0.16.0",
-  "types-toml>=0.10.8.20240310",
-  "vulture>=2.16",
-]
 [project.optional-dependencies]
 # Keep [project.optional-dependencies].dev aligned with [dependency-groups].dev
 # so pip and uv users install the same local tooling.
@@ -49,6 +29,27 @@ dev = [
   "ruff>=0.16.0",
   "types-toml>=0.10.8.20240310",
 ]
+
+[dependency-groups]
+dev = [
+  "basedpyright>=1.39.3",
+  "hypothesis>=6.165.1",
+  "mypy>=2.3.0",
+  "prek>=0.4.11",
+  "pytest>=9.1.1",
+  "pytest-asyncio>=1.3.0",
+  "pytest-cov>=6.0.0",
+  "pytest-durations>=1.7.0",
+  "ruff>=0.16.0",
+  "tombi>=1.2.6",
+  "ty>=0.0.66",
+  "types-toml>=0.10.8.20240310",
+  "vulture>=2.16",
+]
+
+[build-system]
+requires = ["setuptools>=84.0.0", "uv_build>=0.12.3"]
+build-backend = "uv_build"
 
 [tool.mypy]
 python_version = "3.14"
@@ -68,11 +69,7 @@ strict_equality = true
 warn_unreachable = true
 ignore_missing_imports = true
 show_error_codes = true
-enable_error_code = [
-  "ignore-without-code",
-  "unused-awaitable",
-  "possibly-undefined"
-]
+enable_error_code = ["ignore-without-code", "unused-awaitable", "possibly-undefined"]
 
 [tool.ruff]
 line-length = 120
@@ -181,13 +178,7 @@ ignore = [
   "TRY003",
   "TRY300",
 ]
-"scripts/search/version_resolver.py" = [
-  "ARG002",
-  "D402",
-  "PLR2004",
-  "RET504",
-  "SIM103"
-]
+"scripts/search/version_resolver.py" = ["ARG002", "D402", "PLR2004", "RET504", "SIM103"]
 "scripts/utils/*.py" = [
   "ANN401",
   "ASYNC230",
