@@ -6,10 +6,12 @@
 /bin/apksigner.jar
 /bin/dexlib2.jar
 /bin/paccer.jar
+/bin/bcprov.jar
 .env
 /temp
 /build
 /logs
+/.cache
 build.md
 
 # Logs and temporary files

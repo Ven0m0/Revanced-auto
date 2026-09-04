@@ -1,6 +1,8 @@
 """Base scraper class and common types for all APK download sources."""
 
 import asyncio
+import contextlib
+import random
 import time
 from abc import ABC
 from dataclasses import dataclass
@@ -47,14 +49,32 @@ class DownloadResult:
 
 
 class ScraperBase(ABC):
-    MAX_RETRIES = 4
-    BASE_DELAY = 1.0
-    CACHE_TTL = 3600
+    MAX_RETRIES: int = 5
+    BASE_DELAY: float = 1.0
+    # Cloudflare's rate-limit challenge on apkmirror.com (429 + cf-mitigated:
+    # challenge) measured live to clear after ~20s; back off from there instead
+    # of the ordinary transport-error delay, or the retry budget burns inside
+    # the penalty window.
+    RATE_LIMIT_DELAY: float = 15.0
+    CACHE_TTL: int = 3600
+    # Minimum spacing between outgoing requests from one scraper instance, so
+    # a burst of page fetches (e.g. resolving several release pages back to
+    # back) doesn't itself trigger the rate limit.
+    MIN_REQUEST_INTERVAL: float = 1.0
 
     def __init__(self, source: DownloadSource) -> None:
         self.source = source
         self._session: curl_requests.AsyncSession | None = None
         self._cache: dict[str, tuple[float, Response]] = {}
+        self._last_request_at: float = 0.0
+
+    async def _throttle(self) -> None:
+        """Sleep just enough to keep requests at least MIN_REQUEST_INTERVAL apart."""
+        elapsed = time.monotonic() - self._last_request_at
+        wait = self.MIN_REQUEST_INTERVAL - elapsed
+        if wait > 0:
+            await asyncio.sleep(wait)
+        self._last_request_at = time.monotonic()
 
     @property
     def session(self) -> curl_requests.AsyncSession:
@@ -86,8 +106,12 @@ class ScraperBase(ABC):
         last_error: Exception | None = None
 
         for attempt in range(self.MAX_RETRIES):
+            await self._throttle()
             try:
                 response = await self.session.request(cast("HttpMethod", method), url, allow_redirects=True, **kwargs)
+                if response.status_code in (429, 503) and attempt < self.MAX_RETRIES - 1:
+                    await asyncio.sleep(self._rate_limit_wait(response, attempt))
+                    continue
                 response.raise_for_status()  # type: ignore[no-untyped-call]
             except RequestException as e:
                 last_error = e
@@ -99,6 +123,15 @@ class ScraperBase(ABC):
 
         msg = f"Request failed after {self.MAX_RETRIES} retries: {url}"
         raise RuntimeError(msg) from last_error
+
+    def _rate_limit_wait(self, response: Response, attempt: int) -> float:
+        """Backoff duration for a 429/503 response: Retry-After header if present, else escalating delay."""
+        retry_after: str | None = response.headers.get("retry-after") if response.headers else None
+        if retry_after:
+            with contextlib.suppress(ValueError):
+                return float(retry_after)
+        # Jitter only spreads out concurrent retries; not security-sensitive.
+        return self.RATE_LIMIT_DELAY * (2.0**attempt) + random.uniform(0, 1)  # noqa: S311
 
     async def get(self, url: str, use_cache: bool = True) -> Response:
         """GET ``url``, retrying on failure and caching successful responses."""

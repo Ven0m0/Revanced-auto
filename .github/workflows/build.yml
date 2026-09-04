@@ -57,11 +57,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+      - name: Install mise-managed toolchain (Python, uv)
+        uses: jdx/mise-action@v4.3.0
+        with:
+          install: true
+          cache: true
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
       - name: Generate Matrix
         id: set-matrix
         run: |
-          chmod +x scripts/generate_matrix.sh
-          MATRIX=$(./scripts/generate_matrix.sh "${{ inputs.app_name }}")
+          MATRIX=$(uv run python -m scripts.cli matrix "${{ inputs.app_name }}")
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
   apk_matrix:
     needs: setup_matrix
@@ -94,10 +100,10 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_ARCH: ${{ inputs.architecture }}
         run: |
-          ./extras.sh separate-config config.toml "${APP_NAME}" sep_config.json
+          uv run python -m scripts.cli extras separate-config config.toml "${APP_NAME}" sep_config.json
           # Apply manual-dispatch version/arch overrides, if given
           if [[ -n "${INPUT_VERSION:-}" && "${INPUT_VERSION}" != "auto" ]] || [[ -n "${INPUT_ARCH:-}" && "${INPUT_ARCH}" != "both" ]]; then
-            python3 - <<'PYEOF'
+            uv run python3 - <<'PYEOF'
           import json
           import os
 
@@ -120,7 +126,7 @@ jobs:
           fi
           cat sep_config.json
       - name: Build APKs
-        run: ./build.sh sep_config.json
+        run: uv run python -m scripts.cli build --config sep_config.json
         env:
           BUILD_MODE: ${{ inputs.build_mode }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -156,6 +162,13 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+      - name: Install mise-managed toolchain (Python, uv)
+        uses: jdx/mise-action@v4.3.0
+        with:
+          install: true
+          cache: true
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
       - name: Check if any artifacts exist
         id: check_artifacts
         continue-on-error: true
@@ -197,7 +210,7 @@ jobs:
         run: |
           DELIM="$(openssl rand -hex 8)"
           echo "BUILD_LOG<<${DELIM}" >> "$GITHUB_OUTPUT"
-          ./extras.sh combine-logs build-logs >> "$GITHUB_OUTPUT"
+          uv run python -m scripts.cli extras combine-logs build-logs >> "$GITHUB_OUTPUT"
           echo "${DELIM}" >> "$GITHUB_OUTPUT"
       - name: Cleanup old releases
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
@@ -230,15 +243,6 @@ jobs:
           prerelease: ${{ inputs.build_mode == 'dev' }}
           file_glob: true
           overwrite: true
-      - name: Install mise-managed toolchain (Python, uv)
-        if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        uses: jdx/mise-action@v4.3.0
-        with:
-          install: true
-          cache: true
-      - name: Install Python dependencies
-        if: steps.check_artifacts.outputs.has_artifacts == 'true'
-        run: uv sync --locked --all-groups
       - name: Save build state
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
         continue-on-error: true

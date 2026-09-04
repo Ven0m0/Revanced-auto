@@ -17,7 +17,11 @@ from scripts.lib import logging as log
 from scripts.lib.args import (
     build_parser,
     cache_parser,
+    check_env_parser,
     check_parser,
+    extras_parser,
+    lint_parser,
+    matrix_parser,
     version_tracker_parser,
 )
 from scripts.lib.cache import (
@@ -27,6 +31,7 @@ from scripts.lib.cache import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import FrameType
 
 
@@ -203,6 +208,45 @@ def run_cache(args: argparse.Namespace) -> int:
         log.abort(f"Cache command failed: {exc}")
 
 
+def run_check_env() -> int:
+    """Execute the check-env command."""
+    from scripts.lib.env_check import run_check_env as run_env_check
+
+    return run_env_check()
+
+
+def run_matrix(args: argparse.Namespace) -> int:
+    """Execute the matrix command."""
+    from scripts.lib.matrix import generate_matrix
+
+    print(generate_matrix(args.config, args.app_filter), end="")
+    return 0
+
+
+def run_extras(args: argparse.Namespace) -> int:
+    """Execute extras subcommands."""
+    from scripts.lib.extras import combine_logs, separate_config
+
+    subcommand = args.extras_command
+    try:
+        if subcommand == "separate-config":
+            separate_config(args.input_config, args.app_name, args.output_config)
+            return 0
+        if subcommand == "combine-logs":
+            print(combine_logs(args.logs_dir))
+            return 0
+        log.abort(f"Unknown extras subcommand: {subcommand}")
+    except OSError as exc:
+        log.abort(f"Extras command failed: {exc}")
+
+
+def run_lint(args: argparse.Namespace) -> int:
+    """Execute the lint command."""
+    from scripts.lib.lint import run_lint as run_lint_impl
+
+    return run_lint_impl(fix=args.fix)
+
+
 def main() -> int:
     """Main entry point."""
     signal.signal(signal.SIGINT, _signal_handler)
@@ -218,20 +262,30 @@ def main() -> int:
     check_parser(subparsers)
     version_tracker_parser(subparsers)
     cache_parser(subparsers)
+    check_env_parser(subparsers)
+    matrix_parser(subparsers)
+    extras_parser(subparsers)
+    lint_parser(subparsers)
 
     args = parser.parse_args()
 
+    handlers: dict[str, Callable[[argparse.Namespace], int]] = {
+        "build": run_build,
+        "check": run_check,
+        "version-tracker": run_version_tracker,
+        "cache": run_cache,
+        "check-env": lambda _args: run_check_env(),
+        "matrix": run_matrix,
+        "extras": run_extras,
+        "lint": run_lint,
+    }
+
     try:
-        if args.command == "build":
-            return run_build(args)
-        if args.command == "check":
-            return run_check(args)
-        if args.command == "version-tracker":
-            return run_version_tracker(args)
-        if args.command == "cache":
-            return run_cache(args)
-        parser.print_help()
-        return 1
+        handler = handlers.get(args.command)
+        if handler is None:
+            parser.print_help()
+            return 1
+        return handler(args)
     except KeyboardInterrupt:
         log.abort("Interrupted", code=130)
 

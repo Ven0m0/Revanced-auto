@@ -8,8 +8,8 @@ ReVanced-auto builds patched Android APKs from a TOML config: resolve compatible
 
 - Python **3.14+**
 - Java **21+**
-- `uv`, `jq`, `zip`
-- Optional but useful: `curl` or `wget`, `zipalign`, `optipng`
+- `uv`, `zip`, `unzip`
+- Optional but useful: `zipalign`, `optipng`
 
 This repo uses `uv` for dependency management and is not distributed as a standalone Python package.
 
@@ -20,10 +20,10 @@ git clone <repo-url>
 cd Revanced-auto
 mise install
 uv sync --locked --all-groups
-bash ./check-env.sh
+uv run python -m scripts.cli check-env
 ```
 
-`check-env.sh` verifies required tools, Java, downloads the required `bin/` jars when missing, checks optional helpers and assets, and validates `config.toml` syntax.
+`check-env` verifies required tools, Java, downloads the required `bin/` jars when missing, checks optional helpers and assets, and validates `config.toml` syntax.
 
 ## Quick start
 
@@ -34,7 +34,7 @@ Prefer the Python CLI. After `uv sync`, use `uv run ...` for one-off commands, o
 export KEYSTORE_PASSWORD='...'
 export KEYSTORE_ENTRY_PASSWORD='...'
 
-bash ./check-env.sh
+uv run python -m scripts.cli check-env
 uv run python -m scripts.cli check --config config.toml
 uv run python -m scripts.cli build --config config.toml --build-mode apk --parallel 1
 ```
@@ -55,15 +55,6 @@ uv run python -m scripts.cli version-tracker check --config config.toml
 uv run python -m scripts.cli cache stats
 ```
 
-Legacy wrapper:
-
-```bash
-bash ./build.sh --config config.toml --build-mode apk --parallel 1
-bash ./build.sh cache stats
-```
-
-`build.sh` is a compatibility wrapper around the same build flow. Prefer `uv run python -m scripts.cli ...` for normal use.
-
 ## Morphe setup guide
 
 This repo ships with **Morphe** as the default patcher (`MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`). `YouTube-Morphed` and `Music-Morphed` are enabled out of the box in `config.toml`.
@@ -81,7 +72,7 @@ git clone <repo-url>
 cd Revanced-auto
 mise install            # optional: provisions Python 3.14 + Java 21 via mise
 uv sync --locked --all-groups
-bash ./check-env.sh     # verifies tools, downloads bin/* jars, validates config.toml
+uv run python -m scripts.cli check-env   # verifies tools, downloads bin/* jars, validates config.toml
 export KEYSTORE_PASSWORD='...'
 export KEYSTORE_ENTRY_PASSWORD='...'
 ```
@@ -130,7 +121,7 @@ uv run python -m scripts.cli cache init
 uv run python -m scripts.cli cache stats
 uv run python -m scripts.cli cache cleanup [--force]
 uv run python -m scripts.cli cache clean [--pattern '.*\.apk']
-uv run bash ./scripts/lint.sh
+uv run python -m scripts.cli lint [--fix]
 uv run python -m pytest tests -v
 ```
 
@@ -203,6 +194,7 @@ Stages: `pre_pipeline`, `post_pipeline`.
 - Default signing values come from the shell path: `KEYSTORE_PATH=assets/ks.keystore`, `KEYSTORE_ALIAS=jhc`, `KEYSTORE_SIGNER=jhc`.
 - Stock APK signature checks use `assets/sig.txt` when entries are available.
 - Final APKs are re-signed with `bin/apksigner.jar` using **v1 + v2 only**; **v3/v4 are intentionally disabled** for compatibility and predictable signing behavior. The jar is downloaded on demand when missing.
+- Keystores are auto-converted to BKS (cached under `.cache/keystore/`) before patching, since Morphe's patcher only accepts BKS; a PKCS12/JKS keystore such as `assets/ks.keystore` converts transparently on first use.
 
 Normal flow:
 
@@ -214,7 +206,7 @@ Normal flow:
 6. Patch, sign, and write final artifacts to `build/`.
 7. Save the new version state after a successful build.
 
-For YouTube and YouTube Music builds, expect to install a compatible GmsCore/MicroG provider on-device. The legacy Bash flow appends provider links to `build.md`; if you need them directly, see:
+For YouTube and YouTube Music builds, expect to install a compatible GmsCore/MicroG provider on-device. The build appends provider links to `build.md`; if you need them directly, see:
 
 - <https://github.com/ReVanced/GmsCore/releases/latest>
 - <https://github.com/MorpheApp/MicroG-RE/releases/latest>
@@ -225,19 +217,18 @@ For YouTube and YouTube Music builds, expect to install a compatible GmsCore/Mic
 - `build/` — final APKs, module ZIPs, and per-app Markdown summaries
 - `temp/` — temporary files and default cache directory
 - `.github/last_built_versions.json` — saved version-tracker state
-- `build.md` — legacy Bash-flow build notes/changelog
+- `build.md` — combined build notes/changelog
 
 Cache commands use `temp/` by default with a TTL of `86400` seconds (24 hours). Expired entries are reused only until cleanup or replacement. Set `CACHE_DIR` to override the cache location.
 
 ## Troubleshooting
 
-- Run `bash ./check-env.sh` first.
+- Run `uv run python -m scripts.cli check-env` first.
 - If `python -m scripts.cli ...` cannot import dependencies, run it through `uv run` or activate the `uv` environment first.
-- If your checkout does not preserve executable bits, invoke shell entry points as `bash ./check-env.sh` and `bash ./build.sh`.
 - If version checks keep skipping builds, inspect or reset `.github/last_built_versions.json` with `uv run python -m scripts.cli version-tracker show --config config.toml` or `... reset --config config.toml`.
 - If downloads fail, set `GITHUB_TOKEN` and/or tune retry env vars.
 - If signing fails, verify keystore env vars and file paths.
-- `DEBUG=1` is useful for Python CLI debugging; `LOG_LEVEL=0` is useful for legacy/shared shell logging.
+- `DEBUG=1` is useful for Python CLI debugging.
 
 Useful env vars:
 
@@ -252,8 +243,6 @@ Useful env vars:
 - `INITIAL_RETRY_DELAY`
 - `CONNECTION_TIMEOUT`
 - `DEBUG`
-- `LOG_LEVEL`
-- `BUILD_MODE` (legacy shell flow)
 
 ## Docs
 

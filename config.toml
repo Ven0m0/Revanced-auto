@@ -85,6 +85,7 @@ app-name = "TikTok"
 patches-source = ["BlazeFTL/FTL-Patches", "icysymmetra/tiktok-patches-for-morphe"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
+apkmirror-dlurl = "https://apkmirror.com/apk/tiktok-pte-ltd/tik-tok-including-musical-ly"
 uptodown-dlurl = "https://tiktok.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.net/tiktok/com.zhiliaoapp.musically"
 exclusive = true
@@ -411,10 +412,11 @@ keepLanguages = "[\"en\"]"
 [SDMaid]
 enabled = true
 app-name = "SDMaid"
-patches-source = ["BlazeFTL/FTL-Patches", "rushiranpise/morphe-patches"]
+version = "2.0.3-rc0"
+patches-source = "rushiranpise/morphe-patches"
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
-apkpure-dlurl = "https://apkpure.net/sd-maid-2-se/eu.darken.sdmse"
+github-dlurl = "https://github.com/d4rken-org/sdmaid-se"
 exclusive = true
 patches = [
   "APK Junk Cleanup",

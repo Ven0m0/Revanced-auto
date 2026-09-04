@@ -8,7 +8,6 @@ on:
     branches: [main, master]
     paths:
       - '**.py'
-      - '**.sh'
       - '**.yml'
       - '**.yaml'
       - '**.toml'
@@ -45,54 +44,6 @@ jobs:
         continue-on-error: true
       - name: Run Ruff Formatter Check
         run: uv run ruff format --check .
-        continue-on-error: true
-  lint-shell:
-    name: Shell Scripts
-    runs-on: ubuntu-slim
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7.0.1
-      - name: Setup local bin
-        run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Cache linting tools
-        uses: actions/cache@v6
-        id: cache-tools
-        with:
-          path: ~/.local/bin
-          key: ${{ runner.os }}-shell-tools-sc0.10.0-shfmt3.10.0-sh4.3.1
-      - name: Install ShellCheck
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: |
-          wget -qO- "https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz" \
-            | tar xJ --strip-components=1 -C "$HOME/.local/bin" shellcheck-v0.10.0/shellcheck
-          chmod +x "$HOME/.local/bin/shellcheck"
-      - name: Install shfmt
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: |
-          wget -qO "$HOME/.local/bin/shfmt" \
-            "https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64"
-          chmod +x "$HOME/.local/bin/shfmt"
-      - name: Install shellharden
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: |
-          wget -qO- "https://github.com/anordal/shellharden/releases/download/v4.3.1/shellharden-x86_64-unknown-linux-gnu.tar.gz" \
-            | tar xz -C "$HOME/.local/bin"
-          chmod +x "$HOME/.local/bin/shellharden"
-      - name: Run ShellCheck
-        run: |
-          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
-            | xargs shellcheck --color=always
-        continue-on-error: true
-      - name: Run shfmt (check only)
-        run: |
-          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
-            | xargs shfmt -d -i 2 -bn -ci -s -ln bash
-        continue-on-error: true
-      - name: Run shellharden (check only)
-        run: |
-          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./temp/*" \
-            | xargs shellharden --check
         continue-on-error: true
   lint-yaml:
     name: YAML
@@ -184,7 +135,7 @@ jobs:
     name: Lint Summary
     runs-on: ubuntu-slim
     timeout-minutes: 5
-    needs: [lint-python, lint-shell, lint-yaml, lint-toml, lint-web]
+    needs: [lint-python, lint-yaml, lint-toml, lint-web]
     if: always()
     steps:
       - name: Generate Summary
@@ -194,12 +145,11 @@ jobs:
           echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Python (Ruff) | ${{ needs.lint-python.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Shell Scripts | ${{ needs.lint-shell.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| YAML | ${{ needs.lint-yaml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| TOML (Tombi) | ${{ needs.lint-toml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Web (Biome) | ${{ needs.lint-web.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Run \`./scripts/lint.sh\` locally to auto-fix issues." >> $GITHUB_STEP_SUMMARY
+          echo "Run \`python -m scripts.cli lint --fix\` locally to auto-fix issues." >> $GITHUB_STEP_SUMMARY
   validate:
     name: PR Validation
     if: github.event_name == 'pull_request'
@@ -224,7 +174,7 @@ jobs:
           echo "## Prerequisites Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           MISSING=""
-          for tool in jq zip curl java uv; do
+          for tool in zip unzip java uv; do
             if command -v $tool &> /dev/null; then
               echo "✓ $tool" >> $GITHUB_STEP_SUMMARY
             else
@@ -242,31 +192,6 @@ jobs:
           if [[ $JAVA_VER -lt 21 ]]; then
             echo "Java 21+ required"
             exit 1
-          fi
-      - name: Validate bash syntax
-        id: syntax
-        run: |
-          echo "## Bash Syntax Validation" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          FAILED=0
-          for script in scripts/lib/*.sh build.sh extras.sh utils.sh check-env.sh; do
-            if [[ -f "$script" ]]; then
-              if bash -n "$script" 2>&1; then
-                echo "✓ $script" >> $GITHUB_STEP_SUMMARY
-              else
-                echo "✗ $script - SYNTAX ERROR" >> $GITHUB_STEP_SUMMARY
-                bash -n "$script" 2>&1 | tee -a $GITHUB_STEP_SUMMARY
-                FAILED=1
-              fi
-            fi
-          done
-          if [[ $FAILED -eq 1 ]]; then
-            echo ""
-            echo "❌ Syntax validation failed!" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          else
-            echo ""
-            echo "✅ All scripts passed syntax validation" >> $GITHUB_STEP_SUMMARY
           fi
       - name: Run automated tests
         id: tests
@@ -301,8 +226,8 @@ jobs:
         run: |
           echo "## Test Build" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          # Find first enabled app for testing (use Python tomllib - jq cannot parse TOML)
-          TEST_APP=$(python3 -c "
+          # Find first enabled app for testing
+          TEST_APP=$(uv run python3 -c "
               import tomllib, sys
               with open('config.toml', 'rb') as f:
                   cfg = tomllib.load(f)
@@ -316,7 +241,7 @@ jobs:
           echo "Testing build with app: **$TEST_APP**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           # Generate config for test app
-          ./extras.sh separate-config config.toml "$TEST_APP" test_config.json
+          uv run python -m scripts.cli extras separate-config config.toml "$TEST_APP" test_config.json
           echo "Test configuration:" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
           cat test_config.json >> $GITHUB_STEP_SUMMARY
@@ -324,7 +249,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           # Try to build (will likely fail without keystore, but validates pipeline)
           echo "Note: Build will validate pipeline but may fail at signing step (expected in PR)" >> $GITHUB_STEP_SUMMARY
-          if timeout 600 ./build.sh test_config.json 2>&1 | tee build-output.txt; then
+          if timeout 600 uv run python -m scripts.cli build --config test_config.json 2>&1 | tee build-output.txt; then
             echo "✅ Build completed successfully" >> $GITHUB_STEP_SUMMARY
           else
             # Check if it's just the signing step that failed (expected)

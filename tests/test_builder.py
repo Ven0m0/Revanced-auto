@@ -22,37 +22,27 @@ def test_builder_init() -> None:
     assert builder.config == mock_config
 
 
-@patch("scripts.lib.builder.subprocess.run")
-def test_builder_build_all_success(mock_run: MagicMock) -> None:
-    """Test build_all returns True when subprocess succeeds."""
+@patch("scripts.builder.app_processor.main")
+def test_builder_build_all_success(mock_main: MagicMock) -> None:
+    """Test build_all returns True when the app processor exits 0."""
     mock_config = _mock_config()
-    mock_run.return_value = MagicMock(returncode=0)
+    mock_main.return_value = 0
     builder = Builder(mock_config)
 
     result = builder.build_all()
 
     assert result is True
-    mock_run.assert_called_once_with(
-        ["./build.sh", "test_config.toml"],
-        capture_output=True,
-        check=False,
-        text=True,
-    )
+    mock_main.assert_called_once_with(["app_processor.py", "test_config.toml"])
 
 
-@patch("scripts.lib.builder.subprocess.run")
-def test_builder_build_all_failure(mock_run: MagicMock) -> None:
-    """Test build_all returns False when subprocess fails."""
+@patch("scripts.builder.app_processor.main")
+def test_builder_build_all_failure(mock_main: MagicMock) -> None:
+    """Test build_all returns False when the app processor exits non-zero."""
     mock_config = _mock_config()
-    mock_run.return_value = MagicMock(returncode=1)
+    mock_main.return_value = 1
     builder = Builder(mock_config)
 
     result = builder.build_all()
 
     assert result is False
-    mock_run.assert_called_once_with(
-        ["./build.sh", "test_config.toml"],
-        capture_output=True,
-        check=False,
-        text=True,
-    )
+    mock_main.assert_called_once_with(["app_processor.py", "test_config.toml"])

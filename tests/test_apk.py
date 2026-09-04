@@ -28,8 +28,8 @@ class TestValidatePath:
         assert _validate_path(tmp_path / "file.apk") is True
 
     def test_returns_false_on_os_error(self) -> None:
-        # Path with null byte triggers OSError on resolve()
-        result = _validate_path(Path("/tmp/\x00bad"))
+        with patch("pathlib.Path.resolve", side_effect=OSError("bad path")):
+            result = _validate_path(Path("/tmp/bad"))
         assert result is False
 
     def test_base_dir_allows_child(self, tmp_path: Path) -> None:

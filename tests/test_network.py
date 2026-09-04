@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -218,6 +219,7 @@ class TestAria2cDownload:
             patch("shutil.which", return_value="/usr/bin/aria2c"),
             patch("subprocess.run") as mock_run,
         ):
+            mock_run.side_effect = subprocess.CalledProcessError(1, "aria2c")
             result = aria2c_download(["https://example.com/app.apk"], output)
 
         assert result is False
@@ -236,7 +238,6 @@ class TestAria2cDownload:
 
     def test_extra_args_are_passed(self, tmp_path: Path) -> None:
         output = tmp_path / "app.apk"
-        captured: list[list[str]] = []
 
         with (
             patch("shutil.which", return_value="/usr/bin/aria2c"),
@@ -245,7 +246,7 @@ class TestAria2cDownload:
             mock_run.return_value = MagicMock(returncode=0)
             aria2c_download(["https://example.com/app.apk"], output, extra_args=["--dry-run"])
 
-        assert "--dry-run" in captured[0]
+        assert "--dry-run" in mock_run.call_args.args[0]
 
 
 # ---------------------------------------------------------------------------

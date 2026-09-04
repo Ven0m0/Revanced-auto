@@ -64,6 +64,7 @@ def test_get_cached_patches_list_read_text_oserror(patcher: ReVancedPatcher, tmp
         patch.object(patcher._cache_manager, "cache_is_valid", return_value=True),
         patch("pathlib.Path.read_text", side_effect=OSError("Permission denied")),
     ):
+        _mock_hash.return_value = "deadbeef"
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "generated patches"
         mock_run.return_value.stderr = ""
@@ -88,6 +89,7 @@ def test_get_cached_patches_list_read_text_success(patcher: ReVancedPatcher, tmp
         patch.object(patcher._cache_manager, "cache_is_valid", return_value=True),
         patch("pathlib.Path.read_text", return_value="cached patches"),
     ):
+        _mock_hash.return_value = "deadbeef"
         result = patcher.get_cached_patches_list(cli_jar, [patches_jar])
 
         assert result == "cached patches"

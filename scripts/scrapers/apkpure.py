@@ -28,6 +28,20 @@ class APKPureScraper(ScraperBase):
             return f"{base}/{path}"
         return base
 
+    @staticmethod
+    def _split_pkg_name(pkg_name: str) -> tuple[str, str]:
+        """Split a ``name-slug/package.id`` identifier into (name, package).
+
+        APKPure URLs need both segments (e.g.
+        ``apkpure.net/sd-maid-2-se/eu.darken.sdmse``) -- callers that only
+        have the raw Android package id (no slash) get it echoed back as
+        both, matching the previous default-to-``pkg_name`` behavior.
+        """
+        if "/" in pkg_name:
+            name, package = pkg_name.rsplit("/", 1)
+            return name, package
+        return pkg_name, pkg_name
+
     def _parse_versions_page(self, html_content: str) -> list[VersionInfo]:
         tree = HTMLParser(html_content)
         versions: list[VersionInfo] = []
@@ -60,8 +74,9 @@ class APKPureScraper(ScraperBase):
         return None
 
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
-        name = str(kwargs.get("name", pkg_name))
-        url = self._build_url(name, pkg_name, "versions")
+        default_name, package = self._split_pkg_name(pkg_name)
+        name = str(kwargs.get("name", default_name))
+        url = self._build_url(name, package, "versions")
         response = await self.get(url)
         html = response.text
         return self._parse_versions_page(html)
@@ -76,8 +91,9 @@ class APKPureScraper(ScraperBase):
         if version is None:
             return DownloadResult(success=False, error="Version is required")
 
-        name = str(kwargs.get("name", pkg_name))
-        url = self._build_url(name, pkg_name, f"download/{version}")
+        default_name, package = self._split_pkg_name(pkg_name)
+        name = str(kwargs.get("name", default_name))
+        url = self._build_url(name, package, f"download/{version}")
 
         try:
             response = await self.get(url)

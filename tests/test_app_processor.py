@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,6 +14,7 @@ from scripts.builder.app_processor import (
     AppProcessor,
     Architecture,
     DownloadSource,
+    _derive_scraper_pkg_name,
     _is_morphe_patches_source,
 )
 from scripts.builder.cli_profiles import (
@@ -23,6 +25,9 @@ from scripts.builder.cli_profiles import (
     CLIProfileType,
 )
 from scripts.builder.config import AppConfig, GlobalConfig
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestAppProcessorArchitecture:
@@ -67,7 +72,7 @@ class TestAppProcessorArchitecture:
 
 
 class TestAppProcessorDownloadSource:
-    """Tests for AppProcessor._determine_download_source."""
+    """Tests for AppProcessor._candidate_download_sources."""
 
     @pytest.fixture
     def processor(self) -> AppProcessor:
@@ -98,8 +103,98 @@ class TestAppProcessorDownloadSource:
     ) -> None:
         """Test download source resolution based on app configuration."""
         app_config = AppConfig(name="TestApp", options=options)
-        source = processor._determine_download_source(app_config)
-        assert source == expected_source
+        candidates = processor._candidate_download_sources(app_config)
+        assert candidates[0][0] == expected_source
+
+    def test_apkmirror_preferred_over_others(self, processor: AppProcessor) -> None:
+        """APKMirror must be the first candidate whenever it's configured, regardless of dict order."""
+        app_config = AppConfig(
+            name="TestApp",
+            options={
+                "uptodown_dlurl": "https://tiktok.en.uptodown.com/android",
+                "apkpure_dlurl": "https://apkpure.net/tiktok/com.zhiliaoapp.musically",
+                "apkmirror_dlurl": "https://apkmirror.com/apk/tiktok-pte-ltd/tik-tok",
+            },
+        )
+        candidates = processor._candidate_download_sources(app_config)
+        assert [source for source, _ in candidates] == [
+            DownloadSource.APKMIRROR,
+            DownloadSource.APKPURE,
+            DownloadSource.UPTODOWN,
+        ]
+
+    def test_uptodown_is_last_resort(self, processor: AppProcessor) -> None:
+        """Uptodown is the least reliable source and must sort last among configured candidates."""
+        app_config = AppConfig(
+            name="TestApp",
+            options={
+                "uptodown_dlurl": "https://tiktok.en.uptodown.com/android",
+                "github_dlurl": "https://github.com/owner/repo",
+            },
+        )
+        candidates = processor._candidate_download_sources(app_config)
+        assert [source for source, _ in candidates] == [DownloadSource.GITHUB, DownloadSource.UPTODOWN]
+
+
+class TestDeriveScraperPkgName:
+    """Tests for _derive_scraper_pkg_name."""
+
+    def test_uptodown_uses_subdomain_not_path(self) -> None:
+        """The Uptodown app slug lives in the subdomain, not the trailing '/android' path segment."""
+        pkg_name = _derive_scraper_pkg_name("https://tiktok.en.uptodown.com/android", DownloadSource.UPTODOWN)
+        assert pkg_name == "tiktok"
+
+    def test_apkmirror_strips_apk_prefix(self) -> None:
+        pkg_name = _derive_scraper_pkg_name("https://apkmirror.com/apk/google-inc/youtube", DownloadSource.APKMIRROR)
+        assert pkg_name == "google-inc/youtube"
+
+
+class TestDownloadStockApkFailover:
+    """Tests for AppProcessor._download_stock_apk falling back across candidates."""
+
+    def test_falls_through_to_second_candidate_on_failure(self, tmp_path: Path) -> None:
+        download_manager = MagicMock()
+        download_manager.download.side_effect = [
+            RuntimeError("first source failed"),
+            tmp_path,
+        ]
+        processor = AppProcessor(config=MagicMock(), java_runner=MagicMock(), download_manager=download_manager)
+        context = AppBuildContext(
+            app_name="TestApp",
+            app_id="testapp",
+            brand="revanced",
+            version="1.0.0",
+            arch="arm64-v8a",
+            output_path=tmp_path / "TestApp-1.0.0-arm64-v8a.apk",
+            source=DownloadSource.APKMIRROR,
+            candidates=[
+                (DownloadSource.APKMIRROR, "https://apkmirror.com/apk/owner/testapp"),
+                (DownloadSource.APKPURE, "https://apkpure.net/testapp/com.example.testapp"),
+            ],
+        )
+
+        result = processor._download_stock_apk(context)
+
+        assert result == tmp_path
+        assert download_manager.download.call_count == 2
+
+    def test_raises_when_all_candidates_fail(self, tmp_path: Path) -> None:
+        download_manager = MagicMock()
+        download_manager.download.side_effect = RuntimeError("failed")
+        processor = AppProcessor(config=MagicMock(), java_runner=MagicMock(), download_manager=download_manager)
+        context = AppBuildContext(
+            app_name="TestApp",
+            app_id="testapp",
+            brand="revanced",
+            version="1.0.0",
+            arch="arm64-v8a",
+            output_path=tmp_path / "TestApp-1.0.0-arm64-v8a.apk",
+            source=DownloadSource.APKMIRROR,
+            candidates=[(DownloadSource.APKMIRROR, "https://apkmirror.com/apk/owner/testapp")],
+        )
+
+        with pytest.raises(RuntimeError, match="Failed to download stock APK"):
+            processor._download_stock_apk(context)
 
 
 class TestIsMorphePatchesSource:

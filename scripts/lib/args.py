@@ -91,6 +91,63 @@ def version_tracker_parser(subparsers: argparse._SubParsersAction[argparse.Argum
     )
 
 
+def check_env_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Add 'check-env' subcommand to subparsers."""
+    subparsers.add_parser(
+        "check-env",
+        help="Validate build environment (tools, Java version, pinned binaries, config syntax)",
+    )
+
+
+def matrix_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Add 'matrix' subcommand to subparsers."""
+    parser = subparsers.add_parser(
+        "matrix",
+        help="Emit a GitHub Actions build matrix JSON from config.toml",
+    )
+    parser.add_argument(
+        "--config",
+        default="config.toml",
+        help="Path to config TOML file (default: config.toml)",
+    )
+    parser.add_argument(
+        "app_filter",
+        nargs="?",
+        default="",
+        help="Restrict the matrix to a single app id",
+    )
+
+
+def extras_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Add 'extras' subcommand with sub-subcommands."""
+    parser = subparsers.add_parser(
+        "extras",
+        help="CI/CD helper commands",
+    )
+    sub = parser.add_subparsers(dest="extras_command", required=True)
+
+    separate = sub.add_parser("separate-config", help="Extract one app's config into its own file")
+    separate.add_argument("input_config", help="Path to the source config.toml")
+    separate.add_argument("app_name", help="App section to extract")
+    separate.add_argument("output_config", help="Path to write the extracted config")
+
+    combine = sub.add_parser("combine-logs", help="Combine build.md files from a directory")
+    combine.add_argument("logs_dir", help="Directory to search for build.md files")
+
+
+def lint_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Add 'lint' subcommand to subparsers."""
+    parser = subparsers.add_parser(
+        "lint",
+        help="Run all linters (ruff, mypy, yamllint/yamlfmt, tombi, biome)",
+    )
+    parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="Automatically fix issues where possible",
+    )
+
+
 def cache_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add 'cache' subcommand with sub-subcommands."""
     parser = subparsers.add_parser(

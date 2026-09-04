@@ -27,18 +27,17 @@ type BundleType = Literal["APK", "BUNDLE"]
 @dataclass(frozen=True, slots=True)
 class SearchConfig:
     apk_bundle: BundleType
-    dpi: str
     arch: ArchType
     exclude_alpha_beta: bool = True
     match_any: bool = False
-    """Skip bundle/dpi/arch filtering, accept the first variant row.
+    """Accept the first variant row for the target arch, skipping bundle preference.
 
     Modern releases increasingly ship only arch-split BUNDLE variants with
     dpi *ranges* (e.g. "120-480dpi") rather than a "universal"/"nodpi" row,
     so exact SearchConfig equality can match nothing even though the release
     has installable variants. Callers that only need *a* variant to exist
     (confirming a version is real, not picking a specific download) should
-    set this instead of guessing bundle/dpi/arch values.
+    set this instead of guessing bundle/arch values.
     """
 
 
@@ -51,7 +50,7 @@ class RowData:
     dpi: str
 
 
-_MIN_ROW_CELLS: int = 5
+_MIN_ROW_CELLS: int = 4
 
 
 def get_target_archs(arch: ArchType) -> list[str]:
@@ -66,18 +65,25 @@ def get_target_archs(arch: ArchType) -> list[str]:
 def _parse_row_data(row: Node) -> RowData | None:
     """Extract variant fields from a real variant table row.
 
-    Cells are ``[version+badges, arch, min-Android-version, dpi, download]``.
-    The version cell packs several nested elements (a version link, a bundle
+    Cells are ``[version+badges, arch, min-Android-version, dpi]`` -- APKMirror
+    dropped the separate "download" cell that used to make this 5 cells. The
+    version cell packs several nested elements (a version link, a bundle
     type badge, a signature badge, an upload timestamp) -- flattening all
     text nodes in DOM order (the previous approach) interleaves these and
     breaks positional field mapping. Reading each field from its own cell
     (and the version from its link's own text, not the cell's) is exact.
+
+    Returns ``None`` for the table's own header row too: it matches the same
+    ``div.table-row.headerFont`` selector as real variant rows and now also
+    has 4 cells, but its first cell has no ``<a>``.
     """
     cells = row.css(".table-cell")
     if len(cells) < _MIN_ROW_CELLS:
         return None
     version_link = cells[0].css_first("a")
-    version = (version_link or cells[0]).text(strip=True)
+    if version_link is None:
+        return None
+    version = version_link.text(strip=True)
     bundle_badge = cells[0].css_first(".apkm-badge")
     bundle = bundle_badge.text(strip=True) if bundle_badge else ""
     return RowData(
@@ -89,10 +95,38 @@ def _parse_row_data(row: Node) -> RowData | None:
     )
 
 
-def _row_matches(row_data: RowData, config: SearchConfig, target_archs: list[str]) -> bool:
+def _is_prerelease(display_text: str, version_match: re.Match[str]) -> bool:
+    """True if "alpha"/"beta" appears after the version number, not before it.
+
+    APKMirror bakes a real prerelease marker into the release title as a
+    suffix after the version (e.g. "21.34.248 beta"), while an app whose own
+    product name contains "Beta" as a channel/brand name (e.g. "Brave Beta
+    1.95.96", which lists only that channel's releases -- APKMirror never
+    mixes channels within one app's release list) puts the word before the
+    version. Checking only the text after the version avoids rejecting every
+    release of a "*Beta" branded app.
+    """
+    suffix = display_text[version_match.end() :].lower()
+    return "alpha" in suffix or "beta" in suffix
+
+
+_BUNDLE_RANK: dict[str, int] = {"APK": 0, "BUNDLE": 1}
+
+
+def _row_rank(row_data: RowData, config: SearchConfig, target_archs: list[str]) -> int | None:
+    """Rank a variant row for ``config``, lower is better; ``None`` if it doesn't qualify.
+
+    Arch is a hard filter. Bundle type is a preference (plain APK over a
+    split BUNDLE, which still works via ``merge_apkm_splits``), not a
+    requirement -- modern releases increasingly ship BUNDLE-only. DPI is not
+    matched: the build pipeline never requests a specific one, and releases
+    now carry ranges (e.g. "120-480dpi") instead of a plain "nodpi" row.
+    """
+    if row_data.arch not in target_archs:
+        return None
     if config.match_any:
-        return True
-    return row_data.bundle == config.apk_bundle and row_data.dpi == config.dpi and row_data.arch in target_archs
+        return 0
+    return _BUNDLE_RANK.get(row_data.bundle, len(_BUNDLE_RANK))
 
 
 def _extract_download_url(row: Node) -> str | None:
@@ -188,6 +222,8 @@ class APKMirror(ScraperBase):
         if not rows:
             return None
         target_archs = get_target_archs(config.arch)
+        best_rank: int | None = None
+        best_url: str | None = None
         for row in rows:
             row_data = _parse_row_data(row)
             if row_data is None:
@@ -196,12 +232,16 @@ class APKMirror(ScraperBase):
                 "alpha" in row_data.version.lower() or "beta" in row_data.version.lower()
             ):
                 continue
-            if not _row_matches(row_data, config, target_archs):
+            rank = _row_rank(row_data, config, target_archs)
+            if rank is None or (best_rank is not None and rank >= best_rank):
                 continue
             url = _extract_download_url(row)
-            if url:
-                return url
-        return None
+            if url is None:
+                continue
+            best_rank, best_url = rank, url
+            if rank == 0:
+                break
+        return best_url
 
     def _find_download_link(self, variant_page_html: str) -> str | None:
         # Real class is "accent_bg btn btn-flat downloadButton sSo" -- the
@@ -286,7 +326,6 @@ class APKMirror(ScraperBase):
     ) -> list[VersionInfo]:
         config = SearchConfig(
             apk_bundle=bundle_type,
-            dpi=dpi,
             arch=arch,
             exclude_alpha_beta=exclude_alpha_beta,
             match_any=match_any,
@@ -294,12 +333,19 @@ class APKMirror(ScraperBase):
         releases = await self._list_release_pages(pkg_name)
         results: list[VersionInfo] = []
         for display_text, release_url in releases:
-            if exclude_alpha_beta and ("alpha" in display_text.lower() or "beta" in display_text.lower()):
-                continue
             version_match = re.search(r"\d+(?:\.\d+)+", display_text)
             if version_match is None:
                 continue
+            if exclude_alpha_beta and _is_prerelease(display_text, version_match):
+                continue
             version = version_match.group()
+            if match_any:
+                # Caller only needs *a* version number to exist (e.g.
+                # DownloadManager.resolve), not a specific installable
+                # variant -- skip fetching every release page, which risks
+                # a 429 from apkmirror.com for no benefit here.
+                results.append(VersionInfo(version=version, url=release_url, arch=arch, dpi=dpi))
+                continue
             try:
                 release_html = await self.get(release_url, False)
             except RuntimeError:
@@ -337,7 +383,6 @@ class APKMirror(ScraperBase):
     ) -> DownloadResult:
         config = SearchConfig(
             apk_bundle=bundle_type,
-            dpi=dpi,
             arch=arch,
             exclude_alpha_beta=exclude_alpha_beta,
         )
@@ -361,10 +406,10 @@ class APKMirror(ScraperBase):
                 releases = await self._list_release_pages(pkg_name)
                 download_url = None
                 for display_text, release_url in releases:
-                    if exclude_alpha_beta and ("alpha" in display_text.lower() or "beta" in display_text.lower()):
-                        continue
                     version_match = re.search(r"\d+(?:\.\d+)+", display_text)
                     if version_match is None or version_match.group() != version:
+                        continue
+                    if exclude_alpha_beta and _is_prerelease(display_text, version_match):
                         continue
                     release_html = await self.get(release_url, False)
                     download_url = self._search_variant(release_html.text, config)

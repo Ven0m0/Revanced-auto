@@ -313,18 +313,29 @@ def _derive_scraper_pkg_name(download_url: str, source: DownloadSource) -> str:
     """Derive the package identifier a scraper expects from a configured ``*-dlurl`` listing-page URL.
 
     Each download source encodes the package differently in its URL:
-    APKMirror and GitHub both use a two-segment path (e.g.
+    APKMirror, GitHub, and APKPure all use a two-segment path (e.g.
     ``https://apkmirror.com/apk/google-inc/youtube-music`` ->
     ``google-inc/youtube-music``; ``https://github.com/owner/repo`` ->
-    ``owner/repo``); most other sources put the real Android package id as
-    the final path segment (e.g. ``.../apks/com.google.android.apps.youtube.music``).
+    ``owner/repo``; ``https://apkpure.net/sd-maid-2-se/eu.darken.sdmse`` ->
+    ``sd-maid-2-se/eu.darken.sdmse`` -- APKPureScraper needs both the name
+    slug and the package id, not just the id, or it builds a URL with the
+    package id duplicated in the slug's place); Uptodown puts its app slug in
+    the *subdomain*, not the path (``https://tiktok.en.uptodown.com/android``
+    -> ``tiktok`` -- UptodownScraper._build_app_url formats it right back into
+    ``https://{app}.en.uptodown.com/android``, so reading the path's last
+    segment ("android") would break every lookup); most other sources put the
+    real Android package id as the final path segment (e.g.
+    ``.../apks/com.google.android.apps.youtube.music``).
     """
+    if source == DownloadSource.UPTODOWN:
+        netloc = urllib.parse.urlparse(download_url).netloc
+        return netloc.split(".", 1)[0]
     path = urllib.parse.urlparse(download_url).path.strip("/")
     if not path:
         return download_url
     if source == DownloadSource.APKMIRROR:
         return path.removeprefix("apk/")
-    if source == DownloadSource.GITHUB:
+    if source in (DownloadSource.GITHUB, DownloadSource.APKPURE):
         return path
     return path.rsplit("/", 1)[-1]
 
@@ -430,10 +441,12 @@ class AppBuildContext:
         version: App version.
         arch: Target architecture.
         output_path: Output APK path.
-        source: Download source.
+        source: Download source (the candidate that resolved a version).
         download_url: Pre-configured download URL.
         scraper_pkg_name: Package identifier as expected by the download source's
             scraper (e.g. the APKMirror URL slug), derived from download_url.
+        candidates: Configured (source, dlurl) pairs in failover order, used to
+            retry the stock APK download on a different source if the first fails.
         patches_source: Patches source repository(s).
         patches_version: Patches version.
         cli_source: CLI source repository.
@@ -473,6 +486,7 @@ class AppBuildContext:
     merge_patches: list[Path] = field(default_factory=list)
     options: dict[str, Any] = field(default_factory=dict)
     patch_options: dict[str, dict[str, Any]] = field(default_factory=dict)
+    candidates: list[tuple[DownloadSource, str]] = field(default_factory=list)
 
 
 class AppProcessor:
@@ -669,14 +683,14 @@ class AppProcessor:
         """
         app_name = app_config.options.get("app_name", app_config.name)
         brand = app_config.options.get("rv_brand", "revanced")
-        source = self._determine_download_source(app_config)
-
-        download_url = self._get_download_url(app_config, source)
-        scraper_pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else app_config.name
+        candidates = self._candidate_download_sources(app_config)
 
         version = app_config.version or "auto"
         if version == "auto" and self.version_resolver:
-            version, _ = self.version_resolver.resolve(scraper_pkg_name, source)
+            version, candidates = self._resolve_version_with_failover(candidates)
+
+        source, download_url = candidates[0]
+        scraper_pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else app_config.name
 
         patches_source = app_config.patches_source or self.config.global_settings.patches_source
         patches_version = self.config.global_settings.patches_version
@@ -710,7 +724,35 @@ class AppProcessor:
             riplib=self.config.global_settings.riplib,
             options=app_config.options,
             patch_options=app_config.patch_options,
+            candidates=candidates,
         )
+
+    def _resolve_version_with_failover(
+        self,
+        candidates: list[tuple[DownloadSource, str]],
+    ) -> tuple[str, list[tuple[DownloadSource, str]]]:
+        """Resolve ``version == "auto"`` by trying each candidate source in order.
+
+        Returns the resolved version and ``candidates`` reordered so the
+        source that resolved comes first, followed by the rest in their
+        original order -- so a later download failure can still fail over.
+        """
+        if self.version_resolver is None:
+            msg = "No version resolver configured"
+            raise RuntimeError(msg)
+
+        errors: list[str] = []
+        for i, (source, download_url) in enumerate(candidates):
+            pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else ""
+            try:
+                version, _ = self.version_resolver.resolve(pkg_name, source)
+            except Exception as e:
+                errors.append(f"{source.value}: {e}")
+                continue
+            return version, [candidates[i], *candidates[:i], *candidates[i + 1 :]]
+
+        msg = f"Failed to resolve version from any configured source: {'; '.join(errors)}"
+        raise RuntimeError(msg)
 
     def _execute_build(self, context: AppBuildContext) -> BuildResult:
         """Execute the actual build process.
@@ -753,13 +795,24 @@ class AppProcessor:
             Path to downloaded APK.
         """
         if self.download_manager:
-            return self.download_manager.download(
-                context.scraper_pkg_name or context.app_id,
-                context.version,
-                context.output_path.parent / f"stock-{context.app_name}-{context.version}.apk",
-                context.source,
-                arch=context.arch,
-            )
+            candidates = context.candidates or [(context.source, context.download_url)]
+            output_path = context.output_path.parent / f"stock-{context.app_name}-{context.version}.apk"
+            errors: list[str] = []
+            for source, download_url in candidates:
+                pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else context.app_id
+                try:
+                    return self.download_manager.download(
+                        pkg_name,
+                        context.version,
+                        output_path,
+                        source,
+                        arch=context.arch,
+                    )
+                except Exception as e:
+                    logger.warning("Download from %s failed for %s: %s", source.value, context.app_name, e)
+                    errors.append(f"{source.value}: {e}")
+            msg = f"Failed to download stock APK for {context.app_name} from any source: {'; '.join(errors)}"
+            raise RuntimeError(msg)
 
         download_url = context.download_url
         if not download_url:
@@ -880,7 +933,8 @@ class AppProcessor:
             Path to patched APK.
         """
         if self.patcher:
-            keystore = self._get_keystore_path()
+            _alias, keystore_password, _entry_password, _signer = self._get_keystore_credentials()
+            keystore = self._get_keystore_path(keystore_password)
             result = self.patcher.patch(
                 stock_apk,
                 context.output_path,
@@ -896,8 +950,8 @@ class AppProcessor:
             return context.output_path
 
         cli_profile = self._resolve_cli_profile(context)
-        keystore = self._get_keystore_path()
         alias, keystore_password, keystore_entry_password, signer = self._get_keystore_credentials()
+        keystore = self._get_keystore_path(keystore_password)
         riplib_libs: list[str] = []
         if context.riplib and self._profile_supports_riplib(cli_profile):
             keep_semantics = cli_profile.profile_type in (CLIProfileType.MORPHE_CLI, CLIProfileType.ADOBO_CLI)
@@ -968,20 +1022,31 @@ class AppProcessor:
         """Return True when the profile declares a RIP_LIB arg mapping."""
         return "RIP_LIB" in profile.patch_args and profile.patch_args["RIP_LIB"] is not None
 
-    def _get_keystore_path(self) -> Path | None:
-        """Get keystore path from configuration.
+    def _get_keystore_path(self, keystore_password: str) -> Path | None:
+        """Get keystore path from configuration, converted to BKS if necessary.
+
+        Morphe's patcher only accepts BKS keystores and converts anything
+        else via a BouncyCastle copy whose jar signature it rejects (the
+        "JCE cannot authenticate the provider BC" failure) -- converting
+        once here up front avoids ever handing it a non-BKS keystore.
+
+        Args:
+            keystore_password: Password for the keystore, needed for conversion.
 
         Returns:
-            Path to keystore or None.
+            Path to a BKS keystore, or None if none is configured.
         """
+        from scripts.utils.keystore import ensure_bks
+
         if self.config.global_settings.keystore_path:
-            return Path(self.config.global_settings.keystore_path)
+            keystore = Path(self.config.global_settings.keystore_path)
+        else:
+            default_keystore = Path("assets/ks.keystore")
+            if not default_keystore.exists():
+                return None
+            keystore = default_keystore
 
-        default_keystore = Path("assets/ks.keystore")
-        if default_keystore.exists():
-            return default_keystore
-
-        return None
+        return ensure_bks(keystore, keystore_password)
 
     def _get_keystore_credentials(self) -> tuple[str, str, str, str]:
         """Get keystore alias/passwords/signer.
@@ -1032,31 +1097,34 @@ class AppProcessor:
             return [Architecture.ARM64_V8A.value, Architecture.ARM_V7A.value]
         return [arch.value]
 
-    def _determine_download_source(self, app_config: AppConfig) -> DownloadSource:
-        """Determine the download source from the app's configured ``*-dlurl`` options."""
-        options = app_config.options
+    # APKMirror first: most complete/official listings, and its scraper's
+    # selectors are kept current against the live site (see
+    # _list_release_pages()/_get_download_url() in apkmirror.py). The rest
+    # follow in reliability order; Uptodown last -- smallest, slowest-to-page
+    # catalog of the lot.
+    _SOURCE_PREFERENCE: tuple[DownloadSource, ...] = (
+        DownloadSource.APKMIRROR,
+        DownloadSource.ARCHIVE,
+        DownloadSource.APKPURE,
+        DownloadSource.GITHUB,
+        DownloadSource.APTOIDE,
+        DownloadSource.APKMonk,
+        DownloadSource.UPTODOWN,
+    )
 
-        # APKMirror first (preferred: most complete/official listings; its
-        # scraper's stale selectors against the live site were fixed --
-        # see _list_release_pages()/_get_download_url() in apkmirror.py).
-        # Archive.org is the fallback: a stable static directory listing,
-        # but a much smaller catalog than APKMirror's.
-        if options.get("apkmirror_dlurl"):
-            return DownloadSource.APKMIRROR
-        if options.get("archive_dlurl"):
-            return DownloadSource.ARCHIVE
-        if options.get("uptodown_dlurl"):
-            return DownloadSource.UPTODOWN
-        if options.get("apkpure_dlurl"):
-            return DownloadSource.APKPURE
-        if options.get("aptoide_dlurl"):
-            return DownloadSource.APTOIDE
-        if options.get("apkmonk_dlurl"):
-            return DownloadSource.APKMonk
-        if options.get("github_dlurl"):
-            return DownloadSource.GITHUB
-
-        return DownloadSource.APKMIRROR
+    def _candidate_download_sources(self, app_config: AppConfig) -> list[tuple[DownloadSource, str]]:
+        """List every download source the app has a configured ``*-dlurl`` for, in preference order."""
+        candidates: list[tuple[DownloadSource, str]] = []
+        for source in self._SOURCE_PREFERENCE:
+            url = self._get_download_url(app_config, source)
+            if url:
+                candidates.append((source, url))
+        if not candidates:
+            # No *-dlurl configured at all: fall back to APKMirror keyed by
+            # the app's own config name, matching the old single-source
+            # default.
+            candidates.append((DownloadSource.APKMIRROR, ""))
+        return candidates
 
     def _get_download_url(self, app_config: AppConfig, source: DownloadSource) -> str:
         """Get the configured ``*-dlurl`` option value for ``source``."""
