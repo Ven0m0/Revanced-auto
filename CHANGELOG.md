@@ -2,6 +2,13 @@
 
 This file is maintained automatically by [release-please](https://github.com/googleapis/release-please) from [Conventional Commits](https://www.conventionalcommits.org/). Entries after `1.0.0` are generated; edit `release-please-config.json` to change section mapping.
 
+## [1.1.1](https://github.com/Ven0m0/Revanced-auto/compare/v1.1.0...v1.1.1) (2026-09-05)
+
+
+### Fixed
+
+* correct APKEditor.jar hash pin breaking all bundle-split downloads ([3beee46](https://github.com/Ven0m0/Revanced-auto/commit/3beee46eb301493de008ba5bcd36e02ccf8234ba))
+
 ## [1.1.0](https://github.com/Ven0m0/Revanced-auto/compare/v1.0.0...v1.1.0) (2026-09-03)
 
 
