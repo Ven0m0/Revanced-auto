@@ -81,9 +81,6 @@ class DownloadManager:
                     self._scrapers[source] = ArchiveScraper()
                 case DownloadSource.GITHUB:
                     self._scrapers[source] = GitHubScraper()
-                case _:
-                    msg = f"Unsupported download source: {source}"
-                    raise ValueError(msg)
         return self._scrapers[source]
 
     def resolve(

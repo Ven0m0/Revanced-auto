@@ -21,7 +21,7 @@ from scripts.scrapers.base import (
 )
 from scripts.utils.java import JAVA_ARGS
 
-type ArchType = Literal["universal", "noarch", "arm64-v8a", "armeabi-v7a", "arm64-v8a + armeabi-v7a"]
+type ArchType = Literal["universal", "noarch", "arm64-v8a", "armeabi-v7a", "arm64-v8a + armeabi-v7a", "all"]
 type BundleType = Literal["APK", "BUNDLE"]
 
 
@@ -53,14 +53,19 @@ class RowData:
 
 _MIN_ROW_CELLS: int = 4
 
+# Bump by copying the digest from GitHub's release-asset API
+# (gh api repos/REAndroid/APKEditor/releases/tags/<tag> --jq '.assets[].digest'),
+# not by hand-typing it -- a hand-typed hash here previously drifted from the
+# real asset and silently broke every bundle merge (CI run 33935663681).
+_APKEDITOR_URL = "https://github.com/REAndroid/APKEditor/releases/download/V1.4.9/APKEditor-1.4.9.jar"
+_APKEDITOR_SHA256 = "a9cd40df818845456be6d696de6110c89edf4b0a0580cb83438ed6b25a366e67"
+
 
 def get_target_archs(arch: ArchType) -> list[str]:
     base_archs: list[str] = ["universal", "noarch", "arm64-v8a + armeabi-v7a"]
-    match arch:
-        case "all":
-            return base_archs
-        case _:
-            return [arch, *base_archs]
+    if arch == "all":
+        return base_archs
+    return [arch, *base_archs]
 
 
 def _parse_row_data(row: Node) -> RowData | None:
@@ -168,12 +173,8 @@ def merge_apkm_splits(temp_dir: Path, bundle_path: Path, output_path: Path) -> b
     from scripts.utils.network import gh_dl
 
     apkeditor_jar = temp_dir / "apkeditor.jar"
-    if not gh_dl(
-        apkeditor_jar,
-        "https://github.com/REAndroid/APKEditor/releases/download/V1.4.2/APKEditor-1.4.2.jar",
-        sha256="706297058a52862d53603403337f400782782e4f0163353e4142f9a76785265a",
-    ):
-        msg = "Failed to download or verify APKEditor.jar"
+    if not gh_dl(apkeditor_jar, _APKEDITOR_URL, sha256=_APKEDITOR_SHA256):
+        msg = f"Failed to download or verify APKEditor.jar from {_APKEDITOR_URL}"
         raise RuntimeError(msg)
 
     try:

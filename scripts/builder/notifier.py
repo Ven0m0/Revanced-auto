@@ -217,7 +217,7 @@ class AppriseNotifier(BaseNotifier):
             True if notification was sent successfully, False otherwise.
         """
         try:
-            import apprise  # type: ignore  # noqa: PGH003
+            import apprise  # pyright: ignore[reportMissingImports]
 
             appr = apprise.Apprise()
             appr.add(self._apprise_url)
@@ -225,9 +225,10 @@ class AppriseNotifier(BaseNotifier):
             title = f"Build {'SUCCESS' if notification.success else 'FAILED'}: {notification.app_name}"
             body = self._format_message(notification)
 
-            return appr.notify(title=title, body=body)
+            sent: bool = appr.notify(title=title, body=body)
         except Exception:
             return False
+        return sent
 
 
 @final
@@ -283,7 +284,7 @@ class GitHubReleaseNotifier(BaseNotifier):
                 timeout=30.0,
             )
             if response.status_code == 201:
-                release_data = response.json()
+                release_data: dict[str, str] = response.json()
                 upload_url = release_data.get("upload_url", "").replace("{?name,label}", "")
 
                 for artifact in artifacts:

@@ -38,7 +38,7 @@ def _discover_plugins() -> list[PluginHandler]:
         sys.path.insert(0, plugin_pkg_path)
 
     try:
-        import scripts.plugins as plugins_pkg  # type: ignore[import-not-found]
+        import scripts.plugins as plugins_pkg
     except ImportError:
         return handlers
 

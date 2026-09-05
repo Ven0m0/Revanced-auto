@@ -21,18 +21,21 @@ import httpx
 
 from scripts.lib import logging as log
 
+fcntl: ModuleType | None
 try:
     import fcntl
 except ImportError:
     fcntl = None
 
+msvcrt: ModuleType | None
 try:
     import msvcrt
 except ImportError:
     msvcrt = None
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Coroutine
+    from types import ModuleType
 
 DEFAULT_TIMEOUT = 300
 DEFAULT_MAX_RETRIES = 4
@@ -149,7 +152,7 @@ class HttpClient:
 
     def _retry_with_backoff(
         self,
-        func: Callable[..., Any],
+        func: Callable[..., httpx.Response],
         *args: Any,
         **kwargs: Any,
     ) -> httpx.Response:
@@ -187,7 +190,7 @@ class HttpClient:
 
     async def _async_retry_with_backoff(
         self,
-        func: Callable[..., Any],
+        func: Callable[..., Coroutine[Any, Any, httpx.Response]],
         *args: Any,
         **kwargs: Any,
     ) -> httpx.Response:
@@ -407,7 +410,7 @@ INSECURE_PERMISSION_MASK = 0o077
 def _lock_fd(fd: IO[str]) -> None:
     """Acquire an exclusive lock on a file descriptor (POSIX or Windows)."""
     if fcntl is not None:
-        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)  # type: ignore  # noqa: PGH003
+        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
     elif msvcrt is not None:
         fd.write("\0")
         fd.flush()
@@ -418,7 +421,7 @@ def _lock_fd(fd: IO[str]) -> None:
 def _unlock_fd(fd: IO[str]) -> None:
     """Release a lock acquired by `_lock_fd`."""
     if fcntl is not None:
-        fcntl.flock(fd.fileno(), fcntl.LOCK_UN)  # type: ignore  # noqa: PGH003
+        fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
     elif msvcrt is not None:
         fd.seek(0)
         msvcrt.locking(fd.fileno(), msvcrt.LK_UNLCK, 1)

@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import Literal
 
 from scripts.builder.config import AppConfig
 from scripts.builder.config import Config as BuilderConfig
 from scripts.builder.config import load_config as builder_load_config
+
+BuildMode = Literal["apk", "module", "both"]
 
 __all__ = [
     "AppConfig",
@@ -66,9 +69,9 @@ class Config:
         return self._inner.global_settings.build_mode
 
     @build_mode.setter
-    def build_mode(self, value: str) -> None:
+    def build_mode(self, value: BuildMode) -> None:
         """Set build mode."""
-        self._inner.global_settings.build_mode = value  # type: ignore  # noqa: PGH003
+        self._inner.global_settings.build_mode = value
 
     @property
     def parallel_jobs(self) -> int:

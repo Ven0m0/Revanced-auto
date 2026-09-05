@@ -75,7 +75,8 @@ def _graphql_query(query: str, variables: dict[str, object] | None = None) -> di
 
     if "errors" in data:
         raise RuntimeError(f"external-bundles GraphQL errors: {data['errors']}")
-    return data.get("data", {})
+    result: dict[str, object] = data.get("data", {})
+    return result
 
 
 _BUNDLE_QUERY = """

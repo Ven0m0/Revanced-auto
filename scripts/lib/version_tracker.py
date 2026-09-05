@@ -33,7 +33,8 @@ def _load_raw_config(config_file: str) -> dict[str, object]:
     """
     path = Path(config_file)
     if path.suffix.lower() == ".json":
-        return json.loads(path.read_text(encoding="utf-8"))
+        loaded: dict[str, object] = json.loads(path.read_text(encoding="utf-8"))
+        return loaded
     with path.open("rb") as f:
         return dict(tomllib.load(f))
 

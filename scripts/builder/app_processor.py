@@ -1130,14 +1130,14 @@ class AppProcessor:
         """Get the configured ``*-dlurl`` option value for ``source``."""
         options = app_config.options
 
-        url_map = {
-            DownloadSource.APKMIRROR: options.get("apkmirror_dlurl", ""),
-            DownloadSource.UPTODOWN: options.get("uptodown_dlurl", ""),
-            DownloadSource.APKPURE: options.get("apkpure_dlurl", ""),
-            DownloadSource.ARCHIVE: options.get("archive_dlurl", ""),
-            DownloadSource.APTOIDE: options.get("aptoide_dlurl", ""),
-            DownloadSource.APKMonk: options.get("apkmonk_dlurl", ""),
-            DownloadSource.GITHUB: options.get("github_dlurl", ""),
+        url_map: dict[DownloadSource, str] = {
+            DownloadSource.APKMIRROR: str(options.get("apkmirror_dlurl", "")),
+            DownloadSource.UPTODOWN: str(options.get("uptodown_dlurl", "")),
+            DownloadSource.APKPURE: str(options.get("apkpure_dlurl", "")),
+            DownloadSource.ARCHIVE: str(options.get("archive_dlurl", "")),
+            DownloadSource.APTOIDE: str(options.get("aptoide_dlurl", "")),
+            DownloadSource.APKMonk: str(options.get("apkmonk_dlurl", "")),
+            DownloadSource.GITHUB: str(options.get("github_dlurl", "")),
         }
 
         return url_map.get(source, "")
