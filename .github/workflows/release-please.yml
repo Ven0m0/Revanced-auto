@@ -32,7 +32,7 @@ jobs:
           ref: ${{ fromJson(steps.release_please.outputs.pr).headBranchName }}
       - name: Install mise-managed toolchain (uv)
         if: steps.release_please.outputs.prs_created == 'true'
-        uses: jdx/mise-action@v4.3.0
+        uses: jdx/mise-action@v5.0.1
         with:
           install: true
           cache: true
