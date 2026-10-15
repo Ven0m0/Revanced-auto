@@ -1,0 +1,9 @@
+{
+	"recommendations": [
+		"detachhead.basedpyright",
+		"charliermarsh.ruff",
+		"the0807.uv-toolkit",
+		"hverlin.mise-vscode",
+		"tombi-toml.tombi"
+	]
+}

@@ -1,0 +1,436 @@
+# =============================================================================
+# ReVanced Auto-Build Configuration
+# =============================================================================
+# Configuration generator: https://j-hc.github.io/rvmm-config-gen/
+# This file controls the behavior of the ReVanced build system
+# Documentation:
+# - Global settings apply to all apps unless overridden in app-specific sections
+# - App sections are defined using [AppName] brackets
+# - Use 'enabled = false' to skip building specific apps
+# =============================================================================
+# GLOBAL BUILD SETTINGS
+# =============================================================================
+# Parallel Build Jobs
+parallel-jobs = 0
+# ReVanced Integrations Checks
+remove-rv-integrations-checks = true
+# Library Stripping (riplib)
+riplib = true
+# Default Architecture
+arch = "arm64-v8a"
+# Build Mode
+build-mode = "apk"
+# Default Patches Version
+# - latest: Most recent stable release
+# - dev: Latest development version (may be unstable)
+patches-version = "latest"
+# Default CLI Version
+# ReVanced CLI version: "latest", "dev", or specific version tag
+cli-version = "latest"
+# Default App Version
+# App version selection: "auto", "latest", "beta", or specific version
+# - auto: Automatically select version compatible with patches
+# - latest: Use newest stable version available
+# - beta: Use latest beta version
+# - Specific version: e.g., "18.48.39"
+version = "auto"
+
+# Default patcher CLI and patches: Morphe (T2.1).
+# Override per-app via `cli-source` / `patches-source` to fall back to ReVanced or any other ecosystem.
+cli-source = "MorpheApp/morphe-cli"
+patches-source = "MorpheApp/morphe-patches"
+
+# Alternative Patch Sources (for patches-source):
+# - Morphe (default): MorpheApp/morphe-patches
+# - Adobo (Morphe-compatible patches): jkennethcarino/adobo
+# - External Bundles aggregator: brosssh/revanced-external-bundles
+# - ReVanced: ReVanced/revanced-patches
+# - ReVanced Extended (anddea): anddea/revanced-patches
+# - ReVanced Extended (inotia00): inotia00/revanced-patches
+# - De-ReVanced: RookieEnough/De-ReVanced
+# - Piko (Twitter): crimera/piko
+# - Patcheddit (Reddit): wchill/patcheddit
+# - BlazeFTL (universal APK-size/ads/analytics cleanup): BlazeFTL/FTL-Patches
+# - Metra TikTok Patches: icysymmetra/tiktok-patches-for-morphe
+# - Doom's Morphe Patches: rushiranpise/morphe-patches
+# - Brave and universal patches: dh6k/morphe-patches
+# - Pinterest Morphed: SouBryan/pinterest-morphed
+# - xob0t Morphe Patches: xob0t/morphe-patches
+# patches-source accepts a list of the above to merge patches from multiple bundles.
+
+# =============================================================================
+# APP CONFIGURATIONS
+# =============================================================================
+# Each app section can override global settings
+# Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, archive-dlurl,
+# apkpure-dlurl, aptoide-dlurl, apkmonk-dlurl, or github-dlurl = "https://github.com/owner/repo")
+# Optional fields: All global settings can be overridden per-app
+# =============================================================================
+# Spotify
+[Spotify]
+enabled = false
+uptodown-dlurl = "https://spotify.en.uptodown.com/android"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.spotify.music"
+apkpure-dlurl = "https://apkpure.net/spotify-music-and-podcasts/com.spotify.music"
+included-patches = "'Custom theme'"
+patcher-args = [
+  "-e",
+  "Custom branding name for Spotify",
+  "-OappName=RVX Spotify",
+]
+
+[TikTok]
+enabled = true
+app-name = "TikTok"
+patches-source = ["BlazeFTL/FTL-Patches", "icysymmetra/tiktok-patches-for-morphe"]
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://apkmirror.com/apk/tiktok-pte-ltd/tik-tok-including-musical-ly"
+uptodown-dlurl = "https://tiktok.en.uptodown.com/android"
+apkpure-dlurl = "https://apkpure.net/tiktok/com.zhiliaoapp.musically"
+exclusive = true
+patches = [
+  "APK Junk Cleanup",
+  "Png Optimizer",
+  "Remove Ads",
+  "Remove Duplicate Graphics",
+  "Remove Languages",
+  "Always show publish date",
+  "Copy comments without username",
+  "Disable long-press quick share",
+  "Disable screen capture detection",
+  "Downloads",
+  "Enable Live search",
+  "Feature Gate Lab",
+  "Feed filter",
+  "Feed tab navigation",
+  "Fix Google login",
+  "Hide CAPTCHA popups",
+  "Hide floating promotions",
+  "Hide quick comment reactions",
+  "Open external links directly",
+  "Playback speed",
+  "Resume videos after scrolling",
+  "Sanitize sharing links",
+  "Settings",
+  "Show seekbar",
+  "Show seekbar thumbnail",
+  "Stop video looping",
+  "Translate comments",
+]
+
+[TikTok.patch-options."APK Junk Cleanup"]
+splitByArch = "true"
+
+[TikTok.patch-options."Remove Duplicate Graphics"]
+targetDensity = "\"xxhdpi\""
+
+[TikTok.patch-options."Remove Languages"]
+keepLanguages = "[\"en\"]"
+
+[GooglePhotos]
+enabled = false
+version = "auto"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/photos/"
+uptodown-dlurl = "https://google-photos.en.uptodown.com/android"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.photos"
+apkpure-dlurl = "https://apkpure.net/google-photos/com.google.android.apps.photos"
+
+# YouTube Morphed (default Morphe build).
+[YouTube-Morphed]
+enabled = true
+app-name = "YouTube"
+patches-source = ["jkennethcarino/adobo", "BlazeFTL/FTL-Patches", "MorpheApp/morphe-patches"]
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+uptodown-dlurl = "https://youtube.en.uptodown.com/android"
+apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
+apkpure-dlurl = "https://apkpure.net/youtube/com.google.android.youtube"
+exclusive = true
+patches = [
+  "Deactivate Firebase Analytics",
+  "Disable Google Safe Browsing in WebView",
+  "Disable metrics collection in WebView",
+  "Disable mobile ads",
+  "APK Junk Cleanup",
+  "Png Optimizer",
+  "Remove Ads",
+  "Remove Analytics",
+  "Remove Duplicate Graphics",
+  "Remove Languages",
+  "Ambient mode",
+  "Bypass image region restrictions",
+  "Bypass link redirects",
+  "Captions",
+  "Change header",
+  "Change start page",
+  "Check watch history domain name resolution",
+  "Custom branding",
+  "Disable Shorts resuming on startup",
+  "Disable double tap actions",
+  "Disable fullscreen gestures",
+  "Disable haptic feedback",
+  "Disable layout updates",
+  "Disable player popup panels",
+  "Disable rolling number animations",
+  "Disable sign in to TV popup",
+  "Disable video codecs",
+  "Double tap to seek",
+  "Downloads",
+  "Exit fullscreen mode",
+  "Force original audio",
+  "GmsCore support",
+  "Hide Shorts components",
+  "Hide ads",
+  "Hide autoplay preview",
+  "Hide end screen cards",
+  "Hide end screen suggested video",
+  "Hide info cards",
+  "Hide layout components",
+  "Hide player flyout menu components",
+  "Hide player overlay buttons",
+  "Hide related video overlay",
+  "Hide related videos",
+  "Hide timestamp",
+  "Hide video action buttons",
+  "Loop video",
+  "Miniplayer",
+  "Navigation bar",
+  "Open channel of live avatar",
+  "Open links externally",
+  "Override YouTube Music buttons",
+  "Playback in feeds",
+  "Remove background playback restrictions",
+  "Remove viewer discretion dialog",
+  "Return YouTube Dislike",
+  "Sanitize sharing links",
+  "Save to watch later",
+  "Seekbar",
+  "Settings menu filter",
+  "Shorts autoplay",
+  "SponsorBlock",
+  "Spoof app version",
+  "Spoof video streams",
+  "Swipe controls",
+  "Theme",
+  "Video quality",
+]
+
+[YouTube-Morphed.patch-options."Disable mobile ads"]
+disableAppLovinMax = "false"
+disableBigo = "false"
+disableGoogleAdMob = "false"
+disableMetaAudienceNetwork = "false"
+disableMintegral = "false"
+disableMyTarget = "false"
+disablePangle = "false"
+disableTopOn = "false"
+disableUnity = "false"
+disableVungle = "false"
+
+[YouTube-Morphed.patch-options."APK Junk Cleanup"]
+splitByArch = "true"
+
+[YouTube-Morphed.patch-options."Remove Duplicate Graphics"]
+targetDensity = "\"xxhdpi\""
+
+[YouTube-Morphed.patch-options."Remove Languages"]
+keepLanguages = "[\"en\"]"
+
+# YouTube Music Morphed (default Morphe build).
+[Music-Morphed]
+enabled = true
+app-name = "Music"
+patches-source = ["BlazeFTL/FTL-Patches", "MorpheApp/morphe-patches"]
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
+apkmirror-dlurl = "https://apkmirror.com/apk/google-inc/youtube-music"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
+apkpure-dlurl = "https://apkpure.net/youtube-music/com.google.android.apps.youtube.music"
+exclusive = true
+patches = [
+  "APK Junk Cleanup",
+  "Png Optimizer",
+  "Remove Ads",
+  "Remove Analytics",
+  "Remove Duplicate Graphics",
+  "Remove Languages",
+  "Bypass certificate checks",
+  "Change header",
+  "Change miniplayer color",
+  "Check watch history domain name resolution",
+  "Crossfade",
+  "Custom branding",
+  "Disable dislike redirection",
+  "Downloads",
+  "Enable exclusive audio playback",
+  "Enable forced miniplayer",
+  "Enable swipe to dismiss miniplayer",
+  "Force original audio",
+  "GmsCore support",
+  "Hide ads",
+  "Hide buttons",
+  "Hide filter bar",
+  "Hide flyout menu components",
+  "Hide layout components",
+  "Hide music action buttons",
+  "Miniplayer previous and next buttons",
+  "Navigation bar",
+  "Remember repeat state",
+  "Remember shuffle state",
+  "Remove background playback restrictions",
+  "Remove viewer discretion dialog",
+  "Return YouTube Dislike",
+  "Sanitize sharing links",
+  "Scrobbling",
+  "Settings menu filter",
+  "SponsorBlock",
+  "Spoof app version",
+  "Spoof video streams",
+  "Theme",
+  "Third-party lyrics",
+]
+
+[Music-Morphed.patch-options."APK Junk Cleanup"]
+splitByArch = "true"
+
+[Music-Morphed.patch-options."Remove Duplicate Graphics"]
+targetDensity = "\"xxhdpi\""
+
+[Music-Morphed.patch-options."Remove Languages"]
+keepLanguages = "[\"en\"]"
+
+# Reddit Morphed
+[Reddit-Morphed]
+enabled = true
+app-name = "Reddit"
+patches-source = ["jkennethcarino/adobo", "BlazeFTL/FTL-Patches", "MorpheApp/morphe-patches", "rushiranpise/morphe-patches"]
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
+exclusive = true
+patches = [
+  "Colorize comment indent lines",
+  "Disable bottom navigation bar auto-hide",
+  "Disable home feed auto-refresh",
+  "Disable home feed swipe",
+  "Disable home screen redirect",
+  "Disable post detail swipe",
+  "Disable screenshot banner",
+  "Hide Ask button from search bar",
+  "Hide awards",
+  "Hide community menu badge",
+  "Open external links directly",
+  "Remove ads and telemetry",
+  "Sanitize share links",
+  "APK Junk Cleanup",
+  "Png Optimizer",
+  "Remove Ads",
+  "Remove Duplicate Graphics",
+  "Remove Languages",
+  "Custom branding name for Reddit",
+  "Hide Trending shelves",
+  "Hide ads",
+  "Hide communities shelf",
+  "Hide navigation buttons",
+  "Hide sidebar components",
+  "Remove subreddit dialog",
+  "Show view count",
+  "Spoof signature",
+  "Remove Subreddit Dialogs",
+  "Unlock Premium",
+]
+
+[Reddit-Morphed.patch-options."APK Junk Cleanup"]
+splitByArch = "true"
+
+[Reddit-Morphed.patch-options."Remove Duplicate Graphics"]
+targetDensity = "\"xxhdpi\""
+
+[Reddit-Morphed.patch-options."Remove Languages"]
+keepLanguages = "[\"en\"]"
+
+[Reddit-Morphed.patch-options."Custom branding name for Reddit"]
+appName = "\"Reddit Morphe\""
+
+# Instagram Piko
+[Instagram-Piko]
+enabled = false
+app-name = "Instagram"
+patches-source = "crimera/piko"
+rv-brand = "Piko"
+apkmirror-dlurl = "https://apkmirror.com/apk/instagram/instagram-instagram/"
+
+# Twitter Piko
+[Twitter-Piko]
+enabled = false
+app-name = "Twitter"
+patches-source = "crimera/piko"
+rv-brand = "Piko"
+uptodown-dlurl = "https://twitter.en.uptodown.com/android"
+apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
+apkmirror-dpi = "120-640dpi"
+
+# Brave (Beta channel; the Adobo/Brave-patches/BlazeFTL bundles below target
+# com.brave.browser_beta specifically). Opt-in: not previously a build target.
+[Brave]
+enabled = true
+app-name = "Brave"
+patches-source = ["jkennethcarino/adobo", "dh6k/morphe-patches", "BlazeFTL/FTL-Patches"]
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/brave-software/brave-browser-beta/"
+apkpure-dlurl = "https://apkpure.net/brave-browser-beta/com.brave.browser_beta"
+exclusive = true
+patches = [
+  "Deactivate Firebase Analytics",
+  "Deactivate Firebase Performance Monitoring",
+  "Disable metrics collection in WebView",
+  "Disable mobile ads",
+  "Brave Origin",
+  "Disable analytics",
+  "APK Junk Cleanup",
+  "Png Optimizer",
+  "Remove Analytics",
+  "Remove Duplicate Graphics",
+  "Remove Languages",
+  "Universal Remove Ads",
+]
+
+[Brave.patch-options."APK Junk Cleanup"]
+splitByArch = "true"
+
+[Brave.patch-options."Remove Duplicate Graphics"]
+targetDensity = "\"xxhdpi\""
+
+[Brave.patch-options."Remove Languages"]
+keepLanguages = "[\"en\"]"
+
+# SD Maid 2/SE. Opt-in: not previously a build target.
+[SDMaid]
+enabled = true
+app-name = "SDMaid"
+version = "2.0.3"
+patches-source = "rushiranpise/morphe-patches"
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://apkmirror.com/apk/darken/sd-maid-2-se-system-cleaner"
+exclusive = true
+patches = [
+  "APK Junk Cleanup",
+  "Png Optimizer",
+  "Remove Duplicate Graphics",
+  "Remove Languages",
+  "Unlock Pro",
+]
+
+[SDMaid.patch-options."APK Junk Cleanup"]
+splitByArch = "true"
+
+[SDMaid.patch-options."Remove Duplicate Graphics"]
+targetDensity = "\"xxhdpi\""
+
+[SDMaid.patch-options."Remove Languages"]
+keepLanguages = "[\"en\"]"

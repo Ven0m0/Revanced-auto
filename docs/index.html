@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ReVanced Builder: automated APK patching system with visual configuration generator, build caching, changelog automation, and dependency monitoring.">
+    <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#1e293b" id="meta-theme-color">
+    <meta property="og:title" content="ReVanced Builder">
+    <meta property="og:description" content="Automated APK patching system with visual configuration generator, build caching, and changelog automation.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1f6e0;</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <title>ReVanced Builder - Automated APK Patching</title>
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <!-- Navigation -->
+    <nav class="nav" id="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">
+                <span class="nav-brand-icon" aria-hidden="true">&#x1f6e0;</span>
+                ReVanced Builder
+            </a>
+            <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <a href="index.html" class="nav-link active">Home</a>
+                <a href="generator.html" class="nav-link">Generator</a>
+                <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/docs/CONFIG.md" class="nav-link nav-link-external" target="_blank" rel="noopener noreferrer">Config Docs</a>
+                <a href="https://github.com/Ven0m0/Revanced-auto" class="nav-link nav-link-external" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <button class="nav-theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
+                    <span id="theme-icon" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+    <main id="main-content">
+        <!-- Hero -->
+        <section class="hero">
+            <div class="container">
+                <h1 class="hero-title">
+                    <span class="hero-title-accent">ReVanced</span> Builder
+                </h1>
+                <p class="hero-subtitle">
+                    Automated APK patching for Morphe, ReVanced, RVX, Piko, Patcheddit, Adobo and the brosssh external-bundles aggregator.
+                    Download stock APKs, apply patches, and build optimized APKs &mdash; all from a single config file.
+                </p>
+                <div class="hero-actions">
+                    <a href="generator.html" class="btn-primary" style="text-decoration:none">Open Configuration Generator</a>
+                    <a href="https://github.com/Ven0m0/Revanced-auto" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="text-decoration:none">View on GitHub</a>
+                </div>
+            </div>
+        </section>
+        <hr class="section-divider">
+        <!-- Features -->
+        <section class="features-section">
+            <div class="container">
+                <h2 class="section-title">Features</h2>
+                <p class="section-subtitle">Everything you need to build patched APKs automatically</p>
+                <div class="feature-grid">
+                    <a href="generator.html" class="feature-card" style="text-decoration:none;color:inherit">
+                        <span class="feature-card-icon" aria-hidden="true">&#x2699;&#xFE0F;</span>
+                        <h3 class="feature-card-title">Configuration Generator</h3>
+                        <p class="feature-card-desc">
+                            Visual config.toml builder with an app catalog, interactive patch selector, live preview, and one-click download. No manual editing required.
+                        </p>
+                        <span class="feature-card-link">Open Generator &rarr;</span>
+                    </a>
+                    <div class="feature-card">
+                        <span class="feature-card-icon" aria-hidden="true">&#x1f4e6;</span>
+                        <h3 class="feature-card-title">Multi-Source Patches</h3>
+                        <p class="feature-card-desc">
+                            Combine patches from Morphe, ReVanced, RVX, Piko, Patcheddit, Adobo, and the brosssh external-bundles aggregator. Version detection uses union strategy &mdash; the highest version supported by at least one source.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-card-icon" aria-hidden="true">&#x26A1;</span>
+                        <h3 class="feature-card-title">Build Cache</h3>
+                        <p class="feature-card-desc">
+                            Smart TTL-based caching with SHA-256 integrity verification. Skip re-downloading unchanged files and reduce build times significantly.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-card-icon" aria-hidden="true">&#x1f4cb;</span>
+                        <h3 class="feature-card-title">Changelog Automation</h3>
+                        <p class="feature-card-desc">
+                            Generate comprehensive changelogs from git commits with conventional commit support. Includes patches changelog from GitHub releases.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-card-icon" aria-hidden="true">&#x1f50d;</span>
+                        <h3 class="feature-card-title">Dependency Checker</h3>
+                        <p class="feature-card-desc">
+                            Automated monitoring of CLI, patches, and APK versions. Daily GitHub Actions checks with automatic issue creation when updates are found.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-card-icon" aria-hidden="true">&#x1f680;</span>
+                        <h3 class="feature-card-title">Parallel Builds</h3>
+                        <p class="feature-card-desc">
+                            Build multiple apps simultaneously with configurable parallelism. Download fallback chain: APKMirror, Uptodown, Archive.org.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <hr class="section-divider">
+        <!-- Supported Apps -->
+        <section class="app-showcase">
+            <div class="container">
+                <h2 class="section-title">Supported Apps</h2>
+                <p class="section-subtitle">Pre-configured app profiles ready to use &mdash; or add any app with a custom configuration</p>
+                <div class="showcase-grid">
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x25B6;&#xFE0F;</span>
+                        <span class="showcase-name">YouTube</span>
+                        <span class="showcase-pkg">com.google.android.youtube</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F3B5;</span>
+                        <span class="showcase-name">YouTube Music</span>
+                        <span class="showcase-pkg">com.google.android.apps.youtube.music</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F3A7;</span>
+                        <span class="showcase-name">Spotify</span>
+                        <span class="showcase-pkg">com.spotify.music</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F916;</span>
+                        <span class="showcase-name">Reddit</span>
+                        <span class="showcase-pkg">com.reddit.frontpage</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F4AC;</span>
+                        <span class="showcase-name">X / Twitter</span>
+                        <span class="showcase-pkg">com.twitter.android</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F3AC;</span>
+                        <span class="showcase-name">TikTok</span>
+                        <span class="showcase-pkg">com.zhiliaoapp.musically</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F4F7;</span>
+                        <span class="showcase-name">Instagram</span>
+                        <span class="showcase-pkg">com.instagram.android</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F305;</span>
+                        <span class="showcase-name">Google Photos</span>
+                        <span class="showcase-pkg">com.google.android.apps.photos</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <hr class="section-divider">
+        <!-- Quick Start -->
+        <section class="quickstart">
+            <div class="container">
+                <h2 class="section-title">Quick Start</h2>
+                <p class="section-subtitle">Get up and running in four steps</p>
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <span class="step-number">1</span>
+                        <h3 class="step-title">Configure</h3>
+                        <p class="step-desc">Use the <a href="generator.html">configuration generator</a> to create your config.toml visually, or edit it by hand.</p>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-number">2</span>
+                        <h3 class="step-title">Select Apps</h3>
+                        <p class="step-desc">Pick from the app catalog with pre-filled download URLs, patch sources, and recommended settings.</p>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-number">3</span>
+                        <h3 class="step-title">Choose Patches</h3>
+                        <p class="step-desc">Browse available patches with the visual selector. Search, filter, and toggle patches with a single click.</p>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-number">4</span>
+                        <h3 class="step-title">Build</h3>
+                        <p class="step-desc">Run <code style="background:var(--bg);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.85em">uv run python -m scripts.cli build --config config.toml</code> and the system handles downloading, patching, and signing.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <div class="container">
+            <nav class="footer-links" aria-label="Footer navigation">
+                <a href="https://github.com/Ven0m0/Revanced-auto" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+                <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/docs/CONFIG.md" target="_blank" rel="noopener noreferrer">Config Reference</a>
+                <a href="https://github.com/MorpheApp/morphe-patches" target="_blank" rel="noopener noreferrer">Morphe Patches</a>
+                <a href="https://github.com/ReVanced" target="_blank" rel="noopener noreferrer">ReVanced Project</a>
+                <a href="https://github.com/inotia00/revanced-patches" target="_blank" rel="noopener noreferrer">RVX Patches</a>
+            </nav>
+            <p>ReVanced Builder &mdash; Automated APK patching system</p>
+        </div>
+    </footer>
+    <div class="toast-container" id="toast-container" aria-live="assertive" role="status"></div>
+    <script>
+        "use strict";
+        // =====================================================================
+        // Theme Management
+        // =====================================================================
+        function initTheme() {
+            const savedTheme = localStorage.getItem("theme") || "dark";
+            applyTheme(savedTheme);
+        }
+        function applyTheme(theme) {
+            const icon = document.getElementById("theme-icon");
+            const metaTheme = document.getElementById("meta-theme-color");
+            if (theme === "light") {
+                document.documentElement.setAttribute("data-theme", "light");
+                icon.textContent = "\u{1F319}";
+                if (metaTheme) metaTheme.content = "#ffffff";
+            } else {
+                document.documentElement.removeAttribute("data-theme");
+                icon.textContent = "\u{2600}\u{FE0F}";
+                if (metaTheme) metaTheme.content = "#1e293b";
+            }
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute("data-theme");
+            const next = current === "light" ? "dark" : "light";
+            localStorage.setItem("theme", next);
+            applyTheme(next);
+        }
+        initTheme();
+        // =====================================================================
+        // Mobile Navigation
+        // =====================================================================
+        document.addEventListener("DOMContentLoaded", () => {
+            const toggle = document.getElementById("nav-toggle");
+            const menu = document.getElementById("nav-menu");
+            toggle.addEventListener("click", () => {
+                const expanded = toggle.getAttribute("aria-expanded") === "true";
+                toggle.setAttribute("aria-expanded", String(!expanded));
+                menu.classList.toggle("nav-open");
+            });
+            menu.addEventListener("click", (e) => {
+                if (e.target.closest(".nav-link")) {
+                    toggle.setAttribute("aria-expanded", "false");
+                    menu.classList.remove("nav-open");
+                }
+            });
+            document.addEventListener("click", (e) => {
+                if (!e.target.closest(".nav") && menu.classList.contains("nav-open")) {
+                    toggle.setAttribute("aria-expanded", "false");
+                    menu.classList.remove("nav-open");
+                }
+            });
+            document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
+        });
+    </script>
+</body>
+</html>

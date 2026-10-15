@@ -1,0 +1,30 @@
+name: Setup Build Environment
+description: Sets up Java, Android SDK and Python (via mise + uv) for ReVanced builds
+runs:
+  using: composite
+  steps:
+    - name: Install mise-managed toolchain (Python, uv, Java)
+      uses: jdx/mise-action@v5.1.2
+      with:
+        install: true
+        cache: true
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v4.0.4
+    - name: Cache Android SDK Build Tools
+      uses: actions/cache@v6
+      with:
+        path: ${{ env.ANDROID_HOME }}/build-tools
+        key: ${{ runner.os }}-android-build-tools-34.0.0
+        restore-keys: |
+          ${{ runner.os }}-android-build-tools-
+    - name: Install Android SDK Build Tools
+      shell: bash
+      run: |
+        sdkmanager "build-tools;34.0.0"
+        echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+    - name: Install Python dependencies (uv sync)
+      shell: bash
+      run: uv sync --locked --all-groups
+    - name: Validate environment
+      shell: bash
+      run: uv run python -m scripts.cli check-env

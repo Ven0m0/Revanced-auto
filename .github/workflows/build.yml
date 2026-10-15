@@ -1,0 +1,257 @@
+name: Build
+permissions:
+  contents: write
+  actions: read
+on:
+  workflow_call:
+    inputs:
+      build_mode:
+        type: string
+        required: false
+        default: stable
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: App to build (leave empty to build all enabled apps)
+        required: false
+        default: ""
+        type: string
+      version:
+        description: App version (auto, latest, or specific version like 18.48.39)
+        required: false
+        default: auto
+        type: string
+      architecture:
+        description: Target architecture (only applied when app_name is set)
+        required: false
+        default: arm64-v8a
+        type: choice
+        options:
+          - arm64-v8a
+          - armeabi-v7a
+          - both
+      build_mode:
+        description: Build target
+        required: false
+        default: stable
+        type: choice
+        options:
+          - stable
+          - dev
+      publish_release:
+        description: Publish to GitHub Releases
+        required: false
+        default: true
+        type: boolean
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.app_name }}
+  cancel-in-progress: true
+jobs:
+  setup_matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install mise-managed toolchain (Python, uv)
+        uses: jdx/mise-action@v5.1.2
+        with:
+          install: true
+          cache: true
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
+      - name: Generate Matrix
+        id: set-matrix
+        run: |
+          MATRIX=$(uv run python -m scripts.cli matrix "${{ inputs.app_name }}")
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+  apk_matrix:
+    needs: setup_matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup_matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-environment
+      - name: Cache ReVanced prebuilts
+        uses: actions/cache@v6
+        with:
+          path: ./temp
+          key: ${{ runner.os }}-revanced-prebuilts-${{ hashFiles('config.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-revanced-prebuilts-
+      - name: Generate ${{ matrix.id }} config
+        env:
+          APP_NAME: ${{ matrix.id }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_ARCH: ${{ inputs.architecture }}
+        run: |
+          uv run python -m scripts.cli extras separate-config config.toml "${APP_NAME}" sep_config.json
+          # Apply manual-dispatch version/arch overrides, if given
+          if [[ -n "${INPUT_VERSION:-}" && "${INPUT_VERSION}" != "auto" ]] || [[ -n "${INPUT_ARCH:-}" && "${INPUT_ARCH}" != "both" ]]; then
+            uv run python3 - <<'PYEOF'
+          import json
+          import os
+
+          with open("sep_config.json") as f:
+              config = json.load(f)
+
+          app = config[os.environ["APP_NAME"]]
+
+          version = os.environ.get("INPUT_VERSION", "")
+          if version and version != "auto":
+              app["version"] = version
+
+          arch = os.environ.get("INPUT_ARCH", "")
+          if arch and arch != "both":
+              app["arch"] = arch
+
+          with open("sep_config.json", "w") as f:
+              json.dump(config, f)
+          PYEOF
+          fi
+          cat sep_config.json
+      - name: Build APKs
+        run: uv run python -m scripts.cli build --config sep_config.json
+        env:
+          BUILD_MODE: ${{ inputs.build_mode }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ENTRY_PASSWORD: ${{ secrets.KEYSTORE_ENTRY_PASSWORD }}
+      - name: Upload APKs as artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: apks-${{ matrix.id }}
+          path: ./build/*.apk
+          if-no-files-found: warn
+          retention-days: 1
+      - name: Upload build log as artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-log-${{ matrix.id }}
+          path: build.md
+          if-no-files-found: warn
+          retention-days: 1
+  release:
+    needs: apk_matrix
+    if: ${{ !cancelled() && inputs.publish_release != false && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install mise-managed toolchain (Python, uv)
+        uses: jdx/mise-action@v5.1.2
+        with:
+          install: true
+          cache: true
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
+      - name: Check if any artifacts exist
+        id: check_artifacts
+        continue-on-error: true
+        run: |
+          if gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --jq '.artifacts[] | select(.name | startswith("apks-")) | .name' | grep -q .; then
+            echo "has_artifacts=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_artifacts=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare version
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        id: version
+        run: |
+          VER=$(date +%y.%m.%d)
+          if [ "${{ inputs.build_mode }}" == "dev" ]; then
+            VER="${VER}-pre"
+          fi
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+      - name: Download all APKs
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: apks-*
+          path: all-apks
+          merge-multiple: true
+      - name: Download all build logs
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: build-log-*
+          path: build-logs
+      - name: Combine build logs
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        id: get_output
+        run: |
+          DELIM="$(openssl rand -hex 8)"
+          echo "BUILD_LOG<<${DELIM}" >> "$GITHUB_OUTPUT"
+          uv run python -m scripts.cli extras combine-logs build-logs >> "$GITHUB_OUTPUT"
+          echo "${DELIM}" >> "$GITHUB_OUTPUT"
+      - name: Cleanup old releases
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION_PREFIX="${{ steps.version.outputs.version }}"
+          # Extract year-month prefix for cleanup (e.g., "26.03.")
+          YM_PREFIX=$(echo "$VERSION_PREFIX" | cut -d. -f1-2)
+          # Delete releases from previous months, keep latest 3.
+          # Skip "v*" tags - those belong to release-please, not the date-based APK releases.
+          gh release list --json tagName -q ".[].tagName" | \
+            grep -v "^${YM_PREFIX}\." | \
+            grep -v "^v" | \
+            head -n 20 | \
+            while read -r tag; do
+              echo "Cleaning old release: $tag"
+              gh release delete "$tag" -y --cleanup-tag 2>/dev/null || true
+            done
+      - name: Upload APKs to release
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        uses: svenstaro/upload-release-action@2.11.5
+        with:
+          body: ${{ steps.get_output.outputs.BUILD_LOG }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: all-apks/*.apk
+          release_name: ${{ steps.version.outputs.version }}
+          tag: ${{ steps.version.outputs.version }}
+          prerelease: ${{ inputs.build_mode == 'dev' }}
+          file_glob: true
+          overwrite: true
+      - name: Save build state
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        continue-on-error: true
+        run: |
+          uv run python -m scripts.cli version-tracker save --config config.toml
+      - name: Commit build state
+        if: steps.check_artifacts.outputs.has_artifacts == 'true'
+        continue-on-error: true
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore: update build versions state [skip ci]"
+          file_pattern: .github/last_built_versions.json

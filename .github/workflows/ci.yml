@@ -1,0 +1,318 @@
+name: CI
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**.py'
+      - '**.yml'
+      - '**.yaml'
+      - '**.toml'
+      - '**.json'
+      - '**.html'
+      - pyproject.toml
+      - biome.json
+      - .yamllint.yml
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint-python:
+    name: Python (Ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+      - name: Run Ruff Linter
+        run: uv run ruff check  --output-format=github .
+        continue-on-error: true
+      - name: Run Ruff Formatter Check
+        run: uv run ruff format --check .
+        continue-on-error: true
+  lint-yaml:
+    name: YAML
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Setup local bin
+        run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cache yamlfmt
+        uses: actions/cache@v6
+        id: cache-yamlfmt
+        with:
+          path: ~/.local/bin/yamlfmt
+          key: ${{ runner.os }}-yamlfmt-v0.14.0
+      - name: Install yamllint
+        run: uv sync --frozen --all-extras
+      - name: Install yamlfmt
+        if: steps.cache-yamlfmt.outputs.cache-hit != 'true'
+        run: |
+          wget -qO- "https://github.com/google/yamlfmt/releases/download/v0.14.0/yamlfmt_0.14.0_Linux_x86_64.tar.gz" \
+            | tar xz -C "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/yamlfmt"
+      - name: Run yamllint
+        run: |
+          find . \( -name "*.yml" -o -name "*.yaml" \) -not -path "./.git/*" -not -path "./build/*" \
+            | xargs uv run yamllint
+        continue-on-error: true
+      - name: Run yamlfmt
+        run: yamlfmt -dry .
+        continue-on-error: true
+  lint-toml:
+    name: TOML (Tombi)
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+      - name: Install Tombi
+        run: uv tool install tombi
+      - name: Ensure uv tool bin is on PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Run Tombi Format Check
+        run: tombi format --check .
+        continue-on-error: true
+      - name: Run Tombi Lint
+        run: tombi lint pyproject.toml config.toml
+        continue-on-error: true
+  lint-web:
+    name: Web (Biome)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Setup local bin
+        run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cache Biome
+        uses: actions/cache@v6
+        id: cache-biome
+        with:
+          path: ~/.local/bin/biome
+          key: ${{ runner.os }}-biome-v2.3.11
+      - name: Install Biome
+        if: steps.cache-biome.outputs.cache-hit != 'true'
+        run: |
+          wget -qO "$HOME/.local/bin/biome" \
+            "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.3.11/biome-linux-x64"
+          chmod +x "$HOME/.local/bin/biome"
+      - name: Run Biome
+        run: biome check --reporter=github .
+        continue-on-error: true
+  lint-summary:
+    name: Lint Summary
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    needs: [lint-python, lint-yaml, lint-toml, lint-web]
+    if: always()
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Lint Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Python (Ruff) | ${{ needs.lint-python.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| YAML | ${{ needs.lint-yaml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TOML (Tombi) | ${{ needs.lint-toml.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web (Biome) | ${{ needs.lint-web.result == 'success' && 'pass' || 'fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run \`python -m scripts.cli lint --fix\` locally to auto-fix issues." >> $GITHUB_STEP_SUMMARY
+  validate:
+    name: PR Validation
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+      - name: Install mise-managed toolchain (Java, Python, uv)
+        uses: jdx/mise-action@v5.1.2
+        with:
+          install: true
+          cache: true
+      - name: Check prerequisites
+        id: prereq
+        run: |
+          echo "## Prerequisites Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          MISSING=""
+          for tool in zip unzip java uv; do
+            if command -v $tool &> /dev/null; then
+              echo "✓ $tool" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ $tool (missing)" >> $GITHUB_STEP_SUMMARY
+              MISSING="$MISSING $tool"
+            fi
+          done
+          if [[ -n "$MISSING" ]]; then
+            echo "Missing tools:$MISSING"
+            exit 1
+          fi
+          JAVA_VER=$(java -version 2>&1 | head -n 1 | awk -F '"' '{print $2}' | cut -d'.' -f1)
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Java version: $JAVA_VER" >> $GITHUB_STEP_SUMMARY
+          if [[ $JAVA_VER -lt 21 ]]; then
+            echo "Java 21+ required"
+            exit 1
+          fi
+      - name: Run automated tests
+        id: tests
+        if: success()
+        run: |
+          echo "## Automated Tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ -d "tests" ]]; then
+            if uv run pytest tests -v 2>&1 | tee test-output.txt; then
+              echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              tail -20 test-output.txt >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              tail -30 test-output.txt >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          else
+            echo "⚠️  No test suite found" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Setup build environment
+        if: success()
+        uses: ./.github/actions/setup-environment
+      - name: Test build (single app)
+        id: test_build
+        if: success()
+        run: |
+          echo "## Test Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Find first enabled app for testing
+          TEST_APP=$(uv run python3 -c "
+              import tomllib, sys
+              with open('config.toml', 'rb') as f:
+                  cfg = tomllib.load(f)
+              apps = [k for k, v in cfg.items() if isinstance(v, dict) and v.get('enabled', True)]
+              print(apps[0] if apps else '')
+          " 2>/dev/null || echo "")
+          if [[ -z "$TEST_APP" ]]; then
+            echo "⚠️  No enabled apps found in config.toml - skipping test build" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          echo "Testing build with app: **$TEST_APP**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Generate config for test app
+          uv run python -m scripts.cli extras separate-config config.toml "$TEST_APP" test_config.json
+          echo "Test configuration:" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat test_config.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Try to build (will likely fail without keystore, but validates pipeline)
+          echo "Note: Build will validate pipeline but may fail at signing step (expected in PR)" >> $GITHUB_STEP_SUMMARY
+          if timeout 600 uv run python -m scripts.cli build --config test_config.json 2>&1 | tee build-output.txt; then
+            echo "✅ Build completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            # Check if it's just the signing step that failed (expected)
+            if grep -q "Signing APK" build-output.txt || grep -q "KEYSTORE_PASSWORD" build-output.txt; then
+              echo "⚠️  Build reached signing step (expected to fail in PR without secrets)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Build failed before signing step" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              tail -50 build-output.txt >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        continue-on-error: true
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
+            const comment = `## 🤖 PR Validation Results
+            ${summary}
+            ---
+            <sub>Automated validation from ReVanced Builder CI</sub>`;
+            // Find existing bot comment
+            const {data: comments} = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('PR Validation Results')
+            );
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+      - name: Validation summary
+        if: always()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "PR Validation Complete"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Results have been posted as a PR comment."
+          echo "Review the full output in the Actions tab."
