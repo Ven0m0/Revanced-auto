@@ -11,6 +11,7 @@ import functools
 import json
 import logging
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -47,6 +48,22 @@ logger = logging.getLogger(__name__)
 
 # Message prefix of the ValueError DownloadManager.resolve raises when ``compatible`` filters out everything.
 _NO_COMPATIBLE = "no patch-compatible version"
+# Permanent client errors (not 429) from ScraperBase._request_with_retry: the source is unusable, not merely flaky.
+_PERMANENT_4XX = re.compile(r"HTTP 4(?!29)\d\d for ")
+
+
+def _blocks_fallback(error: Exception) -> bool:
+    """True if a source failure may hide a compatible version (outage), so newest-version fallback is unsafe.
+
+    "No compatible version" and "no versions at all" are definitive answers; permanent 4xx (e.g. a Cloudflare 403)
+    means the source cannot be consulted at all. Anything else (5xx, 429, network errors) is transient.
+    """
+    if not isinstance(error, (ValueError, RuntimeError)):
+        return True
+    text = str(error)
+    if isinstance(error, ValueError):
+        return not (_NO_COMPATIBLE in text or text.startswith("No versions found"))
+    return _PERMANENT_4XX.search(text) is None
 
 
 class NoCompatibleVersionError(RuntimeError):
@@ -740,7 +757,8 @@ class AppProcessor:
             raise RuntimeError(msg)
 
         errors: list[str] = []
-        all_incompatible = bool(compatible)
+        saw_incompatible = False
+        blocked = False
         for i, (source, download_url) in enumerate(candidates):
             pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else ""
             try:
@@ -749,12 +767,13 @@ class AppProcessor:
                 )
             except Exception as e:
                 errors.append(f"{source.value}: {e}")
-                all_incompatible = all_incompatible and isinstance(e, ValueError) and _NO_COMPATIBLE in str(e)
+                saw_incompatible = saw_incompatible or (isinstance(e, ValueError) and _NO_COMPATIBLE in str(e))
+                blocked = blocked or _blocks_fallback(e)
                 continue
             return version, [candidates[i], *candidates[:i], *candidates[i + 1 :]]
 
         msg = f"Failed to resolve version from any configured source: {'; '.join(errors)}"
-        if all_incompatible:
+        if compatible and saw_incompatible and not blocked:
             raise NoCompatibleVersionError(msg)
         raise RuntimeError(msg)
 

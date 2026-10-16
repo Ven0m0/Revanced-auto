@@ -302,6 +302,8 @@ apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
 # APKMirror URLs carry no package id, so list-versions needs it spelled out.
 package-name = "com.reddit.frontpage"
 exclusive = true
+# "Spoof signature" is omitted: it reads the original signing certificate from the input APK, but APKMirror
+# ships Reddit only as a split bundle that merges into an unsigned APK ("Unable to extract certificate").
 patches = [
   "Colorize comment indent lines",
   "Disable bottom navigation bar auto-hide",
@@ -329,7 +331,6 @@ patches = [
   "Hide sidebar components",
   "Remove subreddit dialog",
   "Show view count",
-  "Spoof signature",
   "Remove Subreddit Dialogs",
   "Unlock Premium",
 ]
@@ -366,7 +367,8 @@ apkmirror-dpi = "120-640dpi"
 [Brave]
 enabled = true
 app-name = "Brave"
-patches-source = ["jkennethcarino/adobo", "dh6k/morphe-patches", "BlazeFTL/FTL-Patches"]
+# Later bundles win on duplicate patch names, so kveld9 goes first to keep dh6k's "Brave Origin".
+patches-source = ["kveld9/kveld-morphe-patches", "jkennethcarino/adobo", "dh6k/morphe-patches", "BlazeFTL/FTL-Patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/brave-software/brave-browser-beta/"
@@ -385,6 +387,20 @@ patches = [
   "Remove Duplicate Graphics",
   "Remove Languages",
   "Universal Remove Ads",
+  # kveld9/kveld-morphe-patches
+  "Block Motion Sensors",
+  "Block Popups & Rating Requests",
+  "Block Trackers",
+  "Clean Shared Links",
+  "Clean Start Page",
+  "Faster Startup",
+  "Hide Battery Status",
+  "Keep Tabs Open",
+  "Select Previous Tab on Close",
+  "Silence Promo Notifications",
+  "Skip Welcome Screens",
+  "Stop Background Sync",
+  "Stop Text Sharing with System",
 ]
 
 [Brave.patch-options."Remove Duplicate Graphics"]

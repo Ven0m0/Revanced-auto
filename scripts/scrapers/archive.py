@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 ARCHIVE_COLLECTION = "jhc-apks"
 ARCHIVE_BASE_URL = f"{APK_ARCHIVE_URL}/download/{ARCHIVE_COLLECTION}/apks"
+# j-hc files are named "<pkg>-<version>-all.apk"; they satisfy any requested arch.
+_UNIVERSAL_ARCHS = frozenset({"all", "universal", "noarch"})
 
 
 class ArchiveScraper(ScraperBase):
@@ -81,7 +83,11 @@ class ArchiveScraper(ScraperBase):
             return DownloadResult(success=False, error="Version is required for Archive.org downloads")
         versions = await self.get_versions(pkg_name, **kwargs)
         for v in versions:
-            if v.version == version and (arch is None or v.arch == arch) and v.url is not None:
+            if (
+                v.version == version
+                and (arch is None or v.arch == arch or v.arch in _UNIVERSAL_ARCHS)
+                and v.url is not None
+            ):
                 try:
                     await self.save(v.url, output_path)
                 except Exception as e:
