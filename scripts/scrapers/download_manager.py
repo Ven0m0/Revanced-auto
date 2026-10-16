@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import re
+import tempfile
 import threading
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from scripts.scrapers.apkmirror import APKMirror
+from scripts.scrapers.apkmirror import APKMirror, is_apk_bundle, merge_apkm_splits
 from scripts.scrapers.apkmonk import APKMonkScraper
 from scripts.scrapers.apkpure import APKPureScraper
 from scripts.scrapers.aptoide import AptoideScraper
@@ -33,6 +35,23 @@ def _reset_scraper_session(scraper: ScraperBase) -> None:
     to the loop that's about to run.
     """
     scraper._session = None  # noqa: SLF001
+
+
+def _is_apk(path: Path) -> bool:
+    """True if ``path`` is a zip holding AndroidManifest.xml.
+
+    Scrapers can save an HTML challenge/error page under the .apk name; the
+    patcher would otherwise fail much later with an opaque error.
+    """
+    try:
+        with zipfile.ZipFile(path) as zf:
+            return "AndroidManifest.xml" in zf.namelist()
+    except OSError, zipfile.BadZipFile:
+        return False
+
+
+def _bare_version(version: str) -> str:
+    return version.strip().removeprefix("v").removeprefix("V")
 
 
 def _version_sort_key(version: str) -> tuple[int, ...]:
@@ -88,20 +107,28 @@ class DownloadManager:
         app_id: str,
         source: DownloadSource,
         *,
+        compatible: list[str] | None = None,
+        include_beta: bool = False,
         timeout: int = 300,
     ) -> tuple[str, str]:
-        """Resolve the latest available (non-alpha/beta) version for an app.
+        """Resolve the newest available version for an app.
 
         Args:
             app_id: Package identifier as expected by the source's scraper
                 (e.g. an APKMirror URL slug like ``google-inc/youtube``).
             source: Download source to query.
+            compatible: Versions the patches support. When non-empty, only
+                these are considered; an empty list or None means no filter.
+            include_beta: Keep alpha/beta releases (APKMirror only).
             timeout: Unused; scrapers manage their own request timeouts.
 
         Returns:
             Tuple of (version_string, version_string). No scraper exposes a
             separate Android versionCode, so both elements carry the version
             string; callers that need a real versionCode must look elsewhere.
+
+        Raises:
+            ValueError: No versions found, or none is in ``compatible``.
         """
         del timeout
         with self._lock:
@@ -115,11 +142,18 @@ class DownloadManager:
             # equality checks, accepting whatever variant a release has. It's
             # an APKMirror-only kwarg; other scrapers ignore unknown kwargs
             # via **kwargs.
-            kwargs: dict[str, bool] = {"match_any": True}
+            kwargs: dict[str, bool] = {"match_any": True, "exclude_alpha_beta": not include_beta}
             versions = asyncio.run(scraper.get_versions(app_id, **kwargs))
         if not versions:
             msg = f"No versions found for {app_id!r} on {source.value}"
             raise ValueError(msg)
+        if compatible:
+            # GitHub tags carry a "v" prefix that list-versions output lacks.
+            allowed = {_bare_version(v) for v in compatible}
+            versions = [v for v in versions if _bare_version(v.version) in allowed]
+            if not versions:
+                msg = f"no patch-compatible version on {source.value}"
+                raise ValueError(msg)
         latest = max(versions, key=lambda v: _version_sort_key(v.version))
         return latest.version, latest.version
 
@@ -153,21 +187,38 @@ class DownloadManager:
         with self._lock:
             scraper = self._get_scraper(source)
             _reset_scraper_session(scraper)
-            kwargs: dict[str, str] = {}
+            kwargs: dict[str, str | bool] = {}
             if arch:
-                # Only APKMirror's ArchType expects "armeabi-v7a"; other
-                # scrapers (e.g. Archive.org) key VersionInfo.arch off the raw
-                # filename convention ("arm-v7a"), so normalizing there would
-                # break the exact-match lookup in their download().
-                kwargs["arch"] = self._normalize_arch(arch) if source == DownloadSource.APKMIRROR else arch
+                # Only Archive.org keys VersionInfo.arch off the raw filename
+                # convention ("arm-v7a"); APKMirror, GitHub asset names,
+                # Uptodown and Aptoide all use "armeabi-v7a".
+                kwargs["arch"] = arch if source == DownloadSource.ARCHIVE else self._normalize_arch(arch)
             if dpi:
                 kwargs["dpi"] = dpi
+            if source == DownloadSource.APKMIRROR:
+                # The version is exact here, so a beta that is the pinned or
+                # resolved release must not be filtered out again.
+                kwargs["exclude_alpha_beta"] = False
 
             result = asyncio.run(scraper.download(app_id, version, output_path, **kwargs))
         if not result.success or result.file_path is None:
             msg = result.error or f"Failed to download {app_id!r} {version} from {source.value}"
             raise RuntimeError(msg)
-        return result.file_path
+
+        path = result.file_path
+        if is_apk_bundle(path):
+            bundle = path if path.suffix == ".apkm" else path.replace(path.with_suffix(".apkm"))
+            try:
+                with tempfile.TemporaryDirectory(prefix="apkeditor_") as tmp:
+                    merge_apkm_splits(Path(tmp), bundle, output_path)
+            finally:
+                bundle.unlink(missing_ok=True)
+            path = output_path
+        if not _is_apk(path):
+            path.unlink(missing_ok=True)
+            msg = f"{source.value} returned a non-APK file for {app_id!r} {version}"
+            raise RuntimeError(msg)
+        return path
 
     def _normalize_arch(self, arch: str) -> str:
         """Normalize a shorthand architecture name (e.g. ``arm-v7a``) to its canonical form."""

@@ -18,7 +18,7 @@ default values if not set explicitly.
 
 ```toml
 parallel-jobs = 1                    # amount of cores to use for parallel patching, if not set $(nproc) is used
-compression-level = 9                # module zip compression level
+arch = "arm64-v8a"                    # default architecture, applied to every app without its own arch. default: all
 remove-rv-integrations-checks = true # remove checks from the revanced integrations
 # Multiple patch sources can be specified as an array (patches are merged, later sources override earlier ones on conflicts).
 # The default is Morphe (MorpheApp/morphe-patches + MorpheApp/morphe-cli).
@@ -32,12 +32,10 @@ patches-source = [
 # patches-source = "MorpheApp/morphe-patches"
 cli-source = "MorpheApp/morphe-cli"             # where to fetch CLI from. default: "MorpheApp/morphe-cli"
 # Supported CLI flavors (auto-detected from `java -jar <cli> --help`):
-#   - "revanced-cli-v5"   ReVanced CLI v5 (long flags, `--patch`, `--input`)
-#   - "revanced-cli-v6"   ReVanced CLI v6 (short flags, `-e`, `-i`)
 #   - "morphe-cli"        Morphe CLI (long flags, `--patch`, `--input`)
 #   - "adobo-cli"         Adobo CLI (Morphe-compatible flag set)
 # Force a specific profile with cli-profile (default "auto"). Auto-detection
-# inspects `--help` and falls back to ReVanced CLI v5 on uncertainty.
+# inspects `--help` and falls back to Morphe CLI on uncertainty.
 cli-profile = "auto"
 
 # ============================================================================
@@ -76,9 +74,8 @@ cli-version = "latest"     # 'latest', 'dev', or a version number. default: "lat
 [Some-App]
 app-name = "SomeApp" # if set, release name becomes SomeApp instead of Some-App. default is same as table name, which is 'Some-App' here.
 enabled = true       # whether to build the app. default: true
-build-mode = "apk"   # 'both', 'apk' or 'module'. default: apk
-# 'auto' option gets the latest possible version supported by all the included patches
-# 'latest' gets the latest stable without checking patches support. 'beta' gets the latest beta/alpha
+# 'auto' option gets the newest version compatible with the patches (falls back to the newest store version if compatibility cannot be determined)
+# 'latest' gets the newest stable store version without checking patches support. 'beta' gets the newest version including beta/alpha
 # whitespace seperated list of patches to exclude. default: ""
 version = "auto"     # 'auto', 'latest', 'beta' or a version number (e.g. '17.40.41'). default: auto
 # optional args to be passed to cli. can be used to set patch options
@@ -92,23 +89,20 @@ excluded-patches = """\
   'Some Other Patch' \
   """
 included-patches = "'Some Patch'"                          # whitespace seperated list of non-default patches to include. default: ""
-include-stock = true                                       # includes stock apk in the module. default: true
 exclusive-patches = false                                  # exclude all patches by default. default: false
 apkmirror-dlurl = "https://www.apkmirror.com/apk/inc/app"
 uptodown-dlurl = "https://spotify.en.uptodown.com/android"
-module-prop-name = "some-app-magisk"                       # magisk module prop name.
 apkmirror-dpi = "360-480dpi"                               # used to select apk variant from apkmirror. default: nodpi
-arch = "arm64-v8a"                                         # 'arm64-v8a', 'arm-v7a', 'all', 'both'. 'both' downloads both arm64-v8a and arm-v7a. default: all
+arch = "arm64-v8a"                                         # 'arm64-v8a', 'arm-v7a', 'all', 'both'. 'both' downloads both arm64-v8a and arm-v7a. default: the global arch
+package-name = "com.example.app"                           # package id used to look up patch-compatible versions when it cannot be derived from a download URL (e.g. APKMirror-only apps; Reddit-Morphed uses com.reddit.frontpage)
 riplib = true                                              # enables stripping the other ABI's .so files from APKs. default: true
 
 # ============================================================================
 # Patch sources reference
 # ============================================================================
 # Morphe (default):      MorpheApp/morphe-patches     + MorpheApp/morphe-cli
-# ReVanced:              ReVanced/revanced-patches    + ReVanced/revanced-cli
-# ReVanced Extended:     anddea/revanced-patches      + inotia00/revanced-cli
 # Adobo (Morphe-compat): jkennethcarino/adobo        + MorpheApp/morphe-cli
-# Piko (Twitter/X):      crimera/piko                 + (ReVanced/Morphe CLI)
-# Patcheddit (Reddit):   wchill/patcheddit            + (ReVanced/Morphe CLI)
+# Piko (Twitter/X):      crimera/piko                 + Morphe CLI
+# Patcheddit (Reddit):   wchill/patcheddit            + Morphe CLI
 # External bundles:      brosssh/revanced-external-bundles (or `external-bundles:<bundle_type>`)
 ```

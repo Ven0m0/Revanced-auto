@@ -5,10 +5,10 @@ permissions:
 on:
   workflow_call:
     inputs:
-      build_mode:
-        type: string
+      publish_release:
+        type: boolean
         required: false
-        default: stable
+        default: true
   workflow_dispatch:
     inputs:
       app_name:
@@ -17,12 +17,12 @@ on:
         default: ""
         type: string
       version:
-        description: App version (auto, latest, or specific version like 18.48.39)
+        description: App version override (auto = newest patch-compatible, latest, beta, or a specific version like 18.48.39). Applied to every app being built.
         required: false
         default: auto
         type: string
       architecture:
-        description: Target architecture (only applied when app_name is set)
+        description: Target architecture override. Applied to every app being built, so leave app_name set to limit it to one app.
         required: false
         default: arm64-v8a
         type: choice
@@ -30,14 +30,6 @@ on:
           - arm64-v8a
           - armeabi-v7a
           - both
-      build_mode:
-        description: Build target
-        required: false
-        default: stable
-        type: choice
-        options:
-          - stable
-          - dev
       publish_release:
         description: Publish to GitHub Releases
         required: false
@@ -66,8 +58,10 @@ jobs:
         run: uv sync --locked --all-groups
       - name: Generate Matrix
         id: set-matrix
+        env:
+          APP_FILTER: ${{ inputs.app_name }}
         run: |
-          MATRIX=$(uv run python -m scripts.cli matrix "${{ inputs.app_name }}")
+          MATRIX=$(uv run python -m scripts.cli matrix "${APP_FILTER}")
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
   apk_matrix:
     needs: setup_matrix
@@ -90,10 +84,11 @@ jobs:
       - name: Cache ReVanced prebuilts
         uses: actions/cache@v6
         with:
-          path: ./temp
-          key: ${{ runner.os }}-revanced-prebuilts-${{ hashFiles('config.toml') }}
+          path: .cache/prebuilts
+          key: ${{ runner.os }}-prebuilts-${{ matrix.id }}-${{ github.run_id }}
           restore-keys: |
-            ${{ runner.os }}-revanced-prebuilts-
+            ${{ runner.os }}-prebuilts-${{ matrix.id }}-
+            ${{ runner.os }}-prebuilts-
       - name: Generate ${{ matrix.id }} config
         env:
           APP_NAME: ${{ matrix.id }}
@@ -102,7 +97,7 @@ jobs:
         run: |
           uv run python -m scripts.cli extras separate-config config.toml "${APP_NAME}" sep_config.json
           # Apply manual-dispatch version/arch overrides, if given
-          if [[ -n "${INPUT_VERSION:-}" && "${INPUT_VERSION}" != "auto" ]] || [[ -n "${INPUT_ARCH:-}" && "${INPUT_ARCH}" != "both" ]]; then
+          if [[ -n "${INPUT_VERSION:-}" && "${INPUT_VERSION}" != "auto" ]] || [[ -n "${INPUT_ARCH:-}" ]]; then
             uv run python3 - <<'PYEOF'
           import json
           import os
@@ -117,7 +112,7 @@ jobs:
               app["version"] = version
 
           arch = os.environ.get("INPUT_ARCH", "")
-          if arch and arch != "both":
+          if arch:
               app["arch"] = arch
 
           with open("sep_config.json", "w") as f:
@@ -128,7 +123,6 @@ jobs:
       - name: Build APKs
         run: uv run python -m scripts.cli build --config sep_config.json
         env:
-          BUILD_MODE: ${{ inputs.build_mode }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -187,9 +181,6 @@ jobs:
         id: version
         run: |
           VER=$(date +%y.%m.%d)
-          if [ "${{ inputs.build_mode }}" == "dev" ]; then
-            VER="${VER}-pre"
-          fi
           echo "version=${VER}" >> $GITHUB_OUTPUT
       - name: Download all APKs
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
@@ -240,7 +231,6 @@ jobs:
           file: all-apks/*.apk
           release_name: ${{ steps.version.outputs.version }}
           tag: ${{ steps.version.outputs.version }}
-          prerelease: ${{ inputs.build_mode == 'dev' }}
           file_glob: true
           overwrite: true
       - name: Save build state

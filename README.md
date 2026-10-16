@@ -7,8 +7,10 @@ ReVanced-auto builds patched Android APKs from a TOML config: resolve compatible
 ## Requirements
 
 - Python **3.14+**
-- Java **21+**
-- `uv`, `zip`, `unzip`
+- Java **21+**, an OpenJDK build such as Temurin (`mise install` provides it). Oracle JDK and GraalVM reject the
+  unsigned BouncyCastle provider bundled in the Morphe CLI, so patching fails with
+  `JCE cannot authenticate the provider BC` / `Invalid password for keystore entry`.
+- `uv`
 - Optional but useful: `zipalign`, `optipng`
 
 This repo uses `uv` for dependency management and is not distributed as a standalone Python package.
@@ -36,7 +38,7 @@ export KEYSTORE_ENTRY_PASSWORD='...'
 
 uv run python -m scripts.cli check-env
 uv run python -m scripts.cli check --config config.toml
-uv run python -m scripts.cli build --config config.toml --build-mode apk --parallel 1
+uv run python -m scripts.cli build --config config.toml --parallel 1
 ```
 
 The CLI builds every app with `enabled = true` in `config.toml`. To rebuild when nothing changed, reset the version tracker first:
@@ -48,9 +50,9 @@ uv run python -m scripts.cli version-tracker reset --config config.toml
 Useful variants:
 
 ```bash
-uv run python -m scripts.cli build --config config.toml --build-mode both --parallel 2
-uv run python -m scripts.cli build --config config.toml --build-mode apk --parallel 1 --clean
-uv run python -m scripts.cli build --config config.toml --build-mode module --parallel 1 --no-cache
+uv run python -m scripts.cli build --config config.toml --parallel 2
+uv run python -m scripts.cli build --config config.toml --parallel 1 --clean
+uv run python -m scripts.cli build --config config.toml --parallel 1 --no-cache
 uv run python -m scripts.cli version-tracker check --config config.toml
 uv run python -m scripts.cli cache stats
 ```
@@ -84,15 +86,13 @@ export KEYSTORE_ENTRY_PASSWORD='...'
 uv run python -m scripts.cli check --config config.toml
 
 # Build all enabled apps (YouTube-Morphed + Music-Morphed by default)
-uv run python -m scripts.cli build --config config.toml --build-mode apk --parallel 2
+uv run python -m scripts.cli build --config config.toml --parallel 2
 ```
 
 To force a specific CLI profile, set `cli-profile` in `config.toml` (or pass it on the command line where supported). Valid values:
 
 - `"auto"` (default) — detect from the CLI JAR's `--help` output
 - `"morphe-cli"`
-- `"revanced-cli-v5"`
-- `"revanced-cli-v6"`
 - `"adobo-cli"` (Adobo patches run on Morphe CLI)
 
 ### Morphe resources
@@ -114,7 +114,7 @@ To force a specific CLI profile, set `cli-profile` in `config.toml` (or pass it 
 ## Key commands
 
 ```bash
-uv run python -m scripts.cli build --config config.toml --build-mode {apk,module,both} --parallel N [--clean] [--no-cache]
+uv run python -m scripts.cli build --config config.toml --parallel N [--clean] [--no-cache]
 uv run python -m scripts.cli check --config config.toml
 uv run python -m scripts.cli version-tracker {check|save|show|reset} --config config.toml
 uv run python -m scripts.cli cache init
@@ -140,19 +140,20 @@ The shipped `config.toml` uses top-level global settings plus per-app sections s
 Common global settings include:
 
 - `parallel-jobs`
-- `build-mode`
 - `patches-version`
 - `cli-version`
 - `patches-source` (defaults to `MorpheApp/morphe-patches`)
 - `cli-source` (defaults to `MorpheApp/morphe-cli`)
-- `cli-profile` (defaults to `"auto"`; detects `revanced-cli-v5`, `revanced-cli-v6`, `morphe-cli`, or `adobo-cli` from `--help`)
-- `arch`
+- `cli-profile` (defaults to `"auto"`; detects `morphe-cli` or `adobo-cli` from `--help`)
+- `arch` (default architecture, applied to every app that does not set its own `arch`)
 - `riplib`
 
 Per-app settings worth knowing:
 
 - `patches` — explicit list of patch names to include for that app (patches not listed are excluded)
 - `patch-options."Patch Name"` — a sub-table of `key = "value"` options passed to a specific patch
+- `package-name` — package id used to look up patch-compatible versions when it cannot be derived from a download URL (for example APKMirror-only apps; `Reddit-Morphed` uses `com.reddit.frontpage`)
+- `version` — `auto` (default) picks the newest version compatible with the patches, `latest` the newest store version, `beta` the newest including beta/alpha, or pin an exact version
 - `exclusive` — when `true`, only the app's own `patches` list applies; global default patches are not merged in
 
 The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-Morphed`, `Brave`, and `SDMaid`. Other sections (`Spotify`, `GooglePhotos`, `Instagram-Piko`, `Twitter-Piko`) are included as disabled examples — flip `enabled = true` to use them.
@@ -162,8 +163,6 @@ The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-
 `patches-source` (and `cli-source`) accepts a GitHub repo slug like `owner/repo`. A list of repo slugs is also accepted; later entries override earlier ones when patches conflict. Common choices:
 
 - **Morphe (current default)** — `MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`. Active app sections are `YouTube-Morphed` and `Music-Morphed`.
-- **ReVanced** — `ReVanced/revanced-patches` + `ReVanced/revanced-cli` (upstream).
-- **ReVanced Extended (RVX)** — `anddea/revanced-patches` + `inotia00/revanced-cli`.
 - **Piko** (Twitter/X) — `crimera/piko`.
 - **Patcheddit** (Reddit) — `wchill/patcheddit`.
 - **External bundles** — `brosssh/revanced-external-bundles` resolves a patch JAR via the community aggregator's GraphQL API (https://revanced-external-bundles.brosssh.com). Use `external-bundles:<bundle_type>` to pin a specific bundle type; the bare repo slug falls back to selecting by the app's package id.
@@ -214,7 +213,7 @@ For YouTube and YouTube Music builds, expect to install a compatible GmsCore/Mic
 
 ## Outputs
 
-- `build/` — final APKs, module ZIPs, and per-app Markdown summaries
+- `build/` — final APKs and per-app Markdown summaries
 - `temp/` — temporary files and default cache directory
 - `.github/last_built_versions.json` — saved version-tracker state
 - `build.md` — combined build notes/changelog

@@ -18,16 +18,10 @@ def build_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]
         help="Path to config TOML file (default: config.toml)",
     )
     parser.add_argument(
-        "--build-mode",
-        choices=["apk", "module", "both"],
-        default="both",
-        help="Build mode (default: both)",
-    )
-    parser.add_argument(
         "--parallel",
         type=int,
-        default=1,
-        help="Number of parallel jobs (default: 1)",
+        default=None,
+        help="Number of parallel jobs (default: config parallel-jobs)",
     )
     parser.add_argument(
         "--clean",

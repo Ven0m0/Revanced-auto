@@ -176,6 +176,15 @@ class HttpClient:
         for attempt in range(self.config.max_retries + 1):
             try:
                 return func(*args, **kwargs)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code != 429 and e.response.status_code < 500:
+                    raise  # 4xx is permanent; do not retry or save the error body
+                last_exception = e
+                if attempt < self.config.max_retries:
+                    time.sleep(delay)
+                    delay *= 2
+                else:
+                    break
             except httpx.HTTPError as e:
                 last_exception = e
                 if attempt < self.config.max_retries:
@@ -214,6 +223,15 @@ class HttpClient:
         for attempt in range(self.config.max_retries + 1):
             try:
                 return await func(*args, **kwargs)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code != 429 and e.response.status_code < 500:
+                    raise  # 4xx is permanent; do not retry or save the error body
+                last_exception = e
+                if attempt < self.config.max_retries:
+                    await asyncio.sleep(delay)
+                    delay *= 2
+                else:
+                    break
             except httpx.HTTPError as e:
                 last_exception = e
                 if attempt < self.config.max_retries:
@@ -251,7 +269,9 @@ class HttpClient:
         full_headers = self._build_headers(headers)
 
         def request_func() -> httpx.Response:
-            return self._sync_client.request(method, url, headers=full_headers, **kwargs)
+            response = self._sync_client.request(method, url, headers=full_headers, **kwargs)
+            response.raise_for_status()
+            return response
 
         response = self._retry_with_backoff(request_func)
 
@@ -292,7 +312,9 @@ class HttpClient:
         full_headers = self._build_headers(headers)
 
         async def request_func() -> httpx.Response:
-            return await client.request(method, url, headers=full_headers, **kwargs)
+            response = await client.request(method, url, headers=full_headers, **kwargs)
+            response.raise_for_status()
+            return response
 
         response = await self._async_retry_with_backoff(request_func)
 

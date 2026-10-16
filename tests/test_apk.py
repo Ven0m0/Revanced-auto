@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from scripts.utils.apk import (
+    APKSigner,
     BundleType,
     SplitAPKHandler,
     _validate_apk_path,
@@ -17,6 +18,55 @@ from scripts.utils.apk import (
     align_apk,
     detect_bundle_type,
 )
+
+# ---------------------------------------------------------------------------
+# APKSigner
+# ---------------------------------------------------------------------------
+
+
+class TestAPKSigner:
+    @pytest.fixture(autouse=True)
+    def _jar_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("scripts.utils.apk._ensure_apksigner_jar", lambda: True)
+
+    def _signer(self) -> APKSigner:
+        return APKSigner(Path("ks.keystore"), "storepw", "morphe", "keypw")
+
+    def test_missing_jar_fails_without_running_java(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("scripts.utils.apk._ensure_apksigner_jar", lambda: False)
+        with patch("subprocess.run") as mock_run:
+            assert self._signer().sign(Path("in.apk"), Path("out.apk")) is False
+        mock_run.assert_not_called()
+
+    def test_runs_pinned_apksigner_jar_with_v1_v2_only(self) -> None:
+        with patch("subprocess.run") as mock_run:
+            assert self._signer().sign(Path("in.apk"), Path("out.apk")) is True
+
+        cmd = mock_run.call_args.args[0]
+        assert cmd[0] == "java"
+        assert cmd[cmd.index("-jar") + 1] == str(Path("bin/apksigner.jar"))
+        assert cmd[cmd.index("-jar") + 2] == "sign"
+        assert cmd[cmd.index("--v1-signing-enabled") + 1] == "true"
+        assert cmd[cmd.index("--v2-signing-enabled") + 1] == "true"
+        assert cmd[cmd.index("--v3-signing-enabled") + 1] == "false"
+        assert cmd[cmd.index("--v4-signing-enabled") + 1] == "false"
+        assert cmd[cmd.index("--ks-key-alias") + 1] == "morphe"
+        assert cmd[cmd.index("--out") + 1] == "out.apk"
+        assert cmd[-1] == "in.apk"
+
+    def test_failure_logs_stderr_but_never_passwords(self, caplog: pytest.LogCaptureFixture) -> None:
+        err = subprocess.CalledProcessError(1, ["java"], stderr="bad key")
+        with patch("subprocess.run", side_effect=err):
+            assert self._signer().sign(Path("in.apk"), Path("out.apk")) is False
+
+        assert "bad key" in caplog.text
+        assert "storepw" not in caplog.text
+        assert "keypw" not in caplog.text
+
+    def test_missing_java_returns_false(self) -> None:
+        with patch("subprocess.run", side_effect=FileNotFoundError("java")):
+            assert self._signer().sign(Path("in.apk"), Path("out.apk")) is False
+
 
 # ---------------------------------------------------------------------------
 # _validate_path
@@ -204,3 +254,36 @@ class TestAlignApk:
         output_path = tmp_path / "output.apk"
         with pytest.raises(ValueError, match="align_apk input: file must have .apk extension"):
             align_apk(input_path, output_path)
+
+
+class TestEnsureApksignerJar:
+    def test_missing_jar_is_fetched_with_pinned_hash(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.lib import env_check
+        from scripts.utils import apk
+
+        jar = tmp_path / "bin" / "apksigner.jar"
+        monkeypatch.setattr(apk, "APKSIGNER_JAR", jar)
+        calls: list[tuple[str, Path, str | None]] = []
+
+        def fake_download(url: str, target: Path, *, sha256: str | None = None) -> bool:
+            calls.append((url, target, sha256))
+            target.write_bytes(b"jar")
+            return True
+
+        monkeypatch.setattr(env_check, "download_with_lock", fake_download)
+
+        assert apk._ensure_apksigner_jar() is True
+        assert calls == [
+            (f"{env_check._BINARIES_BASE_URL}/apksigner.jar", jar, env_check._PINNED_BINARIES["apksigner.jar"])
+        ]
+        assert apk._ensure_apksigner_jar() is True
+        assert len(calls) == 1
+
+    def test_download_failure_returns_false(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.lib import env_check
+        from scripts.utils import apk
+
+        monkeypatch.setattr(apk, "APKSIGNER_JAR", tmp_path / "bin" / "apksigner.jar")
+        monkeypatch.setattr(env_check, "download_with_lock", lambda *_a, **_k: False)
+
+        assert apk._ensure_apksigner_jar() is False

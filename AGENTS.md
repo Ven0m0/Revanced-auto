@@ -14,7 +14,7 @@ Automate the end-to-end ReVanced build pipeline from TOML config: resolve compat
 mise install
 uv sync --locked --all-groups
 python -m scripts.cli check-env
-python -m scripts.cli build --config config.toml --build-mode apk|module|both --parallel N --clean --no-cache
+python -m scripts.cli build --config config.toml --parallel N --clean --no-cache
 python -m scripts.cli check --config config.toml
 python -m scripts.cli version-tracker {check|save|show|reset} --config config.toml
 python -m scripts.cli cache {stats|init|cleanup|clean}
@@ -77,7 +77,6 @@ uv run python -m pytest tests -v
 - Config / args / version tracking: `uv run python -m pytest tests/test_config.py tests/test_version_tracker.py -v`
 - Network / scraper logic: `uv run python -m pytest tests/test_network.py -v`
 - APK / signing logic: `uv run python -m pytest tests/test_apk.py tests/test_keystore.py -v`
-- Notifier logic: `uv run python -m pytest tests/test_notifier.py -v`
 - Broad Python changes: `uv run python -m pytest tests -v`
 
 ## Safety

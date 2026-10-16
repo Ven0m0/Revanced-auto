@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from scripts.utils.network import download_with_lock
@@ -71,39 +73,41 @@ def _ensure_bcprov(bin_dir: Path) -> Path:
     return bcprov_jar
 
 
-def ensure_bks(
+def _convert(
     keystore: Path,
     password: str,
     *,
-    bin_dir: Path | None = None,
-    cache_dir: Path | None = None,
+    src_type: str,
+    dest_type: str,
+    entry_password: str | None,
+    alias: str | None,
+    bin_dir: Path | None,
+    cache_dir: Path | None,
 ) -> Path:
-    """Return a BKS-format keystore usable by Morphe, converting if necessary.
-
-    If ``keystore`` is already BKS, returns it unchanged -- never round-trips
-    a working keystore through conversion. Otherwise converts once into
-    ``cache_dir/<sha256-of-source>.bks`` and reuses that on later calls. Every
-    entry is migrated (not filtered by alias), so the converted keystore's
-    aliases and key material are unchanged and signatures stay identical to
-    the source keystore.
-    """
-    store_type = _detect_store_type(keystore)
-    if store_type == "BKS":
-        return keystore
-    if store_type is None:
-        msg = f"Unrecognized keystore format: {keystore} (expected BKS, PKCS12, or JKS)"
-        raise ValueError(msg)
+    """Convert ``keystore`` to ``dest_type`` via keytool + BouncyCastle, cached by source and mode."""
+    key_password = entry_password or password
+    single_entry: list[str] = []
+    if key_password != password:
+        if not alias:
+            msg = "A keystore alias is required when the entry password differs from the store password"
+            raise ValueError(msg)
+        # keytool rejects -srckeypass on a whole-store import, so migrate only that entry.
+        single_entry = ["-srcalias", alias, "-srckeypass", key_password]
 
     cache_dir = cache_dir or Path(".cache/keystore")
     cache_dir.mkdir(parents=True, exist_ok=True)
-    source_hash = hashlib.sha256(keystore.read_bytes()).hexdigest()
-    converted = cache_dir / f"{source_hash}.bks"
+    # The mode (target type, alias, entry-password hash) is part of the key so a changed alias or
+    # password never reuses a stale conversion; only hashes reach the filename.
+    mode = f"{dest_type}|{alias if single_entry else '*'}|{hashlib.sha256(key_password.encode()).hexdigest()}"
+    digest = hashlib.sha256(keystore.read_bytes() + b"\0" + mode.encode()).hexdigest()
+    converted = cache_dir / f"{digest}.{dest_type.lower()}"
     if converted.exists():
         return converted
 
     bcprov_jar = _ensure_bcprov(bin_dir or Path("bin"))
-    temp_output = converted.with_suffix(".bks.tmp")
-    temp_output.unlink(missing_ok=True)
+    # A per-call temp dir keeps parallel builds from racing on one shared temp file.
+    temp_dir = Path(tempfile.mkdtemp(dir=cache_dir))
+    temp_output = temp_dir / f"out.{dest_type.lower()}"
 
     cmd = [
         "keytool",
@@ -111,29 +115,100 @@ def ensure_bks(
         "-srckeystore",
         str(keystore),
         "-srcstoretype",
-        store_type,
+        src_type,
         "-destkeystore",
         str(temp_output),
         "-deststoretype",
-        "BKS",
+        dest_type,
         "-srcstorepass",
         password,
         "-deststorepass",
         password,
+        *single_entry,
         "-destkeypass",
-        password,
+        key_password,
         "-providerpath",
         str(bcprov_jar),
         "-providerclass",
         "org.bouncycastle.jce.provider.BouncyCastleProvider",
         "-noprompt",
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if result.returncode != 0:
-        temp_output.unlink(missing_ok=True)
-        msg = f"keytool BKS conversion failed: {result.stderr}"
-        raise RuntimeError(msg)
-
-    temp_output.replace(converted)
-    logger.info("Converted %s keystore to BKS: %s", store_type, converted)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL)
+        if result.returncode != 0:
+            msg = f"keytool {dest_type} conversion failed: {result.stderr}"
+            raise RuntimeError(msg)
+        temp_output.replace(converted)
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+    logger.info("Converted %s keystore to %s: %s", src_type, dest_type, converted)
     return converted
+
+
+def ensure_bks(
+    keystore: Path,
+    password: str,
+    *,
+    entry_password: str | None = None,
+    alias: str | None = None,
+    bin_dir: Path | None = None,
+    cache_dir: Path | None = None,
+) -> Path:
+    """Return a BKS-format keystore usable by Morphe, converting if necessary.
+
+    If ``keystore`` is already BKS, returns it unchanged -- never round-trips
+    a working keystore through conversion. Otherwise converts once into
+    ``cache_dir`` and reuses that on later calls. When the entry password
+    equals the store password every entry is migrated, so aliases and key
+    material are unchanged and signatures stay identical to the source
+    keystore. A distinct ``entry_password`` needs ``alias``: keytool rejects
+    ``-srckeypass`` on a whole-store import ("if alias not specified,
+    destalias and srckeypass must not be specified"), so only that entry is
+    migrated, keeping its entry password.
+    """
+    store_type = _detect_store_type(keystore)
+    if store_type == "BKS":
+        return keystore
+    if store_type is None:
+        msg = f"Unrecognized keystore format: {keystore} (expected BKS, PKCS12, or JKS)"
+        raise ValueError(msg)
+    return _convert(
+        keystore,
+        password,
+        src_type=store_type,
+        dest_type="BKS",
+        entry_password=entry_password,
+        alias=alias,
+        bin_dir=bin_dir,
+        cache_dir=cache_dir,
+    )
+
+
+def ensure_jdk_readable(
+    keystore: Path,
+    password: str,
+    *,
+    entry_password: str | None = None,
+    alias: str | None = None,
+    bin_dir: Path | None = None,
+    cache_dir: Path | None = None,
+) -> Path:
+    """Return a keystore apksigner can open with the JDK's default providers.
+
+    PKCS12/JKS (and unrecognized files, left for apksigner to report) are returned unchanged.
+    A BKS keystore is converted to PKCS12, or to JKS when the entry password differs from the
+    store password, since keytool ignores ``-destkeypass`` for PKCS12 and would lose it.
+    """
+    if _detect_store_type(keystore) != "BKS":
+        return keystore
+    key_password = entry_password or password
+    return _convert(
+        keystore,
+        password,
+        src_type="BKS",
+        dest_type="PKCS12" if key_password == password else "JKS",
+        entry_password=entry_password,
+        alias=alias,
+        bin_dir=bin_dir,
+        cache_dir=cache_dir,
+    )

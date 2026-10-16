@@ -5,19 +5,17 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
-import zipfile
 from dataclasses import dataclass
-from io import BytesIO
 from typing import TYPE_CHECKING
 
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser
 
 from scripts.lib import logging as log
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from selectolax.parser import Node
+    from selectolax.lexbor import LexborNode
 
 from scripts.scrapers.base import (
     DownloadResult,
@@ -35,7 +33,6 @@ class UptodownVersion:
     url: str | None
     arch: str | None
     file_id: str
-    is_xapk: bool = False
 
 
 class UptodownScraper(ScraperBase):
@@ -61,7 +58,7 @@ class UptodownScraper(ScraperBase):
         else:
             return response.text
 
-    def _parse_version_card(self, node: Node) -> UptodownVersion | None:
+    def _parse_version_card(self, node: LexborNode) -> UptodownVersion | None:
         try:
             version_link = node.css_first("a.version-detail")
             if version_link is None:
@@ -70,11 +67,6 @@ class UptodownScraper(ScraperBase):
             href = version_link.attrs.get("href") or ""
             file_id_match = re.search(r"/download/([^/]+)", href)
             file_id = file_id_match.group(1) if file_id_match else ""
-            file_type = node.css_first("span.file-type")
-            is_xapk = False
-            if file_type:
-                type_text = file_type.text(strip=True).lower()
-                is_xapk = "xapk" in type_text or "bundle" in type_text
             arch_elem = node.css_first("p:last-child")
             arch: str | None = None
             if arch_elem:
@@ -88,7 +80,6 @@ class UptodownScraper(ScraperBase):
                 url=href if href.startswith("http") else f"https://en.uptodown.com{href}",
                 arch=arch,
                 file_id=file_id,
-                is_xapk=is_xapk,
             )
         except Exception:
             return None
@@ -96,7 +87,7 @@ class UptodownScraper(ScraperBase):
     def _parse_versions_page(self, html: str) -> list[UptodownVersion]:
         versions: list[UptodownVersion] = []
         with contextlib.suppress(Exception):
-            tree = HTMLParser(html)
+            tree = LexborHTMLParser(html)
             cards = tree.css("div.card")
             for card in cards:
                 version = self._parse_version_card(card)
@@ -148,7 +139,6 @@ class UptodownScraper(ScraperBase):
                     url=v_info.url,
                     arch=v_info.arch,
                     file_id="",
-                    is_xapk=False,
                 )
         return None
 
@@ -176,11 +166,8 @@ class UptodownScraper(ScraperBase):
 
         try:
             response = await self._request_with_retry(target_version.url)
-            content = response.content
-            if target_version.is_xapk:
-                return await self._download_xapk(content, output_path, version)
             await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
-            await asyncio.to_thread(output_path.write_bytes, content)
+            await asyncio.to_thread(output_path.write_bytes, response.content)
             return DownloadResult(success=True, file_path=output_path, version=version, error=None)
         except Exception as e:
             log.error(f"Download failed: {e}")
@@ -200,27 +187,3 @@ class UptodownScraper(ScraperBase):
             all_versions.extend(v for v in page_versions if arch is None or v.arch == arch or v.arch is None)
             await asyncio.sleep(0.3)
         return all_versions
-
-    async def _download_xapk(
-        self,
-        content: bytes,
-        output_path: Path,
-        version: str | None,
-    ) -> DownloadResult:
-        try:
-            with zipfile.ZipFile(BytesIO(content)) as zf:
-                namelist = zf.namelist()
-                apk_files = [n for n in namelist if n.endswith(".apk")]
-                if not apk_files:
-                    return DownloadResult(
-                        success=False, file_path=None, version=version, error="No APK found in XAPK bundle"
-                    )
-                main_apk = apk_files[0]
-                apk_content = await asyncio.to_thread(zf.read, main_apk)
-                await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
-                await asyncio.to_thread(output_path.write_bytes, apk_content)
-                return DownloadResult(success=True, file_path=output_path, version=version, error=None)
-        except zipfile.BadZipFile:
-            return DownloadResult(success=False, file_path=None, version=version, error="Invalid XAPK file format")
-        except Exception as e:
-            return DownloadResult(success=False, file_path=None, version=version, error=f"XAPK extraction failed: {e}")

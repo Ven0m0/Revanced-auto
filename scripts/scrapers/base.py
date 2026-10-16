@@ -56,6 +56,7 @@ class ScraperBase(ABC):
     # of the ordinary transport-error delay, or the retry budget burns inside
     # the penalty window.
     RATE_LIMIT_DELAY: float = 15.0
+    MAX_RETRY_AFTER: float = 60.0
     CACHE_TTL: int = 3600
     # Minimum spacing between outgoing requests from one scraper instance, so
     # a burst of page fetches (e.g. resolving several release pages back to
@@ -82,7 +83,10 @@ class ScraperBase(ABC):
             # impersonate="chrome" matches curl-cffi's TLS/JA3 fingerprint to a
             # real Chrome build, which is what gets past Cloudflare's bot
             # check -- a plain User-Agent header does not.
-            self._session = curl_requests.AsyncSession(timeout=30.0, impersonate="chrome")
+            # (connect, read) tuple: curl_cffi sums it into one whole-transfer
+            # cap (15 + 585 = 600 s) for non-streamed requests, so the old 30 s
+            # float truncated large APK downloads. It is not an idle timeout.
+            self._session = curl_requests.AsyncSession(timeout=(15.0, 585.0), impersonate="chrome")
         return self._session
 
     def _get_cache(self, key: str) -> Response | None:
@@ -107,19 +111,25 @@ class ScraperBase(ABC):
 
         for attempt in range(self.MAX_RETRIES):
             await self._throttle()
+            wait = delay
             try:
                 response = await self.session.request(cast("HttpMethod", method), url, allow_redirects=True, **kwargs)
-                if response.status_code in (429, 503) and attempt < self.MAX_RETRIES - 1:
-                    await asyncio.sleep(self._rate_limit_wait(response, attempt))
-                    continue
-                response.raise_for_status()  # type: ignore[no-untyped-call]
             except RequestException as e:
                 last_error = e
-                if attempt < self.MAX_RETRIES - 1:
-                    await asyncio.sleep(delay)
-                    delay *= 2
             else:
-                return response
+                code = response.status_code
+                if code < 400:  # noqa: PLR2004
+                    return response
+                if code < 500 and code != 429:  # noqa: PLR2004
+                    # Other 4xx are permanent; retrying only burns the budget.
+                    msg = f"HTTP {code} for {url}"
+                    raise RuntimeError(msg)
+                if code in (429, 503):
+                    wait = self._rate_limit_wait(response, attempt)
+                last_error = RuntimeError(f"HTTP {code} for {url}")
+            if attempt < self.MAX_RETRIES - 1:
+                await asyncio.sleep(wait)
+                delay *= 2
 
         msg = f"Request failed after {self.MAX_RETRIES} retries: {url}"
         raise RuntimeError(msg) from last_error
@@ -129,7 +139,8 @@ class ScraperBase(ABC):
         retry_after: str | None = response.headers.get("retry-after") if response.headers else None
         if retry_after:
             with contextlib.suppress(ValueError):
-                return float(retry_after)
+                # Capped so a hostile or buggy header cannot stall a build for hours.
+                return min(float(retry_after), self.MAX_RETRY_AFTER)
         # Jitter only spreads out concurrent retries; not security-sensitive.
         return self.RATE_LIMIT_DELAY * (2.0**attempt) + random.uniform(0, 1)  # noqa: S311
 

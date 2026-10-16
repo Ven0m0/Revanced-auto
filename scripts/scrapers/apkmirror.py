@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import re
 import shutil
 import subprocess
@@ -11,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from selectolax.parser import HTMLParser, Node
+from selectolax.lexbor import LexborHTMLParser, LexborNode
 
 from scripts.scrapers.base import (
     DownloadResult,
@@ -68,7 +67,7 @@ def get_target_archs(arch: ArchType) -> list[str]:
     return [arch, *base_archs]
 
 
-def _parse_row_data(row: Node) -> RowData | None:
+def _parse_row_data(row: LexborNode) -> RowData | None:
     """Extract variant fields from a real variant table row.
 
     Cells are ``[version+badges, arch, min-Android-version, dpi]`` -- APKMirror
@@ -135,7 +134,7 @@ def _row_rank(row_data: RowData, config: SearchConfig, target_archs: list[str]) 
     return _BUNDLE_RANK.get(row_data.bundle, len(_BUNDLE_RANK))
 
 
-def _extract_download_url(row: Node) -> str | None:
+def _extract_download_url(row: LexborNode) -> str | None:
     link = row.css_first("div > a")
     if link is None:
         return None
@@ -145,8 +144,9 @@ def _extract_download_url(row: Node) -> str | None:
     return f"https://www.apkmirror.com{href}"
 
 
-def _parse_rows(tree: HTMLParser) -> list[Node]:
-    return tree.css("div.table-row.headerFont")
+def _parse_rows(tree: LexborHTMLParser) -> list[LexborNode]:
+    rows: list[LexborNode] = tree.css("div.table-row.headerFont")
+    return rows
 
 
 def is_apk_bundle(file_path: Path) -> bool:
@@ -167,8 +167,8 @@ def is_apk_bundle(file_path: Path) -> bool:
 def merge_apkm_splits(temp_dir: Path, bundle_path: Path, output_path: Path) -> bool:
     """Merge an APKM/XAPK bundle's per-arch splits into one installable APK.
 
-    Shared by any scraper that hands back a split bundle (APKMirror, GitHub
-    releases) so there is one APKEditor-based merger, not one per scraper.
+    Called centrally from DownloadManager.download so there is one
+    APKEditor-based merger, not one per scraper.
     """
     from scripts.utils.network import gh_dl
 
@@ -177,37 +177,54 @@ def merge_apkm_splits(temp_dir: Path, bundle_path: Path, output_path: Path) -> b
         msg = f"Failed to download or verify APKEditor.jar from {_APKEDITOR_URL}"
         raise RuntimeError(msg)
 
-    try:
-        subprocess.run(
-            [
-                "java",
-                *JAVA_ARGS,
-                "-jar",
-                str(apkeditor_jar),
-                "merge",
-                "-i",
-                str(bundle_path),
-                "-o",
-                f"{bundle_path}.mzip",
-                "-clean-meta",
-                "-f",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"APKEditor failed: {e.stderr}") from e
-
-    extract_dir = bundle_path.with_suffix("")
-    extract_dir.mkdir(exist_ok=True)
-    subprocess.run(["unzip", "-qo", f"{bundle_path}.mzip", "-d", str(extract_dir)], check=True)
+    mzip_path = Path(f"{bundle_path}.mzip")
     zip_path = bundle_path.with_suffix(".zip")
-    subprocess.run(["zip", "-0rq", str(zip_path), "."], cwd=extract_dir, check=True)
-    shutil.move(str(zip_path), str(output_path))
-    for cleanup in (extract_dir, bundle_path.with_suffix(".mzip")):
-        shutil.rmtree(cleanup, ignore_errors=True)
+    try:
+        try:
+            subprocess.run(
+                [
+                    "java",
+                    *JAVA_ARGS,
+                    "-jar",
+                    str(apkeditor_jar),
+                    "merge",
+                    "-i",
+                    str(bundle_path),
+                    "-o",
+                    str(mzip_path),
+                    "-clean-meta",
+                    "-f",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"APKEditor failed: {e.stderr}") from e
+
+        _restore_uncompressed(mzip_path, zip_path)
+        shutil.move(str(zip_path), str(output_path))
+    finally:
+        # Clean temp artifacts on failure too, so a broken merge never leaves partial files behind.
+        zip_path.unlink(missing_ok=True)
+        mzip_path.unlink(missing_ok=True)
     return True
+
+
+def _restore_uncompressed(source: Path, dest: Path) -> None:
+    """Rewrite ``source`` into ``dest`` with every entry stored uncompressed (what ``zip -0`` did).
+
+    Done in-process so merging needs no zip/unzip binaries, which Windows lacks.
+    """
+    with zipfile.ZipFile(source) as src, zipfile.ZipFile(dest, "w", zipfile.ZIP_STORED) as dst:
+        for info in src.infolist():
+            if info.is_dir():
+                continue
+            out_info = zipfile.ZipInfo(info.filename, info.date_time)
+            out_info.compress_type = zipfile.ZIP_STORED
+            out_info.external_attr = info.external_attr
+            with src.open(info) as reader, dst.open(out_info, "w") as writer:
+                shutil.copyfileobj(reader, writer)
 
 
 class APKMirror(ScraperBase):
@@ -216,21 +233,12 @@ class APKMirror(ScraperBase):
 
     def __init__(self) -> None:
         super().__init__(DownloadSource.APKMIRROR)
-        self._temp_dir: Path | None = None
-
-    @property
-    def temp_dir(self) -> Path:
-        if self._temp_dir is None:
-            import tempfile
-
-            self._temp_dir = Path(tempfile.mkdtemp(prefix="apkmirror_"))
-        return self._temp_dir
 
     def _get_versions_page_url(self, pkg_name: str) -> str:
         return f"{self.APK_ARCH_PATH}/{pkg_name}/"
 
     def _search_variant(self, html_content: str, config: SearchConfig) -> str | None:
-        tree = HTMLParser(html_content)
+        tree = LexborHTMLParser(html_content)
         rows = _parse_rows(tree)
         if not rows:
             return None
@@ -260,7 +268,7 @@ class APKMirror(ScraperBase):
         # Real class is "accent_bg btn btn-flat downloadButton sSo" -- the
         # site markup drifted from the "download-btn" class this used to
         # match. This link goes to a confirm/key page, not the final file.
-        tree = HTMLParser(variant_page_html)
+        tree = LexborHTMLParser(variant_page_html)
         download_btn = tree.css_first("a.downloadButton")
         if download_btn is None:
             return None
@@ -278,7 +286,7 @@ class APKMirror(ScraperBase):
         redirects (via a signed Cloudflare R2 URL) to the actual APK/APKM
         bytes. The session follows that redirect automatically when downloading.
         """
-        tree = HTMLParser(confirm_page_html)
+        tree = LexborHTMLParser(confirm_page_html)
         link = tree.css_first("a#download-link")
         if link is None:
             return None
@@ -308,7 +316,7 @@ class APKMirror(ScraperBase):
         """
         url = self._get_versions_page_url(pkg_name)
         response = await self.get(url)
-        tree = HTMLParser(response.text)
+        tree = LexborHTMLParser(response.text)
         releases: list[tuple[str, str]] = []
         all_versions_widget = None
         for widget in tree.css(".listWidget"):
@@ -378,9 +386,6 @@ class APKMirror(ScraperBase):
                 )
         return results
 
-    def _merge_splits(self, bundle_path: Path, output_path: Path) -> bool:
-        return merge_apkm_splits(self.temp_dir, bundle_path, output_path)
-
     async def download(
         self,
         pkg_name: str,
@@ -436,21 +441,7 @@ class APKMirror(ScraperBase):
 
             await self.save(final_download_url, output_path)
 
-            if is_apk_bundle(output_path):
-                bundle_path = output_path.with_suffix(".apkm")
-                await asyncio.to_thread(output_path.rename, bundle_path)
-                await asyncio.to_thread(self._merge_splits, bundle_path, output_path)
-
             return DownloadResult(success=True, file_path=output_path, version=version)
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
-
-    def close(self) -> None:
-        super().close()
-        if self._temp_dir is not None:
-            shutil.rmtree(self._temp_dir, ignore_errors=True)
-            self._temp_dir = None
-
-    def __del__(self) -> None:
-        self.close()

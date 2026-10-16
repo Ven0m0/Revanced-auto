@@ -10,8 +10,6 @@ from scripts.builder.cli_profiles import (
     ADOBO_CLI,
     BUILTIN_PROFILES,
     MORPHE_CLI,
-    REVANCED_CLI_V5,
-    REVANCED_CLI_V6,
     CLIProfileType,
     PatchCommandConfig,
     _detect_profile_from_help,
@@ -23,6 +21,10 @@ def test_builtin_profiles_include_adobo() -> None:
     assert BUILTIN_PROFILES[CLIProfileType.ADOBO_CLI] is ADOBO_CLI
 
 
+def test_builtin_profiles_are_morphe_family_only() -> None:
+    assert set(BUILTIN_PROFILES) == {CLIProfileType.MORPHE_CLI, CLIProfileType.ADOBO_CLI}
+
+
 def test_detect_adobo_profile_from_help() -> None:
     assert _detect_profile_from_help("Adobo CLI usage: ...") is ADOBO_CLI
 
@@ -31,80 +33,8 @@ def test_detect_morphe_profile_from_help() -> None:
     assert _detect_profile_from_help("Morphe CLI usage: ...") is MORPHE_CLI
 
 
-def test_detect_v6_profile_from_help() -> None:
-    assert _detect_profile_from_help("-b --patch-bundle <bundle>") is REVANCED_CLI_V6
-
-
-def test_detect_v5_profile_default() -> None:
-    assert _detect_profile_from_help("nothing helpful here") is REVANCED_CLI_V5
-
-
-def test_v5_patch_args() -> None:
-    """Verify ReVanced CLI v5 argument generation."""
-    config = PatchCommandConfig(
-        apk_path=Path("input.apk"),
-        output_path=Path("output.apk"),
-        patches_jars=[Path("patches.jar")],
-        exclude=["patch1"],
-        include=["patch2"],
-        force=True,
-        purge=True,
-    )
-    args = REVANCED_CLI_V5.build_patch_args(config)
-
-    assert "--input" in args
-    assert "input.apk" in args
-    assert "--output" in args
-    assert "output.apk" in args
-    assert "--patch" in args
-    assert "patches.jar" in args
-    assert "--disable" in args
-    assert "patch1" in args
-    assert "--enable" in args
-    assert "patch2" in args
-    assert "--force" in args
-    assert "--purge" in args
-
-
-def test_v6_patch_args() -> None:
-    """Verify ReVanced CLI v6 argument generation."""
-    config = PatchCommandConfig(
-        apk_path=Path("input.apk"),
-        output_path=Path("output.apk"),
-        patches_jars=[Path("patches.jar")],
-        patches_post=[Path("post.jar")],
-        exclude=["patch1"],
-        include=["patch2"],
-        merge=[Path("merge.jar")],
-        keystore=Path("ks.keystore"),
-        force=True,
-        rip_lib=["lib1"],
-        bare=True,
-        inplace=True,
-        werror=True,
-    )
-    args = REVANCED_CLI_V6.build_patch_args(config)
-
-    assert "-i" in args
-    assert "input.apk" in args
-    assert "-o" in args
-    assert "output.apk" in args
-    assert "-e" in args
-    assert "patches.jar" in args
-    assert "-b" in args
-    assert "post.jar" in args
-    assert "-d" in args
-    assert "patch1" in args
-    assert "-m" in args
-    assert "merge.jar" in args
-    assert "-k" in args
-    assert "ks.keystore" in args
-    assert "-f" in args
-    assert "-r" in args
-    assert "lib1" in args
-    assert "--bare" in args
-    assert "--inplace" in args
-    assert "-Werror" in args
+def test_unknown_help_defaults_to_morphe() -> None:
+    assert _detect_profile_from_help("nothing helpful here") is MORPHE_CLI
 
 
 def test_morphe_patch_args() -> None:
@@ -119,19 +49,26 @@ def test_morphe_patch_args() -> None:
         apk_path=Path("input.apk"),
         output_path=Path("output.apk"),
         patches_jars=[Path("patches.jar")],
+        exclude=["patch1"],
+        include=["patch2"],
+        keystore=Path("ks.keystore"),
+        force=True,
+        rip_lib=["arm64-v8a"],
     )
     args = MORPHE_CLI.build_patch_args(config)
 
     assert args[0] == "patch"
-    assert "input.apk" in args
     assert args[-1] == "input.apk"
     assert "--input" not in args
-    assert "-o" in args
-    assert "output.apk" in args
+    assert args[args.index("-o") + 1] == "output.apk"
     assert "--output" not in args
-    assert "-p" in args
-    assert "patches.jar" in args
+    assert args[args.index("-p") + 1] == "patches.jar"
     assert "--patch" not in args
+    assert args[args.index("-d") + 1] == "patch1"
+    assert args[args.index("-e") + 1] == "patch2"
+    assert args[args.index("--keystore") + 1] == "ks.keystore"
+    assert args[args.index("--striplibs") + 1] == "arm64-v8a"
+    assert "-f" in args
 
 
 def test_morphe_patch_args_inline_options_follow_their_enable_flag() -> None:
@@ -155,35 +92,92 @@ def test_morphe_patch_args_inline_options_follow_their_enable_flag() -> None:
 
     a_idx = args.index("Patch A")
     assert args[a_idx - 1] == "-e"
-    assert args[a_idx + 1 : a_idx + 5] == ["-O", 'appName="Foo"', "-O", "disableAds"]
+    assert args[a_idx + 1 : a_idx + 6] == ["-O", 'appName="Foo"', "-O", "disableAds", "-e"]
 
     b_idx = args.index("Patch B")
     assert args[b_idx - 1] == "-e"
-    assert args[b_idx + 1] == "-e" or b_idx == len(args) - 1 or args[b_idx + 1] == "--exclusive"
+    assert args[b_idx + 1] != "-O"
+    assert args.index("patches.jar") < a_idx
+
+
+def test_selections_follow_their_bundle() -> None:
+    """Morphe applies -e/-d/-O to the most recent -p, so each selection must sit after its own bundle."""
+    config = PatchCommandConfig(
+        patches_jars=[Path("a.mpp"), Path("b.mpp")],
+        include=["From A", "From B"],
+        exclude=["Drop A"],
+        options={"From A": {"k": "v"}},
+        patch_bundle={"From A": 0, "Drop A": 0, "From B": 1},
+    )
+    args = MORPHE_CLI.build_patch_args(config)
+
+    assert args[1:] == [
+        "-p",
+        "a.mpp",
+        "-d",
+        "Drop A",
+        "-e",
+        "From A",
+        "-O",
+        "k=v",
+        "-p",
+        "b.mpp",
+        "-e",
+        "From B",
+    ]
+
+
+def test_unknown_patch_goes_to_last_bundle() -> None:
+    config = PatchCommandConfig(
+        patches_jars=[Path("a.mpp"), Path("b.mpp")],
+        include=["Mystery"],
+        exclude=["Unlisted"],
+    )
+    args = MORPHE_CLI.build_patch_args(config)
+
+    b_idx = args.index("b.mpp")
+    assert args.index("Mystery") > b_idx
+    assert args.index("Unlisted") > b_idx
+
+
+def test_options_without_include_emit_enable() -> None:
+    """Outside exclusive mode, a patch with options but no include entry still gets -e plus its -O flags."""
+    config = PatchCommandConfig(
+        patches_jars=[Path("a.mpp")],
+        options={"Branding": {"appName": '"X"'}, "Excluded": {"k": "v"}},
+        exclude=["Excluded"],
+    )
+    args = MORPHE_CLI.build_patch_args(config)
+
+    idx = args.index("Branding")
+    assert args[idx - 1] == "-e"
+    assert args[idx + 1 : idx + 3] == ["-O", 'appName="X"']
+    assert "k=v" not in args
+
+
+def test_options_without_include_not_enabled_in_exclusive_mode() -> None:
+    config = PatchCommandConfig(
+        patches_jars=[Path("a.mpp")],
+        include=["Wanted"],
+        options={"Other": {"k": "v"}},
+        exclusive=True,
+    )
+    args = MORPHE_CLI.build_patch_args(config)
+
+    assert "Other" not in args
+    assert "--exclusive" in args
 
 
 def test_list_patches_args() -> None:
     """Verify list-patches argument generation."""
     patches = [Path("p1.jar"), Path("p2.jar")]
 
-    v5_args = REVANCED_CLI_V5.build_list_patches_args(patches)
-    assert "--patches" in v5_args
-    assert "p1.jar" in v5_args
-    assert "p2.jar" in v5_args
-
-    v6_args = REVANCED_CLI_V6.build_list_patches_args(patches)
-    assert "-e" in v6_args
-    assert "p1.jar" in v6_args
-    assert "p2.jar" in v6_args
-
     morphe_args = MORPHE_CLI.build_list_patches_args(patches)
-    assert "--patches" in morphe_args
-    assert "p1.jar" in morphe_args
-    assert "p2.jar" in morphe_args
+    assert morphe_args == ["list-patches", "--patches", "p1.jar", "--patches", "p2.jar"]
 
 
 def test_empty_config() -> None:
     """Verify argument generation with empty config still includes the "patch" subcommand keyword."""
     config = PatchCommandConfig()
-    args = REVANCED_CLI_V6.build_patch_args(config)
+    args = MORPHE_CLI.build_patch_args(config)
     assert args == ["patch"]

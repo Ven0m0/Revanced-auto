@@ -104,7 +104,7 @@
                     <div class="form-group">
                         <label for="cli-source">Default CLI Source</label>
                         <input type="text" id="cli-source" value="MorpheApp/morphe-cli">
-                        <p class="help-text">GitHub repo for the patcher CLI. Use `MorpheApp/morphe-cli`, `ReVanced/revanced-cli`, or `inotia00/revanced-cli`. CLI flavor is auto-detected from <code>--help</code>; force a profile with <code>cli-profile</code> in TOML if needed.</p>
+                        <p class="help-text">GitHub repo for the patcher CLI. Use `MorpheApp/morphe-cli`. CLI flavor is auto-detected from <code>--help</code>; force a profile with <code>cli-profile</code> in TOML if needed.</p>
                     </div>
                     <div class="form-group">
                         <label for="patches-version">Patches Version</label>
@@ -126,8 +126,6 @@
                         <select id="cli-profile">
                             <option value="auto" selected>auto (detect from --help)</option>
                             <option value="morphe-cli">morphe-cli</option>
-                            <option value="revanced-cli-v5">revanced-cli-v5</option>
-                            <option value="revanced-cli-v6">revanced-cli-v6</option>
                             <option value="adobo-cli">adobo-cli</option>
                         </select>
                         <p class="help-text">Forces a CLI flag style. Use "auto" to detect from the CLI JAR's <code>--help</code>.</p>
@@ -593,8 +591,6 @@ remove-rv-integrations-checks = ${g("remove-checks").checked}
 riplib = ${g("riplib").checked}
 # Default Architecture
 arch = "${g("arch").value}"
-# Build Mode
-build-mode = "apk"
 # Default Patches Version
 patches-version = "${g("patches-version").value}"
 # Default CLI Version
@@ -605,7 +601,7 @@ version = "auto"
 patches-source = "${g("patches-source").value}"
 # Default CLI Source
 cli-source = "${g("cli-source").value}"
-# CLI Profile (force a flag style: auto, morphe-cli, revanced-cli-v5/v6, adobo-cli)
+# CLI Profile (force a flag style: auto, morphe-cli, adobo-cli)
 cli-profile = "${g("cli-profile").value}"
 # RV Brand
 rv-brand = "${g("rv-brand").value}"
@@ -690,7 +686,7 @@ rv-brand = "${g("rv-brand").value}"
             const globalKeys = new Set([
                 "parallel-jobs", "remove-rv-integrations-checks",
                 "riplib",
-                "arch", "build-mode",
+                "arch",
                 "patches-version", "cli-version", "version", "patches-source",
                 "cli-source", "cli-profile", "rv-brand",
             ]);

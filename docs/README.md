@@ -73,15 +73,16 @@ On mobile (< 768px), the navigation collapses into a hamburger menu.
 
 - `parallel-jobs` — Number of simultaneous builds
 - `patches-source` — Default GitHub repo for patches (default: `MorpheApp/morphe-patches`). Also accepts `brosssh/revanced-external-bundles` or `external-bundles:<type>` to resolve via the community aggregator.
-- `cli-source` — Patcher CLI source (default: `MorpheApp/morphe-cli`). Profiles supported: ReVanced CLI v5/v6, Morphe, Adobo.
-- `arch` — Default architecture (arm64-v8a, armeabi-v7a, both)
+- `cli-source` — Patcher CLI source (default: `MorpheApp/morphe-cli`). Profiles supported: Morphe, Adobo.
+- `arch` — Default architecture (arm64-v8a, armeabi-v7a, both); applies to every app without its own `arch`
 - `riplib` — Strip unnecessary libraries
 
 **Per-App Settings**:
 
 - `enabled` — Enable/disable app building
 - `app-name` — Display name
-- `version` — auto, latest, or specific version
+- `version` — auto (newest patch-compatible), latest (newest store version), beta, or specific version
+- `package-name` — Package id for patch-compatible version lookup when it cannot be derived from a download URL
 - `patches-source` / `cli-source` — Override global sources
 - Download URLs (APKMirror, Uptodown, Archive.org)
 - Patch Selection — Visual browser with search/filter

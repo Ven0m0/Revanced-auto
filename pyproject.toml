@@ -10,7 +10,7 @@ dependencies = [
   "curl-cffi>=0.16.1",
   "httpx[http2]>=0.28.1",
   "orjson>=3.11.8",
-  "selectolax>=0.4.11",
+  "selectolax>=1.0.0",
 ]
 
 [project.optional-dependencies]

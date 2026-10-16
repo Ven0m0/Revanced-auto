@@ -21,9 +21,8 @@ _PINNED_BINARIES: dict[str, str] = {
     "paccer.jar": "cbc9d084b2117a203a1818fba3c73b06cd8817b147a185c00975980e86d5dead",
 }
 
-# java (bundles keytool, used for Part 4's BKS conversion), zip/unzip (used by
-# apkmirror.merge_apkm_splits), and uv (checked separately via its own probe below).
-_REQUIRED_TOOLS = ("java", "zip", "unzip")
+# java (bundles keytool, used for Part 4's BKS conversion) and uv (checked separately via its own probe below).
+_REQUIRED_TOOLS = ("java",)
 
 _MIN_JAVA_MAJOR = 21
 
@@ -86,13 +85,18 @@ def _check_config_file() -> list[str]:
 def check_binaries(bin_dir: Path | None = None) -> list[str]:
     """Download and SHA-256-verify the pinned bin/*.jar dependencies. Returns error messages."""
     bin_dir = bin_dir or Path("bin")
+    return [
+        f"Failed to download/verify {bin_dir / name}"
+        for name in _PINNED_BINARIES
+        if not fetch_pinned_binary(name, bin_dir)
+    ]
+
+
+def fetch_pinned_binary(name: str, bin_dir: Path | None = None) -> bool:
+    """Download and SHA-256-verify one pinned bin/ jar (e.g. ``apksigner.jar``); True when it is in place."""
+    bin_dir = bin_dir or Path("bin")
     bin_dir.mkdir(parents=True, exist_ok=True)
-    errors = []
-    for name, sha256 in _PINNED_BINARIES.items():
-        target = bin_dir / name
-        if not download_with_lock(f"{_BINARIES_BASE_URL}/{name}", target, sha256=sha256):
-            errors.append(f"Failed to download/verify {target}")
-    return errors
+    return download_with_lock(f"{_BINARIES_BASE_URL}/{name}", bin_dir / name, sha256=_PINNED_BINARIES[name])
 
 
 def check_full_environment() -> EnvCheckResult:

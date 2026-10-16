@@ -12,26 +12,15 @@ ReVanced-auto resolves patches and CLIs from GitHub releases. A `patches-source`
 
 This is the **default** in `config.toml`.
 
-## ReVanced (upstream)
-
-- **Patches repo:** <https://github.com/ReVanced/revanced-patches>
-- **CLI repo:** <https://github.com/ReVanced/revanced-cli>
-
-## ReVanced Extended (RVX)
-
-- **Patches repo:** <https://github.com/anddea/revanced-patches>
-- **CLI repo:** <https://github.com/inotia00/revanced-cli>
-- Use sample sections `YouTube-Extended` / `Music-Extended` (disabled by default).
-
 ## Piko (Twitter/X)
 
 - **Patches repo:** <https://github.com/crimera/piko>
-- Runs on the ReVanced or Morphe CLI.
+- Runs on the Morphe CLI.
 
 ## Patcheddit (Reddit)
 
 - **Patches repo:** <https://github.com/wchill/patcheddit>
-- Runs on the ReVanced or Morphe CLI.
+- Runs on the Morphe CLI.
 
 ## Adobo (Morphe-compatible patches)
 
@@ -61,11 +50,6 @@ This is the **default** in `config.toml`.
 # Morphe (default)
 patches-source = "MorpheApp/morphe-patches"
 cli-source     = "MorpheApp/morphe-cli"
-cli-profile    = "auto"
-
-# ReVanced upstream
-patches-source = "ReVanced/revanced-patches"
-cli-source     = "ReVanced/revanced-cli"
 cli-profile    = "auto"
 
 # Adobo (Morphe-compatible)

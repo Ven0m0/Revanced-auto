@@ -1,4 +1,4 @@
-"""Compatibility wrapper for invoking the legacy build shell script."""
+"""Compatibility wrapper around the Python build pipeline."""
 
 from typing import TYPE_CHECKING
 
@@ -14,7 +14,8 @@ class Builder:
         self.config = config
 
     def build_all(self) -> bool:
-        """Run the new Python build pipeline and return whether it succeeded."""
-        from scripts.builder.app_processor import main
+        """Run the Python build pipeline on the in-memory config and return whether it succeeded."""
+        from scripts.builder.app_processor import run
 
-        return main(["app_processor.py", self.config.config_file]) == 0
+        # Pass the in-memory config so CLI overrides (--parallel, --no-cache) are not lost to a reload.
+        return run(self.config.inner) == 0

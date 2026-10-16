@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser
 
 from scripts.scrapers.base import (
     DownloadResult,
@@ -43,7 +43,7 @@ class APKPureScraper(ScraperBase):
         return pkg_name, pkg_name
 
     def _parse_versions_page(self, html_content: str) -> list[VersionInfo]:
-        tree = HTMLParser(html_content)
+        tree = LexborHTMLParser(html_content)
         versions: list[VersionInfo] = []
         seen: set[str] = set()
         for item in tree.css("div.ver-item a span.ver-item-n"):
@@ -60,17 +60,17 @@ class APKPureScraper(ScraperBase):
         return versions
 
     def _parse_download_link(self, html_content: str) -> str | None:
-        tree = HTMLParser(html_content)
+        tree = LexborHTMLParser(html_content)
         link = tree.css_first("a#download_link")
         if link is not None:
             href = link.attrs.get("href")
             if href:
-                return href.strip()
+                return str(href).strip()
         link = tree.css_first("a.da")
         if link is not None:
             href = link.attrs.get("href")
             if href:
-                return href.strip()
+                return str(href).strip()
         return None
 
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:

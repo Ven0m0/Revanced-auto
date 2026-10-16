@@ -29,9 +29,6 @@ class TestGlobalConfig:
     def test_default_parallel_jobs(self) -> None:
         assert GlobalConfig().parallel_jobs == 0
 
-    def test_default_build_mode(self) -> None:
-        assert GlobalConfig().build_mode == "apk"
-
     def test_from_dict_ignores_unknown_keys(self) -> None:
         cfg = GlobalConfig.from_dict({"unknown_key": "value", "parallel_jobs": 4})
         assert cfg.parallel_jobs == 4
