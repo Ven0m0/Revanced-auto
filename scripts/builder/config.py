@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 if sys.version_info < (3, 11):
     import tomllib
@@ -45,7 +45,8 @@ class GlobalConfig:
     """Global configuration settings applied across all apps."""
 
     parallel_jobs: int = 0
-    build_mode: Literal["apk", "module", "both"] = "apk"
+    arch: str = "all"
+    use_cache: bool = True
     cli_profile: str = "auto"
     patches_version: str = "latest"
     cli_version: str = "latest"
@@ -502,7 +503,6 @@ def main(argv: list[str]) -> int:
         print(f"Loaded config from: {config.source_files}")
         print("Global settings:")
         print(f"  parallel_jobs: {config.global_settings.parallel_jobs}")
-        print(f"  build_mode: {config.global_settings.build_mode}")
         print(f"  patches_source: {config.global_settings.patches_source}")
         print(f"Apps: {config.app_names}")
         for app_name, app in config.apps.items():

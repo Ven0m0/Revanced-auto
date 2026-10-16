@@ -69,3 +69,43 @@ async def test_429_without_retry_after_uses_escalating_delay() -> None:
 
     waited = mock_sleep.await_args_list[0].args[0]
     assert waited >= scraper.RATE_LIMIT_DELAY
+
+
+@pytest.mark.asyncio
+async def test_404_not_retried() -> None:
+    scraper = ScraperBase(DownloadSource.APKMIRROR)
+    mock_session = MagicMock()
+    mock_session.request = AsyncMock(return_value=_make_response(404))
+
+    with (
+        patch.object(ScraperBase, "session", new_callable=lambda: property(lambda _self: mock_session)),
+        patch("scripts.scrapers.base.asyncio.sleep", new=AsyncMock()),
+        pytest.raises(RuntimeError, match="HTTP 404"),
+    ):
+        await scraper._request_with_retry("https://example.com")
+
+    assert mock_session.request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_500_is_retried() -> None:
+    scraper = ScraperBase(DownloadSource.APKMIRROR)
+    ok = _make_response(200)
+    mock_session = MagicMock()
+    mock_session.request = AsyncMock(side_effect=[_make_response(500), ok])
+
+    with (
+        patch.object(ScraperBase, "session", new_callable=lambda: property(lambda _self: mock_session)),
+        patch("scripts.scrapers.base.asyncio.sleep", new=AsyncMock()),
+    ):
+        result = await scraper._request_with_retry("https://example.com")
+
+    assert result is ok
+    assert mock_session.request.call_count == 2
+
+
+def test_retry_after_is_capped() -> None:
+    scraper = ScraperBase(DownloadSource.APKMIRROR)
+    response = _make_response(429, headers={"retry-after": "86400"})
+
+    assert scraper._rate_limit_wait(response, 0) == scraper.MAX_RETRY_AFTER

@@ -12,6 +12,19 @@ from scripts.utils.java import JAVA_ARGS
 
 logger = logging.getLogger(__name__)
 
+# Pinned and SHA-verified by env_check.check_binaries.
+APKSIGNER_JAR = Path("bin/apksigner.jar")
+
+
+def _ensure_apksigner_jar() -> bool:
+    """Fetch bin/apksigner.jar for local runs that skipped check-env, using env_check's pinned hash."""
+    if APKSIGNER_JAR.exists():
+        return True
+    # Lazy import: env_check pulls in the network stack, which plain APK helpers do not need.
+    from scripts.lib.env_check import fetch_pinned_binary
+
+    return fetch_pinned_binary(APKSIGNER_JAR.name, APKSIGNER_JAR.parent)
+
 
 class APKSigner:
     """APK signer with v1+v2 signature scheme enforcement."""
@@ -23,8 +36,14 @@ class APKSigner:
         self.key_password = key_password
 
     def sign(self, input_path: Path, output_path: Path) -> bool:
+        if not _ensure_apksigner_jar():
+            logger.error("%s is missing and could not be downloaded and SHA-256 verified", APKSIGNER_JAR)
+            return False
         cmd = [
-            "apksigner",
+            "java",
+            *JAVA_ARGS,
+            "-jar",
+            str(APKSIGNER_JAR),
             "sign",
             "--ks",
             str(self.keystore),
@@ -47,10 +66,15 @@ class APKSigner:
             str(input_path),
         ]
         try:
-            subprocess.run(cmd, check=True, capture_output=True)
-            return True
-        except subprocess.CalledProcessError:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            # Never log cmd: it carries the pass: secrets.
+            logger.error("apksigner failed (exit %s): %s", e.returncode, (e.stderr or "").strip())
             return False
+        except OSError as e:
+            logger.error("apksigner could not be started: %s", e)
+            return False
+        return True
 
 
 def _validate_path(path: Path, base_dir: Path | None = None) -> bool:

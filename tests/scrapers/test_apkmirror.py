@@ -7,7 +7,7 @@ import zipfile
 from typing import TYPE_CHECKING
 
 import pytest
-from selectolax.parser import HTMLParser, Node
+from selectolax.lexbor import LexborHTMLParser, LexborNode
 
 from scripts.scrapers.apkmirror import (
     APKMirror,
@@ -57,8 +57,8 @@ _BUNDLE_ROW = """
 """
 
 
-def _first_row(html: str) -> Node:
-    return _parse_rows(HTMLParser(html))[0]
+def _first_row(html: str) -> LexborNode:
+    return _parse_rows(LexborHTMLParser(html))[0]
 
 
 def test_parse_row_data_rejects_header_row() -> None:

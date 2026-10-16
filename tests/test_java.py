@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scripts.utils.java import JavaRunner, run_java
+from scripts.utils.java import JavaRunner, redact_secret_args, run_java
 
 
 class TestJavaRunner:
@@ -100,3 +100,37 @@ def test_run_java_convenience(mock_run: MagicMock) -> None:
     run_java(["arg1"], timeout=30)
     assert mock_run.call_args.kwargs["timeout"] == 30
     assert "arg1" in mock_run.call_args.args[0]
+
+
+def test_redact_secret_args_masks_both_forms() -> None:
+    args = [
+        "-jar",
+        "cli.jar",
+        "--keystore-password",
+        "storepw",
+        "--keystore-entry-password=keypw",
+        "--keystore-entry-alias",
+        "morphe",
+    ]
+    assert redact_secret_args(args) == [
+        "-jar",
+        "cli.jar",
+        "--keystore-password",
+        "***",
+        "--keystore-entry-password=***",
+        "--keystore-entry-alias",
+        "morphe",
+    ]
+
+
+@patch("subprocess.run")
+def test_run_never_logs_keystore_passwords(mock_run: MagicMock, caplog: pytest.LogCaptureFixture) -> None:
+    mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+    caplog.set_level("DEBUG", logger="scripts.utils.java")
+
+    JavaRunner().run_jar("cli.jar", ["patch", "--keystore-password", "storepw", "--keystore-entry-password=keypw"])
+
+    assert "storepw" not in caplog.text
+    assert "keypw" not in caplog.text
+    assert "--keystore-password ***" in caplog.text
+    assert mock_run.call_args.args[0][-2:] == ["storepw", "--keystore-entry-password=keypw"]

@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser
 
 from .base import APK_ARCHIVE_URL, DownloadResult, DownloadSource, ScraperBase, VersionInfo
 
@@ -31,7 +31,7 @@ class ArchiveScraper(ScraperBase):
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         url = f"{ARCHIVE_BASE_URL}/{pkg_name}"
         response = await self.get(url)
-        parser = HTMLParser(response.text)
+        parser = LexborHTMLParser(response.text)
         versions: list[VersionInfo] = []
         seen: set[str] = set()
         for link in parser.css("a"):

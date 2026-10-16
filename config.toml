@@ -18,8 +18,6 @@ remove-rv-integrations-checks = true
 riplib = true
 # Default Architecture
 arch = "arm64-v8a"
-# Build Mode
-build-mode = "apk"
 # Default Patches Version
 # - latest: Most recent stable release
 # - dev: Latest development version (may be unstable)
@@ -118,9 +116,6 @@ patches = [
   "Stop video looping",
   "Translate comments",
 ]
-
-[TikTok.patch-options."APK Junk Cleanup"]
-splitByArch = "true"
 
 [TikTok.patch-options."Remove Duplicate Graphics"]
 targetDensity = "\"xxhdpi\""
@@ -229,9 +224,6 @@ disableTopOn = "false"
 disableUnity = "false"
 disableVungle = "false"
 
-[YouTube-Morphed.patch-options."APK Junk Cleanup"]
-splitByArch = "true"
-
 [YouTube-Morphed.patch-options."Remove Duplicate Graphics"]
 targetDensity = "\"xxhdpi\""
 
@@ -293,9 +285,6 @@ patches = [
   "Third-party lyrics",
 ]
 
-[Music-Morphed.patch-options."APK Junk Cleanup"]
-splitByArch = "true"
-
 [Music-Morphed.patch-options."Remove Duplicate Graphics"]
 targetDensity = "\"xxhdpi\""
 
@@ -310,6 +299,8 @@ patches-source = ["jkennethcarino/adobo", "BlazeFTL/FTL-Patches", "MorpheApp/mor
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
+# APKMirror URLs carry no package id, so list-versions needs it spelled out.
+package-name = "com.reddit.frontpage"
 exclusive = true
 patches = [
   "Colorize comment indent lines",
@@ -342,9 +333,6 @@ patches = [
   "Remove Subreddit Dialogs",
   "Unlock Premium",
 ]
-
-[Reddit-Morphed.patch-options."APK Junk Cleanup"]
-splitByArch = "true"
 
 [Reddit-Morphed.patch-options."Remove Duplicate Graphics"]
 targetDensity = "\"xxhdpi\""
@@ -399,9 +387,6 @@ patches = [
   "Universal Remove Ads",
 ]
 
-[Brave.patch-options."APK Junk Cleanup"]
-splitByArch = "true"
-
 [Brave.patch-options."Remove Duplicate Graphics"]
 targetDensity = "\"xxhdpi\""
 
@@ -413,7 +398,7 @@ keepLanguages = "[\"en\"]"
 enabled = true
 app-name = "SDMaid"
 version = "2.0.3"
-patches-source = "rushiranpise/morphe-patches"
+patches-source = ["rushiranpise/morphe-patches", "BlazeFTL/FTL-Patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://apkmirror.com/apk/darken/sd-maid-2-se-system-cleaner"
@@ -425,9 +410,6 @@ patches = [
   "Remove Languages",
   "Unlock Pro",
 ]
-
-[SDMaid.patch-options."APK Junk Cleanup"]
-splitByArch = "true"
 
 [SDMaid.patch-options."Remove Duplicate Graphics"]
 targetDensity = "\"xxhdpi\""

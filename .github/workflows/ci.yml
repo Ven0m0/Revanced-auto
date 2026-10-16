@@ -174,7 +174,7 @@ jobs:
           echo "## Prerequisites Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           MISSING=""
-          for tool in zip unzip java uv; do
+          for tool in java uv; do
             if command -v $tool &> /dev/null; then
               echo "✓ $tool" >> $GITHUB_STEP_SUMMARY
             else
@@ -196,6 +196,7 @@ jobs:
       - name: Run automated tests
         id: tests
         if: success()
+        shell: bash
         run: |
           echo "## Automated Tests" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -223,6 +224,7 @@ jobs:
       - name: Test build (single app)
         id: test_build
         if: success()
+        shell: bash
         run: |
           echo "## Test Build" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

@@ -10,6 +10,27 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
+_SECRET_FLAGS = ("--keystore-password", "--keystore-entry-password")
+
+
+def redact_secret_args(args: list[str]) -> list[str]:
+    """Return ``args`` with keystore password values masked, for logging only."""
+    redacted: list[str] = []
+    mask_next = False
+    for arg in args:
+        if mask_next:
+            redacted.append("***")
+            mask_next = False
+        elif arg in _SECRET_FLAGS:
+            redacted.append(arg)
+            mask_next = True
+        elif arg.startswith(tuple(f"{flag}=" for flag in _SECRET_FLAGS)):
+            redacted.append(f"{arg.split('=', 1)[0]}=***")
+        else:
+            redacted.append(arg)
+    return redacted
+
+
 JAVA_ARGS = [
     # Deterministic UTF-8 output regardless of host locale/console codepage
     # (stdout.encoding/stderr.encoding are the JDK 18+ supported properties;
@@ -89,7 +110,7 @@ class JavaRunner:
         cmd = ["java"] + self.java_args + args
         exec_env = self._build_env()
 
-        logger.info("Executing: java %s", " ".join(self.java_args + args))
+        logger.info("Executing: java %s", " ".join(redact_secret_args(self.java_args + args)))
 
         try:
             result = subprocess.run(

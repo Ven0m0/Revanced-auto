@@ -54,8 +54,6 @@ def run_build(args: argparse.Namespace) -> int:
     except Exception as e:
         log.abort(f"Failed to load config: {e}")
 
-    if args.build_mode:
-        config.build_mode = args.build_mode
     if args.parallel is not None:
         config.parallel_jobs = args.parallel
     if args.no_cache:

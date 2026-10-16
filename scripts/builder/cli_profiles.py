@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import re
 import subprocess
-import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -17,8 +15,6 @@ from scripts.utils.java import JAVA_ARGS
 class CLIProfileType(Enum):
     """ReVanced CLI profile types."""
 
-    REVANCED_CLI_V5 = "revanced-cli-v5"
-    REVANCED_CLI_V6 = "revanced-cli-v6"
     MORPHE_CLI = "morphe-cli"
     ADOBO_CLI = "adobo-cli"
     UNKNOWN = "unknown"
@@ -109,6 +105,7 @@ class PatchCommandConfig:
         werror: Treat warnings as errors.
         exclusive: Disable all patches except those explicitly enabled via ``include``.
         options: Additional options dict.
+        patch_bundle: Patch name to owning bundle index.
     """
 
     apk_path: Path | None = None
@@ -133,6 +130,8 @@ class PatchCommandConfig:
     options: dict[str, dict[str, Any]] = field(default_factory=dict)
     """Per-patch option values: ``{patch_name: {option_key: value}}``. A ``None`` value emits
     the option flag with no value (sets it to null)."""
+    patch_bundle: dict[str, int] = field(default_factory=dict)
+    """Patch name -> index into ``patches_jars`` of the bundle that owns it. Unknown names go to the last bundle."""
 
 
 @dataclass(frozen=True)
@@ -173,68 +172,6 @@ class CLIProfile:
         """
         config = PatchCommandConfig(patches_jars=patches_jars or [])
         return build_cli_args(self, "list-patches", config)
-
-
-def _v5_list_patches_args() -> ListPatchesArgs:
-    """ReVanced CLI v5 list-patches argument mappings."""
-    return ListPatchesArgs(
-        INDEX=ArgMapping(flag="--index", requires_value=True),
-        PACKAGES=ArgMapping(flag="--packages", requires_value=True),
-        VERSIONS=ArgMapping(flag="--versions", requires_value=True),
-        OPTIONS=ArgMapping(flag="--options", requires_value=True),
-        PATCHES=ArgMapping(flag="--patches", requires_value=True),
-        UNIVERSAL=ArgMapping(flag="--universal", requires_value=False),
-    )
-
-
-def _v5_patch_args() -> PatchArgs:
-    """ReVanced CLI v5 patch argument mappings."""
-    return PatchArgs(
-        PATCHES=ArgMapping(flag="--patch", requires_value=True),
-        ENABLED=ArgMapping(flag="--enable", requires_value=True),
-        DISABLED=ArgMapping(flag="--disable", requires_value=True),
-        OPTIONS=ArgMapping(flag="--options", requires_value=True),
-        PURGE=ArgMapping(flag="--purge", requires_value=False),
-        KEYSTORE=ArgMapping(flag="--keystore", requires_value=True),
-        APK=ArgMapping(flag="--input", requires_value=True),
-        OUTPUT=ArgMapping(flag="--output", requires_value=True),
-        FORCE=ArgMapping(flag="--force", requires_value=False),
-        RIP_LIB=ArgMapping(flag="--rip-lib", requires_value=True),
-        MERGE=ArgMapping(flag="--merge", requires_value=True),
-    )
-
-
-def _v6_list_patches_args() -> ListPatchesArgs:
-    """ReVanced CLI v6 list-patches argument mappings."""
-    return ListPatchesArgs(
-        INDEX=ArgMapping(flag="-i", requires_value=True),
-        PACKAGES=ArgMapping(flag="-p", requires_value=True),
-        VERSIONS=ArgMapping(flag="-v", requires_value=True),
-        OPTIONS=ArgMapping(flag="-o", requires_value=True),
-        PATCHES=ArgMapping(flag="-e", requires_value=True),
-        UNIVERSAL=ArgMapping(flag="-u", requires_value=False),
-    )
-
-
-def _v6_patch_args() -> PatchArgs:
-    """ReVanced CLI v6 patch argument mappings."""
-    return PatchArgs(
-        PATCHES=ArgMapping(flag="-e", requires_value=True),
-        ENABLED=ArgMapping(flag="-e", requires_value=True),
-        DISABLED=ArgMapping(flag="-d", requires_value=True),
-        OPTIONS=ArgMapping(flag="-o", requires_value=True),
-        PURGE=ArgMapping(flag="--purge", requires_value=False),
-        KEYSTORE=ArgMapping(flag="-k", requires_value=True),
-        APK=ArgMapping(flag="-i", requires_value=True),
-        OUTPUT=ArgMapping(flag="-o", requires_value=True),
-        FORCE=ArgMapping(flag="-f", requires_value=False),
-        RIP_LIB=ArgMapping(flag="-r", requires_value=True),
-        MERGE=ArgMapping(flag="-m", requires_value=True),
-        BARE=ArgMapping(flag="--bare", requires_value=False),
-        INPLACE=ArgMapping(flag="--inplace", requires_value=False),
-        WERROR=ArgMapping(flag="-Werror", requires_value=False),
-        PATCHES_POST=ArgMapping(flag="-b", requires_value=True),
-    )
 
 
 def _morphe_list_patches_args() -> ListPatchesArgs:
@@ -289,20 +226,6 @@ def _morphe_patch_args() -> PatchArgs:
     )
 
 
-REVANCED_CLI_V5 = CLIProfile(
-    name="ReVanced CLI v5",
-    profile_type=CLIProfileType.REVANCED_CLI_V5,
-    list_patches_args=_v5_list_patches_args(),
-    patch_args=_v5_patch_args(),
-)
-
-REVANCED_CLI_V6 = CLIProfile(
-    name="ReVanced CLI v6",
-    profile_type=CLIProfileType.REVANCED_CLI_V6,
-    list_patches_args=_v6_list_patches_args(),
-    patch_args=_v6_patch_args(),
-)
-
 MORPHE_CLI = CLIProfile(
     name="Morphe CLI",
     profile_type=CLIProfileType.MORPHE_CLI,
@@ -318,8 +241,6 @@ ADOBO_CLI = CLIProfile(
 )
 
 BUILTIN_PROFILES: dict[CLIProfileType, CLIProfile] = {
-    CLIProfileType.REVANCED_CLI_V5: REVANCED_CLI_V5,
-    CLIProfileType.REVANCED_CLI_V6: REVANCED_CLI_V6,
     CLIProfileType.MORPHE_CLI: MORPHE_CLI,
     CLIProfileType.ADOBO_CLI: ADOBO_CLI,
 }
@@ -343,23 +264,14 @@ def detect_cli_profile(cli_jar_path: Path) -> CLIProfile:
 
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "revanced", "--help"],
+            ["java", *JAVA_ARGS, "-jar", str(cli_jar_path), "--help"],
             capture_output=True,
             text=True,
             check=True,
             timeout=30,
         )
-    except subprocess.CalledProcessError, subprocess.TimeoutExpired:
-        try:
-            result = subprocess.run(
-                ["java", *JAVA_ARGS, "-jar", str(cli_jar_path), "--help"],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=30,
-            )
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-            raise RuntimeError(f"Failed to run --help on CLI JAR: {e}") from e
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        raise RuntimeError(f"Failed to run --help on CLI JAR: {e}") from e
 
     help_output = result.stdout + result.stderr
     return _detect_profile_from_help(help_output)
@@ -374,24 +286,7 @@ def _detect_profile_from_help(help_output: str) -> CLIProfile:
     Returns:
         Detected CLIProfile.
     """
-    help_lower = help_output.lower()
-
-    if "adobo" in help_lower:
-        return ADOBO_CLI
-
-    if "morphe" in help_lower:
-        return MORPHE_CLI
-
-    if re.search(r"-b\s+--patch-bundle", help_output) or re.search(r"--patch-bundle\s+\[", help_output):
-        return REVANCED_CLI_V6
-
-    if re.search(r"--patches\s+<", help_output) and "-p" not in help_output:
-        return REVANCED_CLI_V5
-
-    if re.search(r"-p\s+--packages", help_output) or re.search(r"-e\s+--patch", help_output):
-        return REVANCED_CLI_V6
-
-    return REVANCED_CLI_V5
+    return ADOBO_CLI if "adobo" in help_output.lower() else MORPHE_CLI
 
 
 def build_cli_args(
@@ -434,14 +329,44 @@ def build_cli_args(
                 if output_mapping.requires_value:
                     args.append(str(config.output_path))
 
-        if config.patches_jars:
-            patches_mapping = patch_args.get("PATCHES")
+        patches_mapping = patch_args.get("PATCHES")
+        disabled_mapping = patch_args.get("DISABLED")
+        enabled_mapping = patch_args.get("ENABLED")
+        options_mapping = patch_args.get("OPTIONS")
+        last_bundle = len(config.patches_jars) - 1
+        # Options imply enabling their patch, except in exclusive mode where only ``include`` may be enabled.
+        option_only = [] if config.exclusive else [n for n in config.options if n not in config.exclude]
+        enable_names = dict.fromkeys([*config.include, *option_only])
+        # Morphe applies -e/-d/-O to the most recent -p, so each selection must follow its own bundle.
+        for idx, jar in enumerate(config.patches_jars):
             if patches_mapping:
-                for jar in config.patches_jars:
-                    args.extend(patches_mapping.prepend_args)
-                    args.append(patches_mapping.flag)
-                    if patches_mapping.requires_value:
-                        args.append(str(jar))
+                args.extend(patches_mapping.prepend_args)
+                args.append(patches_mapping.flag)
+                if patches_mapping.requires_value:
+                    args.append(str(jar))
+            if disabled_mapping:
+                for patch_name in config.exclude:
+                    if config.patch_bundle.get(patch_name, last_bundle) != idx:
+                        continue
+                    args.extend(disabled_mapping.prepend_args)
+                    args.append(disabled_mapping.flag)
+                    if disabled_mapping.requires_value:
+                        args.append(patch_name)
+            if enabled_mapping:
+                for patch_name in enable_names:
+                    if config.patch_bundle.get(patch_name, last_bundle) != idx:
+                        continue
+                    args.extend(enabled_mapping.prepend_args)
+                    args.append(enabled_mapping.flag)
+                    if enabled_mapping.requires_value:
+                        args.append(patch_name)
+                    # Morphe/Adobo's -O flag sets an option on whichever -e patch precedes it,
+                    # so option flags must be emitted immediately after their patch's -e (see
+                    # https://raw.githubusercontent.com/MorpheApp/morphe-desktop/refs/heads/main/docs/documentation.md).
+                    if options_mapping:
+                        for key, value in config.options.get(patch_name, {}).items():
+                            args.append(options_mapping.flag)
+                            args.append(key if value is None else f"{key}={value}")
 
         if config.patches_post:
             post_mapping = patch_args.get("PATCHES_POST")
@@ -451,33 +376,6 @@ def build_cli_args(
                     args.append(post_mapping.flag)
                     if post_mapping.requires_value:
                         args.append(str(jar))
-
-        if config.exclude:
-            disabled_mapping = patch_args.get("DISABLED")
-            if disabled_mapping:
-                for patch_name in config.exclude:
-                    args.extend(disabled_mapping.prepend_args)
-                    args.append(disabled_mapping.flag)
-                    if disabled_mapping.requires_value:
-                        args.append(patch_name)
-
-        if config.include:
-            enabled_mapping = patch_args.get("ENABLED")
-            options_mapping = patch_args.get("OPTIONS")
-            # Morphe/Adobo's -O flag sets an option on whichever -e patch precedes it,
-            # so option flags must be emitted immediately after their patch's -e (see
-            # https://raw.githubusercontent.com/MorpheApp/morphe-desktop/refs/heads/main/docs/documentation.md).
-            inline_options = profile.profile_type in (CLIProfileType.MORPHE_CLI, CLIProfileType.ADOBO_CLI)
-            if enabled_mapping:
-                for patch_name in config.include:
-                    args.extend(enabled_mapping.prepend_args)
-                    args.append(enabled_mapping.flag)
-                    if enabled_mapping.requires_value:
-                        args.append(patch_name)
-                    if inline_options and options_mapping:
-                        for key, value in config.options.get(patch_name, {}).items():
-                            args.append(options_mapping.flag)
-                            args.append(key if value is None else f"{key}={value}")
 
         if config.merge:
             merge_mapping = patch_args.get("MERGE")

@@ -8,7 +8,7 @@ uses scripts.utils.network.gh_req/gh_dl instead of a private
 NetworkManager._gh_headers, lists the whole ``/releases`` history rather
 than a single tag (matching _resolve_github_release_asset's reasoning in
 scripts/builder/app_processor.py -- ``/releases/latest`` hides prereleases),
-and reuses APKMirror's APKEditor-based bundle merger instead of a second one.
+and leaves bundle (.apkm) merging to DownloadManager.download.
 """
 # ---------------------------------------------------------
 # Copyright (C) 2026 krvstek
@@ -28,11 +28,9 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-import tempfile
 from pathlib import Path
 from typing import Any
 
-from scripts.scrapers.apkmirror import is_apk_bundle, merge_apkm_splits
 from scripts.scrapers.base import DownloadResult, DownloadSource, ScraperBase, VersionInfo
 from scripts.utils.network import gh_dl, gh_req
 
@@ -112,14 +110,6 @@ class GitHubScraper(ScraperBase):
         ok = await asyncio.to_thread(gh_dl, dest, str(asset["url"]))
         if not ok:
             return DownloadResult(success=False, error=f"Download failed: {asset_name}")
-
-        if bundle and is_apk_bundle(dest):
-            merged = output_path.with_suffix(".apk")
-            with tempfile.TemporaryDirectory(prefix="github_scraper_") as tmp:
-                merge_ok = await asyncio.to_thread(merge_apkm_splits, Path(tmp), dest, merged)
-            if not merge_ok:
-                return DownloadResult(success=False, error="Failed to merge APK bundle splits")
-            dest = merged
 
         resolved_version = str(release.get("tag_name") or release.get("name") or version)
         return DownloadResult(success=True, file_path=dest, version=resolved_version)

@@ -7,10 +7,14 @@ from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from scripts.utils.network import (
     HttpClient,
@@ -290,3 +294,60 @@ class TestDownloadWithAria2cFallback:
 
         assert result is True
         mock_lock.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# HTTP status handling
+# ---------------------------------------------------------------------------
+
+
+def _client_with_transport(handler: Callable[[httpx.Request], httpx.Response]) -> HttpClient:
+    client = HttpClient()
+    client._sync_client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    return client
+
+
+class TestStatusHandling:
+    def test_do_request_404_raises_without_retry(self, tmp_path: Path) -> None:
+        calls: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(request)
+            return httpx.Response(404, text="not found")
+
+        client = _client_with_transport(handler)
+        with patch("scripts.utils.network.time.sleep") as mock_sleep, pytest.raises(httpx.HTTPStatusError):
+            client.get("https://example.com/x", tmp_path / "out.bin")
+
+        assert len(calls) == 1
+        mock_sleep.assert_not_called()
+        assert not (tmp_path / "out.bin").exists()
+
+    def test_do_request_503_is_retried(self) -> None:
+        responses = [httpx.Response(503), httpx.Response(200, text="ok")]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return responses.pop(0)
+
+        client = _client_with_transport(handler)
+        with patch("scripts.utils.network.time.sleep") as mock_sleep:
+            assert client.get("https://example.com/x") == "ok"
+
+        mock_sleep.assert_called_once()
+
+    def test_download_with_lock_returns_false_on_404(self, tmp_path: Path) -> None:
+        real_client = HttpClient
+        output = tmp_path / "patches.rvp"
+
+        def factory(config: HttpClientConfig | None = None) -> HttpClient:
+            client = real_client(config)
+            client._sync_client = httpx.Client(
+                transport=httpx.MockTransport(lambda _request: httpx.Response(404, text="<html>nope</html>")),
+                follow_redirects=True,
+            )
+            return client
+
+        with patch("scripts.utils.network.HttpClient", side_effect=factory):
+            assert download_with_lock("https://example.com/patches.rvp", output, temp_dir=tmp_path) is False
+
+        assert not output.exists()
