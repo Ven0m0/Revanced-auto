@@ -40,6 +40,9 @@ _JKS_MAGIC = b"\xfe\xed\xfe\xed"
 _PKCS12_TAG = 0x30
 _PKCS12_LENGTH_BYTES = (0x80, 0x81, 0x82, 0x83, 0x84)
 
+# Cache-key only, not credential storage; kept modest so each build pays ~tens of ms.
+_PASSWORD_TAG_ITERATIONS = 100_000
+
 
 def _is_bks(header: bytes) -> bool:
     return header[:3] == _BKS_HEADER_PREFIX and header[3] in _BKS_VERSIONS
@@ -98,8 +101,13 @@ def _convert(
     cache_dir.mkdir(parents=True, exist_ok=True)
     # The mode (target type, alias, entry-password hash) is part of the key so a changed alias or
     # password never reuses a stale conversion; only hashes reach the filename.
-    mode = f"{dest_type}|{alias if single_entry else '*'}|{hashlib.sha256(key_password.encode()).hexdigest()}"
-    digest = hashlib.sha256(keystore.read_bytes() + b"\0" + mode.encode()).hexdigest()
+    keystore_bytes = keystore.read_bytes()
+    # PBKDF2 (not a bare SHA-256) so the password is never fast-hashed; salt is the keystore content.
+    password_tag = hashlib.pbkdf2_hmac(
+        "sha256", key_password.encode(), hashlib.sha256(keystore_bytes).digest(), _PASSWORD_TAG_ITERATIONS
+    ).hex()
+    mode = f"{dest_type}|{alias if single_entry else '*'}|{password_tag}"
+    digest = hashlib.sha256(keystore_bytes + b"\0" + mode.encode()).hexdigest()
     converted = cache_dir / f"{digest}.{dest_type.lower()}"
     if converted.exists():
         return converted
