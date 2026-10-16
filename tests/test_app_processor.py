@@ -1000,6 +1000,26 @@ class TestCompatibleFallback:
         assert resolver.resolve.call_count == 2
         assert ctx.source == DownloadSource.APKPURE
 
+    @pytest.mark.parametrize(
+        "unusable",
+        [
+            RuntimeError("HTTP 403 for https://apkpure.net/app/com.example.app/versions"),
+            ValueError("No versions found for 'app' on uptodown"),
+        ],
+    )
+    def test_unusable_source_does_not_block_fallback(self, tmp_path: Path, unusable: Exception) -> None:
+        processor, resolver, ctx = self._setup(tmp_path)
+        resolver.resolve.side_effect = [
+            ValueError("no patch-compatible version on apkmirror"),
+            unusable,
+            ("9.9.9", "9.9.9"),
+        ]
+
+        processor._resolve_version(ctx)
+
+        assert ctx.version == "9.9.9"
+        assert resolver.resolve.call_args_list[-1].kwargs["compatible"] == []
+
     def test_other_errors_do_not_trigger_fallback(self, tmp_path: Path) -> None:
         processor, resolver, ctx = self._setup(tmp_path)
         resolver.resolve.side_effect = [
