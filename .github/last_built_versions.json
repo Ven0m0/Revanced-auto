@@ -14,10 +14,13 @@
   "app_reddit-morphed_patches_source": "jkennethcarino/adobo,BlazeFTL/FTL-Patches,MorpheApp/morphe-patches,rushiranpise/morphe-patches",
   "app_reddit-morphed_cli_source": "MorpheApp/morphe-cli",
   "app_reddit-morphed_version": "auto",
-  "app_brave_patches_source": "kveld9/kveld-morphe-patches,jkennethcarino/adobo,dh6k/morphe-patches,BlazeFTL/FTL-Patches",
+  "app_brave_patches_source": "kveld9/kveld-morphe-patches",
   "app_brave_cli_source": "MorpheApp/morphe-cli",
   "app_brave_version": "auto",
   "app_sdmaid_patches_source": "rushiranpise/morphe-patches,BlazeFTL/FTL-Patches",
   "app_sdmaid_cli_source": "MorpheApp/morphe-cli",
-  "app_sdmaid_version": "2.0.3"
+  "app_sdmaid_version": "2.0.3",
+  "app_googlemaps_patches_source": "bearinmindcat/morphe-patches",
+  "app_googlemaps_cli_source": "MorpheApp/morphe-cli",
+  "app_googlemaps_version": "auto"
 }
