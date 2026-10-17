@@ -10,18 +10,23 @@ runs:
         cache: true
     - name: Setup Android SDK
       uses: android-actions/setup-android@v4.0.4
+    # Cache a user-owned SDK root: the runner's own build-tools are root-owned, so tar cannot restore over them.
     - name: Cache Android SDK Build Tools
+      id: build-tools-cache
       uses: actions/cache@v6
       with:
-        path: ${{ env.ANDROID_HOME }}/build-tools
-        key: ${{ runner.os }}-android-build-tools-34.0.0
-        restore-keys: |
-          ${{ runner.os }}-android-build-tools-
+        path: ~/android-build-tools-sdk
+        key: ${{ runner.os }}-android-build-tools-34.0.0-v2
     - name: Install Android SDK Build Tools
       shell: bash
       run: |
-        sdkmanager "build-tools;34.0.0"
-        echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+        BUILD_TOOLS_SDK="$HOME/android-build-tools-sdk"
+        if [ "${{ steps.build-tools-cache.outputs.cache-hit }}" != "true" ]; then
+          mkdir -p "$BUILD_TOOLS_SDK"
+          cp -r "$ANDROID_HOME/licenses" "$BUILD_TOOLS_SDK/"
+          sdkmanager --sdk_root="$BUILD_TOOLS_SDK" "build-tools;34.0.0"
+        fi
+        echo "$BUILD_TOOLS_SDK/build-tools/34.0.0" >> "$GITHUB_PATH"
     - name: Install Python dependencies (uv sync)
       shell: bash
       run: uv sync --locked --all-groups
