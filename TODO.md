@@ -1,1 +1,3 @@
-add "en-rIN" as a keep language to every option in @config.toml
+- [ ] add "en-rIN" as a keep language to every option in @config.toml
+- [ ] remove jkennethcarino/adobo for brave and ensure brave is downloaded from the brave github page instead of fetched from other sources.
+- [ ] use the patch selection in @  for brave
