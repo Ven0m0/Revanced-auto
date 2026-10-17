@@ -16,7 +16,7 @@ from scripts.lib import logging as log
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-_EXCLUDED_DIRS = frozenset({".git", "build", "temp", ".venv", "venv", "node_modules", ".omc", ".cache"})
+_EXCLUDED_DIRS = frozenset({".git", "build", "temp", ".venv", "venv", "node_modules", ".omc", ".cache", ".serena"})
 
 
 def _find_files(*patterns: str) -> list[str]:

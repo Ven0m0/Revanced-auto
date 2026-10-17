@@ -444,3 +444,44 @@ targetDensity = "\"xxhdpi\""
 
 [SDMaid.patch-options."Remove Languages"]
 keepLanguages = "[\"en\",\"en-rIN\"]"
+
+# Google Maps. Selection = the bundle's default-enabled patches (morphe-patches.software default view);
+# "Add microG support" is off by default there and stays off. Opt-in: not previously a build target.
+[GoogleMaps]
+enabled = true
+app-name = "GoogleMaps"
+version = "auto"
+patches-source = "bearinmindcat/morphe-patches"
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/maps/"
+apkpure-dlurl = "https://apkpure.net/maps-navigate-explore/com.google.android.apps.maps"
+archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.maps"
+uptodown-dlurl = "https://google-maps.en.uptodown.com/android"
+# APKMirror URLs carry no package id, so list-versions needs it spelled out.
+package-name = "com.google.android.apps.maps"
+exclusive = true
+patches = [
+  "Account sheet cleanup",
+  "Any media app",
+  "Better offline maps",
+  "Black theme",
+  "Blue pin",
+  "Bypass Play Services checks",
+  "Change app name",
+  "Change package name",
+  "Customization screen",
+  "Hide ads and clutter",
+  "Location provider toggle",
+  "Offline saved places",
+  "Power saving mode",
+  "Rectangle shapes",
+  "Remove permissions",
+  "Remove sign-in prompts",
+  "Remove telemetry",
+  "Speed cameras",
+  "Speeding chime",
+  "Trim account menu",
+  "Waze alerts",
+  "Zoom controls in navigation",
+]
