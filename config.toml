@@ -121,7 +121,7 @@ patches = [
 targetDensity = "\"xxhdpi\""
 
 [TikTok.patch-options."Remove Languages"]
-keepLanguages = "[\"en\"]"
+keepLanguages = "[\"en\",\"en-rIN\"]"
 
 [GooglePhotos]
 enabled = false
@@ -200,7 +200,7 @@ patches = [
   "Remove viewer discretion dialog",
   "Return YouTube Dislike",
   "Sanitize sharing links",
-  "Save to watch later",
+  "Save to Watch later",
   "Seekbar",
   "Settings menu filter",
   "Shorts autoplay",
@@ -228,7 +228,7 @@ disableVungle = "false"
 targetDensity = "\"xxhdpi\""
 
 [YouTube-Morphed.patch-options."Remove Languages"]
-keepLanguages = "[\"en\"]"
+keepLanguages = "[\"en\",\"en-rIN\"]"
 
 # YouTube Music Morphed (default Morphe build).
 [Music-Morphed]
@@ -249,7 +249,7 @@ patches = [
   "Remove Analytics",
   "Remove Duplicate Graphics",
   "Remove Languages",
-  "Bypass certificate checks",
+  "Android Auto",
   "Change header",
   "Change miniplayer color",
   "Check watch history domain name resolution",
@@ -264,7 +264,6 @@ patches = [
   "GmsCore support",
   "Hide ads",
   "Hide buttons",
-  "Hide filter bar",
   "Hide flyout menu components",
   "Hide layout components",
   "Hide music action buttons",
@@ -289,7 +288,7 @@ patches = [
 targetDensity = "\"xxhdpi\""
 
 [Music-Morphed.patch-options."Remove Languages"]
-keepLanguages = "[\"en\"]"
+keepLanguages = "[\"en\",\"en-rIN\"]"
 
 # Reddit Morphed
 [Reddit-Morphed]
@@ -331,15 +330,13 @@ patches = [
   "Hide sidebar components",
   "Remove subreddit dialog",
   "Show view count",
-  "Remove Subreddit Dialogs",
-  "Unlock Premium",
 ]
 
 [Reddit-Morphed.patch-options."Remove Duplicate Graphics"]
 targetDensity = "\"xxhdpi\""
 
 [Reddit-Morphed.patch-options."Remove Languages"]
-keepLanguages = "[\"en\"]"
+keepLanguages = "[\"en\",\"en-rIN\"]"
 
 [Reddit-Morphed.patch-options."Custom branding name for Reddit"]
 appName = "\"Reddit Morphe\""
@@ -362,52 +359,67 @@ uptodown-dlurl = "https://twitter.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
 apkmirror-dpi = "120-640dpi"
 
-# Brave (Beta channel; the Adobo/Brave-patches/BlazeFTL bundles below target
-# com.brave.browser_beta specifically). Opt-in: not previously a build target.
+# Brave (stable). The stock APK comes straight from Brave's GitHub releases; the asset name at the
+# end of github-dlurl selects the arm64 Monochrome build (only repo + asset name are used, the
+# version still comes from patch compatibility). Opt-in: not previously a build target.
 [Brave]
 enabled = true
 app-name = "Brave"
-# Later bundles win on duplicate patch names, so kveld9 goes first to keep dh6k's "Brave Origin".
-patches-source = ["kveld9/kveld-morphe-patches", "jkennethcarino/adobo", "dh6k/morphe-patches", "BlazeFTL/FTL-Patches"]
+patches-source = "kveld9/kveld-morphe-patches"
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
-apkmirror-dlurl = "https://www.apkmirror.com/apk/brave-software/brave-browser-beta/"
-apkpure-dlurl = "https://apkpure.net/brave-browser-beta/com.brave.browser_beta"
+github-dlurl = "https://github.com/brave/brave-browser/releases/latest/download/BraveMonoarm64.apk"
+# GitHub URLs carry no package id, so list-versions needs it spelled out.
+package-name = "com.brave.browser"
 exclusive = true
+# Selection exported from Morphe Manager (morphe_kveld9_Patches_browser-2026-10-17-034144.json).
+# Its "(2)" entries are same-named universal patches; -e enables every patch with that name.
 patches = [
-  "Deactivate Firebase Analytics",
-  "Deactivate Firebase Performance Monitoring",
-  "Disable metrics collection in WebView",
-  "Disable mobile ads",
-  "Brave Origin",
-  "Disable analytics",
-  "APK Junk Cleanup",
-  "Png Optimizer",
-  "Remove Analytics",
-  "Remove Duplicate Graphics",
-  "Remove Languages",
-  "Universal Remove Ads",
-  # kveld9/kveld-morphe-patches
+  "Allow Screenshots",
   "Block Motion Sensors",
   "Block Popups & Rating Requests",
   "Block Trackers",
+  "Block Tracking SDKs",
+  "Brave Origin",
+  "Clean App Packaging",
   "Clean Shared Links",
   "Clean Start Page",
   "Faster Startup",
   "Hide Battery Status",
   "Keep Tabs Open",
+  "Remove Extra Files",
+  "Remove Extra Languages",
+  "Remove Tracking Libraries",
+  "Remove Unused Screen Sizes",
   "Select Previous Tab on Close",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
   "Silence Promo Notifications",
+  "Silence System Logs",
   "Skip Welcome Screens",
   "Stop Background Sync",
   "Stop Text Sharing with System",
 ]
 
-[Brave.patch-options."Remove Duplicate Graphics"]
-targetDensity = "\"xxhdpi\""
+# Universal "Block Trackers" (the JSON's "Block Trackers (2)"); the Brave-specific one has no such key.
+[Brave.patch-options."Block Trackers"]
+disableAdStartupInitializers = "true"
 
-[Brave.patch-options."Remove Languages"]
-keepLanguages = "[\"en\"]"
+[Brave.patch-options."Shrink WebP Images"]
+stripIcc = "true"
+
+[Brave.patch-options."Silence System Logs"]
+logLevel = "\"all\""
+
+[Brave.patch-options."Remove Extra Languages"]
+locales = "\"en-US,en-rIN\""
+
+# The JSON did not select the universal "Stop Background Sync", but -e enables every patch with that
+# name. These keys exist only on the universal one, so turning them off neutralizes it.
+[Brave.patch-options."Stop Background Sync"]
+stripBootPermission = "false"
+disableBootReceivers = "false"
+disableWorkManager = "false"
 
 # SD Maid 2/SE. Opt-in: not previously a build target.
 [SDMaid]
@@ -431,4 +443,4 @@ patches = [
 targetDensity = "\"xxhdpi\""
 
 [SDMaid.patch-options."Remove Languages"]
-keepLanguages = "[\"en\"]"
+keepLanguages = "[\"en\",\"en-rIN\"]"

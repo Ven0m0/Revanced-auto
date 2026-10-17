@@ -36,6 +36,18 @@ from scripts.utils.network import gh_dl, gh_req
 
 _ARCH_SUFFIX = re.compile(r"(?:-(all|arm64-v8a|armeabi-v7a|x86_64|x86))?(?:\.apk\.apkm|\.apk|\.apkm)$", re.IGNORECASE)
 _UNIVERSAL_ARCHS = frozenset({"universal", "all", "both"})
+# Brave publishes nightlies/betas with prerelease=false, so the channel is only visible in the release name.
+_NON_STABLE_NAME = re.compile(r"^(nightly|beta|alpha|dev)\b", re.IGNORECASE)
+_MIN_REPO_SEGMENTS = 2
+
+
+def _split_pkg(pkg_name: str) -> tuple[str, str | None]:
+    """Split ``owner/repo[/...path/asset.apk]`` into the repo and an optional pinned asset name."""
+    parts = [p for p in pkg_name.strip("/").split("/") if p]
+    repo = "/".join(parts[:_MIN_REPO_SEGMENTS])
+    if len(parts) > _MIN_REPO_SEGMENTS and parts[-1].lower().endswith((".apk", ".apkm")):
+        return repo, parts[-1]
+    return repo, None
 
 
 def _select_asset(assets: list[dict[str, Any]], arch: str) -> dict[str, Any] | None:
@@ -71,17 +83,22 @@ class GitHubScraper(ScraperBase):
         super().__init__(DownloadSource.GITHUB)
 
     async def _list_releases(self, pkg_name: str) -> list[dict[str, Any]]:
-        url = f"https://api.github.com/repos/{pkg_name.strip('/')}/releases"
+        url = f"https://api.github.com/repos/{pkg_name.strip('/')}/releases?per_page=100"
         raw = await asyncio.to_thread(gh_req, url)
         releases = json.loads(raw)
         return releases if isinstance(releases, list) else []
 
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
-        releases = await self._list_releases(pkg_name)
+        repo, _asset = _split_pkg(pkg_name)
+        releases = await self._list_releases(repo)
         versions: list[VersionInfo] = []
         for release in releases:
             tag = release.get("tag_name") or release.get("name")
             if not tag:
+                continue
+            if kwargs.get("exclude_alpha_beta") and (
+                release.get("prerelease") or _NON_STABLE_NAME.match(str(release.get("name") or ""))
+            ):
                 continue
             if any(str(a.get("name", "")).endswith((".apk", ".apkm")) for a in release.get("assets", [])):
                 versions.append(VersionInfo(version=str(tag)))
@@ -95,14 +112,23 @@ class GitHubScraper(ScraperBase):
         **kwargs: object,
     ) -> DownloadResult:
         arch = str(kwargs.get("arch", "universal"))
-        releases = await self._list_releases(pkg_name)
+        repo, asset_name_pin = _split_pkg(pkg_name)
+        releases = await self._list_releases(repo)
         release = _find_release(releases, version)
         if release is None:
-            return DownloadResult(success=False, error=f"No release found for {pkg_name!r} version {version!r}")
+            return DownloadResult(success=False, error=f"No release found for {repo!r} version {version!r}")
 
-        asset = _select_asset(release.get("assets", []), arch)
-        if asset is None:
-            return DownloadResult(success=False, error=f"No matching APK/APKM asset for arch {arch!r}")
+        assets = release.get("assets", [])
+        if asset_name_pin:
+            asset = next((a for a in assets if a.get("name") == asset_name_pin), None)
+            if asset is None:
+                return DownloadResult(
+                    success=False, error=f"Asset {asset_name_pin!r} not found in {repo!r} {version!r}"
+                )
+        else:
+            asset = _select_asset(assets, arch)
+            if asset is None:
+                return DownloadResult(success=False, error=f"No matching APK/APKM asset for arch {arch!r}")
 
         asset_name = str(asset["name"])
         bundle = asset_name.endswith(".apkm")
