@@ -1,0 +1,49 @@
+{
+    "bundleUid": 364766620,
+    "bundleName": "kveld9 Patches",
+    "bundleSource": "https://raw.githubusercontent.com/kveld9/kveld-morphe-patches/main/patches-bundle.json",
+    "exportDate": "2026-10-17T03:41:48.498862",
+    "selections": {
+        "com.brave.browser": [
+            "Allow Screenshots",
+            "Block Motion Sensors",
+            "Block Popups & Rating Requests",
+            "Block Trackers",
+            "Block Trackers (2)",
+            "Block Tracking SDKs",
+            "Brave Origin",
+            "Clean App Packaging",
+            "Clean Shared Links",
+            "Clean Start Page",
+            "Faster Startup",
+            "Hide Battery Status",
+            "Keep Tabs Open",
+            "Remove Extra Files",
+            "Remove Extra Languages",
+            "Remove Extra Languages (2)",
+            "Remove Tracking Libraries",
+            "Remove Unused Screen Sizes",
+            "Select Previous Tab on Close",
+            "Shrink PNG Images",
+            "Shrink WebP Images",
+            "Silence Promo Notifications",
+            "Silence System Logs",
+            "Skip Welcome Screens",
+            "Stop Background Sync",
+            "Stop Text Sharing with System"
+        ]
+    },
+    "options": {
+        "com.brave.browser": {
+            "Block Trackers (2)": {
+                "disableAdStartupInitializers": "true"
+            },
+            "Shrink WebP Images": {
+                "stripIcc": "true"
+            },
+            "Silence System Logs": {
+                "logLevel": "\"all\""
+            }
+        }
+    }
+}
