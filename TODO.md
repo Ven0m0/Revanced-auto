@@ -1,3 +1,3 @@
-- [ ] add "en-rIN" as a keep language to every option in @config.toml
-- [ ] remove jkennethcarino/adobo for brave and ensure brave is downloaded from the brave github page instead of fetched from other sources.
-- [ ] use the patch selection in @morphe_kveld9_Patches_browser-2026-10-17-034144.json for brave
+- [x] add "en-rIN" as a keep language to every option in @config.toml
+- [x] remove jkennethcarino/adobo for brave and ensure brave is downloaded from the brave github page instead of fetched from other sources.
+- [x] use the patch selection in @morphe_kveld9_Patches_browser-2026-10-17-034144.json for brave

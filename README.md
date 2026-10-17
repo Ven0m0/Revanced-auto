@@ -135,7 +135,7 @@ The shipped `config.toml` uses top-level global settings plus per-app sections s
 - `apkpure-dlurl`
 - `aptoide-dlurl`
 - `apkmonk-dlurl`
-- `github-dlurl` (e.g. `"https://github.com/owner/repo"`)
+- `github-dlurl` (e.g. `"https://github.com/owner/repo"`; end the URL with `/<asset>.apk` to pin a release asset by name, e.g. `".../releases/latest/download/BraveMonoarm64.apk"`)
 
 Common global settings include:
 
