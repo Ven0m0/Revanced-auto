@@ -14,7 +14,7 @@
   "app_reddit-morphed_patches_source": "jkennethcarino/adobo,BlazeFTL/FTL-Patches,MorpheApp/morphe-patches,rushiranpise/morphe-patches",
   "app_reddit-morphed_cli_source": "MorpheApp/morphe-cli",
   "app_reddit-morphed_version": "auto",
-  "app_brave_patches_source": "jkennethcarino/adobo,dh6k/morphe-patches,BlazeFTL/FTL-Patches",
+  "app_brave_patches_source": "kveld9/kveld-morphe-patches,jkennethcarino/adobo,dh6k/morphe-patches,BlazeFTL/FTL-Patches",
   "app_brave_cli_source": "MorpheApp/morphe-cli",
   "app_brave_version": "auto",
   "app_sdmaid_patches_source": "rushiranpise/morphe-patches,BlazeFTL/FTL-Patches",
