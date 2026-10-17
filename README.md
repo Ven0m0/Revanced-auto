@@ -156,7 +156,7 @@ Per-app settings worth knowing:
 - `version` — `auto` (default) picks the newest version compatible with the patches, `latest` the newest store version, `beta` the newest including beta/alpha, or pin an exact version
 - `exclusive` — when `true`, only the app's own `patches` list applies; global default patches are not merged in
 
-The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-Morphed`, `Brave`, and `SDMaid`. Other sections (`Spotify`, `GooglePhotos`, `Instagram-Piko`, `Twitter-Piko`) are included as disabled examples — flip `enabled = true` to use them.
+The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-Morphed`, `Brave`, `SDMaid`, and `GoogleMaps`. Other sections (`Spotify`, `GooglePhotos`, `Instagram-Piko`, `Twitter-Piko`) are included as disabled examples — flip `enabled = true` to use them.
 
 ### Patch sources
 
