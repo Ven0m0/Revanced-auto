@@ -51,10 +51,6 @@
   "pipenv": {
     "enabled": false
   },
-  "npm": {
-    "managerFilePatterns": ["/.kilo/package.json/"]
-  },
-  "postUpdateOptions": ["uvLockUpdate"],
   "packageRules": [
     {
       "description": "Allow Python Docker images >=3.14 but exclude 3.15.x series",
