@@ -17,6 +17,8 @@ from scripts.utils.apk import (
     _validate_path,
     align_apk,
     detect_bundle_type,
+    load_signatures,
+    signer_digests,
 )
 
 # ---------------------------------------------------------------------------
@@ -287,3 +289,55 @@ class TestEnsureApksignerJar:
         monkeypatch.setattr(env_check, "download_with_lock", lambda *_a, **_k: False)
 
         assert apk._ensure_apksigner_jar() is False
+
+
+class TestSignerDigests:
+    @pytest.fixture(autouse=True)
+    def _jar_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("scripts.utils.apk._ensure_apksigner_jar", lambda: True)
+
+    @pytest.fixture
+    def apk_file(self, tmp_path: Path) -> Path:
+        apk = tmp_path / "stock.apk"
+        apk.write_bytes(b"PK")
+        return apk
+
+    def test_parses_digest_from_apksigner_output(self, apk_file: Path) -> None:
+        out = "Signer #1 certificate DN: CN=x\nSigner #1 certificate SHA-256 digest: 3D:7A:12\n"
+        with patch("subprocess.run", return_value=MagicMock(stdout=out, stderr="")) as mock_run:
+            assert signer_digests(apk_file) == {"3d7a12"}
+
+        cmd = mock_run.call_args.args[0]
+        assert cmd[cmd.index("-jar") + 1] == str(Path("bin/apksigner.jar"))
+        assert cmd[cmd.index("-jar") + 2 :] == ["verify", "--print-certs", str(apk_file)]
+
+    def test_key_rotated_apk_returns_every_signer(self, apk_file: Path) -> None:
+        out = (
+            "Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: 5aad2b\n"
+            "Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: 3d7a12\n"
+        )
+        with patch("subprocess.run", return_value=MagicMock(stdout=out, stderr="")):
+            assert signer_digests(apk_file) == {"5aad2b", "3d7a12"}
+
+    def test_apksigner_failure_returns_empty(self, apk_file: Path) -> None:
+        with patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, ["java"])):
+            assert signer_digests(apk_file) == set()
+
+    def test_missing_jar_returns_empty_without_running_java(
+        self, apk_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("scripts.utils.apk._ensure_apksigner_jar", lambda: False)
+        with patch("subprocess.run") as mock_run:
+            assert signer_digests(apk_file) == set()
+        mock_run.assert_not_called()
+
+
+class TestLoadSignatures:
+    def test_maps_package_to_lowercase_digest_and_skips_blank_lines(self, tmp_path: Path) -> None:
+        sig = tmp_path / "sig.txt"
+        sig.write_text("ABC123 com.a.app\n\nDEF456 com.b.app\n", encoding="utf-8")
+
+        assert load_signatures(sig) == {"com.a.app": "abc123", "com.b.app": "def456"}
+
+    def test_missing_file_gives_empty_map(self, tmp_path: Path) -> None:
+        assert load_signatures(tmp_path / "nope.txt") == {}

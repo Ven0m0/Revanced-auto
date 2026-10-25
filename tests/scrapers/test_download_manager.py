@@ -152,3 +152,63 @@ def test_resolve_passes_include_beta(*, include_beta: bool, expect_exclude: bool
     manager.resolve("com.example", source, include_beta=include_beta)
 
     assert fake.versions_kwargs["exclude_alpha_beta"] is expect_exclude
+
+
+def test_expected_cert_match_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = DownloadSource.APKPURE
+    out = tmp_path / "stock.apk"
+    manager = _manager(source, _FakeScraper(source, _apk_bytes()))
+    monkeypatch.setattr(dm_module, "signer_digests", lambda _p: {"abc"})
+
+    assert manager.download("com.example", "1.0", out, source, expected_cert="abc") == out
+
+
+def test_expected_cert_mismatch_raises_and_deletes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = DownloadSource.APKPURE
+    out = tmp_path / "stock.apk"
+    manager = _manager(source, _FakeScraper(source, _apk_bytes()))
+    monkeypatch.setattr(dm_module, "signer_digests", lambda _p: {"other"})
+
+    with pytest.raises(RuntimeError, match="signature mismatch"):
+        manager.download("com.example", "1.0", out, source, expected_cert="abc")
+
+    assert not out.exists()
+
+
+def test_bundle_cert_checked_on_base_apk_before_merge(
+    tmp_path: Path, sample_xapk: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = DownloadSource.APKPURE
+    out = tmp_path / "stock.apk"
+    manager = _manager(source, _FakeScraper(source, sample_xapk.read_bytes()))
+    checked: list[str] = []
+    merged: list[bool] = []
+
+    def fake_verify(path: Path) -> set[str]:
+        checked.append(path.name)
+        return {"abc"}
+
+    def fake_merge(_temp_dir: Path, _bundle: Path, output_path: Path) -> bool:
+        merged.append(bool(checked))
+        output_path.write_bytes(_apk_bytes())
+        return True
+
+    monkeypatch.setattr(dm_module, "signer_digests", fake_verify)
+    monkeypatch.setattr(dm_module, "merge_apkm_splits", fake_merge)
+
+    manager.download("com.example", "1.0", out, source, expected_cert="abc")
+
+    assert checked == ["base.apk"]
+    assert merged == [True]
+
+
+def test_no_expected_cert_skips_verification(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = DownloadSource.APKPURE
+    manager = _manager(source, _FakeScraper(source, _apk_bytes()))
+
+    def boom(_p: Path) -> set[str]:
+        pytest.fail("signer_digests must not run")
+
+    monkeypatch.setattr(dm_module, "signer_digests", boom)
+
+    manager.download("com.example", "1.0", tmp_path / "stock.apk", source)
