@@ -1,0 +1,12 @@
+{
+    "bundleUid": -1217877683,
+    "bundleName": "Brave and universal patches",
+    "bundleSource": "https://raw.githubusercontent.com/dh6k/morphe-patches/main/patches-bundle.json",
+    "exportDate": "2026-10-25T15:13:35.899215",
+    "selections": {
+        "com.brave.browser": [
+            "Brave Startup Performance Optimization"
+        ]
+    },
+    "options": {}
+}
