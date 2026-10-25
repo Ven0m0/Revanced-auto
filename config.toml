@@ -383,22 +383,23 @@ patches = ["Dynamic color"]
 [Brave]
 enabled = true
 app-name = "Brave"
-patches-source = "kveld9/kveld-morphe-patches"
+# kveld9 goes last: later bundles win on duplicate names, and both bundles ship "Brave Origin".
+patches-source = ["dh6k/morphe-patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 github-dlurl = "https://github.com/brave/brave-browser/releases/latest/download/BraveMonoarm64.apk"
 # GitHub URLs carry no package id, so list-versions needs it spelled out.
 package-name = "com.brave.browser"
 exclusive = true
-# Selection exported from Morphe Manager (morphe_kveld9_Patches_browser-2026-10-17-034144.json).
-# Its "(2)" entries are same-named universal patches; -e enables every patch with that name.
+# Selection exported from Morphe Manager (morphe_kveld9_Patches_browser-2026-10-25-151331.json and
+# morphe_Brave_and_universal__browser-2026-10-25-151334.json).
 patches = [
-  "Allow Screenshots",
   "Block Motion Sensors",
   "Block Popups & Rating Requests",
   "Block Trackers",
   "Block Tracking SDKs",
   "Brave Origin",
+  "Brave Startup Performance Optimization",
   "Clean App Packaging",
   "Clean Start Page",
   "Keep Tabs Open",
@@ -418,6 +419,9 @@ patches = [
 
 # The universal variants are named "<patch> (Universal)" since kveld9 2.8.0, so "Block Trackers" and
 # "Stop Background Sync" here are the Brave-specific patches and take none of the universal options.
+[Brave.patch-options."Remove Extra Files"]
+removeVpnLibrary = "true"
+
 [Brave.patch-options."Shrink WebP Images"]
 stripIcc = "true"
 
@@ -441,6 +445,25 @@ patches = [
   "APK Junk Cleanup",
   "Png Optimizer",
   "Unlock Pro",
+]
+
+# SoundCloud. Selection exported from Morphe Manager (morphe_Kondratjev_Patches_android-2026-10-25-160121.json).
+[SoundCloud]
+enabled = true
+app-name = "SoundCloud"
+patches-source = "kondratjev/morphe-patches"
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/soundcloud/soundcloud-soundcloud/"
+uptodown-dlurl = "https://soundcloud.en.uptodown.com/android"
+apkpure-dlurl = "https://apkpure.net/sound-cloud-android-app/com.soundcloud.android"
+# APKMirror URLs carry no package id, so list-versions needs it spelled out.
+package-name = "com.soundcloud.android"
+exclusive = true
+patches = [
+  "Disable analytics",
+  "Disable consent popup",
+  "Enable SoundCloud Go",
 ]
 
 # Google Maps. Selection = the bundle's default-enabled patches (morphe-patches.software default view);
