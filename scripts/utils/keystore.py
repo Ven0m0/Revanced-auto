@@ -14,12 +14,18 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from scripts.utils.network import download_with_lock
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
 
@@ -219,4 +225,54 @@ def ensure_jdk_readable(
         alias=alias,
         bin_dir=bin_dir,
         cache_dir=cache_dir,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class SigningKeystore:
+    """Credentials plus the two keystore copies a build signs with, resolved once per run.
+
+    Both paths are None when no keystore is configured; the patcher then signs with its own
+    default keystore and apksigner is skipped.
+    """
+
+    alias: str
+    password: str
+    entry_password: str
+    patcher_keystore: Path | None = None
+    apksigner_keystore: Path | None = None
+
+
+def prepare_signing(
+    keystore: Path | None,
+    alias: str | None,
+    environ: Mapping[str, str] = os.environ,
+) -> SigningKeystore:
+    """Resolve signing credentials and convert ``keystore`` for Morphe (BKS) and apksigner (JDK-readable).
+
+    Default alias is lowercase "morphe": `keytool -genkeypair` always
+    lowercases the alias it stores regardless of the case passed to
+    `-alias` (confirmed: `keytool -list` on assets/ks.keystore, generated
+    with `-alias Morphe`, shows the entry as "morphe"), and
+    morphe-desktop's own alias lookup is exact-match, not the
+    case-insensitive lookup java.security.KeyStore itself does --
+    confirmed live: "Keystore does not contain entry with alias Morphe"
+    even though standard KeyStore.getKey("Morphe", ...) resolves fine.
+    Passwords come from KEYSTORE_PASSWORD/KEYSTORE_ENTRY_PASSWORD (already
+    set by the CI workflows), so a real production keystore + secrets can
+    override the defaults without a code change.
+    """
+    alias = alias or "morphe"
+    password = environ.get("KEYSTORE_PASSWORD") or "Morphe"
+    # An unset entry password means "same as the store password", the keytool/PKCS12 norm.
+    entry_password = environ.get("KEYSTORE_ENTRY_PASSWORD") or password
+    if keystore is None:
+        return SigningKeystore(alias, password, entry_password)
+    return SigningKeystore(
+        alias,
+        password,
+        entry_password,
+        patcher_keystore=ensure_bks(keystore, password, entry_password=entry_password, alias=alias),
+        # apksigner only has the JDK's providers, which cannot read BKS.
+        apksigner_keystore=ensure_jdk_readable(keystore, password, entry_password=entry_password, alias=alias),
     )

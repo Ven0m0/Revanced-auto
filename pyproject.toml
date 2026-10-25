@@ -146,7 +146,6 @@ ignore = [
 "scripts/lib/plugins.py" = ["PLC0415"]
 "scripts/cli.py" = ["C901", "PLC0415", "PLR0912", "RET503", "TRY300"]
 "scripts/lib/config.py" = ["ANN401", "FBT001", "PLC0415"]
-"scripts/lib/version_tracker.py" = ["PLC0415"]
 "scripts/version_tracker.py" = ["D100", "D101", "D103"]
 "scripts/scrapers/*.py" = [
   "ANN401",
