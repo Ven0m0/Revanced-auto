@@ -37,6 +37,7 @@ from scripts.builder.cli_profiles import (
 from scripts.lib.plugins import dispatch_plugins
 from scripts.scrapers.base import DownloadSource
 from scripts.search.version_resolver import parse_patch_names, parse_versions
+from scripts.utils.apk import load_signatures
 from scripts.utils.java import JavaRunner
 
 if TYPE_CHECKING:
@@ -211,6 +212,7 @@ class DownloadManager(Protocol):
         arch: str | None = None,
         dpi: str | None = None,
         timeout: int = 300,
+        expected_cert: str | None = None,
     ) -> Path:
         """Download stock APK from source.
 
@@ -222,6 +224,7 @@ class DownloadManager(Protocol):
             arch: Target architecture.
             dpi: Target DPI.
             timeout: Request timeout in seconds.
+            expected_cert: Expected stock signing certificate SHA-256.
 
         Returns:
             Path to downloaded APK.
@@ -826,6 +829,10 @@ class AppProcessor:
         # Arch in the name keeps parallel arch variants from overwriting each other's stock APK.
         output_path = Path(tempfile.gettempdir()) / f"stock-{context.app_name}-{context.version}-{context.arch}.apk"
         errors: list[str] = []
+        package = self._patches_package(context)
+        expected_cert = load_signatures().get(package) if package else None
+        if not expected_cert:
+            logger.info("No stock signature entry in assets/sig.txt for %s; skipping stock APK check", context.app_name)
         for source, download_url in candidates:
             pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else context.app_id
             try:
@@ -835,6 +842,7 @@ class AppProcessor:
                     output_path,
                     source,
                     arch=context.arch,
+                    expected_cert=expected_cert,
                 )
             except Exception as e:
                 logger.warning("Download from %s failed for %s: %s", source.value, context.app_name, e)

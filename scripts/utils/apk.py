@@ -134,31 +134,38 @@ def align_apk(input_path: Path, output_path: Path) -> bool:
         return False
 
 
-def verify_signature(apk_path: Path) -> str | None:
-    """Get APK signature SHA256 for verification."""
-    _validate_apk_path(apk_path, "verify_signature")
+def signer_digests(apk_path: Path) -> set[str]:
+    """Certificate SHA-256 digests (lowercase hex) of every signer; empty if the APK does not verify.
 
-    if not apk_path.exists():
-        return None
+    A set, not one digest: key-rotated APKs (e.g. YouTube) list a new cert for newer Android and the
+    original cert for older, and the original is the one sig.txt records.
+    """
+    _validate_apk_path(apk_path, "signer_digests")
 
-    cmd = ["apksigner", "verify", "--print-certs", str(apk_path)]
+    if not apk_path.exists() or not _ensure_apksigner_jar():
+        return set()
+
+    cmd = ["java", *JAVA_ARGS, "-jar", str(APKSIGNER_JAR), "verify", "--print-certs", str(apk_path)]
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        output = result.stdout + result.stderr
-
-        sha256_match = re.search(r"SHA-256 fingerprint:\s*([A-Fa-f0-9:]+)", output)
-        if sha256_match:
-            fingerprint = sha256_match.group(1)
-            return fingerprint.replace(":", "").lower()
-
-        cert_match = re.search(r"Certificate [^ ]+ SHA-256:\s*([A-Fa-f0-9:]+)", output)
-        if cert_match:
-            fingerprint = cert_match.group(1)
-            return fingerprint.replace(":", "").lower()
-
-        return None
     except subprocess.CalledProcessError, OSError:
-        return None
+        return set()
+
+    # apksigner prints "Signer #1 certificate SHA-256 digest: <hex>" (or "Signer (minSdkVersion=..) ...").
+    found = re.findall(r"certificate SHA-256 digest:\s*([A-Fa-f0-9:]+)", result.stdout + result.stderr)
+    return {digest.replace(":", "").lower() for digest in found}
+
+
+def load_signatures(path: Path = Path("assets/sig.txt")) -> dict[str, str]:
+    """Map package name to expected stock certificate SHA-256 from ``<hex> <package>`` lines."""
+    if not path.exists():
+        return {}
+    signatures: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) == 2:
+            signatures[parts[1]] = parts[0].lower()
+    return signatures
 
 
 class BundleType(Enum):

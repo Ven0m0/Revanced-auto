@@ -91,8 +91,6 @@ patches = [
   "APK Junk Cleanup",
   "Png Optimizer",
   "Remove Ads",
-  "Remove Duplicate Graphics",
-  "Remove Languages",
   "Always show publish date",
   "Copy comments without username",
   "Disable long-press quick share",
@@ -116,12 +114,6 @@ patches = [
   "Stop video looping",
   "Translate comments",
 ]
-
-[TikTok.patch-options."Remove Duplicate Graphics"]
-targetDensity = "\"xxhdpi\""
-
-[TikTok.patch-options."Remove Languages"]
-keepLanguages = "[\"en\",\"en-rIN\"]"
 
 [GooglePhotos]
 enabled = false
@@ -329,7 +321,6 @@ patches = [
   "Hide navigation buttons",
   "Hide sidebar components",
   "Remove subreddit dialog",
-  "Show view count",
 ]
 
 [Reddit-Morphed.patch-options."Remove Duplicate Graphics"]
@@ -341,23 +332,50 @@ keepLanguages = "[\"en\",\"en-rIN\"]"
 [Reddit-Morphed.patch-options."Custom branding name for Reddit"]
 appName = "\"Reddit Morphe\""
 
-# Instagram Piko
+# Instagram Piko. Patch names and the "amoled" option verified against crimera/piko v3.10.0 list-patches.
 [Instagram-Piko]
+# Disabled: Piko v3.10.0 supports only 447.0.0.55.81, which the APKMirror scraper cannot reach (first listing page only).
 enabled = false
 app-name = "Instagram"
 patches-source = "crimera/piko"
+cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Piko"
 apkmirror-dlurl = "https://apkmirror.com/apk/instagram/instagram-instagram/"
+# APKMirror URLs carry no package id, so list-versions and the stock signature check need it spelled out.
+package-name = "com.instagram.android"
+patches = ["Theme"]
 
-# Twitter Piko
+[Instagram-Piko.patch-options."Theme"]
+amoled = "true"
+
+# Twitter Piko (classic logo and name)
 [Twitter-Piko]
+# Disabled: Piko v3.10.0 supports only 12.19.1-release.0, which the scrapers cannot reach (newest 12.37.2 is used instead).
 enabled = false
 app-name = "Twitter"
 patches-source = "crimera/piko"
+cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Piko"
 uptodown-dlurl = "https://twitter.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
 apkmirror-dpi = "120-640dpi"
+package-name = "com.twitter.android"
+# Off by default in the bundle. uni-apks also enables "Browse tweet object", which Piko v3.10.0 does not have.
+patches = ["Bring back twitter", "Dynamic color"]
+
+# X Piko (same stock APK as Twitter, new logo and name)
+[X-Piko]
+# Disabled for the same reason as Twitter-Piko.
+enabled = false
+app-name = "X"
+patches-source = "crimera/piko"
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Piko"
+uptodown-dlurl = "https://twitter.en.uptodown.com/android"
+apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
+apkmirror-dpi = "120-640dpi"
+package-name = "com.twitter.android"
+patches = ["Dynamic color"]
 
 # Brave (stable). The stock APK comes straight from Brave's GitHub releases; the asset name at the
 # end of github-dlurl selects the arm64 Monochrome build (only repo + asset name are used, the
@@ -382,10 +400,7 @@ patches = [
   "Block Tracking SDKs",
   "Brave Origin",
   "Clean App Packaging",
-  "Clean Shared Links",
   "Clean Start Page",
-  "Faster Startup",
-  "Hide Battery Status",
   "Keep Tabs Open",
   "Remove Extra Files",
   "Remove Extra Languages",
@@ -401,10 +416,8 @@ patches = [
   "Stop Text Sharing with System",
 ]
 
-# Universal "Block Trackers" (the JSON's "Block Trackers (2)"); the Brave-specific one has no such key.
-[Brave.patch-options."Block Trackers"]
-disableAdStartupInitializers = "true"
-
+# The universal variants are named "<patch> (Universal)" since kveld9 2.8.0, so "Block Trackers" and
+# "Stop Background Sync" here are the Brave-specific patches and take none of the universal options.
 [Brave.patch-options."Shrink WebP Images"]
 stripIcc = "true"
 
@@ -413,13 +426,6 @@ logLevel = "\"all\""
 
 [Brave.patch-options."Remove Extra Languages"]
 locales = "\"en-US,en-rIN\""
-
-# The JSON did not select the universal "Stop Background Sync", but -e enables every patch with that
-# name. These keys exist only on the universal one, so turning them off neutralizes it.
-[Brave.patch-options."Stop Background Sync"]
-stripBootPermission = "false"
-disableBootReceivers = "false"
-disableWorkManager = "false"
 
 # SD Maid 2/SE. Opt-in: not previously a build target.
 [SDMaid]
@@ -434,16 +440,8 @@ exclusive = true
 patches = [
   "APK Junk Cleanup",
   "Png Optimizer",
-  "Remove Duplicate Graphics",
-  "Remove Languages",
   "Unlock Pro",
 ]
-
-[SDMaid.patch-options."Remove Duplicate Graphics"]
-targetDensity = "\"xxhdpi\""
-
-[SDMaid.patch-options."Remove Languages"]
-keepLanguages = "[\"en\",\"en-rIN\"]"
 
 # Google Maps. Selection = the bundle's default-enabled patches (morphe-patches.software default view);
 # "Add microG support" is off by default there and stays off. Opt-in: not previously a build target.

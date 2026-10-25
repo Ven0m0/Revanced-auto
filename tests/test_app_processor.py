@@ -8,7 +8,7 @@ import json
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock
 
 import httpx
@@ -30,6 +30,9 @@ from scripts.builder.cli_profiles import (
     CLIProfileType,
 )
 from scripts.builder.config import AppConfig, GlobalConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 def _write_patch_output(args: list[str]) -> None:
@@ -103,14 +106,14 @@ class TestAppProcessorArchitecture:
         bad = AppConfig(name="Bad", options={"arch": "mips"})
         processor.config.apps = {"Bad": bad, "Good": good}
         processor.config.global_settings = GlobalConfig(parallel_jobs=1)
-        processor._get_keystore_path = lambda: None  # type: ignore[method-assign]
+        processor._get_keystore_path = MagicMock(return_value=None)
         built: list[tuple[str, str]] = []
 
         def fake_build(app_config: AppConfig, arch: str) -> BuildResult:
             built.append((app_config.name, arch))
             return BuildResult(app_config.name, "b", "1", arch, tmp_path, success=True)
 
-        processor._build_app_variant = fake_build  # type: ignore[method-assign]
+        processor._build_app_variant = MagicMock(side_effect=fake_build)
 
         summary = processor.process_all()
 
@@ -383,7 +386,7 @@ class TestRunPatcherUsesProfile:
         java_runner_mock = MagicMock()
         java_runner_mock.run_jar.side_effect = _fake_patch_run
         processor = AppProcessor(config=config_mock, java_runner=java_runner_mock)
-        processor._source_keystore_path = lambda: None  # type: ignore[method-assign]
+        processor._source_keystore_path = MagicMock(return_value=None)
         return processor, java_runner_mock
 
     def _context(self, tmp_path) -> AppBuildContext:
@@ -475,7 +478,7 @@ def _not_found(url: str) -> httpx.HTTPStatusError:
 
 
 @pytest.fixture
-def fake_github(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+def fake_github(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Any]]:
     """Route gh_req/gh_dl to in-memory release data; gh_dl mimics 'existing file means success'."""
     _resolve_github_release_asset.cache_clear()
     state: dict[str, Any] = {"responses": {}, "requests": [], "downloads": []}
@@ -736,7 +739,7 @@ class TestPerBundlePatchFlags:
 
         java_runner.run_jar.side_effect = fake_run_jar
         processor = AppProcessor(config=config, java_runner=java_runner)
-        processor._source_keystore_path = lambda: None  # type: ignore[method-assign]
+        processor._source_keystore_path = MagicMock(return_value=None)
         return processor, java_runner
 
     def _context(self, tmp_path: Path, *, exclusive: bool) -> AppBuildContext:
@@ -876,7 +879,7 @@ class TestResign:
 
         result = processor._run_patcher(ctx, tmp_path / "stock.apk")
 
-        patch_args = processor.java_runner.run_jar.call_args.args[1]  # type: ignore[attr-defined]
+        patch_args = cast("MagicMock", processor.java_runner.run_jar).call_args.args[1]
         assert patch_args[patch_args.index("--keystore") + 1] == str(tmp_path / "converted.bks")
         unsigned, signed, *rest = calls[0]
         assert rest == [tmp_path / "ks.keystore", "storepw", "morphe", "keypw"]

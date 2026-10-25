@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import shutil
 import tempfile
 import threading
 import zipfile
@@ -18,6 +19,7 @@ from scripts.scrapers.archive import ArchiveScraper
 from scripts.scrapers.base import DownloadSource, ScraperBase
 from scripts.scrapers.github import GitHubScraper
 from scripts.scrapers.uptodown import UptodownScraper
+from scripts.utils.apk import signer_digests
 
 ARCH_NORMALIZATION: dict[str, str] = {
     "arm-v7a": "armeabi-v7a",
@@ -48,6 +50,23 @@ def _is_apk(path: Path) -> bool:
             return "AndroidManifest.xml" in zf.namelist()
     except OSError, zipfile.BadZipFile:
         return False
+
+
+def _stock_cert_matches(path: Path, expected_cert: str) -> bool:
+    """True if the stock APK (or a bundle's ``base.apk``) is signed with ``expected_cert``.
+
+    Must run before the splits are merged: merging drops the original signature.
+    """
+    if not is_apk_bundle(path):
+        return expected_cert in signer_digests(path)
+    with tempfile.TemporaryDirectory(prefix="stocksig_") as tmp, zipfile.ZipFile(path) as zf:
+        if "base.apk" not in zf.namelist():
+            return False
+        # Read the member into a fixed name instead of extract(), so a crafted entry name cannot escape tmp.
+        base = Path(tmp) / "base.apk"
+        with zf.open("base.apk") as src, base.open("wb") as dst:
+            shutil.copyfileobj(src, dst)
+        return expected_cert in signer_digests(base)
 
 
 def _bare_version(version: str) -> str:
@@ -167,6 +186,7 @@ class DownloadManager:
         arch: str | None = None,
         dpi: str | None = None,
         timeout: int = 300,
+        expected_cert: str | None = None,
     ) -> Path:
         """Download a stock APK from the given source.
 
@@ -178,6 +198,7 @@ class DownloadManager:
             arch: Target architecture, if the source supports filtering by it.
             dpi: Target DPI, if the source supports filtering by it.
             timeout: Unused; scrapers manage their own request timeouts.
+            expected_cert: Expected stock signing certificate SHA-256; a mismatch raises.
 
         Returns:
             Path to the downloaded APK.
@@ -206,6 +227,10 @@ class DownloadManager:
             raise RuntimeError(msg)
 
         path = result.file_path
+        if expected_cert and not _stock_cert_matches(path, expected_cert):
+            path.unlink(missing_ok=True)
+            msg = f"{source.value} stock APK signature mismatch for {app_id!r} {version}"
+            raise RuntimeError(msg)
         if is_apk_bundle(path):
             bundle = path if path.suffix == ".apkm" else path.replace(path.with_suffix(".apkm"))
             try:
