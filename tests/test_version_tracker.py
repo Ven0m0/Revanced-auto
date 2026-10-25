@@ -1,4 +1,4 @@
-"""Tests for scripts/version_tracker.py and scripts/lib/version_tracker.py."""
+"""Tests for scripts/version_tracker.py."""
 
 # ruff: noqa: S101, TC003, TC002
 
@@ -166,77 +166,31 @@ class TestVersionDiff:
 
 
 # ---------------------------------------------------------------------------
-# VersionTracker wrapper (scripts/lib/version_tracker.py)
-# Wraps a real Config (VersionTracker reads config.config_file itself, since
-# extract_current_versions() needs the raw dict, not the Config wrapper).
+# load_config / check_needs_build on a JSON config
 # ---------------------------------------------------------------------------
 
 
-class TestVersionTrackerWrapper:
-    def _make_config(
-        self,
-        tmp_path: Path,
-        *,
-        patches_version: str = "4.0.0",
-        cli_version: str = "5.0.0",
-        patches_source: str = "ReVanced/revanced-patches",
-    ):
+class TestJsonConfig:
+    def _write(self, tmp_path: Path, name: str) -> str:
         import json
 
-        from scripts.lib.config import Config
+        config_path = tmp_path / name
+        config_path.write_text(json.dumps({"cli-version": "5.0.0", "patches-source": "ReVanced/revanced-patches"}))
+        return str(config_path)
 
-        config_path = tmp_path / "config.json"
-        config_path.write_text(
-            json.dumps(
-                {
-                    "patches-version": patches_version,
-                    "cli-version": cli_version,
-                    "patches-source": patches_source,
-                }
-            )
-        )
-        return Config.from_file(config_path)
+    def test_load_config_reads_json(self, tmp_path: Path) -> None:
+        from scripts.version_tracker import load_config
 
-    def test_check_returns_true_when_no_saved_state(self, tmp_path: Path) -> None:
-        from scripts.lib.version_tracker import VersionTracker
+        config = load_config(self._write(tmp_path, "a.json"))
 
-        config = self._make_config(tmp_path)
-        state_file = tmp_path / "versions.json"
-        # Don't create the state file — no prior state means build needed
-        tracker = VersionTracker(config)
+        assert extract_current_versions(config)["global_cli_version"] == "5.0.0"
 
-        # Patch STATE_FILE via the underlying module so load_state sees no file
-        import scripts.version_tracker as vt_mod
+    def test_check_needs_build_without_saved_state(self, tmp_path: Path) -> None:
+        from scripts.version_tracker import check_needs_build
 
-        original = vt_mod.STATE_FILE
-        vt_mod.STATE_FILE = state_file  # type: ignore[misc]
-        try:
-            needs = tracker.check()
-        finally:
-            vt_mod.STATE_FILE = original  # type: ignore[misc]
+        result = check_needs_build(self._write(tmp_path, "b.json"), state_path=tmp_path / "missing.json")
 
-        assert needs is True
-
-    def test_get_state_returns_dict(self, tmp_path: Path) -> None:
-        from scripts.lib.version_tracker import VersionTracker
-
-        state_file = tmp_path / "versions.json"
-        save_state({"global_cli_version": "5.0.0"}, state_path=state_file)
-
-        import scripts.version_tracker as vt_mod
-
-        original = vt_mod.STATE_FILE
-        vt_mod.STATE_FILE = state_file  # type: ignore[misc]
-        vt_mod.load_state.cache_clear()  # clear lru_cache so patched path is used
-        try:
-            config = self._make_config(tmp_path, cli_version="5.0.0")
-            tracker = VersionTracker(config)
-            state = tracker.get_state()
-        finally:
-            vt_mod.STATE_FILE = original  # type: ignore[misc]
-            vt_mod.load_state.cache_clear()
-
-        assert state.get("global_cli_version") == "5.0.0"
+        assert result == CheckResult(needs_build=True, changes=[])
 
 
 # ---------------------------------------------------------------------------

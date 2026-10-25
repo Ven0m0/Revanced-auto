@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scripts.utils.keystore import ensure_bks, ensure_jdk_readable
+from scripts.utils.keystore import SigningKeystore, ensure_bks, ensure_jdk_readable, prepare_signing
 
 _BKS_V1_HEADER = b"\x00\x00\x00\x01" + b"\x00" * 12
 _BKS_V2_HEADER = b"\x00\x00\x00\x02" + b"\x00" * 12
@@ -285,3 +285,27 @@ class TestEnsureJdkReadable:
         assert cmd[cmd.index("-providerclass") + 1] == "org.bouncycastle.jce.provider.BouncyCastleProvider"
         assert cmd[cmd.index("-destkeypass") + 1] == (entry_password or "storepw")
         assert result.suffix == f".{dest_type.lower()}"
+
+
+class TestPrepareSigning:
+    def test_entry_password_defaults_to_store_password(self) -> None:
+        signing = prepare_signing(None, None, {"KEYSTORE_PASSWORD": "storepw", "KEYSTORE_ENTRY_PASSWORD": ""})
+        assert (signing.password, signing.entry_password) == ("storepw", "storepw")
+
+    def test_explicit_entry_password_wins(self) -> None:
+        signing = prepare_signing(None, None, {"KEYSTORE_PASSWORD": "storepw", "KEYSTORE_ENTRY_PASSWORD": "keypw"})
+        assert (signing.password, signing.entry_password) == ("storepw", "keypw")
+
+    def test_both_unset_use_default(self) -> None:
+        assert prepare_signing(None, None, {}) == SigningKeystore("morphe", "Morphe", "Morphe")
+
+    def test_keystore_converted_for_patcher_and_apksigner(self, tmp_path: Path) -> None:
+        source = tmp_path / "ks.keystore"
+        with (
+            patch("scripts.utils.keystore.ensure_bks", return_value=tmp_path / "ks.bks") as bks,
+            patch("scripts.utils.keystore.ensure_jdk_readable", return_value=source) as jdk,
+        ):
+            signing = prepare_signing(source, "custom", {"KEYSTORE_PASSWORD": "pw"})
+        assert signing == SigningKeystore("custom", "pw", "pw", tmp_path / "ks.bks", source)
+        bks.assert_called_once_with(source, "pw", entry_password="pw", alias="custom")
+        jdk.assert_called_once_with(source, "pw", entry_password="pw", alias="custom")

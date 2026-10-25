@@ -30,7 +30,7 @@ uv run python -m pytest tests -v
 | `scripts/cli.py` | Primary CLI entry point |
 | `scripts/lib/args.py` | CLI argument model |
 | `scripts/lib/config.py` | Compatibility wrapper around canonical config logic |
-| `scripts/lib/version_tracker.py` | Version state tracking |
+| `scripts/version_tracker.py` | Version state tracking (check/save/show/reset) |
 | `scripts/lib/builder.py` | Build orchestration |
 | `scripts/lib/env_check.py` | Environment/prerequisite checks (`check-env` subcommand) |
 | `scripts/lib/extras.py` | CI/CD helpers: separate-config, combine-logs |

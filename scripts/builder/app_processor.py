@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from scripts.builder.config import AppConfig, Config
+    from scripts.utils.keystore import SigningKeystore
 
 logger = logging.getLogger(__name__)
 
@@ -511,9 +512,6 @@ class AppProcessor:
         self.java_runner = java_runner
         self.version_resolver = version_resolver
         self.download_manager = download_manager
-        self._keystore: Path | None = None
-        self._signing_keystore: Path | None = None
-        self._keystore_ready = False
         # Serializes prebuilt fetches so parallel variants never unlink a jar another is using.
         self._prebuilt_lock = threading.Lock()
         self._refreshed_prebuilts: set[Path] = set()
@@ -548,7 +546,7 @@ class AppProcessor:
 
         # Convert the keystore once up front so parallel builds never race on it.
         try:
-            self._get_keystore_path()
+            _ = self._signing
         except Exception as e:
             logger.error("Keystore preparation failed: %s", e)
             failed = [
@@ -796,9 +794,11 @@ class AppProcessor:
         context.patches_jars = patches_jars
         self._resolve_version(context)
         stock_apk = self._download_stock_apk(context)
-        context.bundle_patch_names = self._bundle_patch_names(context, self._resolve_cli_profile(context))
+        # Resolved once: with cli_profile = "auto" each resolution starts a JVM.
+        cli_profile = self._resolve_cli_profile(context)
+        context.bundle_patch_names = self._bundle_patch_names(context, cli_profile)
         changelog = self._get_changelog(context)
-        patched_apk = self._run_patcher(context, stock_apk)
+        patched_apk = self._run_patcher(context, stock_apk, cli_profile)
 
         dispatch_plugins(context, "post_pipeline")
 
@@ -1038,18 +1038,18 @@ class AppProcessor:
         self,
         context: AppBuildContext,
         stock_apk: Path,
+        cli_profile: CLIProfile,
     ) -> Path:
         """Run the patcher CLI, then re-sign the output with apksigner (v1+v2 only).
 
         Args:
             context: Build context.
             stock_apk: Path to stock APK.
+            cli_profile: Resolved patcher CLI profile.
 
         Returns:
             Path to patched APK.
         """
-        cli_profile = self._resolve_cli_profile(context)
-        keystore = self._get_keystore_path()
         riplib_libs: list[str] = []
         if context.riplib and self._profile_supports_riplib(cli_profile):
             keep_semantics = cli_profile.profile_type in (CLIProfileType.MORPHE_CLI, CLIProfileType.ADOBO_CLI)
@@ -1059,7 +1059,7 @@ class AppProcessor:
         # only ever receives the final, successfully re-signed APK.
         work_dir = Path(tempfile.mkdtemp(prefix=f"patch-{context.app_name}-{context.arch}-"))
         try:
-            final = self._patch_and_sign(context, stock_apk, cli_profile, keystore, riplib_libs, work_dir)
+            final = self._patch_and_sign(context, stock_apk, cli_profile, riplib_libs, work_dir)
             context.output_path.parent.mkdir(parents=True, exist_ok=True)
             context.output_path.unlink(missing_ok=True)
             shutil.move(final, context.output_path)
@@ -1072,12 +1072,11 @@ class AppProcessor:
         context: AppBuildContext,
         stock_apk: Path,
         cli_profile: CLIProfile,
-        keystore: Path | None,
         riplib_libs: list[str],
         work_dir: Path,
     ) -> Path:
         """Patch into ``work_dir`` and re-sign there; return the finished APK inside ``work_dir``."""
-        alias, keystore_password, keystore_entry_password, signer = self._get_keystore_credentials()
+        signing = self._signing
         unsigned = work_dir / f"{context.output_path.stem}.apk"
         # Later bundles win on duplicate names, matching docs/CONFIG.md.
         patch_bundle = {name: idx for idx, names in enumerate(context.bundle_patch_names) for name in names}
@@ -1088,11 +1087,11 @@ class AppProcessor:
             exclude=context.excluded_patches,
             include=context.included_patches,
             merge=context.merge_patches,
-            keystore=keystore,
-            keystore_alias=alias,
-            keystore_password=keystore_password,
-            keystore_entry_password=keystore_entry_password,
-            signer=signer,
+            keystore=signing.patcher_keystore,
+            keystore_alias=signing.alias,
+            keystore_password=signing.password,
+            keystore_entry_password=signing.entry_password,
+            signer=signing.alias,
             rip_lib=riplib_libs,
             exclusive=context.exclusive_patches,
             options=context.patch_options,
@@ -1109,15 +1108,16 @@ class AppProcessor:
         if result.returncode != 0:
             raise RuntimeError(f"Patching failed: {result.stderr}")
 
-        signing_keystore = self._signing_keystore
-        if signing_keystore is None:
+        if signing.apksigner_keystore is None:
             return unsigned
 
         from scripts.utils.apk import sign_apk
 
         signed = work_dir / f"{context.output_path.stem}.signed.apk"
         # apksigner reads the original (or PKCS12) keystore; the BKS copy exists only for Morphe.
-        if not sign_apk(unsigned, signed, signing_keystore, keystore_password, alias, keystore_entry_password):
+        if not sign_apk(
+            unsigned, signed, signing.apksigner_keystore, signing.password, signing.alias, signing.entry_password
+        ):
             msg = f"Re-signing {context.output_path.name} with apksigner failed"
             raise RuntimeError(msg)
         return signed
@@ -1165,56 +1165,22 @@ class AppProcessor:
         default_keystore = Path("assets/ks.keystore")
         return default_keystore if default_keystore.exists() else None
 
-    def _get_keystore_path(self) -> Path | None:
-        """Get keystore path from configuration, converted to BKS if necessary.
+    @functools.cached_property
+    def _signing(self) -> SigningKeystore:
+        """Signing credentials and keystore copies, converted once.
 
         Morphe's patcher only accepts BKS keystores and converts anything
         else via a BouncyCastle copy whose jar signature it rejects (the
         "JCE cannot authenticate the provider BC" failure) -- converting
         once here up front avoids ever handing it a non-BKS keystore.
-        The result is cached; process_all calls this before starting parallel builds.
-
-        Returns:
-            Path to a BKS keystore, or None if none is configured.
+        process_all reads this before starting parallel builds.
         """
-        if not self._keystore_ready:
-            from scripts.utils.keystore import ensure_bks, ensure_jdk_readable
+        from scripts.utils.keystore import prepare_signing
 
-            source = self._source_keystore_path()
-            if source is not None:
-                alias, keystore_password, entry_password, _signer = self._get_keystore_credentials()
-                self._keystore = ensure_bks(source, keystore_password, entry_password=entry_password, alias=alias)
-                # apksigner only has the JDK's providers, which cannot read BKS.
-                self._signing_keystore = ensure_jdk_readable(
-                    source, keystore_password, entry_password=entry_password, alias=alias
-                )
-            self._keystore_ready = True
-        return self._keystore
-
-    def _get_keystore_credentials(self) -> tuple[str, str, str, str]:
-        """Get keystore alias/passwords/signer.
-
-        Default alias is lowercase "morphe": `keytool -genkeypair` always
-        lowercases the alias it stores regardless of the case passed to
-        `-alias` (confirmed: `keytool -list` on assets/ks.keystore, generated
-        with `-alias Morphe`, shows the entry as "morphe"), and
-        morphe-desktop's own alias lookup is exact-match, not the
-        case-insensitive lookup java.security.KeyStore itself does --
-        confirmed live: "Keystore does not contain entry with alias Morphe"
-        even though standard KeyStore.getKey("Morphe", ...) resolves fine.
-        Falls back to KEYSTORE_PASSWORD/KEYSTORE_ENTRY_PASSWORD env vars
-        (already set by the CI workflows) or GlobalConfig.keystore_alias
-        first, so a real production keystore + secrets can override this
-        without a code change.
-
-        Returns:
-            Tuple of (keystore_alias, keystore_password, keystore_entry_password, signer).
-        """
-        alias = self.config.global_settings.keystore_alias or "morphe"
-        keystore_password = os.environ.get("KEYSTORE_PASSWORD") or "Morphe"
-        # An unset entry password means "same as the store password", the keytool/PKCS12 norm.
-        keystore_entry_password = os.environ.get("KEYSTORE_ENTRY_PASSWORD") or keystore_password
-        return alias, keystore_password, keystore_entry_password, alias
+        source = self._source_keystore_path()
+        if source is None:
+            logger.warning("No keystore configured; outputs keep the patcher's own signature (no apksigner pass)")
+        return prepare_signing(source, self.config.global_settings.keystore_alias)
 
     def _parse_architecture(self, app_config: AppConfig) -> Architecture:
         """Parse architecture from app config, falling back to the global ``arch``.

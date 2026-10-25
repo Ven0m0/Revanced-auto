@@ -44,8 +44,8 @@ def _signal_handler(signum: int, _frame: FrameType | None) -> None:
 def run_build(args: argparse.Namespace) -> int:
     """Execute the build command."""
     config_path = args.config
+    from scripts import version_tracker
     from scripts.lib.config import Config
-    from scripts.lib.version_tracker import VersionTracker
 
     try:
         config = Config.from_file(config_path)
@@ -59,10 +59,8 @@ def run_build(args: argparse.Namespace) -> int:
     if args.no_cache:
         config.use_cache = False
 
-    version_tracker = VersionTracker(config)
-
     log.info("Checking versions...")
-    needs_build = version_tracker.check()
+    needs_build = version_tracker.check_needs_build(config_path).needs_build
     if not needs_build:
         log.info("All apps are up to date, skipping build")
         return 0
@@ -79,7 +77,7 @@ def run_build(args: argparse.Namespace) -> int:
         success = builder.build_all()
 
         if success:
-            version_tracker.save()
+            version_tracker.execute_save_command(config_path, None)
             log.info("Build completed successfully")
             return 0
         log.abort("Build failed")
@@ -90,20 +88,18 @@ def run_build(args: argparse.Namespace) -> int:
 def run_check(args: argparse.Namespace) -> int:
     """Execute the check command."""
     config_path = args.config
+    from scripts import version_tracker
     from scripts.lib.config import Config
-    from scripts.lib.version_tracker import VersionTracker
 
     try:
-        config = Config.from_file(config_path)
+        Config.from_file(config_path)  # validate before touching version state
     except FileNotFoundError:
         log.abort(f"Config file not found: {config_path}")
     except Exception as e:
         log.abort(f"Failed to load config: {e}")
 
-    version_tracker = VersionTracker(config)
-
     log.info("Checking versions...")
-    needs_build = version_tracker.check()
+    needs_build = version_tracker.check_needs_build(config_path).needs_build
 
     if needs_build:
         log.info("Updates available, build needed")
@@ -115,22 +111,21 @@ def run_check(args: argparse.Namespace) -> int:
 def run_version_tracker(args: argparse.Namespace) -> int:
     """Execute version tracker subcommands."""
     config_path = args.config
+    from scripts import version_tracker
     from scripts.lib.config import Config
-    from scripts.lib.version_tracker import VersionTracker
 
     try:
-        config = Config.from_file(config_path)
+        Config.from_file(config_path)  # validate before touching version state
     except FileNotFoundError:
         log.abort(f"Config file not found: {config_path}")
     except Exception as e:
         log.abort(f"Failed to load config: {e}")
 
-    version_tracker = VersionTracker(config)
     subcommand = args.version_tracker_command
 
     if subcommand == "check":
         log.info("Checking versions...")
-        needs_build = version_tracker.check()
+        needs_build = version_tracker.check_needs_build(config_path).needs_build
         if needs_build:
             log.info("Updates available, build needed")
         else:
@@ -138,11 +133,11 @@ def run_version_tracker(args: argparse.Namespace) -> int:
         return 0
     if subcommand == "save":
         log.info("Saving version state...")
-        version_tracker.save()
+        version_tracker.execute_save_command(config_path, None)
         log.info("Version state saved")
         return 0
     if subcommand == "show":
-        state = version_tracker.get_state()
+        state = version_tracker.load_state()
         if state:
             log.info("Current version state:")
             for app, version in state.items():
@@ -152,7 +147,7 @@ def run_version_tracker(args: argparse.Namespace) -> int:
         return 0
     if subcommand == "reset":
         log.info("Resetting version state...")
-        version_tracker.reset()
+        version_tracker.save_state({})
         log.info("Version state reset")
         return 0
     log.abort(f"Unknown subcommand: {subcommand}")

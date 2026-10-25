@@ -106,7 +106,7 @@ class TestAppProcessorArchitecture:
         bad = AppConfig(name="Bad", options={"arch": "mips"})
         processor.config.apps = {"Bad": bad, "Good": good}
         processor.config.global_settings = GlobalConfig(parallel_jobs=1)
-        processor._get_keystore_path = MagicMock(return_value=None)
+        processor._source_keystore_path = MagicMock(return_value=None)
         built: list[tuple[str, str]] = []
 
         def fake_build(app_config: AppConfig, arch: str) -> BuildResult:
@@ -416,7 +416,7 @@ class TestRunPatcherUsesProfile:
         )
 
         stock_apk = tmp_path / "stock.apk"
-        processor._run_patcher(ctx, stock_apk=stock_apk)
+        processor._run_patcher(ctx, stock_apk, processor._resolve_cli_profile(ctx))
         call = java_runner.run_jar.call_args
         args = call.args[1]
         assert args[0] == "patch"
@@ -457,7 +457,7 @@ class TestRunPatcherUsesProfile:
             lambda _p: no_rip_profile,
         )
 
-        processor._run_patcher(ctx, stock_apk=tmp_path / "stock.apk")
+        processor._run_patcher(ctx, tmp_path / "stock.apk", processor._resolve_cli_profile(ctx))
         call = java_runner.run_jar.call_args
         args = call.args[1]
         assert "--striplibs" not in args
@@ -765,7 +765,7 @@ class TestPerBundlePatchFlags:
         ctx = self._context(tmp_path, exclusive=True)
 
         ctx.bundle_patch_names = processor._bundle_patch_names(ctx, MORPHE_CLI)
-        processor._run_patcher(ctx, tmp_path / "stock.apk")
+        processor._run_patcher(ctx, tmp_path / "stock.apk", MORPHE_CLI)
 
         list_calls = [c.args[1] for c in java_runner.run_jar.call_args_list if c.args[1][0] == "list-patches"]
         assert list_calls == [
@@ -877,7 +877,7 @@ class TestResign:
     def test_output_is_resigned_v1_v2(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         processor, ctx, calls = self._setup(tmp_path, monkeypatch, sign_ok=True)
 
-        result = processor._run_patcher(ctx, tmp_path / "stock.apk")
+        result = processor._run_patcher(ctx, tmp_path / "stock.apk", MORPHE_CLI)
 
         patch_args = cast("MagicMock", processor.java_runner.run_jar).call_args.args[1]
         assert patch_args[patch_args.index("--keystore") + 1] == str(tmp_path / "converted.bks")
@@ -895,32 +895,18 @@ class TestResign:
         processor, ctx, _calls = self._setup(tmp_path, monkeypatch, sign_ok=False)
 
         with pytest.raises(RuntimeError, match=r"Re-signing out.apk"):
-            processor._run_patcher(ctx, tmp_path / "stock.apk")
+            processor._run_patcher(ctx, tmp_path / "stock.apk", MORPHE_CLI)
 
+    def test_no_keystore_skips_apksigner(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        processor, ctx, calls = self._setup(tmp_path, monkeypatch, sign_ok=True)
+        processor._source_keystore_path = MagicMock(return_value=None)
 
-class TestKeystoreCredentials:
-    def _processor(self) -> AppProcessor:
-        config = MagicMock()
-        config.global_settings = GlobalConfig()
-        return AppProcessor(config=config, java_runner=MagicMock())
+        result = processor._run_patcher(ctx, tmp_path / "stock.apk", MORPHE_CLI)
 
-    def test_entry_password_defaults_to_store_password(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("KEYSTORE_PASSWORD", "storepw")
-        monkeypatch.setenv("KEYSTORE_ENTRY_PASSWORD", "")
-        _alias, store, entry, _signer = self._processor()._get_keystore_credentials()
-        assert (store, entry) == ("storepw", "storepw")
-
-    def test_explicit_entry_password_wins(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("KEYSTORE_PASSWORD", "storepw")
-        monkeypatch.setenv("KEYSTORE_ENTRY_PASSWORD", "keypw")
-        _alias, store, entry, _signer = self._processor()._get_keystore_credentials()
-        assert (store, entry) == ("storepw", "keypw")
-
-    def test_both_unset_use_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("KEYSTORE_PASSWORD", raising=False)
-        monkeypatch.delenv("KEYSTORE_ENTRY_PASSWORD", raising=False)
-        _alias, store, entry, _signer = self._processor()._get_keystore_credentials()
-        assert (store, entry) == ("Morphe", "Morphe")
+        patch_args = cast("MagicMock", processor.java_runner.run_jar).call_args.args[1]
+        assert "--keystore" not in patch_args
+        assert calls == []
+        assert result == ctx.output_path
 
 
 class TestKeystoreFailure:

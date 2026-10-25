@@ -66,9 +66,12 @@ def save_state(versions: VersionMap, state_path: Path | None = None) -> None:
 def load_config(config_path: str) -> dict[str, object]:
     path = Path(config_path)
     try:
+        if path.suffix.lower() == ".json":
+            loaded: dict[str, object] = orjson.loads(path.read_bytes())
+            return loaded
         with path.open("rb") as f:
             return dict(tomllib.load(f))
-    except (OSError, tomllib.TOMLDecodeError) as e:
+    except (OSError, tomllib.TOMLDecodeError, orjson.JSONDecodeError) as e:
         print(f"Error reading config: {e}", file=sys.stderr)
         sys.exit(1)
 
