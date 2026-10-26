@@ -2,6 +2,13 @@
 
 This file is maintained automatically by [release-please](https://github.com/googleapis/release-please) from [Conventional Commits](https://www.conventionalcommits.org/). Entries after `1.0.0` are generated; edit `release-please-config.json` to change section mapping.
 
+## [1.1.2](https://github.com/Ven0m0/Revanced-auto/compare/v1.1.1...v1.1.2) (2026-10-26)
+
+
+### Changed
+
+* deepen signing keystore, collapse version tracker, resolve CLI profile once ([6297f36](https://github.com/Ven0m0/Revanced-auto/commit/6297f36ee29a3137d82964aa6c97ced9498caf60))
+
 ## [1.1.1](https://github.com/Ven0m0/Revanced-auto/compare/v1.1.0...v1.1.1) (2026-09-05)
 
 
