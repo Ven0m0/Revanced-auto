@@ -12,7 +12,7 @@ uv_venv_create_args = ["--seed", "--system-site-packages"]
 # (mypy, ruff, pytest, prek, ...) live in pyproject.toml dev groups so
 # `uv sync --all-groups` is the single source of truth and `mise install`
 # stays fast and reproducible.
-python = "3.15.1"
+python = "3.15.2"
 uv = "latest"
 java = "temurin-25"
 
