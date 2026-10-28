@@ -214,10 +214,8 @@ jobs:
           # Extract year-month prefix for cleanup (e.g., "26.03.")
           YM_PREFIX=$(echo "$VERSION_PREFIX" | cut -d. -f1-2)
           # Delete releases from previous months, keep latest 3.
-          # Skip "v*" tags - those belong to release-please, not the date-based APK releases.
           gh release list --json tagName -q ".[].tagName" | \
             grep -v "^${YM_PREFIX}\." | \
-            grep -v "^v" | \
             head -n 20 | \
             while read -r tag; do
               echo "Cleaning old release: $tag"

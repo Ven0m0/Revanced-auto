@@ -165,7 +165,7 @@ Config docs and generator:
 - [`docs/README.md`](./docs/README.md) — docs index
 - [`docs/index.html`](./docs/index.html) — local docs landing page
 - [`docs/generator.html`](./docs/generator.html) — local config generator
-- [`CHANGELOG.md`](./CHANGELOG.md) — release history (maintained by release-please)
+- [`CHANGELOG.md`](./CHANGELOG.md) — changelog
 
 ## Plugin hooks
 
