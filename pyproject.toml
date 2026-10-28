@@ -9,6 +9,7 @@ authors = [{ name = "Ven0m0" }]
 dependencies = [
   "curl-cffi>=0.16.1",
   "httpx[http2]>=0.28.1",
+  "nodriver>=0.50.99",
   "orjson>=3.11.8",
   "selectolax>=1.0.0",
 ]

@@ -13,11 +13,13 @@ from typing import Literal
 from selectolax.lexbor import LexborHTMLParser, LexborNode
 
 from scripts.scrapers.base import (
+    ChallengeError,
     DownloadResult,
     DownloadSource,
     ScraperBase,
     VersionInfo,
 )
+from scripts.scrapers.browser import ChallengeBrowser
 from scripts.utils.java import JAVA_ARGS
 
 type ArchType = Literal["universal", "noarch", "arm64-v8a", "armeabi-v7a", "arm64-v8a + armeabi-v7a", "all"]
@@ -233,6 +235,26 @@ class APKMirror(ScraperBase):
 
     def __init__(self) -> None:
         super().__init__(DownloadSource.APKMIRROR)
+        self._browser: ChallengeBrowser | None = None
+
+    async def _get_text(self, url: str, use_cache: bool = True) -> str:
+        """Page HTML, falling back to a real browser when Cloudflare challenges plain HTTP.
+
+        APKMirror challenges some apps (e.g. Discord) on every HTML page, but not
+        the final ``download.php`` hop, so only page reads go through the browser.
+        """
+        try:
+            return (await self.get(url, use_cache)).text
+        except ChallengeError:
+            if self._browser is None:
+                self._browser = ChallengeBrowser()
+            return await self._browser.fetch_html(url)
+
+    async def _close_browser(self) -> None:
+        # Each DownloadManager call has its own event loop, so a browser must not outlive it.
+        if self._browser is not None:
+            await self._browser.aclose()
+            self._browser = None
 
     def _get_versions_page_url(self, pkg_name: str) -> str:
         return f"{self.APK_ARCH_PATH}/{pkg_name}/"
@@ -296,12 +318,10 @@ class APKMirror(ScraperBase):
         return f"{self.BASE_URL}{href}"
 
     async def _get_download_url(self, variant_url: str) -> str | None:
-        response = await self.get(variant_url)
-        confirm_url = self._find_download_link(response.text)
+        confirm_url = self._find_download_link(await self._get_text(variant_url))
         if confirm_url is None:
             return None
-        confirm_response = await self.get(confirm_url, use_cache=False)
-        return self._find_final_download_link(confirm_response.text)
+        return self._find_final_download_link(await self._get_text(confirm_url, use_cache=False))
 
     async def _list_release_pages(self, pkg_name: str) -> list[tuple[str, str]]:
         """List an app's releases newest-first as (version_text, release_url) pairs.
@@ -315,8 +335,7 @@ class APKMirror(ScraperBase):
         rather than matching ``.appRow`` page-wide.
         """
         url = self._get_versions_page_url(pkg_name)
-        response = await self.get(url)
-        tree = LexborHTMLParser(response.text)
+        tree = LexborHTMLParser(await self._get_text(url))
         releases: list[tuple[str, str]] = []
         all_versions_widget = None
         for widget in tree.css(".listWidget"):
@@ -345,6 +364,20 @@ class APKMirror(ScraperBase):
         exclude_alpha_beta: bool = True,
         match_any: bool = False,
     ) -> list[VersionInfo]:
+        try:
+            return await self._get_versions(pkg_name, arch, dpi, bundle_type, exclude_alpha_beta, match_any)
+        finally:
+            await self._close_browser()
+
+    async def _get_versions(
+        self,
+        pkg_name: str,
+        arch: ArchType,
+        dpi: str,
+        bundle_type: BundleType,
+        exclude_alpha_beta: bool,
+        match_any: bool,
+    ) -> list[VersionInfo]:
         config = SearchConfig(
             apk_bundle=bundle_type,
             arch=arch,
@@ -368,13 +401,13 @@ class APKMirror(ScraperBase):
                 results.append(VersionInfo(version=version, url=release_url, arch=arch, dpi=dpi))
                 continue
             try:
-                release_html = await self.get(release_url, False)
+                release_html = await self._get_text(release_url, False)
             except RuntimeError:
                 # A single throttled/removed release page shouldn't abort
                 # enumerating the rest (e.g. a rate limit from fetching many
                 # release pages back-to-back).
                 continue
-            download_url = self._search_variant(release_html.text, config)
+            download_url = self._search_variant(release_html, config)
             if download_url:
                 results.append(
                     VersionInfo(
@@ -403,12 +436,13 @@ class APKMirror(ScraperBase):
         )
         try:
             if version is None:
-                versions = await self.get_versions(
-                    pkg_name=pkg_name,
-                    arch=arch,
-                    dpi=dpi,
-                    bundle_type=bundle_type,
-                    exclude_alpha_beta=exclude_alpha_beta,
+                versions = await self._get_versions(
+                    pkg_name,
+                    arch,
+                    dpi,
+                    bundle_type,
+                    exclude_alpha_beta,
+                    match_any=False,
                 )
                 if not versions:
                     return DownloadResult(success=False, error="No versions found")
@@ -426,8 +460,8 @@ class APKMirror(ScraperBase):
                         continue
                     if exclude_alpha_beta and _is_prerelease(display_text, version_match):
                         continue
-                    release_html = await self.get(release_url, False)
-                    download_url = self._search_variant(release_html.text, config)
+                    release_html = await self._get_text(release_url, False)
+                    download_url = self._search_variant(release_html, config)
                     break
                 if download_url is None:
                     return DownloadResult(
@@ -445,3 +479,5 @@ class APKMirror(ScraperBase):
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
+        finally:
+            await self._close_browser()

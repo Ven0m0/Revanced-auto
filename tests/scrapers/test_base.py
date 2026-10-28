@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from scripts.scrapers.base import DownloadSource, ScraperBase
+from scripts.scrapers.base import ChallengeError, DownloadSource, ScraperBase
 
 
 def _make_response(status_code: int, headers: dict[str, str] | None = None) -> MagicMock:
@@ -85,6 +85,38 @@ async def test_404_not_retried() -> None:
         await scraper._request_with_retry("https://example.com")
 
     assert mock_session.request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_cloudflare_challenge_raises_challenge_error_without_retry() -> None:
+    scraper = ScraperBase(DownloadSource.APKMIRROR)
+    mock_session = MagicMock()
+    mock_session.request = AsyncMock(return_value=_make_response(403, headers={"cf-mitigated": "challenge"}))
+
+    with (
+        patch.object(ScraperBase, "session", new_callable=lambda: property(lambda _self: mock_session)),
+        patch("scripts.scrapers.base.asyncio.sleep", new=AsyncMock()),
+        pytest.raises(ChallengeError),
+    ):
+        await scraper._request_with_retry("https://example.com")
+
+    assert mock_session.request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_plain_403_is_not_a_challenge_error() -> None:
+    scraper = ScraperBase(DownloadSource.APKMIRROR)
+    mock_session = MagicMock()
+    mock_session.request = AsyncMock(return_value=_make_response(403))
+
+    with (
+        patch.object(ScraperBase, "session", new_callable=lambda: property(lambda _self: mock_session)),
+        patch("scripts.scrapers.base.asyncio.sleep", new=AsyncMock()),
+        pytest.raises(RuntimeError, match="HTTP 403") as exc_info,
+    ):
+        await scraper._request_with_retry("https://example.com")
+
+    assert not isinstance(exc_info.value, ChallengeError)
 
 
 @pytest.mark.asyncio

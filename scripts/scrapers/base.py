@@ -22,6 +22,10 @@ APK_ARCHIVE_URL = "https://archive.org"
 type Response = curl_requests.Response
 
 
+class ChallengeError(RuntimeError):
+    """The server answered with a Cloudflare JS challenge that plain HTTP cannot pass."""
+
+
 class DownloadSource(Enum):
     APKMIRROR = "apkmirror"
     UPTODOWN = "uptodown"
@@ -120,6 +124,10 @@ class ScraperBase(ABC):
                 code = response.status_code
                 if code < 400:  # noqa: PLR2004
                     return response
+                if code == 403 and response.headers.get("cf-mitigated") == "challenge":  # noqa: PLR2004
+                    # Retrying the same fingerprint never clears a JS challenge.
+                    msg = f"Cloudflare challenge for {url}"
+                    raise ChallengeError(msg)
                 if code < 500 and code != 429:  # noqa: PLR2004
                     # Other 4xx are permanent; retrying only burns the budget.
                     msg = f"HTTP {code} for {url}"
