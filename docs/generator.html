@@ -99,7 +99,7 @@
                     <div class="form-group">
                         <label for="patches-source">Default Patches Source</label>
                         <input type="text" id="patches-source" value="MorpheApp/morphe-patches">
-                        <p class="help-text">GitHub repo (owner/name) for patches. Accepts `MorpheApp/morphe-patches`, `ReVanced/revanced-patches`, `jkennethcarino/adobo`, `brosssh/revanced-external-bundles`, or `external-bundles:&lt;type&gt;`.</p>
+                        <p class="help-text">GitHub repo (owner/name) for patches, e.g. <code>MorpheApp/morphe-patches</code>. Separate several repos with commas to merge their bundles (later ones win on duplicate names). Also accepts <code>brosssh/revanced-external-bundles</code> or <code>external-bundles:&lt;type&gt;</code>.</p>
                     </div>
                     <div class="form-group">
                         <label for="cli-source">Default CLI Source</label>
@@ -108,11 +108,12 @@
                     </div>
                     <div class="form-group">
                         <label for="patches-version">Patches Version</label>
-                        <select id="patches-version">
-                            <option value="dev">dev (latest development)</option>
-                            <option value="latest" selected>latest (stable)</option>
-                            <option value="specific">Specific version</option>
-                        </select>
+                        <input type="text" id="patches-version" value="latest" list="version-choices">
+                        <datalist id="version-choices">
+                            <option value="latest"></option>
+                            <option value="dev"></option>
+                        </datalist>
+                        <p class="help-text">latest (stable), dev, or a release tag such as v1.48.0</p>
                     </div>
                     <div class="form-group">
                         <label for="cli-version">CLI Version</label>
@@ -133,26 +134,20 @@
                     <div class="form-group">
                         <label for="rv-brand">RV Brand</label>
                         <input type="text" id="rv-brand" value="Morphe">
-                        <p class="help-text">Brand name (Morphe, RVX, ReVanced, etc.)</p>
+                        <p class="help-text">Brand label written into every app section (the builder reads it per app)</p>
                     </div>
                     <div class="form-group">
                         <label for="arch">Default Architecture</label>
                         <select id="arch">
                             <option value="arm64-v8a" selected>arm64-v8a (64-bit, recommended)</option>
                             <option value="armeabi-v7a">armeabi-v7a (32-bit)</option>
-                            <option value="both">both (build for both)</option>
+                            <option value="both">both (arm64-v8a and armeabi-v7a)</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="riplib" checked>
                             <span>Enable riplib (strip unnecessary libraries)</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="remove-checks" checked>
-                            <span>Remove ReVanced integrations checks</span>
                         </label>
                     </div>
                 </div>
@@ -201,8 +196,8 @@
             <nav class="footer-links" aria-label="Footer navigation">
                 <a href="https://github.com/Ven0m0/Revanced-auto" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
                 <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/docs/CONFIG.md" target="_blank" rel="noopener noreferrer">Config Reference</a>
-                <a href="https://github.com/ReVanced" target="_blank" rel="noopener noreferrer">ReVanced Project</a>
-                <a href="https://github.com/inotia00/revanced-patches" target="_blank" rel="noopener noreferrer">RVX Patches</a>
+                <a href="https://patch-explorer.web.app/" target="_blank" rel="noopener noreferrer">Patch Explorer</a>
+                <a href="https://github.com/nvbangg/awesome-for-morphe" target="_blank" rel="noopener noreferrer">Awesome for Morphe</a>
             </nav>
             <p>ReVanced Builder &mdash; Automated APK patching system</p>
         </div>
@@ -217,114 +212,114 @@
         // =====================================================================
         const APP_CATALOG = [
             {
-                id: "YouTube-Extended",
+                id: "YouTube-Morphed",
                 displayName: "YouTube",
-                icon: "\u25B6\uFE0F",
+                icon: "\u25b6\ufe0f",
                 packageName: "com.google.android.youtube",
-                description: "Ad-free YouTube with SponsorBlock, Return YouTube Dislike, and more",
-                patchesSource: "anddea/revanced-patches",
-                cliSource: "inotia00/revanced-cli",
-                apkmirror: "https://apkmirror.com/apk/google-inc/youtube",
-                uptodown: "https://youtube.en.uptodown.com/android",
-                archive: "https://archive.org/download/jhc-apks/apks/com.google.android.youtube",
-                excluded: "'Enable debug logging'",
-                included: "",
-            },
-            {
-                id: "Music-Extended",
-                displayName: "Music",
-                icon: "\uD83C\uDFB5",
-                packageName: "com.google.android.apps.youtube.music",
-                description: "YouTube Music with background play, ad removal, and custom themes",
-                patchesSource: "anddea/revanced-patches",
-                cliSource: "inotia00/revanced-cli",
-                apkmirror: "https://apkmirror.com/apk/google-inc/youtube-music",
-                uptodown: "https://youtube-music.en.uptodown.com/android",
-                archive: "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music",
-                excluded: "'Enable debug logging'",
-                included: "",
-            },
-            {
-                id: "Spotify",
-                displayName: "Spotify",
-                icon: "\uD83C\uDFA7",
-                packageName: "com.spotify.music",
-                description: "Spotify with custom themes and UI tweaks",
-                patchesSource: "",
+                description: "Ad-free YouTube with SponsorBlock, Return YouTube Dislike and more",
+                patchesSource: "jkennethcarino/adobo, BlazeFTL/FTL-Patches, MorpheApp/morphe-patches",
                 cliSource: "",
-                apkmirror: "",
-                uptodown: "https://spotify.en.uptodown.com/android",
-                archive: "https://archive.org/download/jhc-apks/apks/com.spotify.music",
+                apkmirror: "https://apkmirror.com/apk/google-inc/youtube",
+                uptodown: "",
+                archive: "",
                 excluded: "",
-                included: "'Custom theme'",
+                included: "",
             },
             {
-                id: "Reddit",
+                id: "Music-Morphed",
+                displayName: "YouTube Music",
+                icon: "\ud83c\udfb5",
+                packageName: "com.google.android.apps.youtube.music",
+                description: "YouTube Music with background play, ad removal and lyrics",
+                patchesSource: "BlazeFTL/FTL-Patches, MorpheApp/morphe-patches",
+                cliSource: "",
+                apkmirror: "https://apkmirror.com/apk/google-inc/youtube-music",
+                uptodown: "",
+                archive: "",
+                excluded: "",
+                included: "",
+            },
+            {
+                id: "Reddit-Morphed",
                 displayName: "Reddit",
-                icon: "\uD83E\uDD16",
+                icon: "\ud83e\udd16",
                 packageName: "com.reddit.frontpage",
-                description: "Reddit with ad removal and customization patches",
-                patchesSource: "",
+                description: "Reddit with ad removal and feed customization",
+                patchesSource: "jkennethcarino/adobo, BlazeFTL/FTL-Patches, MorpheApp/morphe-patches, rushiranpise/morphe-patches",
                 cliSource: "",
                 apkmirror: "https://apkmirror.com/apk/redditinc/reddit",
-                uptodown: "https://reddit-official-app.en.uptodown.com/android",
+                uptodown: "",
                 archive: "",
                 excluded: "",
                 included: "",
-            },
-            {
-                id: "X",
-                displayName: "X / Twitter",
-                icon: "\uD83D\uDCAC",
-                packageName: "com.twitter.android",
-                description: "X (Twitter) with Piko patches for ad removal and UI tweaks",
-                patchesSource: "crimera/piko",
-                cliSource: "",
-                apkmirror: "https://apkmirror.com/apk/x-corp/twitter",
-                uptodown: "https://twitter.en.uptodown.com/android",
-                archive: "",
-                excluded: "",
-                included: "'Dynamic color'",
             },
             {
                 id: "TikTok",
                 displayName: "TikTok",
-                icon: "\uD83C\uDFAC",
+                icon: "\ud83c\udfac",
                 packageName: "com.zhiliaoapp.musically",
-                description: "TikTok with SIM spoof and other patches",
-                patchesSource: "",
+                description: "TikTok with ad removal, downloads and feed filters",
+                patchesSource: "BlazeFTL/FTL-Patches, icysymmetra/tiktok-patches-for-morphe",
                 cliSource: "",
-                apkmirror: "",
+                apkmirror: "https://apkmirror.com/apk/tiktok-pte-ltd/tik-tok-including-musical-ly",
                 uptodown: "",
                 archive: "",
                 excluded: "",
-                included: "'SIM spoof'",
+                included: "",
             },
             {
-                id: "Instagram",
-                displayName: "Instagram",
-                icon: "\uD83D\uDCF7",
-                packageName: "com.instagram.android",
-                description: "Instagram with ad removal and link sanitization",
-                patchesSource: "",
+                id: "Discord",
+                displayName: "Discord",
+                icon: "\ud83d\udcac",
+                packageName: "com.discord",
+                description: "Discord client mods. APKMirror needs a real Chrome for this app (see CONFIG.md)",
+                patchesSource: "VenusIsJaded/Venus-Patches, kveld9/kveld-morphe-patches, jrddupont/discord-patches",
                 cliSource: "",
-                apkmirror: "https://apkmirror.com/apk/instagram/instagram-instagram/",
+                apkmirror: "https://www.apkmirror.com/apk/discord/discord-chat-for-gamers/",
                 uptodown: "",
                 archive: "",
                 excluded: "",
-                included: "'Hide ads' 'Sanitize sharing links' 'Disable signature check'",
+                included: "",
             },
             {
-                id: "GooglePhotos",
-                displayName: "Google Photos",
-                icon: "\uD83C\uDF05",
-                packageName: "com.google.android.apps.photos",
-                description: "Google Photos with available ReVanced patches",
-                patchesSource: "",
+                id: "SoundCloud",
+                displayName: "SoundCloud",
+                icon: "\u2601\ufe0f",
+                packageName: "com.soundcloud.android",
+                description: "SoundCloud with analytics and consent popup removed",
+                patchesSource: "kondratjev/morphe-patches",
                 cliSource: "",
-                apkmirror: "https://www.apkmirror.com/apk/google-inc/photos/",
-                uptodown: "https://google-photos.en.uptodown.com/android",
-                archive: "https://archive.org/download/jhc-apks/apks/com.google.android.apps.photos",
+                apkmirror: "https://www.apkmirror.com/apk/soundcloud/soundcloud-soundcloud/",
+                uptodown: "",
+                archive: "",
+                excluded: "",
+                included: "",
+            },
+            {
+                id: "GoogleMaps",
+                displayName: "Google Maps",
+                icon: "\ud83d\uddfa\ufe0f",
+                packageName: "com.google.android.apps.maps",
+                description: "Google Maps with ads and telemetry removed",
+                patchesSource: "bearinmindcat/morphe-patches",
+                cliSource: "",
+                apkmirror: "https://www.apkmirror.com/apk/google-inc/maps/",
+                uptodown: "",
+                archive: "https://archive.org/download/jhc-apks/apks/com.google.android.apps.maps",
+                excluded: "",
+                included: "",
+            },
+            {
+                id: "SDMaid",
+                displayName: "SD Maid",
+                icon: "\ud83e\uddf9",
+                packageName: "eu.darken.sdmse",
+                description: "SD Maid 2/SE system cleaner",
+                patchesSource: "rushiranpise/morphe-patches, BlazeFTL/FTL-Patches",
+                cliSource: "",
+                apkmirror: "https://apkmirror.com/apk/darken/sd-maid-2-se-system-cleaner",
+                uptodown: "",
+                archive: "",
                 excluded: "",
                 included: "",
             },
@@ -454,6 +449,7 @@
             const escapedVersion = escapeHtml(appData.version || "auto");
             const escapedPatchesSource = escapeHtml(appData.patchesSource || "");
             const escapedCliSource = escapeHtml(appData.cliSource || "");
+            const escapedPackage = escapeHtml(appData.packageName || "");
             const escapedApkmirror = escapeHtml(appData.apkmirror || "");
             const escapedUptodown = escapeHtml(appData.uptodown || "");
             const escapedArchive = escapeHtml(appData.archive || "");
@@ -497,6 +493,11 @@
                     <input type="text" class="app-cli-source" placeholder="Use global default" value="${escapedCliSource}">
                 </div>
                 <div class="form-group">
+                    <label>Package Name</label>
+                    <input type="text" class="app-package" placeholder="com.example.app" value="${escapedPackage}">
+                    <p class="help-text">Needed when no download URL contains the package id (APKMirror URLs do not)</p>
+                </div>
+                <div class="form-group">
                     <label>Download URLs</label>
                     <div class="url-group">
                         <span class="url-label">APKMirror:</span>
@@ -519,13 +520,13 @@
                 </div>
                 <div class="form-group">
                     <label>Excluded Patches (Manual)</label>
-                    <textarea class="app-excluded" rows="2" placeholder="'Patch name 1' 'Patch name 2'">${escapedExcluded}</textarea>
-                    <p class="help-text">Space-separated, quoted patch names to exclude (overrides visual selection)</p>
+                    <textarea class="app-excluded" rows="3" placeholder="One patch name per line">${escapedExcluded}</textarea>
+                    <p class="help-text">One patch name per line to disable (overrides visual selection)</p>
                 </div>
                 <div class="form-group">
                     <label>Included Patches (Manual, exclusive mode)</label>
-                    <textarea class="app-included" rows="2" placeholder="'Patch name 1' 'Patch name 2'">${escapedIncluded}</textarea>
-                    <p class="help-text">Only include these patches (overrides visual selection)</p>
+                    <textarea class="app-included" rows="3" placeholder="One patch name per line">${escapedIncluded}</textarea>
+                    <p class="help-text">One patch name per line. Only these patches are enabled (<code>exclusive = true</code>)</p>
                 </div>
             `;
             container.appendChild(appCard);
@@ -551,6 +552,7 @@
                 arch: "",
                 patchesSource: entry.patchesSource,
                 cliSource: entry.cliSource,
+                packageName: entry.packageName,
                 apkmirror: entry.apkmirror,
                 uptodown: entry.uptodown,
                 archive: entry.archive,
@@ -574,6 +576,20 @@
         // =====================================================================
         // TOML Generation
         // =====================================================================
+        // Patch textareas hold one patch name per line (names contain spaces and apostrophes); TOML needs a string array.
+        function tomlStringArray(text) {
+            const names = text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+            return `[${names.map((n) => JSON.stringify(n)).join(", ")}]`;
+        }
+        // "a/b, c/d" -> ["a/b", "c/d"]; a single repo stays a plain string.
+        function tomlSources(text) {
+            const repos = text.split(",").map((s) => s.trim()).filter(Boolean);
+            return repos.length > 1 ? `[${repos.map((r) => JSON.stringify(r)).join(", ")}]` : JSON.stringify(repos[0] ?? "");
+        }
+        // Inverse of the two helpers above, for importing: TOML array text -> the form the inputs use.
+        function tomlArrayItems(value) {
+            return [...value.matchAll(/"((?:[^"\\]|\\.)*)"|'([^']*)'/g)].map((m) => (m[1] !== undefined ? JSON.parse(`"${m[1]}"`) : m[2]));
+        }
         function generateTOML() {
             const g = (id) => document.getElementById(id);
             let toml = `# =============================================================================
@@ -585,8 +601,6 @@
 # =============================================================================
 # Parallel Build Jobs
 parallel-jobs = ${g("parallel-jobs").value}
-# ReVanced Integrations Checks
-remove-rv-integrations-checks = ${g("remove-checks").checked}
 # Library Stripping (riplib)
 riplib = ${g("riplib").checked}
 # Default Architecture
@@ -595,16 +609,12 @@ arch = "${g("arch").value}"
 patches-version = "${g("patches-version").value}"
 # Default CLI Version
 cli-version = "${g("cli-version").value}"
-# Default App Version
-version = "auto"
 # Default Patches Source
-patches-source = "${g("patches-source").value}"
+patches-source = ${tomlSources(g("patches-source").value)}
 # Default CLI Source
 cli-source = "${g("cli-source").value}"
 # CLI Profile (force a flag style: auto, morphe-cli, adobo-cli)
 cli-profile = "${g("cli-profile").value}"
-# RV Brand
-rv-brand = "${g("rv-brand").value}"
 # =============================================================================
 # APP CONFIGURATIONS
 # =============================================================================
@@ -618,6 +628,7 @@ rv-brand = "${g("rv-brand").value}"
                 const arch = app.querySelector(".app-arch").value;
                 const patchesSource = app.querySelector(".app-patches-source").value.trim();
                 const cliSource = app.querySelector(".app-cli-source").value.trim();
+                const packageName = app.querySelector(".app-package").value.trim();
                 const apkmirror = app.querySelector(".app-apkmirror").value.trim();
                 const uptodown = app.querySelector(".app-uptodown").value.trim();
                 const archive = app.querySelector(".app-archive").value.trim();
@@ -628,15 +639,17 @@ rv-brand = "${g("rv-brand").value}"
                 if (displayName) toml += `app-name = "${displayName}"\n`;
                 if (version && version !== "auto") toml += `version = "${version}"\n`;
                 if (arch) toml += `arch = "${arch}"\n`;
-                if (patchesSource) toml += `patches-source = "${patchesSource}"\n`;
+                if (g("rv-brand").value.trim()) toml += `rv-brand = ${JSON.stringify(g("rv-brand").value.trim())}\n`;
+                if (patchesSource) toml += `patches-source = ${tomlSources(patchesSource)}\n`;
                 if (cliSource) toml += `cli-source = "${cliSource}"\n`;
+                if (packageName) toml += `package-name = "${packageName}"\n`;
                 if (apkmirror) toml += `apkmirror-dlurl = "${apkmirror}"\n`;
                 if (uptodown) toml += `uptodown-dlurl = "${uptodown}"\n`;
                 if (archive) toml += `archive-dlurl = "${archive}"\n`;
-                if (excluded) toml += `excluded-patches = ${excluded}\n`;
+                if (excluded) toml += `exclude-patches = ${tomlStringArray(excluded)}\n`;
                 if (included) {
-                    toml += `included-patches = ${included}\n`;
-                    toml += `exclusive-patches = true\n`;
+                    toml += `patches = ${tomlStringArray(included)}\n`;
+                    toml += `exclusive = true\n`;
                 }
             });
             return toml;
@@ -679,16 +692,20 @@ rv-brand = "${g("rv-brand").value}"
             reader.readAsText(file);
         }
         function parseAndLoadConfig(tomlText) {
-            const lines = tomlText.split("\n");
+            // Drop comments inside arrays and fold multi-line arrays onto one line so the line parser sees them whole.
+            // shortcut: a patch name containing "]" ends the array early; use the visual editor for such names.
+            const folded = tomlText.replace(/^([ \t]*[A-Za-z0-9_."'-][^=\n]*=[ \t]*)\[([^\]]*)\]/gm, (_m, key, inner) => `${key}[${inner.replace(/^\s*#.*$/gm, "").replace(/\s*\n\s*/g, " ")}]`);
+            const lines = folded.split("\n");
+            const SKIP_SECTION = Symbol("skip");
             let currentSection = null;
             const globals = {};
             const apps = {};
             const globalKeys = new Set([
-                "parallel-jobs", "remove-rv-integrations-checks",
+                "parallel-jobs",
                 "riplib",
                 "arch",
                 "patches-version", "cli-version", "version", "patches-source",
-                "cli-source", "cli-profile", "rv-brand",
+                "cli-source", "cli-profile",
             ]);
             for (const rawLine of lines) {
                 const line = rawLine.trim();
@@ -696,7 +713,10 @@ rv-brand = "${g("rv-brand").value}"
                 const sectionMatch = line.match(/^\[([^\]]+)\]$/);
                 if (sectionMatch) {
                     currentSection = sectionMatch[1].trim();
-                    if (!apps[currentSection]) {
+                    // Sub-tables such as [App.patch-options."X"] are not apps; their keys are ignored.
+                    if (currentSection.includes(".")) {
+                        currentSection = SKIP_SECTION;
+                    } else if (!apps[currentSection]) {
                         apps[currentSection] = {};
                     }
                     continue;
@@ -711,7 +731,7 @@ rv-brand = "${g("rv-brand").value}"
                 }
                 if (!currentSection && globalKeys.has(key)) {
                     globals[key] = value;
-                } else if (currentSection) {
+                } else if (currentSection && currentSection !== SKIP_SECTION) {
                     apps[currentSection][key] = value;
                 }
             }
@@ -725,15 +745,17 @@ rv-brand = "${g("rv-brand").value}"
                 }
             };
             setVal("parallel-jobs", globals["parallel-jobs"]);
-            setVal("remove-checks", globals["remove-rv-integrations-checks"]);
             setVal("riplib", globals.riplib);
             setVal("arch", globals.arch);
             setVal("patches-version", globals["patches-version"]);
             setVal("cli-version", globals["cli-version"]);
-            setVal("patches-source", globals["patches-source"]);
+            const sourcesText = (v) => (v?.startsWith("[") ? tomlArrayItems(v).join(", ") : v);
+            const namesText = (v) => (v?.startsWith("[") ? tomlArrayItems(v).join("\n") : v || "");
+            setVal("patches-source", sourcesText(globals["patches-source"]));
             setVal("cli-source", globals["cli-source"]);
             setVal("cli-profile", globals["cli-profile"]);
-            setVal("rv-brand", globals["rv-brand"]);
+            // The builder reads rv-brand per app, so the single brand field takes the first app's value.
+            setVal("rv-brand", Object.values(apps).map((a) => a["rv-brand"]).find(Boolean));
             // Clear existing apps
             document.getElementById("apps-container").querySelectorAll(".app-card").forEach((c) => { c.remove(); });
             appCounter = 0;
@@ -747,13 +769,14 @@ rv-brand = "${g("rv-brand").value}"
                     displayName: cfg["app-name"] || "",
                     version: cfg.version || "auto",
                     arch: cfg.arch || "",
-                    patchesSource: cfg["patches-source"] || "",
+                    patchesSource: sourcesText(cfg["patches-source"]) || "",
                     cliSource: cfg["cli-source"] || "",
+                    packageName: cfg["package-name"] || "",
                     apkmirror: cfg["apkmirror-dlurl"] || "",
                     uptodown: cfg["uptodown-dlurl"] || "",
                     archive: cfg["archive-dlurl"] || "",
-                    excluded: cfg["excluded-patches"] || "",
-                    included: cfg["included-patches"] || "",
+                    excluded: namesText(cfg["exclude-patches"]),
+                    included: namesText(cfg.patches),
                 });
             }
             renderCatalog();
@@ -764,8 +787,8 @@ rv-brand = "${g("rv-brand").value}"
             document.getElementById("apps-container").querySelectorAll(".app-card").forEach((c) => { c.remove(); });
             appCounter = 0;
             addedApps.clear();
-            addCatalogApp("YouTube-Extended");
-            addCatalogApp("Music-Extended");
+            addCatalogApp("YouTube-Morphed");
+            addCatalogApp("Music-Morphed");
             showToast("Example configuration loaded", "info");
             updatePreview();
         }
@@ -904,7 +927,7 @@ rv-brand = "${g("rv-brand").value}"
             });
             const textarea = appCard.querySelector(".app-excluded");
             if (!textarea.dataset.manualEdit) {
-                textarea.value = excludedPatches.map((p) => `'${p}'`).join(" ");
+                textarea.value = excludedPatches.join("\n");
             }
             updatePreview();
         }
@@ -926,7 +949,7 @@ rv-brand = "${g("rv-brand").value}"
             renderCatalog();
             updatePreview();
             // Global settings: update preview on any change
-            document.querySelectorAll("#parallel-jobs, #patches-source, #cli-source, #patches-version, #cli-version, #rv-brand, #arch, #riplib, #remove-checks")
+            document.querySelectorAll("#parallel-jobs, #patches-source, #cli-source, #patches-version, #cli-version, #rv-brand, #arch, #riplib")
                 .forEach((el) => {
                     el.addEventListener("input", updatePreview);
                     el.addEventListener("change", updatePreview);

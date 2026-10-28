@@ -54,7 +54,7 @@ uv run python -m pytest tests -v
 ## Language & Tooling Rules
 
 ### Python
-- Target Python 3.13 or newer; dependencies are `uv`-managed.
+- Target Python 3.15; dependencies are `uv`-managed.
 - Match repository tooling: Ruff (`line-length=120`, `select=["ALL"]` with repo-specific ignores) and MyPy strict mode.
 - Use `from scripts.lib import logging as log` for logging.
 - Reuse existing network helpers (`scripts/utils/network.py`); avoid ad-hoc new HTTP stacks.

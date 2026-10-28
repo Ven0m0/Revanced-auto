@@ -15,6 +15,7 @@ on:
       - '**.html'
       - pyproject.toml
       - biome.json
+      - bun.lock
       - .yamllint.yml
   pull_request:
     branches: [main, master]
@@ -36,7 +37,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
       - name: Set up Python
-        run: uv python install 3.13
+        run: uv python install 3.15
       - name: Install dependencies
         run: uv sync --frozen --all-extras
       - name: Run Ruff Linter
@@ -58,7 +59,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
       - name: Set up Python
-        run: uv python install 3.13
+        run: uv python install 3.15
       - name: Setup local bin
         run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Cache yamlfmt
@@ -110,26 +111,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-      - name: Setup local bin
-        run: mkdir -p "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Cache Biome
-        uses: actions/cache@v6
-        id: cache-biome
-        with:
-          path: ~/.local/bin/biome
-          key: ${{ runner.os }}-biome-v2.3.11
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
       - name: Install Biome
-        if: steps.cache-biome.outputs.cache-hit != 'true'
-        run: |
-          wget -qO "$HOME/.local/bin/biome" \
-            "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.3.11/biome-linux-x64"
-          chmod +x "$HOME/.local/bin/biome"
+        run: bun install --frozen-lockfile
       - name: Run Biome
-        run: biome check --reporter=github .
+        run: bunx --bun biome check --reporter=github .
         continue-on-error: true
   lint-summary:
     name: Lint Summary

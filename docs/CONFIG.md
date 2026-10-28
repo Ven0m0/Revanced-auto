@@ -1,108 +1,110 @@
-# Config
+# Configuration reference
 
-Adding another revanced app is as easy as this:
+Builds are driven by one TOML file (default `config.toml`). Top-level keys are global defaults; every
+`[Section]` is one app. Keys use kebab-case (`patches-source`).
 
 ```toml
 [Some-App]
-apkmirror-dlurl = "https://www.apkmirror.com/apk/inc/app"
-# or uptodown-dlurl = "https://app.en.uptodown.com/android"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/inc/app/"
+package-name = "com.example.app"   # APKMirror/GitHub URLs carry no package id
 ```
 
-## More about other options
+An enabled app needs at least one `*-dlurl`. Everything else is optional.
 
-There exists an example below with all defaults shown and all the keys
-explicitly set.
+## Global keys
 
-**All keys are optional** (except download urls) and are assigned to their
-default values if not set explicitly.
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `parallel-jobs` | `0` | Concurrent builds. `0` means the built-in default of 2. |
+| `arch` | `all` | Default architecture for apps without their own. See [Architecture](#architecture). |
+| `riplib` | `true` | Strip native libraries of other ABIs. |
+| `patches-source` | `MorpheApp/morphe-patches` | Patch bundle(s): one `owner/repo`, or a list that is merged. |
+| `cli-source` | `MorpheApp/morphe-cli` | Patcher CLI repo. |
+| `patches-version` / `cli-version` | `latest` | `latest`, `dev`, or a release tag. |
+| `cli-profile` | `auto` | CLI flag style: `auto`, `morphe-cli`, `adobo-cli`. `auto` reads the jar's `--help`. |
+| `keystore-path` | `assets/ks.keystore` | Signing keystore (BKS, PKCS12 or JKS). |
+| `keystore-alias` | `morphe` | Entry alias inside the keystore. |
+
+## App keys
+
+| Key | Meaning |
+| --- | --- |
+| `enabled` | Build this app. Default `true`. |
+| `app-name` | Output name. Default is the section name. |
+| `rv-brand` | Brand label for the build (default `revanced`). Per-app only; a global value is ignored. |
+| `version` | `auto` (newest patch-compatible), `latest` (newest stable), `beta`, or an exact version. |
+| `package-name` | Package id used to look up patch-compatible versions. Required when no URL contains it. |
+| `arch` | Overrides the global architecture. |
+| `patches-source` / `cli-source` | Override the global sources. A list of sources is merged; later entries win on duplicate patch names. |
+| `patches` | Array of patch names to enable. |
+| `exclude-patches` | Array of patch names to disable. |
+| `exclusive` | `true` enables only the names in `patches`; everything else stays off. |
+| `<source>-dlurl` | Where to get the stock APK. See [Download sources](#download-sources). |
 
 ```toml
-parallel-jobs = 1                    # amount of cores to use for parallel patching, if not set $(nproc) is used
-arch = "arm64-v8a"                    # default architecture, applied to every app without its own arch. default: all
-remove-rv-integrations-checks = true # remove checks from the revanced integrations
-# Multiple patch sources can be specified as an array (patches are merged, later sources override earlier ones on conflicts).
-# The default is Morphe (MorpheApp/morphe-patches + MorpheApp/morphe-cli).
-patches-source = [
-  "MorpheApp/morphe-patches",       # default Morphe patches
-  "jkennethcarino/adobo",           # Morphe-compatible add-on patches (run on Morphe CLI)
-  # "brosssh/revanced-external-bundles",         # resolves via the external-bundles aggregator (matched by package id)
-  # "external-bundles:revanced-patches"          # explicit bundle_type selector
-]
-# Single source still works for backwards compatibility:
-# patches-source = "MorpheApp/morphe-patches"
-cli-source = "MorpheApp/morphe-cli"             # where to fetch CLI from. default: "MorpheApp/morphe-cli"
-# Supported CLI flavors (auto-detected from `java -jar <cli> --help`):
-#   - "morphe-cli"        Morphe CLI (long flags, `--patch`, `--input`)
-#   - "adobo-cli"         Adobo CLI (Morphe-compatible flag set)
-# Force a specific profile with cli-profile (default "auto"). Auto-detection
-# inspects `--help` and falls back to Morphe CLI on uncertainty.
-cli-profile = "auto"
+[Reddit]
+patches-source = ["MorpheApp/morphe-patches", "BlazeFTL/FTL-Patches"]
+exclusive = true
+patches = ["Hide ads", "Remove Languages"]
 
-# ============================================================================
-# Morphe-specific configuration tips
-# ============================================================================
-# Morphe is the default patcher. The shipped [YouTube-Morphed] and
-# [Music-Morphed] app sections are pre-configured. To add another app:
-#
-# 1. Set the global patches-source / cli-source to Morphe (or leave defaults).
-# 2. Add an `[App-Name]` section that points to a stock APK download URL.
-# 3. Set `cli-profile = "morphe-cli"` if auto-detection misclassifies the JAR.
-# 4. Run `uv run python -m scripts.cli check --config config.toml` to verify.
-#
-# Adobo patches (jkennethcarino/adobo) reuse Morphe's flag set. To switch:
-#
-#   patches-source = "jkennethcarino/adobo"
-#   cli-source     = "MorpheApp/morphe-cli"
-#   cli-profile    = "adobo-cli"
-#
-# External bundles (https://revanced-external-bundles.brosssh.com) expose a
-# GraphQL resolver. Use either the bare repo slug (resolved by package id) or
-# an explicit `external-bundles:<bundle_type>` selector:
-#
-#   patches-source = "brosssh/revanced-external-bundles"
-#   patches-source = "external-bundles:revanced-patches"
-#
-# Troubleshooting Morphe CLI detection:
-#   - Detection parses the CLI JAR's `patch --help` output.
-#   - "morphe-cli" is detected when the help text contains "morphe".
-#   - "adobo-cli" is detected when the help text contains "adobo".
-#   - If detection fails, set cli-profile explicitly.
-# options like cli-source can also set per app
-rv-brand = "Morphe" # rebrand from 'Morphe' to something different. default: "Morphe"
-patches-version = "latest" # 'latest', 'dev', or a version number. default: "latest"
-cli-version = "latest"     # 'latest', 'dev', or a version number. default: "latest"
-[Some-App]
-app-name = "SomeApp" # if set, release name becomes SomeApp instead of Some-App. default is same as table name, which is 'Some-App' here.
-enabled = true       # whether to build the app. default: true
-# 'auto' option gets the newest version compatible with the patches (falls back to the newest store version if compatibility cannot be determined)
-# 'latest' gets the newest stable store version without checking patches support. 'beta' gets the newest version including beta/alpha
-# whitespace seperated list of patches to exclude. default: ""
-version = "auto"     # 'auto', 'latest', 'beta' or a version number (e.g. '17.40.41'). default: auto
-# optional args to be passed to cli. can be used to set patch options
-# must be a TOML array of strings
-patcher-args = [
-  "-OdarkThemeBackgroundColor=#FF0F0F0F",
-  "-Oanother-option=value"
-]
-excluded-patches = """\
-  'Some Patch' \
-  'Some Other Patch' \
-  """
-included-patches = "'Some Patch'"                          # whitespace seperated list of non-default patches to include. default: ""
-exclusive-patches = false                                  # exclude all patches by default. default: false
-apkmirror-dlurl = "https://www.apkmirror.com/apk/inc/app"
-uptodown-dlurl = "https://spotify.en.uptodown.com/android"
-apkmirror-dpi = "360-480dpi"                               # used to select apk variant from apkmirror. default: nodpi
-arch = "arm64-v8a"                                         # 'arm64-v8a', 'arm-v7a', 'all', 'both'. 'both' downloads both arm64-v8a and arm-v7a. default: the global arch
-package-name = "com.example.app"                           # package id used to look up patch-compatible versions when it cannot be derived from a download URL (e.g. APKMirror-only apps; Reddit-Morphed uses com.reddit.frontpage)
-riplib = true                                              # enables stripping the other ABI's .so files from APKs. default: true
+# Patch options: one table per patch. Values are passed to the CLI verbatim as -Okey=value,
+# so string options need their own quotes and lists use JSON syntax.
+[Reddit.patch-options."Custom branding name for Reddit"]
+appName = "\"Reddit Morphe\""
 
-# ============================================================================
-# Patch sources reference
-# ============================================================================
-# Morphe (default):      MorpheApp/morphe-patches     + MorpheApp/morphe-cli
-# Adobo (Morphe-compat): jkennethcarino/adobo        + MorpheApp/morphe-cli
-# Piko (Twitter/X):      crimera/piko                 + Morphe CLI
-# Patcheddit (Reddit):   wchill/patcheddit            + Morphe CLI
-# External bundles:      brosssh/revanced-external-bundles (or `external-bundles:<bundle_type>`)
+[Reddit.patch-options."Remove Languages"]
+keepLanguages = "[\"en\"]"
 ```
+
+With several bundles, each patch name is matched to the bundle that provides it, so the build lists every
+bundle's patches first and fails if it cannot. A name in `patches` that no bundle lists is logged as a warning.
+
+### Architecture
+
+`arm64-v8a`, `arm-v7a` (`armeabi-v7a` is accepted as an alias), `both` (builds `arm64-v8a` and `arm-v7a`) or `all` (same as `both`).
+
+## Download sources
+
+Set any of these per app. All configured sources are tried in this order until one resolves a version
+and downloads:
+
+1. `apkmirror-dlurl` - app page, e.g. `https://www.apkmirror.com/apk/google-inc/youtube`
+2. `archive-dlurl` - archive.org item
+3. `apkpure-dlurl`
+4. `github-dlurl` - `https://github.com/owner/repo`; end it with `/<asset>.apk` to pin a release asset
+5. `aptoide-dlurl`
+6. `apkmonk-dlurl`
+7. `uptodown-dlurl`
+
+Split bundles (APKM/XAPK) are merged into one APK before patching.
+
+Notes:
+
+- **Cloudflare:** APKMirror challenges some apps (Discord) on every page. The scraper then drives a real
+  Chrome through [nodriver](https://github.com/ultrafunkamsterdam/nodriver). That needs Chrome installed and a
+  display (use `xvfb-run` on a headless Linux box); headless Chrome is blocked. The final file download is
+  plain HTTP.
+- **Uptodown:** as of 2026-10-28 the version-list pages the scraper reads return 404, so Uptodown can no
+  longer resolve versions. Prefer another source.
+
+## Signing
+
+Output APKs are re-signed with `apksigner`. Keystores are converted to BKS for the patcher automatically.
+Passwords come from the environment:
+
+| Variable | Default |
+| --- | --- |
+| `KEYSTORE_PASSWORD` | `Morphe` |
+| `KEYSTORE_ENTRY_PASSWORD` | the keystore password |
+
+Other environment variables: `GITHUB_TOKEN` (API rate limits), `CACHE_DIR` (default `.cache`).
+
+## Troubleshooting
+
+- **`Signing failed: Invalid password for keystore entry`** with the right passwords: the Java on `PATH`
+  is Oracle JDK or GraalVM, which reject the BouncyCastle provider bundled in the Morphe CLI. Use Temurin
+  (`mise install` provides it).
+- **`HTTP 403` / "Just a moment..." from APKMirror:** see the Cloudflare note above.
+- **Wrong CLI flags:** set `cli-profile` explicitly instead of `auto`.
+
+Validate a config without building: `uv run python -m scripts.cli check --config config.toml`.

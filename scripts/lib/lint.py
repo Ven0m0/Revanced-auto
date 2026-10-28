@@ -80,15 +80,29 @@ def _lint_toml(*, fix: bool) -> bool:
     return ok
 
 
+def _ensure_biome() -> bool:
+    """Install the Biome version pinned in package.json/bun.lock if node_modules lacks it.
+
+    `bunx biome` only resolves the pinned local package; without it bunx would fetch an unrelated npm package
+    named "biome". Missing bun -> warn and skip, like every other tool here.
+    """
+    if Path("node_modules/@biomejs/biome").is_dir():
+        return True
+    return _run(["bun", "install", "--frozen-lockfile"])
+
+
 def _lint_biome(*, fix: bool) -> bool:
     log.info("JSON/HTML/JS/TS/CSS (Biome)")
     files = _find_files("*.json", "*.html", "*.css", "*.js", "*.ts")
     if not files:
         log.warn("No Biome-managed files found")
         return True
+    if not _ensure_biome():
+        return False
+    # Same pinned version as CI (the lint-web job).
     if fix:
-        return _run(["biome", "check", "--write", *files])
-    return _run(["biome", "check", *files])
+        return _run(["bunx", "--bun", "biome", "check", "--write", *files])
+    return _run(["bunx", "--bun", "biome", "check", *files])
 
 
 def run_lint(*, fix: bool = False) -> int:
