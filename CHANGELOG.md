@@ -2,6 +2,13 @@
 
 This file is maintained automatically by [release-please](https://github.com/googleapis/release-please) from [Conventional Commits](https://www.conventionalcommits.org/). Entries after `1.0.0` are generated; edit `release-please-config.json` to change section mapping.
 
+## [1.2.0](https://github.com/Ven0m0/Revanced-auto/compare/v1.1.2...v1.2.0) (2026-10-28)
+
+
+### Added
+
+* add Discord build with nodriver fallback for Cloudflare-challenged APKMirror pages ([f1c2e38](https://github.com/Ven0m0/Revanced-auto/commit/f1c2e38f6bec371dc8fb6325d7fd9fcc2ca21798))
+
 ## [1.1.2](https://github.com/Ven0m0/Revanced-auto/compare/v1.1.1...v1.1.2) (2026-10-26)
 
 
