@@ -121,7 +121,8 @@ jobs:
           fi
           cat sep_config.json
       - name: Build APKs
-        run: uv run python -m scripts.cli build --config sep_config.json
+        # Headed Chrome under a virtual display: APKMirror's Cloudflare challenge (e.g. Discord) hard-blocks headless.
+        run: xvfb-run -a uv run python -m scripts.cli build --config sep_config.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}

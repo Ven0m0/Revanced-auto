@@ -5,6 +5,7 @@
 import re
 import zipfile
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from selectolax.lexbor import LexborHTMLParser, LexborNode
@@ -19,6 +20,7 @@ from scripts.scrapers.apkmirror import (
     get_target_archs,
     is_apk_bundle,
 )
+from scripts.scrapers.base import ChallengeError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -57,8 +59,60 @@ _BUNDLE_ROW = """
 """
 
 
+_RELEASE_LIST = """
+<div class="listWidget">
+  <div class="widgetHeader">All versions</div>
+  <div class="appRow"><a class="fontBlack" href="/apk/pkg/app/app-2-0-0-release/">App 2.0.0</a></div>
+  <div class="appRow"><a class="fontBlack" href="/apk/pkg/app/app-1-0-0-release/">App 1.0.0</a></div>
+</div>
+"""
+
+
+class _FakeBrowser:
+    instances: list[_FakeBrowser] = []  # noqa: RUF012
+
+    def __init__(self) -> None:
+        self.fetch_html = AsyncMock(return_value=_RELEASE_LIST)
+        self.aclose = AsyncMock()
+        _FakeBrowser.instances.append(self)
+
+
 def _first_row(html: str) -> LexborNode:
     return _parse_rows(LexborHTMLParser(html))[0]
+
+
+@pytest.mark.asyncio
+async def test_get_versions_falls_back_to_browser_on_challenge_and_closes_it() -> None:
+    _FakeBrowser.instances.clear()
+    scraper = APKMirror()
+
+    with (
+        patch.object(APKMirror, "get", new=AsyncMock(side_effect=ChallengeError("challenge"))),
+        patch("scripts.scrapers.apkmirror.ChallengeBrowser", _FakeBrowser),
+    ):
+        versions = await scraper.get_versions("pkg/app", match_any=True)
+
+    assert [v.version for v in versions] == ["2.0.0", "1.0.0"]
+    assert len(_FakeBrowser.instances) == 1
+    _FakeBrowser.instances[0].fetch_html.assert_awaited_once_with("https://www.apkmirror.com/apk/pkg/app/")
+    _FakeBrowser.instances[0].aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_versions_never_starts_browser_without_challenge() -> None:
+    _FakeBrowser.instances.clear()
+    scraper = APKMirror()
+    response = AsyncMock()
+    response.text = _RELEASE_LIST
+
+    with (
+        patch.object(APKMirror, "get", new=AsyncMock(return_value=response)),
+        patch("scripts.scrapers.apkmirror.ChallengeBrowser", _FakeBrowser),
+    ):
+        versions = await scraper.get_versions("pkg/app", match_any=True)
+
+    assert len(versions) == 2
+    assert _FakeBrowser.instances == []
 
 
 def test_parse_row_data_rejects_header_row() -> None:

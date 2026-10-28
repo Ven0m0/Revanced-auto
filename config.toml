@@ -506,3 +506,80 @@ patches = [
   "Waze alerts",
   "Zoom controls in navigation",
 ]
+
+# Discord. Selection exported from Morphe Manager (morphe_all_selections-2026-10-28-182611.json).
+[Discord]
+enabled = true
+app-name = "Discord"
+patches-source = ["VenusIsJaded/Venus-Patches", "kveld9/kveld-morphe-patches", "jrddupont/discord-patches"]
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+# APKMirror serves Discord behind a Cloudflare JS challenge; the scraper falls back to a headed Chrome
+# (nodriver), so builds need a display (xvfb-run in CI). Uptodown only links out to Google Play for Discord.
+apkmirror-dlurl = "https://www.apkmirror.com/apk/discord/discord-chat-for-gamers/"
+# APKMirror URLs carry no package id, so list-versions needs it spelled out.
+package-name = "com.discord"
+exclusive = true
+patches = [
+  # Venus Patches
+  "Account switcher",
+  "Bring back Tenor GIFs",
+  "Bulk delete messages",
+  "Clean channel names",
+  "Complete Quests automatically",
+  "Complete badges automatically",
+  "Custom themes",
+  "Disable advertising identifiers",
+  "Disable analytics",
+  "Disable crash reporting",
+  "Disable install attribution",
+  "Disable telemetry and touch logging",
+  "Double-tap to reply",
+  "Favourite any image or video",
+  "Fix link previews",
+  "Fix unknown mentions",
+  "Hide blocked or ignored messages",
+  "Hide extra buttons",
+  "Hide the Quests banner",
+  "Hide the call button",
+  "Hide the gift button",
+  "Hide typing indicator",
+  "Icon packs",
+  "Jump to first message",
+  "Keep Bluetooth audio clear in calls",
+  "Keep deleted messages",
+  "Material You colors",
+  "Message highlights",
+  "Pastel name colors",
+  "Read all button",
+  "Send Nitro stickers and emojis as links",
+  "Send audio as voice messages",
+  "Send long messages",
+  "Server info",
+  "Show device indicators",
+  "Show file sizes when attaching",
+  "Show hidden channels",
+  "Skip delete confirmation",
+  "Spaces in channel names",
+  "Translate messages",
+  "Unlock Discord experiments",
+  "Unlock Nitro themes",
+  "Unlock app icons",
+  "Use your phone's emojis",
+  "Use your phone's font",
+  "User activity notifications",
+  "User and server reviews",
+  "Venus button on profile bar",
+  "Venus settings",
+  # kveld9
+  "Clean App Packaging",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
+  # jrddupont
+  "Pin app to built-in bundle",
+]
+
+[Discord.patch-options."Shrink WebP Images"]
+stripIcc = "true"
