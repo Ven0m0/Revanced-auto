@@ -46,8 +46,8 @@
                     <span class="hero-title-accent">ReVanced</span> Builder
                 </h1>
                 <p class="hero-subtitle">
-                    Automated APK patching for Morphe, ReVanced, RVX, Piko, Patcheddit, Adobo and the brosssh external-bundles aggregator.
-                    Download stock APKs, apply patches, and build optimized APKs &mdash; all from a single config file.
+                    Automated APK patching with Morphe and Morphe-compatible bundles such as Adobo, Piko and community patch repos.
+                    Download stock APKs, apply patches, and re-sign them &mdash; all from a single config file.
                 </p>
                 <div class="hero-actions">
                     <a href="generator.html" class="btn-primary" style="text-decoration:none">Open Configuration Generator</a>
@@ -74,7 +74,7 @@
                         <span class="feature-card-icon" aria-hidden="true">&#x1f4e6;</span>
                         <h3 class="feature-card-title">Multi-Source Patches</h3>
                         <p class="feature-card-desc">
-                            Combine patches from Morphe, ReVanced, RVX, Piko, Patcheddit, Adobo, and the brosssh external-bundles aggregator. Version detection uses union strategy &mdash; the highest version supported by at least one source.
+                            Merge several Morphe-compatible bundles in one app. Each patch is applied from the bundle that lists it, and later bundles win on duplicate names. The brosssh external-bundles aggregator is supported too.
                         </p>
                     </div>
                     <div class="feature-card">
@@ -86,23 +86,23 @@
                     </div>
                     <div class="feature-card">
                         <span class="feature-card-icon" aria-hidden="true">&#x1f4cb;</span>
-                        <h3 class="feature-card-title">Changelog Automation</h3>
+                        <h3 class="feature-card-title">Build Reports</h3>
                         <p class="feature-card-desc">
-                            Generate comprehensive changelogs from git commits with conventional commit support. Includes patches changelog from GitHub releases.
+                            Every build writes a <code>build.md</code> listing the patches applied to each app. <code>extras combine-logs</code> merges the reports of separate builds.
                         </p>
                     </div>
                     <div class="feature-card">
                         <span class="feature-card-icon" aria-hidden="true">&#x1f50d;</span>
-                        <h3 class="feature-card-title">Dependency Checker</h3>
+                        <h3 class="feature-card-title">Version Tracking</h3>
                         <p class="feature-card-desc">
-                            Automated monitoring of CLI, patches, and APK versions. Daily GitHub Actions checks with automatic issue creation when updates are found.
+                            Remembers the CLI, patches and app versions of the last build, so <code>version-tracker check</code> can tell when a rebuild is needed. Renovate and Dependabot keep the toolchain current.
                         </p>
                     </div>
                     <div class="feature-card">
                         <span class="feature-card-icon" aria-hidden="true">&#x1f680;</span>
                         <h3 class="feature-card-title">Parallel Builds</h3>
                         <p class="feature-card-desc">
-                            Build multiple apps simultaneously with configurable parallelism. Download fallback chain: APKMirror, Uptodown, Archive.org.
+                            Build several apps at once. Each stock APK comes from the first source that works: APKMirror, Archive.org, APKPure, GitHub, Aptoide, APKMonk, then Uptodown. Cloudflare-protected APKMirror pages are read through a real browser.
                         </p>
                     </div>
                 </div>
@@ -126,19 +126,9 @@
                         <span class="showcase-pkg">com.google.android.apps.youtube.music</span>
                     </div>
                     <div class="showcase-card">
-                        <span class="showcase-icon" aria-hidden="true">&#x1F3A7;</span>
-                        <span class="showcase-name">Spotify</span>
-                        <span class="showcase-pkg">com.spotify.music</span>
-                    </div>
-                    <div class="showcase-card">
                         <span class="showcase-icon" aria-hidden="true">&#x1F916;</span>
                         <span class="showcase-name">Reddit</span>
                         <span class="showcase-pkg">com.reddit.frontpage</span>
-                    </div>
-                    <div class="showcase-card">
-                        <span class="showcase-icon" aria-hidden="true">&#x1F4AC;</span>
-                        <span class="showcase-name">X / Twitter</span>
-                        <span class="showcase-pkg">com.twitter.android</span>
                     </div>
                     <div class="showcase-card">
                         <span class="showcase-icon" aria-hidden="true">&#x1F3AC;</span>
@@ -146,14 +136,29 @@
                         <span class="showcase-pkg">com.zhiliaoapp.musically</span>
                     </div>
                     <div class="showcase-card">
-                        <span class="showcase-icon" aria-hidden="true">&#x1F4F7;</span>
-                        <span class="showcase-name">Instagram</span>
-                        <span class="showcase-pkg">com.instagram.android</span>
+                        <span class="showcase-icon" aria-hidden="true">&#x1F4AC;</span>
+                        <span class="showcase-name">Discord</span>
+                        <span class="showcase-pkg">com.discord</span>
                     </div>
                     <div class="showcase-card">
-                        <span class="showcase-icon" aria-hidden="true">&#x1F305;</span>
-                        <span class="showcase-name">Google Photos</span>
-                        <span class="showcase-pkg">com.google.android.apps.photos</span>
+                        <span class="showcase-icon" aria-hidden="true">&#x1F981;</span>
+                        <span class="showcase-name">Brave</span>
+                        <span class="showcase-pkg">com.brave.browser</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x2601;&#xFE0F;</span>
+                        <span class="showcase-name">SoundCloud</span>
+                        <span class="showcase-pkg">com.soundcloud.android</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F5FA;&#xFE0F;</span>
+                        <span class="showcase-name">Google Maps</span>
+                        <span class="showcase-pkg">com.google.android.apps.maps</span>
+                    </div>
+                    <div class="showcase-card">
+                        <span class="showcase-icon" aria-hidden="true">&#x1F9F9;</span>
+                        <span class="showcase-name">SD Maid</span>
+                        <span class="showcase-pkg">eu.darken.sdmse</span>
                     </div>
                 </div>
             </div>
@@ -195,8 +200,8 @@
                 <a href="https://github.com/Ven0m0/Revanced-auto" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
                 <a href="https://github.com/Ven0m0/Revanced-auto/blob/main/docs/CONFIG.md" target="_blank" rel="noopener noreferrer">Config Reference</a>
                 <a href="https://github.com/MorpheApp/morphe-patches" target="_blank" rel="noopener noreferrer">Morphe Patches</a>
-                <a href="https://github.com/ReVanced" target="_blank" rel="noopener noreferrer">ReVanced Project</a>
-                <a href="https://github.com/inotia00/revanced-patches" target="_blank" rel="noopener noreferrer">RVX Patches</a>
+                <a href="https://patch-explorer.web.app/" target="_blank" rel="noopener noreferrer">Patch Explorer</a>
+                <a href="https://github.com/nvbangg/awesome-for-morphe" target="_blank" rel="noopener noreferrer">Awesome for Morphe</a>
             </nav>
             <p>ReVanced Builder &mdash; Automated APK patching system</p>
         </div>

@@ -1,7 +1,7 @@
 # =============================================================================
 # ReVanced Auto-Build Configuration
 # =============================================================================
-# Configuration generator: https://j-hc.github.io/rvmm-config-gen/
+# Config generator: docs/generator.html. Key reference: docs/CONFIG.md
 # This file controls the behavior of the ReVanced build system
 # Documentation:
 # - Global settings apply to all apps unless overridden in app-specific sections
@@ -12,8 +12,6 @@
 # =============================================================================
 # Parallel Build Jobs
 parallel-jobs = 0
-# ReVanced Integrations Checks
-remove-rv-integrations-checks = true
 # Library Stripping (riplib)
 riplib = true
 # Default Architecture
@@ -25,58 +23,35 @@ patches-version = "latest"
 # Default CLI Version
 # ReVanced CLI version: "latest", "dev", or specific version tag
 cli-version = "latest"
-# Default App Version
-# App version selection: "auto", "latest", "beta", or specific version
-# - auto: Automatically select version compatible with patches
-# - latest: Use newest stable version available
-# - beta: Use latest beta version
-# - Specific version: e.g., "18.48.39"
-version = "auto"
 
-# Default patcher CLI and patches: Morphe (T2.1).
-# Override per-app via `cli-source` / `patches-source` to fall back to ReVanced or any other ecosystem.
+# Default patcher CLI and patches: Morphe. Every bundle below runs on the Morphe CLI.
+# Override per app via `cli-source` / `patches-source`.
 cli-source = "MorpheApp/morphe-cli"
 patches-source = "MorpheApp/morphe-patches"
 
-# Alternative Patch Sources (for patches-source):
+# Patch sources used by the sections below (see docs/PATCHES.md):
 # - Morphe (default): MorpheApp/morphe-patches
-# - Adobo (Morphe-compatible patches): jkennethcarino/adobo
-# - External Bundles aggregator: brosssh/revanced-external-bundles
-# - ReVanced: ReVanced/revanced-patches
-# - ReVanced Extended (anddea): anddea/revanced-patches
-# - ReVanced Extended (inotia00): inotia00/revanced-patches
-# - De-ReVanced: RookieEnough/De-ReVanced
-# - Piko (Twitter): crimera/piko
-# - Patcheddit (Reddit): wchill/patcheddit
+# - Adobo: jkennethcarino/adobo
 # - BlazeFTL (universal APK-size/ads/analytics cleanup): BlazeFTL/FTL-Patches
 # - Metra TikTok Patches: icysymmetra/tiktok-patches-for-morphe
-# - Doom's Morphe Patches: rushiranpise/morphe-patches
+# - Doom's Morphe Patches (Reddit, SD Maid, Google Photos): rushiranpise/morphe-patches
 # - Brave and universal patches: dh6k/morphe-patches
-# - Pinterest Morphed: SouBryan/pinterest-morphed
-# - xob0t Morphe Patches: xob0t/morphe-patches
+# - kveld9 (Brave, Discord cleanup): kveld9/kveld-morphe-patches
+# - SoundCloud: kondratjev/morphe-patches
+# - Google Maps: bearinmindcat/morphe-patches
+# - Discord: VenusIsJaded/Venus-Patches, jrddupont/discord-patches
+# - Piko (Twitter/X, Instagram): crimera/piko
+# - External bundles aggregator: brosssh/revanced-external-bundles
 # patches-source accepts a list of the above to merge patches from multiple bundles.
 
 # =============================================================================
 # APP CONFIGURATIONS
 # =============================================================================
-# Each app section can override global settings
-# Required fields: at least one download URL (uptodown-dlurl, apkmirror-dlurl, archive-dlurl,
-# apkpure-dlurl, aptoide-dlurl, apkmonk-dlurl, or github-dlurl = "https://github.com/owner/repo")
-# Optional fields: All global settings can be overridden per-app
+# Each app section can override: arch, patches-source, cli-source (the other global keys are global-only)
+# Required fields: at least one download URL (apkmirror-dlurl, archive-dlurl, apkpure-dlurl,
+# github-dlurl = "https://github.com/owner/repo", aptoide-dlurl, apkmonk-dlurl or uptodown-dlurl)
+# Per-app only: app-name, rv-brand, package-name, version, patches, exclude-patches, exclusive, patch-options
 # =============================================================================
-# Spotify
-[Spotify]
-enabled = false
-uptodown-dlurl = "https://spotify.en.uptodown.com/android"
-archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.spotify.music"
-apkpure-dlurl = "https://apkpure.net/spotify-music-and-podcasts/com.spotify.music"
-included-patches = "'Custom theme'"
-patcher-args = [
-  "-e",
-  "Custom branding name for Spotify",
-  "-OappName=RVX Spotify",
-]
-
 [TikTok]
 enabled = true
 app-name = "TikTok"
@@ -115,9 +90,16 @@ patches = [
   "Translate comments",
 ]
 
+# Google Photos. Only rushiranpise/morphe-patches ships Google Photos patches; no patch list is set, so the
+# bundle's default-enabled patches apply.
 [GooglePhotos]
 enabled = false
-version = "auto"
+app-name = "GooglePhotos"
+patches-source = "rushiranpise/morphe-patches"
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Morphe"
+# APKMirror URLs carry no package id, so list-versions needs it spelled out.
+package-name = "com.google.android.apps.photos"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/photos/"
 uptodown-dlurl = "https://google-photos.en.uptodown.com/android"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.photos"
@@ -358,7 +340,6 @@ cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Piko"
 uptodown-dlurl = "https://twitter.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
-apkmirror-dpi = "120-640dpi"
 package-name = "com.twitter.android"
 # Off by default in the bundle. uni-apks also enables "Browse tweet object", which Piko v3.10.0 does not have.
 patches = ["Bring back twitter", "Dynamic color"]
@@ -373,7 +354,6 @@ cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Piko"
 uptodown-dlurl = "https://twitter.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
-apkmirror-dpi = "120-640dpi"
 package-name = "com.twitter.android"
 patches = ["Dynamic color"]
 

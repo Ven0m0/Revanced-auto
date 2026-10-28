@@ -48,6 +48,8 @@ dist/
 node_modules/
 package-lock.json
 yarn.lock
+# Tracked lockfile for the Biome pin; a global "*.lock" ignore would otherwise hide it.
+!bun.lock
 
 .omc/
 .serena/

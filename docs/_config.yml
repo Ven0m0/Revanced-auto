@@ -3,7 +3,7 @@
 theme: jekyll-theme-cayman
 title: ReVanced Builder
 description: >-
-  Automated APK patching system for Morphe (default), ReVanced, and RVX. Visual configuration generator with app catalog, interactive patch selector, build caching, changelog automation, and dependency monitoring.
+  Automated APK patching with Morphe and Morphe-compatible patch bundles. Visual configuration generator with an app catalog and an interactive patch selector, plus build caching and version tracking.
 show_downloads: false
 # GitHub metadata
 

@@ -2,15 +2,17 @@
 
 ![GitHub repo size](https://img.shields.io/github/repo-size/Ven0m0/Revanced-auto)
 
-ReVanced-auto builds patched Android APKs from a TOML config: resolve compatible app versions, download stock APKs, apply ReVanced/RVX-compatible CLI + patches, re-sign the result, and write artifacts to `build/`.
+ReVanced-auto builds patched Android APKs from a TOML config: resolve compatible app versions, download stock APKs, apply Morphe CLI + Morphe-compatible patch bundles, re-sign the result, and write artifacts to `build/`.
 
 ## Requirements
 
-- Python **3.14+**
-- Java **21+**, an OpenJDK build such as Temurin (`mise install` provides it). Oracle JDK and GraalVM reject the
+- Python **3.15** (`requires-python = ">=3.15,<3.16"`)
+- Java **21+**, an OpenJDK build such as Temurin (`mise install` provides Temurin 25). Oracle JDK and GraalVM reject the
   unsigned BouncyCastle provider bundled in the Morphe CLI, so patching fails with
-  `JCE cannot authenticate the provider BC` / `Invalid password for keystore entry`.
+  `JCE cannot authenticate the provider BC` / `Invalid password for keystore entry`, even with correct passwords.
 - `uv`
+- Google Chrome, only for apps whose APKMirror pages sit behind a Cloudflare challenge (currently Discord). It runs
+  headed, so a headless Linux machine needs `xvfb-run`. Other apps never start it.
 - Optional but useful: `zipalign`, `optipng`
 
 This repo uses `uv` for dependency management and is not distributed as a standalone Python package.
@@ -32,9 +34,10 @@ uv run python -m scripts.cli check-env
 Prefer the Python CLI. After `uv sync`, use `uv run ...` for one-off commands, or activate the `uv` environment first if you are working in an interactive shell session.
 
 ```bash
+# Optional: only needed when you sign with your own keystore (see "Signing and build flow").
 # Prefer a secure secret source over typing passwords into shell history.
-export KEYSTORE_PASSWORD='...'
-export KEYSTORE_ENTRY_PASSWORD='...'
+# export KEYSTORE_PASSWORD='...'
+# export KEYSTORE_ENTRY_PASSWORD='...'
 
 uv run python -m scripts.cli check-env
 uv run python -m scripts.cli check --config config.toml
@@ -59,37 +62,22 @@ uv run python -m scripts.cli cache stats
 
 ## Morphe setup guide
 
-This repo ships with **Morphe** as the default patcher (`MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`). `YouTube-Morphed` and `Music-Morphed` are enabled out of the box in `config.toml`.
-
-### Prerequisites
-
-- Java **21+** (Morphe CLI is built and tested on Java 21 LTS)
-- Python **3.14+**
-- `uv` for dependency management (or `mise` to provision the toolchain)
-
-### First-time setup
-
-```bash
-git clone <repo-url>
-cd Revanced-auto
-mise install            # optional: provisions Python 3.14 + Java 21 via mise
-uv sync --locked --all-groups
-uv run python -m scripts.cli check-env   # verifies tools, downloads bin/* jars, validates config.toml
-export KEYSTORE_PASSWORD='...'
-export KEYSTORE_ENTRY_PASSWORD='...'
-```
+This repo ships with **Morphe** as the default patcher (`MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`). The sample `config.toml` enables nine apps (see [Configuration](#configuration)).
 
 ### Build with Morphe
+
+Setup is the same as above. The keystore passwords default to the tracked `assets/ks.keystore`'s, so they are only
+needed for your own keystore.
 
 ```bash
 # Sanity check (does not download APKs)
 uv run python -m scripts.cli check --config config.toml
 
-# Build all enabled apps (YouTube-Morphed + Music-Morphed by default)
+# Build all enabled apps
 uv run python -m scripts.cli build --config config.toml --parallel 2
 ```
 
-To force a specific CLI profile, set `cli-profile` in `config.toml` (or pass it on the command line where supported). Valid values:
+To force a specific CLI profile, set `cli-profile` in `config.toml`. Valid values:
 
 - `"auto"` (default) — detect from the CLI JAR's `--help` output
 - `"morphe-cli"`
@@ -127,55 +115,57 @@ uv run python -m pytest tests -v
 
 ## Configuration
 
-The shipped `config.toml` uses top-level global settings plus per-app sections such as `[YouTube-Morphed]` or `[Reddit-Morphed]`. Each enabled app needs at least one download source:
+The shipped `config.toml` uses top-level global settings plus one `[Section]` per app. The full key reference is
+[`docs/CONFIG.md`](./docs/CONFIG.md). Each enabled app needs at least one download source, tried in this order until one works:
 
 - `apkmirror-dlurl`
-- `uptodown-dlurl`
 - `archive-dlurl`
 - `apkpure-dlurl`
+- `github-dlurl` (e.g. `"https://github.com/owner/repo"`; end the URL with `/<asset>.apk` to pin a release asset by name, e.g. `".../releases/latest/download/BraveMonoarm64.apk"`)
 - `aptoide-dlurl`
 - `apkmonk-dlurl`
-- `github-dlurl` (e.g. `"https://github.com/owner/repo"`; end the URL with `/<asset>.apk` to pin a release asset by name, e.g. `".../releases/latest/download/BraveMonoarm64.apk"`)
+- `uptodown-dlurl` (currently unusable: the version-list pages the scraper reads return 404)
 
-Common global settings include:
+Global settings:
 
-- `parallel-jobs`
-- `patches-version`
-- `cli-version`
+- `parallel-jobs` (`0` means 2)
+- `patches-version`, `cli-version` (`latest`, `dev` or a tag)
 - `patches-source` (defaults to `MorpheApp/morphe-patches`)
 - `cli-source` (defaults to `MorpheApp/morphe-cli`)
 - `cli-profile` (defaults to `"auto"`; detects `morphe-cli` or `adobo-cli` from `--help`)
 - `arch` (default architecture, applied to every app that does not set its own `arch`)
 - `riplib`
+- `keystore-path`, `keystore-alias` (default `assets/ks.keystore` and `morphe`)
 
 Per-app settings worth knowing:
 
-- `patches` — explicit list of patch names to include for that app (patches not listed are excluded)
+- `app-name`, `rv-brand` — output name and brand label. These are per-app only; global values are ignored.
+- `patches` — array of patch names to enable
+- `exclude-patches` — array of patch names to disable
+- `exclusive` — when `true`, only the names in `patches` are enabled; every other patch stays off
 - `patch-options."Patch Name"` — a sub-table of `key = "value"` options passed to a specific patch
 - `package-name` — package id used to look up patch-compatible versions when it cannot be derived from a download URL (for example APKMirror-only apps; `Reddit-Morphed` uses `com.reddit.frontpage`)
 - `version` — `auto` (default) picks the newest version compatible with the patches, `latest` the newest store version, `beta` the newest including beta/alpha, or pin an exact version
-- `exclusive` — when `true`, only the app's own `patches` list applies; global default patches are not merged in
+- `patches-source`, `cli-source`, `arch` — override the global values
 
-The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-Morphed`, `Brave`, `SDMaid`, `GoogleMaps`, and `Discord`. Other sections (`Spotify`, `GooglePhotos`, `Instagram-Piko`, `Twitter-Piko`) are included as disabled examples — flip `enabled = true` to use them.
+The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-Morphed`, `Brave`, `SDMaid`, `SoundCloud`, `GoogleMaps`, and `Discord`. `GooglePhotos`, `Instagram-Piko`, `Twitter-Piko` and `X-Piko` are included as disabled examples; flip `enabled = true` to use them. The Piko sections are disabled because Piko supports only one old app version each that the scrapers cannot reach.
 
 ### Patch sources
 
-`patches-source` (and `cli-source`) accepts a GitHub repo slug like `owner/repo`. A list of repo slugs is also accepted; later entries override earlier ones when patches conflict. Common choices:
+`patches-source` (and `cli-source`) accepts a GitHub repo slug like `owner/repo`. A list of repo slugs is also accepted; later entries override earlier ones when patches conflict. Every bundle runs on the Morphe CLI. [`docs/PATCHES.md`](./docs/PATCHES.md) lists the bundles the sample config uses. The common ones:
 
-- **Morphe (current default)** — `MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`. Active app sections are `YouTube-Morphed` and `Music-Morphed`.
-- **Piko** (Twitter/X) — `crimera/piko`.
-- **Patcheddit** (Reddit) — `wchill/patcheddit`.
+- **Morphe (default)** — `MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`.
+- **Adobo** — `jkennethcarino/adobo`, extra patches on top of Morphe.
+- **Piko** (Twitter/X, Instagram) — `crimera/piko`.
 - **External bundles** — `brosssh/revanced-external-bundles` resolves a patch JAR via the community aggregator's GraphQL API (https://revanced-external-bundles.brosssh.com). Use `external-bundles:<bundle_type>` to pin a specific bundle type; the bare repo slug falls back to selecting by the app's package id.
-- **Adobo** — `jkennethcarino/adobo` is a patches collection that runs on top of Morphe CLI. Set `patches-source = "jkennethcarino/adobo"` (and keep `cli-source = "MorpheApp/morphe-cli"`).
 
-Config docs and generators:
+Config docs and generator:
 
 - [`docs/CONFIG.md`](./docs/CONFIG.md) — config reference
 - [`docs/README.md`](./docs/README.md) — docs index
 - [`docs/index.html`](./docs/index.html) — local docs landing page
 - [`docs/generator.html`](./docs/generator.html) — local config generator
 - [`CHANGELOG.md`](./CHANGELOG.md) — release history (maintained by release-please)
-- Hosted generator used by this repo's config format: <https://j-hc.github.io/rvmm-config-gen/>
 
 ## Plugin hooks
 
@@ -189,8 +179,8 @@ Stages: `pre_pipeline`, `post_pipeline`.
 
 ## Signing and build flow
 
-- Builds require `KEYSTORE_PASSWORD` and `KEYSTORE_ENTRY_PASSWORD`.
-- Default signing values come from the shell path: `KEYSTORE_PATH=assets/ks.keystore`, `KEYSTORE_ALIAS=jhc`, `KEYSTORE_SIGNER=jhc`.
+- The keystore is `keystore-path` from `config.toml`, or `assets/ks.keystore` when unset; the alias is `keystore-alias` (default `morphe`).
+- `KEYSTORE_PASSWORD` defaults to `Morphe`, which opens the tracked `assets/ks.keystore`. `KEYSTORE_ENTRY_PASSWORD` defaults to the keystore password. Set both for your own keystore (CI passes them from secrets).
 - Stock APK signature checks use `assets/sig.txt` when entries are available.
 - Final APKs are re-signed with `bin/apksigner.jar` using **v1 + v2 only**; **v3/v4 are intentionally disabled** for compatibility and predictable signing behavior. The jar is downloaded on demand when missing.
 - Keystores are auto-converted to BKS (cached under `.cache/keystore/`) before patching, since Morphe's patcher only accepts BKS; a PKCS12/JKS keystore such as `assets/ks.keystore` converts transparently on first use.
@@ -214,33 +204,29 @@ For YouTube and YouTube Music builds, expect to install a compatible GmsCore/Mic
 ## Outputs
 
 - `build/` — final APKs and per-app Markdown summaries
-- `temp/` — temporary files and default cache directory
+- `temp/` — temporary files and the default directory of the `cache` subcommands
+- `.cache/` — downloaded CLI/patch jars (`.cache/prebuilts/`) and converted keystores (`.cache/keystore/`)
 - `.github/last_built_versions.json` — saved version-tracker state
 - `build.md` — combined build notes/changelog
 
-Cache commands use `temp/` by default with a TTL of `86400` seconds (24 hours). Expired entries are reused only until cleanup or replacement. Set `CACHE_DIR` to override the cache location.
+The `cache` subcommands use `temp/` by default with a TTL of `86400` seconds (24 hours). Expired entries are reused only until cleanup or replacement. Set `CACHE_DIR` to move the cache; it applies to both locations above.
 
 ## Troubleshooting
 
 - Run `uv run python -m scripts.cli check-env` first.
 - If `python -m scripts.cli ...` cannot import dependencies, run it through `uv run` or activate the `uv` environment first.
 - If version checks keep skipping builds, inspect or reset `.github/last_built_versions.json` with `uv run python -m scripts.cli version-tracker show --config config.toml` or `... reset --config config.toml`.
-- If downloads fail, set `GITHUB_TOKEN` and/or tune retry env vars.
-- If signing fails, verify keystore env vars and file paths.
+- If downloads fail, set `GITHUB_TOKEN` (GitHub API rate limits) and check that the app's other sources work.
+- If APKMirror answers `403` / "Just a moment...", the page is behind a Cloudflare challenge. The scraper then needs Chrome (see Requirements); the final file download is plain HTTP.
+- If signing fails, check the Java build first (Oracle JDK/GraalVM cause `Invalid password for keystore entry` even with the right passwords), then the keystore env vars and `keystore-path`.
 - `DEBUG=1` is useful for Python CLI debugging.
 
-Useful env vars:
+Environment variables the scripts read:
 
 - `KEYSTORE_PASSWORD`
 - `KEYSTORE_ENTRY_PASSWORD`
-- `KEYSTORE_PATH`
-- `KEYSTORE_ALIAS`
-- `KEYSTORE_SIGNER`
 - `GITHUB_TOKEN`
 - `CACHE_DIR`
-- `MAX_RETRIES`
-- `INITIAL_RETRY_DELAY`
-- `CONNECTION_TIMEOUT`
 - `DEBUG`
 
 ## Docs
@@ -255,8 +241,7 @@ Useful env vars:
 - [Morphe](https://morphe.software) — patches and CLI that drive this repo's default build.
 - [Morphe Patches](https://morphe-patches.software) — index of Morphe-supported apps and patches.
 - [awesome-for-morphe](https://github.com/nvbangg/awesome-for-morphe) — curated list of Morphe tools, patch indexes, and community resources.
-- [builder-for-morphe](https://github.com/nvbangg/builder-for-morphe) — minimal Python rewrite based on j-hc/uni-apks. Uses the same `config.toml` shape as this repo; recommended for users who want a simpler single-purpose builder.
+- [builder-for-morphe](https://github.com/nvbangg/builder-for-morphe) — minimal Python rewrite based on j-hc/uni-apks, for users who want a simpler single-purpose builder.
 - [ReVanced](https://github.com/ReVanced) — upstream ReVanced project.
 - [ReVanced Extended (RVX)](https://github.com/inotia00/revanced-patches) — community patch fork.
 - [revanced-external-bundles](https://revanced-external-bundles.brosssh.com) — community patches aggregator (used by `patches-source = "brosssh/revanced-external-bundles"`).
-- [j-hc/rvmm-config-gen](https://j-hc.github.io/rvmm-config-gen/) — web config generator compatible with this repo's TOML format.

@@ -1,106 +1,33 @@
-# ReVanced Builder Documentation
+# Documentation
 
-## Site Structure
-
-| Page | Description |
+| File | Contents |
 | --- | --- |
-| [`index.html`](./index.html) | Landing page with feature overview, app showcase, and quick start |
-| [`generator.html`](./generator.html) | Configuration generator with app catalog and patch selector |
-| [`style.css`](./style.css) | Shared design system (theme, nav, components) |
+| [`CONFIG.md`](./CONFIG.md) | Every `config.toml` key, download sources, signing, troubleshooting |
+| [`PATCHES.md`](./PATCHES.md) | Patch bundles the sample config uses, and how to combine them |
+| [`index.html`](./index.html) | Landing page (published with GitHub Pages) |
+| [`generator.html`](./generator.html) | Browser-based `config.toml` generator |
+| [`style.css`](./style.css), [`_config.yml`](./_config.yml) | Shared styles and the Pages/Jekyll config |
 
-## Configuration Generator
+The project overview and CLI usage are in the [main README](../README.md).
 
-**Location**: [`generator.html`](./generator.html)
+## Configuration generator
 
-A self-contained web application for creating `config.toml` files without manual editing.
+[`generator.html`](./generator.html) is a self-contained page (no build step, no server) that writes a
+`config.toml` for you:
 
-**Features**:
+- Pick apps from the catalog or add a custom one, and set global and per-app options.
+- Browse a bundle's patches from its GitHub repo, then filter and select them.
+- Watch the TOML preview update live, then download or copy it (`Ctrl+S` downloads).
+- **Import** an existing `config.toml` to edit it. The importer reads the keys the generator writes; other keys
+  are dropped, so check the result before replacing a hand-edited file.
 
-- **App Catalog**: Pre-configured profiles for 8 popular apps (YouTube, Music, Spotify, Reddit, X/Twitter, TikTok, Instagram, Google Photos) with pre-filled download URLs and settings
-- Interactive form-based interface with global and per-app settings
-- Live TOML preview panel (sticky sidebar on desktop)
-- Visual patch selector that fetches patches from any GitHub repository
-- Patch search, filtering, and bulk select/deselect
-- Import existing `config.toml` files to edit them visually
-- Download or copy generated configuration with one click
-- Example configurations to get started quickly
-- Dark/light theme toggle (persisted in localStorage, shared across pages)
-- Keyboard shortcut: `Ctrl+S` to download
-- Fully responsive layout with mobile hamburger navigation
-- Accessible: skip link, ARIA attributes, keyboard navigation
-- Print-friendly: hides controls and shows config only
+The theme (dark/light) is stored in `localStorage` and shared by both pages.
 
-## Quick Start
+## Publishing
 
-1. Open the [landing page](./index.html) or go directly to the [generator](./generator.html)
-2. Configure global settings (patches source, CLI source, architecture, etc.)
-3. **Select an app from the catalog** to add it with pre-filled settings, or click **Custom App** for manual entry
-4. Fill in or adjust app details: name, version, download URLs
-5. Click **Browse & Select Patches** to visually select patches
-6. Review the live preview on the right
-7. **Download** or **Copy** the generated `config.toml`
+`.github/workflows/pages.yml` publishes `docs/` to GitHub Pages on every push to `main` that touches it.
 
-To edit an existing config, click **Import** in the header and select your `.toml` file.
+## External links
 
-## Shared Design System
-
-Both pages share `style.css` which provides:
-
-- Dark/light theme via CSS custom properties and `data-theme` attribute
-- Responsive navigation bar with hamburger menu on mobile (< 768px)
-- Consistent card, button, form, and typography styles
-- Toast notification system
-- Print stylesheet
-- Accessibility: skip links, focus rings, screen reader utilities
-
-Theme preference is stored in `localStorage` and synced across pages.
-
-## Navigation
-
-All pages include a shared navigation bar:
-
-- **Home** — Landing page with project overview
-- **Generator** — Configuration generator with app catalog
-- **Config Docs** — Links to CONFIG.md on GitHub
-- **GitHub** — Repository link
-- **Theme Toggle** — Dark/light mode switch
-
-On mobile (< 768px), the navigation collapses into a hamburger menu.
-
-## Configuration Options
-
-**Global Settings**:
-
-- `parallel-jobs` — Number of simultaneous builds
-- `patches-source` — Default GitHub repo for patches (default: `MorpheApp/morphe-patches`). Also accepts `brosssh/revanced-external-bundles` or `external-bundles:<type>` to resolve via the community aggregator.
-- `cli-source` — Patcher CLI source (default: `MorpheApp/morphe-cli`). Profiles supported: Morphe, Adobo.
-- `arch` — Default architecture (arm64-v8a, armeabi-v7a, both); applies to every app without its own `arch`
-- `riplib` — Strip unnecessary libraries
-
-**Per-App Settings**:
-
-- `enabled` — Enable/disable app building
-- `app-name` — Display name
-- `version` — auto (newest patch-compatible), latest (newest store version), beta, or specific version
-- `package-name` — Package id for patch-compatible version lookup when it cannot be derived from a download URL
-- `patches-source` / `cli-source` — Override global sources
-- Download URLs (APKMirror, Uptodown, Archive.org)
-- Patch Selection — Visual browser with search/filter
-- `excluded-patches` — Patches to skip (manual or auto-generated)
-- `included-patches` — Exclusive patch list
-
-## Additional Documentation
-
-- [Main README](../README.md) — Project overview
-- [Configuration Reference](./CONFIG.md) — Detailed config documentation
-- [Patch sources & indexes](./PATCHES.md) — Curated list of supported patch sources, CLIs, and Morphe patch indexes
-
-## External Links
-
-- [Morphe Website](https://morphe.software)
-- [Morphe Patches](https://morphe-patches.software)
-- [Morphe Documentation](https://github.com/MorpheApp/morphe-documentation)
-- [Awesome for Morphe](https://github.com/nvbangg/awesome-for-morphe)
-- [Patch Explorer](https://patch-explorer.web.app/)
-- [ReVanced Project](https://github.com/ReVanced)
-- [ReVanced Extended (RVX)](https://github.com/inotia00/revanced-patches)
+- [Morphe](https://morphe.software), [Morphe patches](https://morphe-patches.software), [Morphe documentation](https://github.com/MorpheApp/morphe-documentation)
+- [Awesome for Morphe](https://github.com/nvbangg/awesome-for-morphe), [Patch Explorer](https://patch-explorer.web.app/)

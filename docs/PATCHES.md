@@ -1,71 +1,53 @@
-# Patch sources and indexes
+# Patch sources
 
-ReVanced-auto resolves patches and CLIs from GitHub releases. A `patches-source` (and matching `cli-source`) is a `owner/repo` slug; multiple sources can be combined as a list and later entries override earlier ones on patch conflicts.
+A `patches-source` (and its `cli-source`) is a GitHub `owner/repo`. A list merges several bundles; later
+entries win on duplicate patch names. All bundles below run on the Morphe CLI (`cli-source =
+"MorpheApp/morphe-cli"`). The CLI has two flag profiles, `morphe-cli` and `adobo-cli`; see `cli-profile` in
+[CONFIG.md](./CONFIG.md).
 
-## Official Morphe
+## Bundles used by the sample `config.toml`
 
-- **Patches repo:** <https://github.com/MorpheApp/morphe-patches>
-- **CLI repo:** <https://github.com/MorpheApp/morphe-cli>
-- **Patches site:** <https://morphe-patches.software>
-- **Releases:** <https://github.com/MorpheApp/morphe-patches/releases>
-- **CLI releases:** <https://github.com/MorpheApp/morphe-cli/releases>
-
-This is the **default** in `config.toml`.
-
-## Piko (Twitter/X)
-
-- **Patches repo:** <https://github.com/crimera/piko>
-- Runs on the Morphe CLI.
-
-## Patcheddit (Reddit)
-
-- **Patches repo:** <https://github.com/wchill/patcheddit>
-- Runs on the Morphe CLI.
-
-## Adobo (Morphe-compatible patches)
-
-- **Patches repo:** <https://github.com/jkennethcarino/adobo>
-- Set `patches-source = "jkennethcarino/adobo"` and keep `cli-source = "MorpheApp/morphe-cli"`.
-- Profile: `cli-profile = "adobo-cli"`.
+| Repo | Used for |
+| --- | --- |
+| [`MorpheApp/morphe-patches`](https://github.com/MorpheApp/morphe-patches) | Default bundle: YouTube, YouTube Music, Reddit. Site: <https://morphe-patches.software> |
+| [`jkennethcarino/adobo`](https://github.com/jkennethcarino/adobo) | Extra YouTube and Reddit patches |
+| [`BlazeFTL/FTL-Patches`](https://github.com/BlazeFTL/FTL-Patches) | Universal APK-size, ads and analytics cleanup |
+| [`icysymmetra/tiktok-patches-for-morphe`](https://github.com/icysymmetra/tiktok-patches-for-morphe) | TikTok |
+| [`rushiranpise/morphe-patches`](https://github.com/rushiranpise/morphe-patches) | Reddit, SD Maid |
+| [`dh6k/morphe-patches`](https://github.com/dh6k/morphe-patches) | Brave and universal patches |
+| [`kveld9/kveld-morphe-patches`](https://github.com/kveld9/kveld-morphe-patches) | Brave and Discord size/privacy cleanup |
+| [`kondratjev/morphe-patches`](https://github.com/kondratjev/morphe-patches) | SoundCloud |
+| [`bearinmindcat/morphe-patches`](https://github.com/bearinmindcat/morphe-patches) | Google Maps |
+| [`VenusIsJaded/Venus-Patches`](https://github.com/VenusIsJaded/Venus-Patches) | Discord client mods |
+| [`jrddupont/discord-patches`](https://github.com/jrddupont/discord-patches) | Discord |
+| [`crimera/piko`](https://github.com/crimera/piko) | X / Twitter and Instagram sections |
 
 ## External bundles aggregator
 
-- **Aggregator:** <https://revanced-external-bundles.brosssh.com>
-- **Source repo:** <https://github.com/brosssh/revanced-external-bundles>
-- Resolves a patch JAR via the community aggregator's GraphQL API.
-- Use the bare repo slug (matched by app package id) or pin a specific bundle:
-  - `patches-source = "brosssh/revanced-external-bundles"`
-  - `patches-source = "external-bundles:revanced-patches"`
-
-## Browse patches / Morphe patch index
-
-- [Awesome for Morphe](https://github.com/nvbangg/awesome-for-morphe) — curated list of Morphe tools, patch indexes, and community resources.
-- [Patch Explorer](https://patch-explorer.web.app/) — browse all Morphe-supported apps and patches.
-- [Community Patch Space Explorer](https://lighthouse3140.github.io/) — explore community patch spaces (ReVanced Extended, etc.).
-- [Morphe Patch Tracker](https://github.com/MorpheApp/morphe-patches/releases) — official Morphe patch releases feed.
-
-## Config examples
+[`brosssh/revanced-external-bundles`](https://github.com/brosssh/revanced-external-bundles) resolves a
+patch jar through the community aggregator at <https://revanced-external-bundles.brosssh.com>:
 
 ```toml
-# Morphe (default)
-patches-source = "MorpheApp/morphe-patches"
-cli-source     = "MorpheApp/morphe-cli"
-cli-profile    = "auto"
-
-# Adobo (Morphe-compatible)
-patches-source = "jkennethcarino/adobo"
-cli-source     = "MorpheApp/morphe-cli"
-cli-profile    = "adobo-cli"
-
-# External bundles (resolved by package id)
-patches-source = "brosssh/revanced-external-bundles"
-
-# External bundles (explicit bundle type)
-patches-source = "external-bundles:revanced-patches"
-
-# Layered: Morphe base + Adobo overrides
-patches-source = [
-  "MorpheApp/morphe-patches",
-  "jkennethcarino/adobo",
-]
+patches-source = "brosssh/revanced-external-bundles"       # matched by the app's package id
+patches-source = "external-bundles:revanced-patches"       # explicit bundle type
 ```
+
+## Combining bundles
+
+Each patch is applied from the bundle that lists it, so one app can mix bundles. Keep `patches` lists to
+names that exist in at least one bundle:
+
+```toml
+[Discord]
+patches-source = ["VenusIsJaded/Venus-Patches", "kveld9/kveld-morphe-patches", "jrddupont/discord-patches"]
+cli-source = "MorpheApp/morphe-cli"
+exclusive = true
+patches = ["Custom themes", "Shrink PNG Images", "Pin app to built-in bundle"]
+```
+
+## Finding patches
+
+- [Patch Explorer](https://patch-explorer.web.app/) - browse Morphe-supported apps and patches
+- [Awesome for Morphe](https://github.com/nvbangg/awesome-for-morphe) - curated tools and bundles
+- [Morphe patch releases](https://github.com/MorpheApp/morphe-patches/releases)
+- The [generator](./generator.html) can list the patches of any bundle repo

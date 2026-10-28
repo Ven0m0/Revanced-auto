@@ -30,7 +30,7 @@
   "prHourlyLimit": 0,
   "rangeStrategy": "bump",
   "constraints": {
-    "python": "<3.16"
+    "python": "<3.17"
   },
   "pre-commit": {
     "enabled": true
@@ -53,30 +53,30 @@
   },
   "packageRules": [
     {
-      "description": "Allow Python Docker images >=3.14 but exclude 3.15.x series",
+      "description": "Allow Python Docker images in the 3.15.x series only",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["python"],
       "pinDigests": false,
-      "allowedVersions": ">=3.14 <3.15"
+      "allowedVersions": ">=3.15 <3.16"
     },
     {
-      "description": "Allow any Python version >=3.13 but exclude 3.14.x series",
+      "description": "Keep requires-python on the 3.15 series",
       "matchManagers": ["pep621"],
       "matchPackageNames": ["python"],
       "matchDepTypes": ["requires-python"],
-      "allowedVersions": "<3.15"
+      "allowedVersions": "<3.16"
     },
     {
-      "description": "Restrict mise Python to 3.14.x, exclude 3.15+",
+      "description": "Restrict mise Python to 3.15.x, exclude 3.16+",
       "matchManagers": ["mise"],
       "matchPackageNames": ["python"],
-      "allowedVersions": "3.14.x"
+      "allowedVersions": "3.15.x"
     },
     {
-      "description": "Restrict Python version to exclude 3.15+ for pyenv, pep723 and custom managers",
+      "description": "Restrict Python version to exclude 3.16+ for pyenv, pep723 and custom managers",
       "matchManagers": ["pyenv", "pep723", "custom.regex", "mise"],
       "matchPackageNames": ["python"],
-      "allowedVersions": "<3.15"
+      "allowedVersions": "<3.16"
     },
     {
       "description": "Disable Docker digest pinning",
