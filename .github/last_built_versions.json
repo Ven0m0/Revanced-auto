@@ -25,5 +25,8 @@
   "app_soundcloud_version": "auto",
   "app_googlemaps_patches_source": "bearinmindcat/morphe-patches",
   "app_googlemaps_cli_source": "MorpheApp/morphe-cli",
-  "app_googlemaps_version": "auto"
+  "app_googlemaps_version": "auto",
+  "app_discord_patches_source": "VenusIsJaded/Venus-Patches,kveld9/kveld-morphe-patches,jrddupont/discord-patches",
+  "app_discord_cli_source": "MorpheApp/morphe-cli",
+  "app_discord_version": "auto"
 }
