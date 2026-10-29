@@ -154,6 +154,19 @@ def test_resolve_passes_include_beta(*, include_beta: bool, expect_exclude: bool
     assert fake.versions_kwargs["exclude_alpha_beta"] is expect_exclude
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [(DownloadSource.APKMIRROR, ["1.0.0"]), (DownloadSource.APKPURE, None)],
+)
+def test_resolve_forwards_compatible_only_to_apkmirror(source: DownloadSource, expected: list[str] | None) -> None:
+    fake = _FakeScraper(source, versions=["1.0.0"])
+    manager = _manager(source, fake)
+
+    manager.resolve("com.example", source, compatible=["1.0.0"])
+
+    assert fake.versions_kwargs.get("compatible") == expected
+
+
 def test_expected_cert_match_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = DownloadSource.APKPURE
     out = tmp_path / "stock.apk"
