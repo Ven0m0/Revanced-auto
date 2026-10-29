@@ -7,11 +7,13 @@ from pathlib import Path
 from selectolax.lexbor import LexborHTMLParser
 
 from scripts.scrapers.base import (
+    ChallengeError,
     DownloadResult,
     DownloadSource,
     ScraperBase,
     VersionInfo,
 )
+from scripts.scrapers.browser import ChallengeBrowser
 
 APKPURE_BASE = "https://apkpure.net"
 
@@ -21,6 +23,7 @@ class APKPureScraper(ScraperBase):
 
     def __init__(self) -> None:
         super().__init__(DownloadSource.APKPURE)
+        self._browser: ChallengeBrowser | None = None
 
     def _build_url(self, name: str, package: str, path: str = "") -> str:
         base = f"{APKPURE_BASE}/{name}/{package}"
@@ -46,8 +49,11 @@ class APKPureScraper(ScraperBase):
         tree = LexborHTMLParser(html_content)
         versions: list[VersionInfo] = []
         seen: set[str] = set()
-        for item in tree.css("div.ver-item a span.ver-item-n"):
-            text = item.text(strip=True)
+        # Current markup first (ul.version-list), then the older div.ver-item layout.
+        texts = [item.attrs.get("data-dt-version") or "" for item in tree.css("ul.version-list li.version")]
+        texts += [item.text(strip=True) for item in tree.css("div.ver-item a span.ver-item-n")]
+        for raw in texts:
+            text = raw.strip()
             if text and text not in seen:
                 seen.add(text)
                 versions.append(VersionInfo(version=text))
@@ -73,13 +79,36 @@ class APKPureScraper(ScraperBase):
                 return str(href).strip()
         return None
 
+    async def _browser_text(self, url: str) -> str:
+        """Page HTML through a real browser, which clears the Cloudflare challenge plain HTTP cannot."""
+        if self._browser is None:
+            self._browser = ChallengeBrowser()
+        return await self._browser.fetch_html(url)
+
+    async def _close_browser(self) -> None:
+        # Each DownloadManager call has its own event loop, so a browser must not outlive it.
+        if self._browser is not None:
+            await self._browser.aclose()
+            self._browser = None
+
+    async def _get_text(self, url: str) -> str:
+        try:
+            return (await self.get(url)).text
+        except ChallengeError:
+            return await self._browser_text(url)
+
     async def get_versions(self, pkg_name: str, **kwargs: object) -> list[VersionInfo]:
         default_name, package = self._split_pkg_name(pkg_name)
         name = str(kwargs.get("name", default_name))
         url = self._build_url(name, package, "versions")
-        response = await self.get(url)
-        html = response.text
-        return self._parse_versions_page(html)
+        try:
+            versions = self._parse_versions_page(await self._get_text(url))
+            if not versions:
+                # Outside CI the challenge is a 200 stub, not a 403, so it parses to nothing.
+                versions = self._parse_versions_page(await self._browser_text(url))
+            return versions
+        finally:
+            await self._close_browser()
 
     async def download(
         self,
@@ -96,9 +125,9 @@ class APKPureScraper(ScraperBase):
         url = self._build_url(name, package, f"download/{version}")
 
         try:
-            response = await self.get(url)
-            html = response.text
-            download_url = self._parse_download_link(html)
+            download_url = self._parse_download_link(await self._get_text(url))
+            if download_url is None:
+                download_url = self._parse_download_link(await self._browser_text(url))
             if download_url is None:
                 return DownloadResult(success=False, error="Download link not found")
 
@@ -117,3 +146,5 @@ class APKPureScraper(ScraperBase):
 
         except Exception as e:
             return DownloadResult(success=False, error=str(e))
+        finally:
+            await self._close_browser()

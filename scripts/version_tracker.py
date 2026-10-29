@@ -7,6 +7,7 @@ import argparse
 import os
 import sys
 import tomllib
+import uuid
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import lru_cache
@@ -183,13 +184,19 @@ def set_github_output(key: str, value: str) -> None:
     gh_output = os.environ.get("GITHUB_OUTPUT")
     if gh_output:
         with Path(gh_output).open("a", encoding="utf-8") as f:
-            f.write(f"{key}={value}\n")
+            if "\n" in value:
+                # GITHUB_OUTPUT accepts a multi-line value only in heredoc form.
+                delimiter = f"EOF_{uuid.uuid4().hex}"
+                f.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
+            else:
+                f.write(f"{key}={value}\n")
     print(f"  {key}={value}", file=sys.stderr)
 
 
 def format_changes_for_github_output(changes: list[VersionDiff]) -> str:
     return "\n".join(
-        f"::notice title={change.key}::{change.change_type}: {change.old} -> {change.new}" for change in changes
+        f"{change.key}: {change.change_type}: {change.old or '(none)'} -> {change.new or '(none)'}"
+        for change in changes
     )
 
 

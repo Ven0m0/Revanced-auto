@@ -1,6 +1,6 @@
 """Tests for scripts/version_tracker.py."""
 
-# ruff: noqa: S101, TC003, TC002
+# ruff: noqa: S101, TC003
 
 from __future__ import annotations
 
@@ -306,3 +306,58 @@ class TestExecuteCheckCommand:
 
         captured = capsys.readouterr()
         assert captured.out.strip() == "false"
+
+
+def _parse_github_output(text: str) -> dict[str, str]:
+    """Parse a GITHUB_OUTPUT file the way the Actions runner does: ``k=v`` lines and ``k<<DELIM`` blocks."""
+    outputs: dict[str, str] = {}
+    lines = iter(text.splitlines())
+    for line in lines:
+        eq, heredoc = line.find("="), line.find("<<")
+        if heredoc >= 0 and (eq < 0 or heredoc < eq):
+            key, delimiter = line[:heredoc], line[heredoc + 2 :]
+            body: list[str] = []
+            for body_line in lines:
+                if body_line == delimiter:
+                    break
+                body.append(body_line)
+            else:
+                pytest.fail(f"unterminated heredoc for {key!r}")
+            outputs[key] = "\n".join(body)
+        elif eq >= 0:
+            outputs[line[:eq]] = line[eq + 1 :]
+        else:
+            pytest.fail(f"Invalid format {line!r}")
+    return outputs
+
+
+class TestGithubOutputFile:
+    def test_single_line_value_is_written_as_key_value(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.version_tracker import set_github_output
+
+        out = tmp_path / "out.txt"
+        monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+
+        set_github_output("needs_build", "true")
+
+        assert out.read_text(encoding="utf-8") == "needs_build=true\n"
+
+    def test_check_writes_a_file_the_runner_parses_back(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.version_tracker import execute_check_command
+
+        out = tmp_path / "out.txt"
+        monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+        changes = [
+            VersionDiff(key="patches_tag_a@latest", old="", new="v1", change_type="added"),
+            VersionDiff(key="app_x_version", old="1", new="2", change_type="modified"),
+        ]
+
+        with patch("scripts.version_tracker.check_needs_build", return_value=CheckResult(True, changes)):
+            execute_check_command("config.toml", None)
+
+        parsed = _parse_github_output(out.read_text(encoding="utf-8"))
+        assert parsed["needs_build"] == "true"
+        assert parsed["changes"].splitlines() == [
+            "patches_tag_a@latest: added: (none) -> v1",
+            "app_x_version: modified: 1 -> 2",
+        ]

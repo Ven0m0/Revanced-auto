@@ -4,6 +4,7 @@
 
 import re
 import zipfile
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
@@ -14,6 +15,7 @@ from scripts.scrapers.apkmirror import (
     APKMirror,
     ArchType,
     SearchConfig,
+    _guess_release_url,
     _is_prerelease,
     _parse_row_data,
     _parse_rows,
@@ -164,6 +166,132 @@ def test_is_prerelease(display_text: str, *, expected: bool) -> None:
     version_match = re.search(r"\d+(?:\.\d+)+", display_text)
     assert version_match is not None
     assert _is_prerelease(display_text, version_match) is expected
+
+
+_APKM = "https://www.apkmirror.com/apk"
+
+
+@pytest.mark.parametrize(
+    ("releases", "version", "expected"),
+    [
+        # The three real releases that sit beyond the app page's short listing.
+        (
+            [("TikTok 47.5.3", f"{_APKM}/tiktok-pte-ltd/tik-tok-including-musical-ly/tiktok-47-5-3-release/")],
+            "47.4.3",
+            f"{_APKM}/tiktok-pte-ltd/tik-tok-including-musical-ly/tiktok-47-4-3-release/",
+        ),
+        (
+            [("Google Maps 26.42.02.997557324", f"{_APKM}/google-inc/maps/google-maps-26-42-02-997557324-release/")],
+            "26.36.04.973607363",
+            f"{_APKM}/google-inc/maps/google-maps-26-36-04-973607363-release/",
+        ),
+        # SoundCloud's slug prefix changed over time: the oldest listed row must be the template.
+        (
+            [
+                (
+                    "SoundCloud: Discover Music 2026.10.21-release",
+                    f"{_APKM}/soundcloud/soundcloud-soundcloud/soundcloud-discover-music-2026-10-21-release-release/",
+                ),
+                (
+                    "SoundCloud: Discover Music 2026.09.23-release",
+                    f"{_APKM}/soundcloud/soundcloud-soundcloud/soundcloud-the-music-you-love-2026-09-23-release-release/",
+                ),
+            ],
+            "2026.09.09",
+            f"{_APKM}/soundcloud/soundcloud-soundcloud/soundcloud-the-music-you-love-2026-09-09-release-release/",
+        ),
+        # A prerelease row has a different slug suffix, so it must not be the template.
+        (
+            [
+                ("App 2.0.0", f"{_APKM}/p/app/app-2-0-0-release/"),
+                ("App 1.5.0 beta", f"{_APKM}/p/app/app-1-5-0-beta-release/"),
+            ],
+            "1.0.0",
+            f"{_APKM}/p/app/app-1-0-0-release/",
+        ),
+        ([], "1.0.0", None),
+    ],
+)
+def test_guess_release_url(releases: list[tuple[str, str]], version: str, expected: str | None) -> None:
+    assert _guess_release_url(releases, version) == expected
+
+
+_SHORT_LISTING = """
+<div class="listWidget">
+  <div class="widgetHeader">All versions</div>
+  <div class="appRow"><a class="fontBlack" href="/apk/pkg/app/app-5-0-0-release/">App 5.0.0</a></div>
+  <div class="appRow"><a class="fontBlack" href="/apk/pkg/app/app-4-0-0-release/">App 4.0.0</a></div>
+</div>
+"""
+_LISTING_URL = f"{_APKM}/pkg/app/"
+_OLD_RELEASE_URL = f"{_APKM}/pkg/app/app-3-0-0-release/"
+
+
+def _fake_get(pages: dict[str, str]) -> AsyncMock:
+    async def get(url: str, use_cache: bool = True) -> SimpleNamespace:  # noqa: ARG001, FBT001, FBT002
+        if url not in pages:
+            msg = f"HTTP 404 for {url}"
+            raise RuntimeError(msg)
+        return SimpleNamespace(text=pages[url])
+
+    return AsyncMock(side_effect=get)
+
+
+@pytest.mark.asyncio
+async def test_get_versions_probes_compatible_version_beyond_the_listing() -> None:
+    fake_get = _fake_get({_LISTING_URL: _SHORT_LISTING, _OLD_RELEASE_URL: _APK_ROW})
+
+    with patch.object(APKMirror, "get", new=fake_get):
+        versions = await APKMirror().get_versions("pkg/app", match_any=True, compatible=["3.0.0", "2.0.0"])
+
+    assert [(v.version, v.url) for v in versions] == [
+        ("5.0.0", f"{_APKM}/pkg/app/app-5-0-0-release/"),
+        ("4.0.0", f"{_APKM}/pkg/app/app-4-0-0-release/"),
+        ("3.0.0", _OLD_RELEASE_URL),
+    ]
+    # The newest compatible hit ends the probing; 2.0.0 is never requested.
+    assert f"{_APKM}/pkg/app/app-2-0-0-release/" not in [c.args[0] for c in fake_get.await_args_list]
+
+
+@pytest.mark.asyncio
+async def test_get_versions_skips_probe_when_a_compatible_version_is_listed() -> None:
+    fake_get = _fake_get({_LISTING_URL: _SHORT_LISTING})
+
+    with patch.object(APKMirror, "get", new=fake_get):
+        versions = await APKMirror().get_versions("pkg/app", match_any=True, compatible=["4.0.0", "3.0.0"])
+
+    assert [v.version for v in versions] == ["5.0.0", "4.0.0"]
+    fake_get.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_versions_probe_finds_nothing_when_release_page_is_missing() -> None:
+    fake_get = _fake_get({_LISTING_URL: _SHORT_LISTING})
+
+    with patch.object(APKMirror, "get", new=fake_get):
+        versions = await APKMirror().get_versions("pkg/app", match_any=True, compatible=["3.0.0"])
+
+    assert [v.version for v in versions] == ["5.0.0", "4.0.0"]
+
+
+@pytest.mark.asyncio
+async def test_download_fetches_release_beyond_the_listing(tmp_path: Path) -> None:
+    fake_get = _fake_get({_LISTING_URL: _SHORT_LISTING, _OLD_RELEASE_URL: _APK_ROW})
+    get_download_url = AsyncMock(return_value="https://www.apkmirror.com/final.apk")
+
+    with (
+        patch.object(APKMirror, "get", new=fake_get),
+        patch.object(APKMirror, "_get_download_url", new=get_download_url),
+        patch.object(APKMirror, "save", new=AsyncMock()),
+    ):
+        result = await APKMirror().download("pkg/app", "3.0.0", tmp_path / "app.apk")
+
+    assert result.success
+    assert result.version == "3.0.0"
+    get_download_url.assert_awaited_once()
+    call = get_download_url.await_args
+    assert call is not None
+    assert "apk-universal" in call.args[0]
 
 
 @pytest.mark.parametrize(

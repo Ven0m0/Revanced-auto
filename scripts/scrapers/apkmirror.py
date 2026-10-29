@@ -117,6 +117,36 @@ def _is_prerelease(display_text: str, version_match: re.Match[str]) -> bool:
     return "alpha" in suffix or "beta" in suffix
 
 
+_VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
+
+# shortcut: caps the extra release-page requests per lookup, raise it if compatible versions sit deeper than this.
+_MAX_UNLISTED_PROBES = 8
+
+
+def _version_key(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in re.findall(r"\d+", version))
+
+
+def _guess_release_url(releases: list[tuple[str, str]], version: str) -> str | None:
+    """Build the release URL of ``version`` from the slug of a listed stable release.
+
+    Slugs are ``<prefix><version with dots as dashes><suffix>`` (e.g.
+    ``tiktok-47-5-3-release``), so one listed row gives the template for
+    releases the app page no longer lists. The oldest row is the template
+    because slugs drift (APKMirror renamed SoundCloud's mid-history) and the
+    wanted release is older than everything listed.
+    """
+    for display_text, url in reversed(releases):
+        version_match = _VERSION_RE.search(display_text)
+        if version_match is None or _is_prerelease(display_text, version_match):
+            continue
+        parent, _, slug = url.rstrip("/").rpartition("/")
+        prefix, found, suffix = slug.partition(version_match.group().replace(".", "-"))
+        if found:
+            return f"{parent}/{prefix}{version.replace('.', '-')}{suffix}/"
+    return None
+
+
 _BUNDLE_RANK: dict[str, int] = {"APK": 0, "BUNDLE": 1}
 
 
@@ -355,6 +385,45 @@ class APKMirror(ScraperBase):
             releases.append((link.text(strip=True), f"{self.BASE_URL}{href}"))
         return releases
 
+    async def _unlisted_release(
+        self, releases: list[tuple[str, str]], version: str, config: SearchConfig
+    ) -> tuple[str, str] | None:
+        """Fetch a release missing from the app page; returns ``(release_url, variant_url)``.
+
+        The app page lists only the ~10 newest releases, but older ones stay
+        reachable at the same slug pattern. A missing page raises ``RuntimeError``,
+        and a page without variant rows is not a release, so both mean "not there".
+        """
+        release_url = _guess_release_url(releases, version)
+        if release_url is None:
+            return None
+        try:
+            release_html = await self._get_text(release_url, False)
+        except RuntimeError:
+            return None
+        variant_url = self._search_variant(release_html, config)
+        return (release_url, variant_url) if variant_url else None
+
+    async def _probe_unlisted(
+        self, releases: list[tuple[str, str]], compatible: list[str], config: SearchConfig, dpi: str
+    ) -> VersionInfo | None:
+        """Newest patch-compatible version older than everything the app page lists, if it exists."""
+        listed = [_version_key(m.group()) for text, _ in releases if (m := _VERSION_RE.search(text))]
+        if not listed:
+            return None
+        older = sorted((v for v in compatible if _version_key(v) < min(listed)), key=_version_key, reverse=True)
+        for version in older[:_MAX_UNLISTED_PROBES]:
+            found = await self._unlisted_release(releases, version, config)
+            if found:
+                release_url, variant_url = found
+                return VersionInfo(
+                    version=version,
+                    url=release_url if config.match_any else variant_url,
+                    arch=config.arch,
+                    dpi=dpi,
+                )
+        return None
+
     async def get_versions(
         self,
         pkg_name: str,
@@ -363,9 +432,10 @@ class APKMirror(ScraperBase):
         bundle_type: BundleType = "APK",
         exclude_alpha_beta: bool = True,
         match_any: bool = False,
+        compatible: list[str] | None = None,
     ) -> list[VersionInfo]:
         try:
-            return await self._get_versions(pkg_name, arch, dpi, bundle_type, exclude_alpha_beta, match_any)
+            return await self._get_versions(pkg_name, arch, dpi, bundle_type, exclude_alpha_beta, match_any, compatible)
         finally:
             await self._close_browser()
 
@@ -377,6 +447,7 @@ class APKMirror(ScraperBase):
         bundle_type: BundleType,
         exclude_alpha_beta: bool,
         match_any: bool,
+        compatible: list[str] | None = None,
     ) -> list[VersionInfo]:
         config = SearchConfig(
             apk_bundle=bundle_type,
@@ -417,6 +488,10 @@ class APKMirror(ScraperBase):
                         dpi=dpi,
                     )
                 )
+        if compatible and not any(r.version in compatible for r in results):
+            probed = await self._probe_unlisted(releases, compatible, config, dpi)
+            if probed:
+                results.append(probed)
         return results
 
     async def download(
@@ -463,6 +538,9 @@ class APKMirror(ScraperBase):
                     release_html = await self._get_text(release_url, False)
                     download_url = self._search_variant(release_html, config)
                     break
+                else:
+                    found = await self._unlisted_release(releases, version, config)
+                    download_url = found[1] if found else None
                 if download_url is None:
                     return DownloadResult(
                         success=False,

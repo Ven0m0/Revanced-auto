@@ -35,7 +35,7 @@ def separate_config(input_config: str, app_name: str, output_config: str) -> Non
 
 def combine_logs(logs_dir: str) -> str:
     """Concatenate every build.md found under logs_dir, separated by '---'."""
-    log.info(f"Combining build logs from: {logs_dir}")
+    # No stdout logging here: the caller prints this function's result into the GitHub release body.
     dir_path = Path(logs_dir)
     if not dir_path.is_dir():
         log.warn(f"Logs directory not found: {logs_dir} (no build-log-* artifacts uploaded)")

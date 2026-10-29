@@ -161,7 +161,10 @@ class DownloadManager:
             # equality checks, accepting whatever variant a release has. It's
             # an APKMirror-only kwarg; other scrapers ignore unknown kwargs
             # via **kwargs.
-            kwargs: dict[str, bool] = {"match_any": True, "exclude_alpha_beta": not include_beta}
+            kwargs: dict[str, bool | list[str]] = {"match_any": True, "exclude_alpha_beta": not include_beta}
+            if source == DownloadSource.APKMIRROR and compatible:
+                # APKMirror's app page lists only recent releases; this lets it look up older compatible ones.
+                kwargs["compatible"] = compatible
             versions = asyncio.run(scraper.get_versions(app_id, **kwargs))
         if not versions:
             msg = f"No versions found for {app_id!r} on {source.value}"
