@@ -1268,17 +1268,6 @@ def _write_build_log(summary: BuildSummary, path: Path | None = None) -> None:
         lines.extend(f"- {patch}" for patch in result.changelog)
         lines.append("")
 
-    lines.extend(
-        [
-            "### MicroG / GmsCore (Required for YouTube & YT Music)",
-            "Download and install one of the following GmsCore providers:",
-            "- [ReVanced GmsCore](https://github.com/ReVanced/GmsCore/releases/latest)",
-            "- [Wst_Xda GmsCore (Morphe)](https://github.com/MorpheApp/MicroG-RE/releases/latest)",
-            "- [YT-Advanced GmsCore (Rex)](https://github.com/YT-Advanced/GmsCore/releases/latest)",
-            "",
-        ]
-    )
-
     if summary.failed:
         lines.append("Skipped:")
         lines.extend(f"- {result.app_name}: {result.error}" for result in summary.failed)

@@ -33,8 +33,13 @@ def separate_config(input_config: str, app_name: str, output_config: str) -> Non
     log.info(f"Separated config saved to: {output_config}")
 
 
+_GMSCORE_NOTE = """### MicroG / GmsCore (Required for YouTube & YT Music)
+Download and install [MicroG-RE](https://github.com/morpheapp/microg-RE/releases/latest).
+"""
+
+
 def combine_logs(logs_dir: str) -> str:
-    """Concatenate every build.md found under logs_dir, separated by '---'."""
+    """Concatenate every build.md found under logs_dir, separated by '---', then the GmsCore note once."""
     # No stdout logging here: the caller prints this function's result into the GitHub release body.
     dir_path = Path(logs_dir)
     if not dir_path.is_dir():
@@ -46,4 +51,5 @@ def combine_logs(logs_dir: str) -> str:
         log.warn(f"No build.md files found in {logs_dir}")
         return "No builds completed"
 
-    return "\n\n---\n\n".join(f.read_text(encoding="utf-8") for f in log_files)
+    logs = "\n\n---\n\n".join(f.read_text(encoding="utf-8") for f in log_files)
+    return f"{logs}\n\n---\n\n{_GMSCORE_NOTE}"
