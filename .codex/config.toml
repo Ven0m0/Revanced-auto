@@ -1,5 +1,0 @@
-# Matches this project's Claude MCP connection; start Morphe locally before use.
-[mcp_servers.morphe-mcp]
-url = "http://127.0.0.1:8000/mcp"
-startup_timeout_sec = 30
-tool_timeout_sec = 120
