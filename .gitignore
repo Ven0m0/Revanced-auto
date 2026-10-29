@@ -31,7 +31,11 @@ Thumbs.db
 .DS_Store
 
 # AI/Copilot files
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/skills/
+!.claude/agents/
 .remember/
 
 # Python caches and build artifacts

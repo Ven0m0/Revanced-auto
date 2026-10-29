@@ -451,7 +451,8 @@ patches = [
 [GoogleMaps]
 enabled = true
 app-name = "GoogleMaps"
-version = "auto"
+# Pinned to the only Maps version bearinmindcat/morphe-patches targets (google-maps-26-36-04-973607363-release on APKMirror).
+version = "26.36.04.973607363"
 patches-source = "bearinmindcat/morphe-patches"
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"

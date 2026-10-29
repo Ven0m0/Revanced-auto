@@ -195,11 +195,7 @@ Normal flow:
 6. Patch, sign, and write final artifacts to `build/`.
 7. Save the new version state after a successful build.
 
-For YouTube and YouTube Music builds, expect to install a compatible GmsCore/MicroG provider on-device. The build appends provider links to `build.md`; if you need them directly, see:
-
-- <https://github.com/ReVanced/GmsCore/releases/latest>
-- <https://github.com/MorpheApp/MicroG-RE/releases/latest>
-- <https://github.com/YT-Advanced/GmsCore/releases/latest>
+For YouTube and YouTube Music builds, expect to install MicroG-RE on-device. The release notes link it once; you can also get it directly from <https://github.com/morpheapp/microg-RE/releases/latest>.
 
 ## Outputs
 
