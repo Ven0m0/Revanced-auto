@@ -8,6 +8,12 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _offline_patches_tags(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep version-tracker tests off the GitHub API; tests of resolve_patches_tags call it via their own import."""
+    monkeypatch.setattr("scripts.version_tracker.resolve_patches_tags", lambda _config: {})
+
+
 @pytest.fixture
 def sample_apk(tmp_path: Path) -> Path:
     """Create a minimal placeholder .apk file for testing."""

@@ -16,8 +16,36 @@ from scripts.version_tracker import (
     execute_show_command,
     extract_current_versions,
     load_state,
+    resolve_patches_tags,
     save_state,
 )
+
+# ---------------------------------------------------------------------------
+# resolve_patches_tags
+# ---------------------------------------------------------------------------
+
+
+class TestResolvePatchesTags:
+    def test_resolves_unique_enabled_sources(self) -> None:
+        config: dict[str, object] = {
+            "patches-source": "MorpheApp/morphe-patches",
+            "patches-version": "latest",
+            "A": {},
+            "B": {"patches-source": ["MorpheApp/morphe-patches", "x/y"], "patches-version": "dev"},
+            "Off": {"enabled": False, "patches-source": "never/resolved"},
+            "C": {"patches-source": "brosssh/revanced-external-bundles"},
+        }
+        with patch(
+            "scripts.version_tracker._resolve_github_release_asset",
+            side_effect=lambda src, _ext, _fb, version: ("f.mpp", "url", f"{src}-{version}-tag"),
+        ):
+            tags = resolve_patches_tags(config)
+        assert tags == {
+            "patches_tag_MorpheApp/morphe-patches@latest": "MorpheApp/morphe-patches-latest-tag",
+            "patches_tag_MorpheApp/morphe-patches@dev": "MorpheApp/morphe-patches-dev-tag",
+            "patches_tag_x/y@dev": "x/y-dev-tag",
+        }
+
 
 # ---------------------------------------------------------------------------
 # save_state / load_state

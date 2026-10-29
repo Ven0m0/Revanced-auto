@@ -29,13 +29,14 @@ class ChallengeBrowser:
             # Lazy so runs that never meet a challenge neither import nodriver nor need Chrome.
             import nodriver
 
-            self._browser = await nodriver.start(headless=False)
+            # GitHub's ubuntu-24.04 runners block Chrome's userns sandbox (AppArmor); nodriver only drops it for root.
+            self._browser = await nodriver.start(headless=False, sandbox=False)
         log.info(f"Cloudflare challenge, fetching via browser: {url}")
         tab = await self._browser.get(url)
         title = ""
         for _ in range(_CHALLENGE_TIMEOUT_S):
             await tab.sleep(1)
-            title = await tab.evaluate("document.title") or ""
+            title = str(await tab.evaluate("document.title") or "")
             if _BLOCKED_TITLE in title:
                 msg = f"Cloudflare blocked the browser for {url}"
                 raise RuntimeError(msg)

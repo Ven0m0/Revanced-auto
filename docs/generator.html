@@ -863,8 +863,11 @@ cli-profile = "${g("cli-profile").value}"
             selector.style.display = "block";
             selector.innerHTML = '<div style="text-align:center;padding:2rem"><div class="loading-spinner"></div><p style="margin-top:1rem;color:var(--text-muted)">Loading patches&hellip;</p></div>';
             try {
-                const patches = await fetchPatches(source);
-                renderPatchSelector(appId, patches, source);
+                // The source field is a comma-separated list of bundles; a later bundle wins on duplicate patch names.
+                const repos = source.split(",").map((s) => s.trim()).filter(Boolean);
+                const bundles = await Promise.all(repos.map(fetchPatches));
+                const merged = new Map(bundles.flat().map((p) => [p.name, p]));
+                renderPatchSelector(appId, [...merged.values()], repos.join(", "));
             } catch (error) {
                 selector.innerHTML = `<div class="error-message">Failed to load patches: <span class="error-content"></span></div>`;
                 selector.querySelector(".error-content").textContent = error.message;
