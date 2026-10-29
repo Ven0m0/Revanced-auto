@@ -499,6 +499,8 @@ rv-brand = "Morphe"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/discord/discord-chat-for-gamers/"
 # APKMirror URLs carry no package id, so list-versions needs it spelled out.
 package-name = "com.discord"
+# Pinned to the Discord version the patch bundles target; drop the pin to follow the compatible list again.
+version = "350.8"
 exclusive = true
 patches = [
   # Venus Patches
