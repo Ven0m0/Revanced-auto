@@ -706,7 +706,7 @@ class AppProcessor:
         scraper_pkg_name = _derive_scraper_pkg_name(download_url, source) if download_url else app_config.name
 
         patches_source = app_config.patches_source or self.config.global_settings.patches_source
-        patches_version = self.config.global_settings.patches_version
+        patches_version = str(app_config.options.get("patches_version") or self.config.global_settings.patches_version)
 
         cli_source = app_config.cli_source or self.config.global_settings.cli_source
         cli_version = self.config.global_settings.cli_version

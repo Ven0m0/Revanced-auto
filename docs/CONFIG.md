@@ -36,6 +36,7 @@ An enabled app needs at least one `*-dlurl`. Everything else is optional.
 | `package-name` | Package id used to look up patch-compatible versions. Required when no URL contains it. |
 | `arch` | Overrides the global architecture. |
 | `patches-source` / `cli-source` | Override the global sources. A list of sources is merged; later entries win on duplicate patch names. |
+| `patches-version` | Overrides the global `patches-version` for every bundle of this app. |
 | `patches` | Array of patch names to enable. |
 | `exclude-patches` | Array of patch names to disable. |
 | `exclusive` | `true` enables only the names in `patches`; everything else stays off. |

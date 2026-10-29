@@ -47,7 +47,7 @@ patches-source = "MorpheApp/morphe-patches"
 # =============================================================================
 # APP CONFIGURATIONS
 # =============================================================================
-# Each app section can override: arch, patches-source, cli-source (the other global keys are global-only)
+# Each app section can override: arch, patches-source, patches-version, cli-source (the other global keys are global-only)
 # Required fields: at least one download URL (apkmirror-dlurl, archive-dlurl, apkpure-dlurl,
 # github-dlurl = "https://github.com/owner/repo", aptoide-dlurl, apkmonk-dlurl or uptodown-dlurl)
 # Per-app only: app-name, rv-brand, package-name, version, patches, exclude-patches, exclusive, patch-options
@@ -58,6 +58,8 @@ patches-source = "MorpheApp/morphe-patches"
 enabled = true
 app-name = "TikTok"
 patches-source = ["icysymmetra/tiktok-patches-for-morphe", "kveld9/kveld-morphe-patches"]
+# The patch list was exported from Metra's pre-release; stable v0.8.1 ships only 42 patches with older names.
+patches-version = "dev"
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://apkmirror.com/apk/tiktok-pte-ltd/tik-tok-including-musical-ly"

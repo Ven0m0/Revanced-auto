@@ -188,6 +188,29 @@ class TestAppProcessorDownloadSource:
         assert [source for source, _ in candidates] == [DownloadSource.GITHUB, DownloadSource.UPTODOWN]
 
 
+class TestPatchesVersionOverride:
+    """Per-app ``patches-version`` overrides the global one."""
+
+    @pytest.fixture
+    def processor(self) -> AppProcessor:
+        config_mock = MagicMock()
+        config_mock.global_settings = GlobalConfig(patches_version="latest")
+        return AppProcessor(config=config_mock, java_runner=MagicMock())
+
+    @pytest.mark.parametrize(("options", "expected"), [({"patches_version": "dev"}, "dev"), ({}, "latest")])
+    def test_patches_version(
+        self,
+        processor: AppProcessor,
+        options: dict[str, str],
+        expected: str,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        app_config = AppConfig(name="TestApp", options={"apkmirror_dlurl": "https://apkmirror.com/apk/o/a", **options})
+        assert processor._prepare_build_context(app_config, "arm64-v8a").patches_version == expected
+
+
 class TestDeriveScraperPkgName:
     """Tests for _derive_scraper_pkg_name."""
 
