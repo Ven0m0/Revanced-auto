@@ -1,0 +1,39 @@
+{
+    "bundleUid": -83051140,
+    "bundleName": "bearinmind patches",
+    "bundleSource": "https://raw.githubusercontent.com/bearinmindcat/morphe-patches/main/patches-bundle.json",
+    "exportDate": "2026-10-29T15:03:42.875453",
+    "selections": {
+        "com.google.android.apps.maps": [
+            "Account sheet cleanup",
+            "Add microG-RE support",
+            "Any media app",
+            "Better offline maps",
+            "Black theme",
+            "Blue pin",
+            "Bypass Play Services checks",
+            "Change app name",
+            "Change package name",
+            "Customization screen",
+            "Hide ads and clutter",
+            "Legacy icon",
+            "Location provider toggle",
+            "Offline saved places",
+            "Power saving mode",
+            "Remove permissions",
+            "Remove sign-in prompts",
+            "Remove telemetry",
+            "Speed cameras",
+            "Speeding chime",
+            "Trim account menu",
+            "Zoom controls in navigation"
+        ]
+    },
+    "options": {
+        "com.google.android.apps.maps": {
+            "Location provider toggle": {
+                "useFusedProvider": "true"
+            }
+        }
+    }
+}
