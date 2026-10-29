@@ -3,6 +3,6 @@
   "private": true,
   "description": "Pins the web lint toolchain (Biome); the project itself is Python.",
   "devDependencies": {
-    "@biomejs/biome": "2.6.3"
+    "@biomejs/biome": "2.6.4"
   }
 }
