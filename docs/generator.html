@@ -811,43 +811,46 @@ cli-profile = "${g("cli-profile").value}"
             const transformPatch = (patch) => ({
                 name: patch.name,
                 description: patch.description || "No description available",
-                compatiblePackages: Array.isArray(patch.compatiblePackages) ? patch.compatiblePackages : [],
-                use: patch.use !== false,
+                // Morphe bundles name the package id "packageName" and keep the display name in "name".
+                compatiblePackages: Array.isArray(patch.compatiblePackages)
+                    ? patch.compatiblePackages.map((pkg) => ({ ...pkg, name: pkg?.packageName ?? pkg?.name }))
+                    : [],
+                use: (patch.use ?? patch.default) !== false,
                 requiresIntegrations: patch.requiresIntegrations || false,
                 options: patch.options || [],
             });
-            // Try common branch names for raw patches.json
-            for (const branch of ["main", "dev", "master"]) {
+            // Morphe bundles publish patches-list.json ({patches: [...]}); older bundles a bare-array patches.json.
+            // HEAD resolves the repo's default branch.
+            const toPatches = (data) => (Array.isArray(data) ? data : data.patches).map(transformPatch);
+            for (const file of ["patches-list.json", "patches.json"]) {
                 try {
-                    const resp = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/patches.json`);
+                    const resp = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${file}`);
                     if (resp.ok) {
-                        const data = await resp.json();
-                        const patches = data.map(transformPatch);
+                        const patches = toPatches(await resp.json());
                         patchesCache.set(repoPath, patches);
                         return patches;
                     }
                 } catch (_) {
-                    // try next branch
+                    // try next file
                 }
             }
             // Fall back to GitHub releases
             const releaseResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`);
             if (!releaseResp.ok) {
-                throw new Error(`Cannot fetch patches from ${repoPath}. Ensure the repo exists and has patches.json.`);
+                throw new Error(`Cannot fetch patches from ${repoPath}. Ensure the repo exists and has patches-list.json.`);
             }
             const release = await releaseResp.json();
             // Accept exact "patches.json" or any release asset ending in .json with "patch" in the name
             const asset = release.assets.find((a) => a.name === "patches.json")
                 || release.assets.find((a) => a.name.toLowerCase().includes("patch") && a.name.endsWith(".json"));
             if (!asset) {
-                throw new Error(`No patches.json found in ${repoPath} releases.`);
+                throw new Error(`No patches-list.json or patches.json found in ${repoPath}.`);
             }
             const assetResp = await fetch(asset.browser_download_url);
             if (!assetResp.ok) {
                 throw new Error(`Cannot download patches.json from ${repoPath} releases.`);
             }
-            const data = await assetResp.json();
-            const patches = data.map(transformPatch);
+            const patches = toPatches(await assetResp.json());
             patchesCache.set(repoPath, patches);
             return patches;
         }
