@@ -56,7 +56,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Install mise-managed toolchain (Python, uv)
-        uses: jdx/mise-action@v5.2.3
+        uses: jdx/mise-action@v5.2.4
         with:
           install: true
           cache: true
@@ -80,7 +80,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Install mise-managed toolchain (Python, uv)
-        uses: jdx/mise-action@v5.2.3
+        uses: jdx/mise-action@v5.2.4
         with:
           install: true
           cache: true
@@ -190,7 +190,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install mise-managed toolchain (Python, uv)
-        uses: jdx/mise-action@v5.2.3
+        uses: jdx/mise-action@v5.2.4
         with:
           install: true
           cache: true
