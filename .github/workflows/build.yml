@@ -5,7 +5,8 @@ permissions:
 on:
   schedule:
     # Cheap patch-update probe; the build itself only runs when check_updates finds a new patches release.
-    - cron: "0 */6 * * *"
+    # Off the top of the hour: GitHub delays or drops scheduled runs at :00 under load.
+    - cron: "17 */6 * * *"
   workflow_call:
     inputs:
       publish_release:
