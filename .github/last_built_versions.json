@@ -34,10 +34,11 @@
   "patches_tag_VenusIsJaded/Venus-Patches@latest": "v1.19.0",
   "patches_tag_bearinmindcat/morphe-patches@latest": "v2.7.4",
   "patches_tag_dh6k/morphe-patches@latest": "v1.9.0",
-  "patches_tag_icysymmetra/tiktok-patches-for-morphe@latest": "v0.8.1",
+  "patches_tag_icysymmetra/tiktok-patches-for-morphe@dev": "v0.9.0-dev.4",
   "patches_tag_jkennethcarino/adobo@latest": "v1.7.0",
   "patches_tag_jrddupont/discord-patches@latest": "v1.5.0",
   "patches_tag_kondratjev/morphe-patches@latest": "v1.28.0",
+  "patches_tag_kveld9/kveld-morphe-patches@dev": "v2.10.0-experimental.3",
   "patches_tag_kveld9/kveld-morphe-patches@latest": "v2.9.0",
   "patches_tag_rushiranpise/morphe-patches@latest": "v1.23.1"
 }
