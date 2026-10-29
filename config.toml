@@ -52,10 +52,12 @@ patches-source = "MorpheApp/morphe-patches"
 # github-dlurl = "https://github.com/owner/repo", aptoide-dlurl, apkmonk-dlurl or uptodown-dlurl)
 # Per-app only: app-name, rv-brand, package-name, version, patches, exclude-patches, exclusive, patch-options
 # =============================================================================
+# TikTok. Selection exported from Morphe Manager (morphe_Metra_musically-2026-10-29-150349.json and
+# morphe_kveld9_Patches_musically-2026-10-29-150357.json).
 [TikTok]
 enabled = true
 app-name = "TikTok"
-patches-source = ["BlazeFTL/FTL-Patches", "icysymmetra/tiktok-patches-for-morphe"]
+patches-source = ["icysymmetra/tiktok-patches-for-morphe", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://apkmirror.com/apk/tiktok-pte-ltd/tik-tok-including-musical-ly"
@@ -63,32 +65,130 @@ uptodown-dlurl = "https://tiktok.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.net/tiktok/com.zhiliaoapp.musically"
 exclusive = true
 patches = [
-  "APK Junk Cleanup",
-  "Png Optimizer",
-  "Remove Ads",
+  "AMOLED dark theme",
+  "Advanced downloads",
+  "Allow Duet and Stitch",
+  "Allow screenshots and Circle to Search",
   "Always show publish date",
+  "Always upload in HD",
+  "App lock",
+  "Automatic video advance",
+  "Block author button",
+  "Block contact list access",
+  "Block installed app scanning",
+  "Block popups",
+  "Block suggested video notifications",
+  "Camera and microphone indicator",
+  "Comment send fix",
+  "Comment sort controls",
+  "Confirm feed interactions",
+  "Copy bio and IDs",
   "Copy comments without username",
-  "Disable long-press quick share",
+  "Disable login requirement",
   "Disable screen capture detection",
+  "Disable telemetry",
+  "Disable the long press quick share",
+  "Disable the long press repost",
+  "Double-tap controls",
   "Downloads",
-  "Enable Live search",
+  "Drop the animated image cache",
+  "Enable voice comments",
+  "Expand activity list",
   "Feature Gate Lab",
   "Feed filter",
   "Feed tab navigation",
+  "Feed text sizes",
+  "Fit the video to the screen",
   "Fix Google login",
+  "Foldable split comment view",
+  "Force show Auto scroll",
+  "Ghost mode",
   "Hide CAPTCHA popups",
+  "Hide already seen videos",
+  "Hide comment popup ads",
+  "Hide comment typing suggestions",
+  "Hide feed LIVE button",
+  "Hide feed follow button",
+  "Hide feed save button",
+  "Hide feed search button",
   "Hide floating promotions",
-  "Hide quick comment reactions",
+  "Hide inbox items",
+  "Hide inbox stories",
+  "Hide profile shortcuts",
+  "Hide search suggestions",
+  "Hide suggested accounts",
+  "Hide the launcher shortcuts",
+  "Hide the risk control CAPTCHA",
+  "Hide video overlays",
+  "In-app browser privacy guard",
+  "Keep a streak going",
+  "Keep playing in the background",
+  "Keep pulled sounds",
+  "Keep the Favorites tab",
+  "Keep the app language",
+  "Keep the screen's refresh rate",
+  "LIVE controls",
+  "Lift text length limits",
+  "Limit background traffic",
+  "Location access governor",
+  "Long-press controls",
+  "Look like the store app",
+  "Mute feed videos",
+  "Not interested button",
+  "Notification controls",
   "Open external links directly",
+  "Picture-in-picture",
+  "Play SDR instead of HDR",
+  "Playback quality",
   "Playback speed",
+  "Prefer H.264 playback",
+  "Profile background",
+  "Remove LIVE extras",
+  "Remove avatar rings",
+  "Remove card scanner assets",
+  "Remove creation tools",
+  "Resource and battery governor",
   "Resume videos after scrolling",
   "Sanitize sharing links",
   "Settings",
-  "Show seekbar",
-  "Show seekbar thumbnail",
+  "Share sheet tools",
+  "Show LIVE search",
+  "Show author region",
+  "Show commenter handle and region",
+  "Show engagement rate",
+  "Show exact counts",
+  "Show follow status",
+  "Show the progress bar",
+  "Show the progress bar thumbnail",
+  "Skip content warnings",
+  "Skip first-launch setup",
+  "Skip passkey sign-in",
+  "Skip the splash ad",
+  "Skip update checks",
+  "Stay on the video in full screen",
+  "Stop on-device AI profiling",
+  "Stop recording watch history",
+  "Stop saving search history",
+  "Stop search autoplay",
   "Stop video looping",
+  "Story controls",
+  "Subtitle tools",
+  "Swipe-left controls",
   "Translate comments",
+  "Turn off haptics",
+  "Turn off screen transitions",
+  "Use non-personalized search",
+  "Use system font",
+  "Remove Extra Languages (Universal)",
+  "Remove Tracking Libraries",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
 ]
+
+[TikTok.patch-options."Shrink WebP Images"]
+stripIcc = "true"
 
 # Google Photos. Only rushiranpise/morphe-patches ships Google Photos patches; no patch list is set, so the
 # bundle's default-enabled patches apply.
@@ -446,8 +546,7 @@ patches = [
   "Enable SoundCloud Go",
 ]
 
-# Google Maps. Selection = the bundle's default-enabled patches (morphe-patches.software default view);
-# "Add microG support" is off by default there and stays off. Opt-in: not previously a build target.
+# Google Maps. Selection exported from Morphe Manager (morphe_bearinmind_patches_maps-2026-10-29-150340.json).
 [GoogleMaps]
 enabled = true
 app-name = "GoogleMaps"
@@ -465,6 +564,7 @@ package-name = "com.google.android.apps.maps"
 exclusive = true
 patches = [
   "Account sheet cleanup",
+  "Add microG-RE support",
   "Any media app",
   "Better offline maps",
   "Black theme",
@@ -474,19 +574,21 @@ patches = [
   "Change package name",
   "Customization screen",
   "Hide ads and clutter",
+  "Legacy icon",
   "Location provider toggle",
   "Offline saved places",
   "Power saving mode",
-  "Rectangle shapes",
   "Remove permissions",
   "Remove sign-in prompts",
   "Remove telemetry",
   "Speed cameras",
   "Speeding chime",
   "Trim account menu",
-  "Waze alerts",
   "Zoom controls in navigation",
 ]
+
+[GoogleMaps.patch-options."Location provider toggle"]
+useFusedProvider = "true"
 
 # Discord. Selection exported from Morphe Manager (morphe_all_selections-2026-10-28-182611.json).
 [Discord]
