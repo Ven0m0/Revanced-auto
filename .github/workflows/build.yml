@@ -3,6 +3,9 @@ permissions:
   contents: write
   actions: read
 on:
+  schedule:
+    # Cheap patch-update probe; the build itself only runs when check_updates finds a new patches release.
+    - cron: "0 */6 * * *"
   workflow_call:
     inputs:
       publish_release:
@@ -37,9 +40,35 @@ on:
         type: boolean
 concurrency:
   group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.app_name }}
-  cancel-in-progress: true
+  # A scheduled probe must not cancel a running manual build that shares the group.
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 jobs:
+  check_updates:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      needs_build: ${{ steps.check.outputs.needs_build }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install mise-managed toolchain (Python, uv)
+        uses: jdx/mise-action@v5.2.3
+        with:
+          install: true
+          cache: true
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
+      - name: Check for patch updates
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: uv run python -m scripts.version_tracker check --config config.toml
   setup_matrix:
+    needs: check_updates
+    if: ${{ !cancelled() && (needs.check_updates.result == 'skipped' || needs.check_updates.outputs.needs_build == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -146,7 +175,7 @@ jobs:
           retention-days: 1
   release:
     needs: apk_matrix
-    if: ${{ !cancelled() && inputs.publish_release != false && github.event_name != 'pull_request' && github.repository == github.event.repository.full_name }}
+    if: ${{ !cancelled() && needs.apk_matrix.result != 'skipped' && (github.event_name == 'schedule' || inputs.publish_release != false) && github.repository == github.event.repository.full_name }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -235,6 +264,8 @@ jobs:
       - name: Save build state
         if: steps.check_artifacts.outputs.has_artifacts == 'true'
         continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           uv run python -m scripts.cli version-tracker save --config config.toml
       - name: Commit build state

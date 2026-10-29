@@ -15,6 +15,9 @@ from typing import Final
 
 import orjson
 
+from scripts.builder.app_processor import _resolve_github_release_asset
+from scripts.scrapers.external_bundles import is_external_bundles_source
+
 STATE_FILE: Final[Path] = Path(".github/last_built_versions.json")
 
 
@@ -117,6 +120,30 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
     return versions
 
 
+def resolve_patches_tags(config: dict[str, object]) -> VersionMap:
+    """Resolve each enabled app's patches source to the release tag a build would download.
+
+    ``patches-version = "latest"`` never changes in config, so only the resolved tag reveals an upstream release.
+    """
+    global_src = config.get("patches-source", "")
+    global_ver = str(config.get("patches-version", "latest"))
+    pairs: set[tuple[str, str]] = set()
+    for value in config.values():
+        if not isinstance(value, dict) or not value.get("enabled", True):
+            continue
+        sources = value.get("patches-source", global_src)
+        version = str(value.get("patches-version", global_ver))
+        pairs.update((src, version) for src in ([sources] if isinstance(sources, str) else sources) if src)
+
+    tags: VersionMap = {}
+    for src, version in sorted(pairs):
+        # shortcut: external-bundles sources are not tracked, resolve_bundle() would cover them if config uses any
+        if is_external_bundles_source(src):
+            continue
+        tags[f"patches_tag_{src}@{version}"] = _resolve_github_release_asset(src, "mpp", "rvp", version=version)[2]
+    return tags
+
+
 def detect_changes(current: VersionMap, saved: VersionMap) -> list[VersionDiff]:
     changes: list[VersionDiff] = []
     for key, cur_val in current.items():
@@ -131,7 +158,7 @@ def detect_changes(current: VersionMap, saved: VersionMap) -> list[VersionDiff]:
 
 def check_needs_build(config_path: str, state_path: Path | None = None) -> CheckResult:
     config = load_config(config_path)
-    current = extract_current_versions(config)
+    current = extract_current_versions(config) | resolve_patches_tags(config)
     saved = load_state(state_path)
     if not saved:
         print("No previous build state found — build needed", file=sys.stderr)
@@ -178,7 +205,7 @@ def execute_check_command(config_path: str, state_path: Path | None) -> int:
 
 def execute_save_command(config_path: str, state_path: Path | None) -> int:
     config = load_config(config_path)
-    current = extract_current_versions(config)
+    current = extract_current_versions(config) | resolve_patches_tags(config)
     save_state(current, state_path)
     return 0
 
