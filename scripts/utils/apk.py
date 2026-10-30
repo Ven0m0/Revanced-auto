@@ -264,30 +264,3 @@ class SplitAPKHandler:
             return splits
         except zipfile.BadZipFile, OSError:
             return []
-
-
-def check_signature(apk_path: Path) -> bool:
-    """Check if APK has valid v1+v2 signatures."""
-    _validate_apk_path(apk_path, "check_signature")
-
-    if not apk_path.exists():
-        return False
-
-    cmd = [
-        "apksigner",
-        "verify",
-        "--v1-signing-enabled",
-        "true",
-        "--v2-signing-enabled",
-        "true",
-        "--v3-signing-enabled",
-        "false",
-        "--v4-signing-enabled",
-        "false",
-        str(apk_path),
-    ]
-    try:
-        subprocess.run(cmd, check=True, capture_output=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False

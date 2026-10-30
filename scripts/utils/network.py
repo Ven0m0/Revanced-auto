@@ -12,7 +12,6 @@ import subprocess
 import sys
 import tempfile
 import time
-from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, ClassVar
@@ -341,51 +340,6 @@ class HttpClient:
         """
         return self._do_request("GET", url, output, **kwargs)
 
-    def post(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
-        """Perform POST request.
-
-        Args:
-            url: Request URL.
-            output: Output file path, "-" for stdout, or None to return content.
-            **kwargs: Additional arguments for httpx request.
-
-        Returns:
-            Response content as string if output is None or "-",
-            otherwise empty string.
-
-        """
-        return self._do_request("POST", url, output, **kwargs)
-
-    def put(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
-        """Perform PUT request.
-
-        Args:
-            url: Request URL.
-            output: Output file path, "-" for stdout, or None to return content.
-            **kwargs: Additional arguments for httpx request.
-
-        Returns:
-            Response content as string if output is None or "-",
-            otherwise empty string.
-
-        """
-        return self._do_request("PUT", url, output, **kwargs)
-
-    def delete(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
-        """Perform DELETE request.
-
-        Args:
-            url: Request URL.
-            output: Output file path, "-" for stdout, or None to return content.
-            **kwargs: Additional arguments for httpx request.
-
-        Returns:
-            Response content as string if output is None or "-",
-            otherwise empty string.
-
-        """
-        return self._do_request("DELETE", url, output, **kwargs)
-
     async def async_get(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
         """Perform async GET request.
 
@@ -400,21 +354,6 @@ class HttpClient:
 
         """
         return await self._async_do_request("GET", url, output, **kwargs)
-
-    async def async_post(self, url: str, output: str | Path | None = None, **kwargs: Any) -> str | bytes:
-        """Perform async POST request.
-
-        Args:
-            url: Request URL.
-            output: Output file path, "-" for stdout, or None to return content.
-            **kwargs: Additional arguments for httpx request.
-
-        Returns:
-            Response content as string if output is None or "-",
-            otherwise empty string.
-
-        """
-        return await self._async_do_request("POST", url, output, **kwargs)
 
     def close(self) -> None:
         """Close the HTTP client and release resources."""
@@ -619,87 +558,6 @@ def download_with_lock(
             lock_file.unlink()
 
 
-async def async_download_with_lock(
-    url: str,
-    output: str | Path,
-    temp_dir: str | Path | None = None,
-    config: HttpClientConfig | None = None,
-    headers: dict[str, str] | None = None,
-    sha256: str | None = None,
-) -> bool:
-    """Async download file with concurrent download protection via file locking.
-
-    Args:
-        url: URL to download from.
-        output: Output file path.
-        temp_dir: Temporary directory for lock files and partial downloads.
-        config: Optional HTTP client configuration.
-        headers: Additional headers for the request.
-        sha256: Optional SHA256 hash for integrity verification.
-
-    Returns:
-        True if download succeeded or file already exists, False otherwise.
-
-    """
-    output_path = Path(output).resolve()
-    base_temp = Path(temp_dir) if temp_dir else Path(tempfile.gettempdir())
-
-    try:
-        work_dir = _get_secure_work_dir(base_temp, output_path)
-    except RuntimeError as exc:
-        log.error(str(exc))
-        return False
-
-    temp_path = work_dir / "download.tmp"
-    lock_file = work_dir / "lock"
-
-    if output_path.exists():
-        verified = await _async_verify_or_remove(output_path, sha256)
-        if verified:
-            return True
-
-    def _acquire_lock() -> IO[str]:
-        fd = open(lock_file, "w")
-        _lock_fd(fd)
-        return fd
-
-    def _release_lock(fd: IO[str]) -> None:
-        try:
-            _unlock_fd(fd)
-            fd.close()
-        except OSError:
-            pass
-        with contextlib.suppress(OSError):
-            lock_file.unlink()
-
-    lock_fd = None
-    try:
-        lock_fd = await asyncio.to_thread(_acquire_lock)
-
-        if output_path.exists():
-            verified = await _async_verify_or_remove(output_path, sha256)
-            if verified:
-                return True
-
-        async with HttpClient(config) as client:
-            await client.async_get(url, temp_path, headers=headers or {})
-            if sha256:
-                valid = await _async_verify_or_remove(temp_path, sha256)
-                if not valid:
-                    return False
-            temp_path.replace(output_path)
-            return True
-    except OSError:
-        return False
-    except Exception:
-        if temp_path.exists():
-            temp_path.unlink()
-        return False
-    finally:
-        if lock_fd is not None:
-            await asyncio.to_thread(_release_lock, lock_fd)
-
-
 def req(
     url: str,
     output: str | Path | None = None,
@@ -782,37 +640,6 @@ def gh_dl(
         headers["Authorization"] = f"Bearer {token}"
 
     return download_with_lock(url, asset_path, config=cfg, headers=headers, sha256=sha256)
-
-
-def _executor_download_with_lock(
-    url: str,
-    output: str | Path,
-    temp_dir: str | Path | None = None,
-    config: HttpClientConfig | None = None,
-    headers: dict[str, str] | None = None,
-) -> Future[bool]:
-    """Submit download_with_lock to thread pool for concurrent execution.
-
-    Args:
-        url: URL to download from.
-        output: Output file path.
-        temp_dir: Temporary directory for lock files and partial downloads.
-        config: Optional HTTP client configuration.
-        headers: Additional headers for the request.
-
-    Returns:
-        Future that resolves to True if download succeeded.
-
-    """
-    executor = ThreadPoolExecutor(max_workers=1)
-    return executor.submit(
-        download_with_lock,
-        url,
-        output,
-        temp_dir,
-        config,
-        headers,
-    )
 
 
 def aria2c_download(

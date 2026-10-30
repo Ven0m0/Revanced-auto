@@ -99,6 +99,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+".claude/hooks/*.py" = ["INP001", "S603", "S607"]  # standalone hook scripts, fixed argv
 "scripts/builder/*.py" = [
   "ANN204",
   "ANN401",
