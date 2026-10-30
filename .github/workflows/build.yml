@@ -168,14 +168,6 @@ jobs:
           path: ./build/*.apk
           if-no-files-found: warn
           retention-days: 1
-      - name: Upload CF debug (TEMP-DEBUG)
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: cf-debug-${{ matrix.id }}
-          path: build/cf-*
-          if-no-files-found: ignore
-          retention-days: 1
       - name: Upload build log as artifact
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7

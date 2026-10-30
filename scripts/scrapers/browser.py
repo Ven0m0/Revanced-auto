@@ -83,13 +83,6 @@ class ChallengeBrowser:
         tab = await self._browser.get(url)
         for second in range(1, _CHALLENGE_TIMEOUT_S + 1):
             await tab.sleep(1)
-            if second % 10 == 0:  # TEMP-DEBUG
-                import os
-
-                os.makedirs("build", exist_ok=True)  # noqa: PTH103
-                await tab.save_screenshot(f"build/cf-{second:03d}.png")
-                with open(f"build/cf-{second:03d}.html", "w", encoding="utf-8") as f:  # noqa: PTH123, ASYNC230
-                    f.write(await tab.get_content())
             if second % _CHALLENGE_RELOAD_S == 0:
                 log.info(f"Cloudflare challenge stuck after {second}s, reloading: {url}")
                 await tab.reload()
