@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 from typing import Any
 
@@ -11,9 +12,12 @@ from scripts.lib import logging as log
 _CHALLENGE_TITLES = ("Just a moment", "Security Verification")
 _BLOCKED_TITLE = "Attention Required"
 # APKPure's interstitial took ~55 s to clear in a real browser.
-_CHALLENGE_TIMEOUT_S = 90
+_CHALLENGE_TIMEOUT_S = 180
+# APKMirror's challenge usually clears in 10-25 s but sometimes spins forever until the page is reloaded.
+_CHALLENGE_RELOAD_S = 60
 # The release list renders just after the title flips, so reading at once can miss it.
 _SETTLE_S = 2
+_LAUNCH_TIMEOUT_S = 30
 _DOWNLOAD_ATTEMPTS = 3
 _DOWNLOAD_WAIT_S = 20
 _DOWNLOAD_SETTLE_S = 4
@@ -37,19 +41,52 @@ class ChallengeBrowser:
 
     def __init__(self) -> None:
         self._browser: Any = None
+        self._process: Any = None
+
+    async def _launch(self) -> Any:
+        """Start Chrome ourselves, wait for its debug port, then let nodriver attach to it."""
+        # Lazy so runs that never meet a challenge neither import nodriver nor need Chrome.
+        import nodriver
+
+        # GitHub's ubuntu-24.04 runners block Chrome's userns sandbox (AppArmor); nodriver only drops it for root.
+        config = nodriver.Config(headless=False, sandbox=False)
+        config.host = "127.0.0.1"
+        config.port = nodriver.util.free_port()
+        # nodriver itself waits only ~2.75 s for the debug port, too short for a cold headed Chrome on CI.
+        self._process = await asyncio.create_subprocess_exec(
+            str(config.browser_executable_path),
+            *config(),
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        for _ in range(_LAUNCH_TIMEOUT_S):
+            if self._process.returncode is not None:
+                msg = f"Chrome exited with code {self._process.returncode} before opening its debug port"
+                raise RuntimeError(msg)
+            try:
+                _, writer = await asyncio.open_connection(config.host, config.port)
+            except OSError:
+                await asyncio.sleep(1)
+                continue
+            writer.close()
+            return await nodriver.start(config)
+        await self.aclose()
+        msg = f"Chrome did not open its debug port within {_LAUNCH_TIMEOUT_S}s"
+        raise RuntimeError(msg)
 
     async def _open(self, url: str) -> Any:
         """Open ``url`` in a tab and wait until any Cloudflare challenge has cleared."""
         if self._browser is None:
-            # Lazy so runs that never meet a challenge neither import nodriver nor need Chrome.
-            import nodriver
-
-            # GitHub's ubuntu-24.04 runners block Chrome's userns sandbox (AppArmor); nodriver only drops it for root.
-            self._browser = await nodriver.start(headless=False, sandbox=False)
+            self._browser = await self._launch()
         log.info(f"Cloudflare challenge, fetching via browser: {url}")
         tab = await self._browser.get(url)
-        for _ in range(_CHALLENGE_TIMEOUT_S):
+        for second in range(1, _CHALLENGE_TIMEOUT_S + 1):
             await tab.sleep(1)
+            if second % _CHALLENGE_RELOAD_S == 0:
+                log.info(f"Cloudflare challenge stuck after {second}s, reloading: {url}")
+                await tab.reload()
+                continue
             title = str(await tab.evaluate("document.title") or "")
             if _BLOCKED_TITLE in title:
                 msg = f"Cloudflare blocked the browser for {url}"
@@ -95,3 +132,8 @@ class ChallengeBrowser:
         if self._browser is not None:
             self._browser.stop()
             self._browser = None
+        if self._process is not None:  # nodriver does not own a Chrome it attached to
+            with contextlib.suppress(ProcessLookupError):
+                self._process.kill()
+            await self._process.wait()
+            self._process = None
