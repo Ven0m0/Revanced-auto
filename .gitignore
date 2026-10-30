@@ -10,6 +10,7 @@
 .env
 /temp
 /build
+/stock
 /logs
 /.cache
 build.md
