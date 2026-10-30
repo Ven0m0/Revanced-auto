@@ -1,0 +1,23 @@
+{
+    "bundleUid": 364766620,
+    "bundleName": "kveld9 Patches",
+    "bundleSource": "https://raw.githubusercontent.com/kveld9/kveld-morphe-patches/main/patches-bundle.json",
+    "exportDate": "2026-10-30T02:49:31.254005",
+    "selections": {
+        "com.reddit.frontpage": [
+            "Clean App Packaging",
+            "Remove Extra Languages (Universal)",
+            "Remove Unused Screen Sizes",
+            "Shrink PNG Images",
+            "Shrink WebP Images",
+            "Silence System Logs"
+        ]
+    },
+    "options": {
+        "com.reddit.frontpage": {
+            "Shrink WebP Images": {
+                "stripIcc": "true"
+            }
+        }
+    }
+}
