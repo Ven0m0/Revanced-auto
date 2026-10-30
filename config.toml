@@ -599,9 +599,11 @@ app-name = "Discord"
 patches-source = ["VenusIsJaded/Venus-Patches", "kveld9/kveld-morphe-patches", "jrddupont/discord-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
-# APKMirror serves Discord behind a Cloudflare JS challenge; the scraper falls back to a headed Chrome
-# (nodriver), so builds need a display (xvfb-run in CI). Uptodown only links out to Google Play for Discord.
+# Local-only: APKMirror shows GitHub runners an interactive "Verify you are human" check for Discord, and no
+# other store carries it (Uptodown only links out to Google Play). Download the pinned version's .apkm by hand
+# from the URL below into stock-apk's path, then build locally; stock-apk also keeps Discord out of CI.
 apkmirror-dlurl = "https://www.apkmirror.com/apk/discord/discord-chat-for-gamers/"
+stock-apk = "stock/discord-350.8.apkm"
 # APKMirror URLs carry no package id, so list-versions needs it spelled out.
 package-name = "com.discord"
 # Pinned to the Discord version the patch bundles target; drop the pin to follow the compatible list again.

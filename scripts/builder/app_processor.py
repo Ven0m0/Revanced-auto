@@ -298,6 +298,24 @@ def _resolve_github_release_asset(
     raise RuntimeError(msg)
 
 
+def _use_local_stock_apk(local: Path, output_path: Path) -> Path:
+    """Use a manually downloaded stock APK (``stock-apk`` option), merging an .apkm bundle into ``output_path``.
+
+    For apps whose stores block automated downloads; the user's file is never modified or deleted.
+    """
+    from scripts.scrapers.apkmirror import is_apk_bundle, merge_apkm_splits
+
+    if not local.is_file():
+        msg = f"stock-apk file not found: {local} (download it manually first)"
+        raise RuntimeError(msg)
+    logger.info("Using local stock APK %s", local)
+    if not is_apk_bundle(local):
+        return local
+    with tempfile.TemporaryDirectory(prefix="apkeditor_") as tmp:
+        merge_apkm_splits(Path(tmp), local, output_path)
+    return output_path
+
+
 def _derive_scraper_pkg_name(download_url: str, source: DownloadSource) -> str:
     """Derive the package identifier a scraper expects from a configured ``*-dlurl`` listing-page URL.
 
@@ -821,13 +839,16 @@ class AppProcessor:
         Returns:
             Path to downloaded APK.
         """
+        # Arch in the name keeps parallel arch variants from overwriting each other's stock APK.
+        output_path = Path(tempfile.gettempdir()) / f"stock-{context.app_name}-{context.version}-{context.arch}.apk"
+        if local := context.options.get("stock_apk"):
+            return _use_local_stock_apk(Path(str(local)).expanduser(), output_path)
+
         if not self.download_manager:
             msg = "No download manager configured"
             raise RuntimeError(msg)
 
         candidates = context.candidates or [(context.source, context.download_url)]
-        # Arch in the name keeps parallel arch variants from overwriting each other's stock APK.
-        output_path = Path(tempfile.gettempdir()) / f"stock-{context.app_name}-{context.version}-{context.arch}.apk"
         errors: list[str] = []
         package = self._patches_package(context)
         expected_cert = load_signatures().get(package) if package else None

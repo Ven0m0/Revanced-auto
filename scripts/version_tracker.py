@@ -17,6 +17,7 @@ from typing import Final
 import orjson
 
 from scripts.builder.app_processor import _resolve_github_release_asset
+from scripts.lib.matrix import builds_in_ci
 from scripts.scrapers.external_bundles import is_external_bundles_source
 
 STATE_FILE: Final[Path] = Path(".github/last_built_versions.json")
@@ -102,7 +103,7 @@ def extract_current_versions(config: dict[str, object]) -> VersionMap:
         versions["global_patches_source"] = normalized
 
     for key, value in config.items():
-        if not isinstance(value, dict) or not value.get("enabled", True):
+        if not builds_in_ci(value):
             continue
 
         app_prefix = f"app_{key.lower().replace(' ', '-')}_"
@@ -130,7 +131,7 @@ def resolve_patches_tags(config: dict[str, object]) -> VersionMap:
     global_ver = str(config.get("patches-version", "latest"))
     pairs: set[tuple[str, str]] = set()
     for value in config.values():
-        if not isinstance(value, dict) or not value.get("enabled", True):
+        if not builds_in_ci(value):
             continue
         sources = value.get("patches-source", global_src)
         version = str(value.get("patches-version", global_ver))

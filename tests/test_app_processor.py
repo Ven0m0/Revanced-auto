@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -298,6 +299,50 @@ class TestDownloadStockApkFailover:
 
         assert paths[0].name == "stock-TestApp-1.0.0-arm64-v8a.apk"
         assert paths[1].name == "stock-TestApp-1.0.0-arm-v7a.apk"
+
+    def _local_context(self, tmp_path: Path, stock_apk: Path) -> AppBuildContext:
+        return AppBuildContext(
+            app_name="TestApp",
+            app_id="testapp",
+            brand="revanced",
+            version="1.0.0",
+            arch="arm64-v8a",
+            output_path=tmp_path / "out.apk",
+            source=DownloadSource.APKMIRROR,
+            options={"stock_apk": str(stock_apk)},
+        )
+
+    def test_local_stock_apk_skips_download(self, tmp_path: Path) -> None:
+        local = tmp_path / "stock.apk"
+        with zipfile.ZipFile(local, "w") as zf:
+            zf.writestr("AndroidManifest.xml", b"")
+        download_manager = MagicMock()
+        processor = AppProcessor(config=MagicMock(), java_runner=MagicMock(), download_manager=download_manager)
+
+        assert processor._download_stock_apk(self._local_context(tmp_path, local)) == local
+        download_manager.download.assert_not_called()
+
+    def test_local_stock_bundle_is_merged_and_kept(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        local = tmp_path / "stock.apkm"
+        with zipfile.ZipFile(local, "w") as zf:
+            zf.writestr("base.apk", b"")
+            zf.writestr("split_config.arm64_v8a.apk", b"")
+        merged: list[Path] = []
+        monkeypatch.setattr(
+            "scripts.scrapers.apkmirror.merge_apkm_splits", lambda _tmp, bundle, _out: merged.append(bundle) or True
+        )
+        processor = AppProcessor(config=MagicMock(), java_runner=MagicMock())
+
+        result = processor._download_stock_apk(self._local_context(tmp_path, local))
+
+        assert merged == [local]
+        assert result.name == "stock-TestApp-1.0.0-arm64-v8a.apk"
+        assert local.exists()
+
+    def test_missing_local_stock_apk_raises(self, tmp_path: Path) -> None:
+        processor = AppProcessor(config=MagicMock(), java_runner=MagicMock())
+        with pytest.raises(RuntimeError, match="stock-apk file not found"):
+            processor._download_stock_apk(self._local_context(tmp_path, tmp_path / "missing.apkm"))
 
     def test_no_download_manager_raises(self, tmp_path: Path) -> None:
         processor = AppProcessor(config=MagicMock(), java_runner=MagicMock())
