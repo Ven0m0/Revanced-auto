@@ -1,6 +1,5 @@
 [settings]
 color = true
-yes = true
 auto_install = true
 
 [settings.python]
