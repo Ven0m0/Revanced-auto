@@ -1,0 +1,44 @@
+{
+    "bundleUid": 0,
+    "bundleName": "Morphe Patches",
+    "bundleSource": "api",
+    "exportDate": "2026-10-30T02:49:27.836842",
+    "selections": {
+        "com.reddit.frontpage": [
+            "App icon",
+            "Copy text",
+            "Custom branding name for Reddit",
+            "Customize post layout",
+            "Disable screenshot popup",
+            "Download location",
+            "Feed media max height",
+            "Full width feed media",
+            "Hide Ask button",
+            "Hide Trending shelves",
+            "Hide ads",
+            "Hide communities shelf",
+            "Hide media viewer components",
+            "Hide navigation buttons",
+            "Hide sidebar components",
+            "Keep feed position",
+            "Media viewer black background",
+            "Media viewer fade",
+            "Open links directly",
+            "Open links externally",
+            "Redgifs audio",
+            "Remember collapsed comments",
+            "Remove subreddit dialog",
+            "Sanitize sharing links",
+            "Show flairs in home feed",
+            "Spoof signature",
+            "Start as guest"
+        ]
+    },
+    "options": {
+        "com.reddit.frontpage": {
+            "Custom branding name for Reddit": {
+                "appName": "\"Reddit Morphe\""
+            }
+        }
+    }
+}
