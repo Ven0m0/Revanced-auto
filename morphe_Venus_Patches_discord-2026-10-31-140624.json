@@ -1,0 +1,72 @@
+{
+    "bundleUid": -296405753,
+    "bundleName": "Venus Patches",
+    "bundleSource": "https://raw.githubusercontent.com/VenusIsJaded/Venus-Patches/main/patches-bundle.json",
+    "exportDate": "2026-10-31T14:06:29.57713",
+    "selections": {
+        "com.discord": [
+            "Account switcher",
+            "Alert when you're removed",
+            "Always trust links and files",
+            "Anonymous file names",
+            "Bring back Tenor GIFs",
+            "Bulk delete messages",
+            "Clean channel names",
+            "Complete Quests automatically",
+            "Complete badges automatically",
+            "Custom branding",
+            "Custom themes",
+            "Disable advertising identifiers",
+            "Disable analytics",
+            "Disable crash reporting",
+            "Disable install attribution",
+            "Disable telemetry and touch logging",
+            "Double-tap to reply",
+            "Edit servers locally",
+            "Favourite any image or video",
+            "Fix link previews",
+            "Fix unknown mentions",
+            "Hide blocked or ignored messages",
+            "Hide typing indicator",
+            "Icon packs",
+            "Jump to first message",
+            "Keep Bluetooth audio clear in calls",
+            "Keep deleted messages",
+            "Load full-quality images",
+            "Material You colors",
+            "Message highlights",
+            "Pastel name colors",
+            "Read all button",
+            "Remove anything",
+            "Send Nitro stickers and emojis as links",
+            "Send audio as voice messages",
+            "Send long messages",
+            "Server info",
+            "Show device indicators",
+            "Show file sizes when attaching",
+            "Show hidden channels",
+            "Show owner and mod tags",
+            "Skip delete confirmation",
+            "Skip pin confirmation",
+            "Tap mentions to open profiles",
+            "Translate messages",
+            "Unlock Discord experiments",
+            "Unlock Nitro themes",
+            "Unlock app icons",
+            "Use your phone's emojis",
+            "Use your phone's font",
+            "User activity notifications",
+            "User and server reviews",
+            "Venus button on profile bar",
+            "Venus settings",
+            "Voice channel options"
+        ]
+    },
+    "options": {
+        "com.discord": {
+            "Custom branding": {
+                "iconBackground": "\"#EB459E\""
+            }
+        }
+    }
+}
