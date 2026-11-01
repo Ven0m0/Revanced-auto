@@ -366,11 +366,12 @@ targetDensity = "\"xxhdpi\""
 [Music-Morphed.patch-options."Remove Languages"]
 keepLanguages = "[\"en\",\"en-rIN\"]"
 
-# Reddit Morphed
+# Reddit Morphed. Selection exported from Morphe Manager (morphe_Morphe_Patches_frontpage-2026-10-30-024910.json and
+# morphe_kveld9_Patches_frontpage-2026-10-30-024930.json).
 [Reddit-Morphed]
 enabled = true
 app-name = "Reddit"
-patches-source = ["jkennethcarino/adobo", "BlazeFTL/FTL-Patches", "MorpheApp/morphe-patches", "rushiranpise/morphe-patches"]
+patches-source = ["MorpheApp/morphe-patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://apkmirror.com/apk/redditinc/reddit"
@@ -380,41 +381,47 @@ exclusive = true
 # "Spoof signature" is omitted: it reads the original signing certificate from the input APK, but APKMirror
 # ships Reddit only as a split bundle that merges into an unsigned APK ("Unable to extract certificate").
 patches = [
-  "Colorize comment indent lines",
-  "Disable bottom navigation bar auto-hide",
-  "Disable home feed auto-refresh",
-  "Disable home feed swipe",
-  "Disable home screen redirect",
-  "Disable post detail swipe",
-  "Disable screenshot banner",
-  "Hide Ask button from search bar",
-  "Hide awards",
-  "Hide community menu badge",
-  "Open external links directly",
-  "Remove ads and telemetry",
-  "Sanitize share links",
-  "APK Junk Cleanup",
-  "Png Optimizer",
-  "Remove Ads",
-  "Remove Duplicate Graphics",
-  "Remove Languages",
+  # Morphe Patches
+  "App icon",
+  "Copy text",
   "Custom branding name for Reddit",
+  "Customize post layout",
+  "Disable screenshot popup",
+  "Download location",
+  "Feed media max height",
+  "Full width feed media",
+  "Hide Ask button",
   "Hide Trending shelves",
   "Hide ads",
   "Hide communities shelf",
+  "Hide media viewer components",
   "Hide navigation buttons",
   "Hide sidebar components",
+  "Keep feed position",
+  "Media viewer black background",
+  "Media viewer fade",
+  "Open links directly",
+  "Open links externally",
+  "Redgifs audio",
+  "Remember collapsed comments",
   "Remove subreddit dialog",
+  "Sanitize sharing links",
+  "Show flairs in home feed",
+  "Start as guest",
+  # kveld9
+  "Clean App Packaging",
+  "Remove Extra Languages (Universal)",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
 ]
-
-[Reddit-Morphed.patch-options."Remove Duplicate Graphics"]
-targetDensity = "\"xxhdpi\""
-
-[Reddit-Morphed.patch-options."Remove Languages"]
-keepLanguages = "[\"en\",\"en-rIN\"]"
 
 [Reddit-Morphed.patch-options."Custom branding name for Reddit"]
 appName = "\"Reddit Morphe\""
+
+[Reddit-Morphed.patch-options."Shrink WebP Images"]
+stripIcc = "true"
 
 # Instagram Piko. Patch names and the "amoled" option verified against crimera/piko v3.10.0 list-patches.
 [Instagram-Piko]
@@ -592,7 +599,8 @@ patches = [
 [GoogleMaps.patch-options."Location provider toggle"]
 useFusedProvider = "true"
 
-# Discord. Selection exported from Morphe Manager (morphe_all_selections-2026-10-28-182611.json).
+# Discord. Selection exported from Morphe Manager (morphe_Venus_Patches_discord-2026-10-31-140624.json,
+# morphe_kveld9_Patches_discord-2026-10-31-140631.json and morphe_Discord_Patches_discord-2026-10-31-140633.json).
 [Discord]
 enabled = true
 app-name = "Discord"
@@ -612,11 +620,15 @@ exclusive = true
 patches = [
   # Venus Patches
   "Account switcher",
+  "Alert when you're removed",
+  "Always trust links and files",
+  "Anonymous file names",
   "Bring back Tenor GIFs",
   "Bulk delete messages",
   "Clean channel names",
   "Complete Quests automatically",
   "Complete badges automatically",
+  "Custom branding",
   "Custom themes",
   "Disable advertising identifiers",
   "Disable analytics",
@@ -624,23 +636,22 @@ patches = [
   "Disable install attribution",
   "Disable telemetry and touch logging",
   "Double-tap to reply",
+  "Edit servers locally",
   "Favourite any image or video",
   "Fix link previews",
   "Fix unknown mentions",
   "Hide blocked or ignored messages",
-  "Hide extra buttons",
-  "Hide the Quests banner",
-  "Hide the call button",
-  "Hide the gift button",
   "Hide typing indicator",
   "Icon packs",
   "Jump to first message",
   "Keep Bluetooth audio clear in calls",
   "Keep deleted messages",
+  "Load full-quality images",
   "Material You colors",
   "Message highlights",
   "Pastel name colors",
   "Read all button",
+  "Remove anything",
   "Send Nitro stickers and emojis as links",
   "Send audio as voice messages",
   "Send long messages",
@@ -648,8 +659,10 @@ patches = [
   "Show device indicators",
   "Show file sizes when attaching",
   "Show hidden channels",
+  "Show owner and mod tags",
   "Skip delete confirmation",
-  "Spaces in channel names",
+  "Skip pin confirmation",
+  "Tap mentions to open profiles",
   "Translate messages",
   "Unlock Discord experiments",
   "Unlock Nitro themes",
@@ -660,8 +673,10 @@ patches = [
   "User and server reviews",
   "Venus button on profile bar",
   "Venus settings",
+  "Voice channel options",
   # kveld9
   "Clean App Packaging",
+  "Remove Extra Languages (Universal)",
   "Remove Unused Screen Sizes",
   "Shrink PNG Images",
   "Shrink WebP Images",
@@ -669,6 +684,9 @@ patches = [
   # jrddupont
   "Pin app to built-in bundle",
 ]
+
+[Discord.patch-options."Custom branding"]
+iconBackground = "\"#EB459E\""
 
 [Discord.patch-options."Shrink WebP Images"]
 stripIcc = "true"
