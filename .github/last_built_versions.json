@@ -26,7 +26,7 @@
   "app_googlemaps_patches_source": "bearinmindcat/morphe-patches",
   "app_googlemaps_cli_source": "MorpheApp/morphe-cli",
   "app_googlemaps_version": "26.36.04.973607363",
-  "patches_tag_BlazeFTL/FTL-Patches@latest": "v1.43.7.1",
+  "patches_tag_BlazeFTL/FTL-Patches@latest": "v1.43.7.2",
   "patches_tag_MorpheApp/morphe-patches@latest": "v2.0.0",
   "patches_tag_bearinmindcat/morphe-patches@latest": "v2.8.5",
   "patches_tag_dh6k/morphe-patches@latest": "v1.9.0",
