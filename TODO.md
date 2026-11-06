@@ -1,6 +1,7 @@
 analyze the following repos and improve my project/repo based on that analysis:
 - https://github.com/krvstek/uni-apks
 - https://github.com/nvbangg/builder-for-morphe
+- https://github.com/GROWNUPS/Patchium
 - https://github.com/Graywizard888/Enhancify
 
 - [ ] [uni-apks](https://github.com/krvstek/uni-apks) scraping works. Fix mine
