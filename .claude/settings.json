@@ -3,14 +3,35 @@
     "PreToolUse": [
       {
         "matcher": "Edit|Write",
-        "hooks": [{ "type": "command", "command": "python .claude/hooks/protect_files.py" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/protect_files.py"
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "hooks": [{ "type": "command", "command": "python .claude/hooks/format_py.py" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/format_py.py"
+          }
+        ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "morphe-ai": {
+      "source": {
+        "source": "github",
+        "repo": "Paresh-Maheshwari/morphe-ai"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "morphe-patch-creator@morphe-ai": true
   }
 }
