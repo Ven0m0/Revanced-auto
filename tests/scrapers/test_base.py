@@ -13,6 +13,7 @@ def _make_response(status_code: int, headers: dict[str, str] | None = None) -> M
     response = MagicMock()
     response.status_code = status_code
     response.headers = headers or {}
+    response.text = ""
     response.raise_for_status = MagicMock()
     return response
 
@@ -101,6 +102,54 @@ async def test_cloudflare_challenge_raises_challenge_error_without_retry() -> No
         await scraper._request_with_retry("https://example.com")
 
     assert mock_session.request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_503_just_a_moment_page_raises_challenge_error_without_retry() -> None:
+    scraper = ScraperBase(DownloadSource.APKMIRROR)
+    mock_session = MagicMock()
+    blocked = _make_response(503)
+    blocked.text = "<title>Just a moment...</title>"
+    mock_session.request = AsyncMock(return_value=blocked)
+
+    with (
+        patch.object(ScraperBase, "session", new_callable=lambda: property(lambda _self: mock_session)),
+        patch("scripts.scrapers.base.asyncio.sleep", new=AsyncMock()),
+        pytest.raises(ChallengeError),
+    ):
+        await scraper._request_with_retry("https://example.com")
+
+    assert mock_session.request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_503_with_cf_mitigated_header_raises_challenge_error() -> None:
+    scraper = ScraperBase(DownloadSource.APKMIRROR)
+    mock_session = MagicMock()
+    mock_session.request = AsyncMock(return_value=_make_response(503, headers={"cf-mitigated": "challenge"}))
+
+    with (
+        patch.object(ScraperBase, "session", new_callable=lambda: property(lambda _self: mock_session)),
+        patch("scripts.scrapers.base.asyncio.sleep", new=AsyncMock()),
+        pytest.raises(ChallengeError),
+    ):
+        await scraper._request_with_retry("https://example.com")
+
+
+@pytest.mark.asyncio
+async def test_plain_503_is_retried_not_a_challenge() -> None:
+    scraper = ScraperBase(DownloadSource.APKMIRROR)
+    mock_session = MagicMock()
+    unavailable = _make_response(503)
+    unavailable.text = "Service Unavailable"
+    ok = _make_response(200)
+    mock_session.request = AsyncMock(side_effect=[unavailable, ok])
+
+    with (
+        patch.object(ScraperBase, "session", new_callable=lambda: property(lambda _self: mock_session)),
+        patch("scripts.scrapers.base.asyncio.sleep", new=AsyncMock()),
+    ):
+        assert await scraper._request_with_retry("https://example.com") is ok
 
 
 @pytest.mark.asyncio

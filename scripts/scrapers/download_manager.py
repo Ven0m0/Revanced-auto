@@ -70,7 +70,9 @@ def _stock_cert_matches(path: Path, expected_cert: str) -> bool:
 
 
 def _bare_version(version: str) -> str:
-    return version.strip().removeprefix("v").removeprefix("V")
+    # Stores list "2026.09.09-release" where the patcher CLI prints "2026.09.09". Only "-release" is stripped:
+    # "-beta" must stay distinct, since Uptodown ignores exclude_alpha_beta.
+    return version.strip().removeprefix("v").removeprefix("V").removesuffix("-release")
 
 
 def _version_sort_key(version: str) -> tuple[int, ...]:

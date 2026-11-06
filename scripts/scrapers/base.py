@@ -84,13 +84,14 @@ class ScraperBase(ABC):
     @property
     def session(self) -> curl_requests.AsyncSession:
         if self._session is None:
-            # impersonate="chrome" matches curl-cffi's TLS/JA3 fingerprint to a
-            # real Chrome build, which is what gets past Cloudflare's bot
-            # check -- a plain User-Agent header does not.
+            # impersonate matches curl-cffi's TLS/JA3 fingerprint to a real
+            # Chrome build, which is what gets past Cloudflare's bot check -- a
+            # plain User-Agent header does not. Pinned (not the "chrome" alias)
+            # so a curl_cffi upgrade cannot silently change the fingerprint.
             # (connect, read) tuple: curl_cffi sums it into one whole-transfer
             # cap (15 + 585 = 600 s) for non-streamed requests, so the old 30 s
             # float truncated large APK downloads. It is not an idle timeout.
-            self._session = curl_requests.AsyncSession(timeout=(15.0, 585.0), impersonate="chrome")
+            self._session = curl_requests.AsyncSession(timeout=(15.0, 585.0), impersonate="chrome152")
         return self._session
 
     def _get_cache(self, key: str) -> Response | None:
@@ -128,6 +129,10 @@ class ScraperBase(ABC):
                     # Retrying the same fingerprint never clears a JS challenge.
                     msg = f"Cloudflare challenge for {url}"
                     raise ChallengeError(msg)
+                if code == 503 and self._is_challenge_page(response):  # noqa: PLR2004
+                    # Cloudflare also serves its interstitial as a 503; backoff never clears it.
+                    msg = f"Cloudflare challenge for {url}"
+                    raise ChallengeError(msg)
                 if code < 500 and code != 429:  # noqa: PLR2004
                     # Other 4xx are permanent; retrying only burns the budget.
                     msg = f"HTTP {code} for {url}"
@@ -141,6 +146,13 @@ class ScraperBase(ABC):
 
         msg = f"Request failed after {self.MAX_RETRIES} retries: {url}"
         raise RuntimeError(msg) from last_error
+
+    @staticmethod
+    def _is_challenge_page(response: Response) -> bool:
+        if response.headers and "cf-mitigated" in response.headers:
+            return True
+        body = response.text.lower()
+        return "just a moment" in body or "challenge-platform" in body
 
     def _rate_limit_wait(self, response: Response, attempt: int) -> float:
         """Backoff duration for a 429/503 response: Retry-After header if present, else escalating delay."""

@@ -274,6 +274,70 @@ async def test_get_versions_probe_finds_nothing_when_release_page_is_missing() -
     assert [v.version for v in versions] == ["5.0.0", "4.0.0"]
 
 
+_RENAMED_LISTING = """
+<div class="listWidget">
+<div class="widgetHeader">All versions</div>
+<div class="appRow"><a class="fontBlack" href="/apk/pkg/app/new-name-5-0-0-release/">App 5.0.0</a></div>
+<div class="appRow"><a class="fontBlack" href="/apk/pkg/app/new-name-4-0-0-release/">App 4.0.0</a></div>
+</div>
+"""
+_UPLOADS_URL = f"{_APKM[:-4]}/uploads/page/1/?appcategory=app"
+_UPLOADS_PAGE = """
+<div id="primary">
+<a class="fontBlack" href="/apk/pkg/app/old-name-4-0-0-release/">App 4.0.0</a>
+<a class="fontBlack" href="/apk/pkg/app/old-name-3-0-0-release/">App 3.0.0</a>
+<a class="fontBlack" href="/apk/pkg/app/old-name-3-0-0-android-apk-download/">App 3.0.0 download</a>
+</div>
+"""
+_OLD_NAME_URL = f"{_APKM}/pkg/app/old-name-3-0-0-release/"
+
+
+@pytest.mark.asyncio
+async def test_probe_uses_real_url_from_uploads_before_guessing() -> None:
+    fake_get = _fake_get({_LISTING_URL: _RENAMED_LISTING, _UPLOADS_URL: _UPLOADS_PAGE, _OLD_NAME_URL: _APK_ROW})
+
+    with patch.object(APKMirror, "get", new=fake_get):
+        versions = await APKMirror().get_versions("pkg/app", match_any=True, compatible=["3.0.0"])
+
+    assert versions[-1].version == "3.0.0"
+    assert versions[-1].url == _OLD_NAME_URL
+    # The guessed new-name URL for 3.0.0 is never requested.
+    assert f"{_APKM}/pkg/app/new-name-3-0-0-release/" not in [c.args[0] for c in fake_get.await_args_list]
+
+
+@pytest.mark.asyncio
+async def test_uploads_rows_of_other_apps_are_ignored() -> None:
+    foreign = '<div id="primary"><a class="fontBlack" href="/apk/other/app/other-3-0-0-release/">Other 3.0.0</a></div>'
+    scraper = APKMirror()
+
+    with patch.object(APKMirror, "get", new=_fake_get({_UPLOADS_URL: foreign})):
+        assert await scraper._find_in_uploads("pkg/app", "3.0.0") is None
+
+
+@pytest.mark.asyncio
+async def test_uploads_failure_is_cached_across_probes() -> None:
+    fake_get = _fake_get({})
+    scraper = APKMirror()
+
+    with patch.object(APKMirror, "get", new=fake_get):
+        assert await scraper._find_in_uploads("pkg/app", "3.0.0") is None
+        assert await scraper._find_in_uploads("pkg/app", "2.0.0") is None
+
+    fake_get.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_single_variant_release_page_is_its_own_variant() -> None:
+    single = '<a class="accent_bg btn btn-flat downloadButton sSo" href="/apk/pkg/app/x/download/">Download</a>'
+    fake_get = _fake_get({_LISTING_URL: _SHORT_LISTING, _OLD_RELEASE_URL: single})
+
+    with patch.object(APKMirror, "get", new=fake_get):
+        versions = await APKMirror().get_versions("pkg/app", match_any=True, compatible=["3.0.0"])
+
+    assert versions[-1].version == "3.0.0"
+    assert versions[-1].url == _OLD_RELEASE_URL
+
+
 @pytest.mark.asyncio
 async def test_download_fetches_release_beyond_the_listing(tmp_path: Path) -> None:
     fake_get = _fake_get({_LISTING_URL: _SHORT_LISTING, _OLD_RELEASE_URL: _APK_ROW})

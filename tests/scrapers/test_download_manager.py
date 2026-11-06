@@ -135,6 +135,17 @@ def test_resolve_without_compatible_picks_newest() -> None:
     assert manager.resolve("com.example", source, compatible=[]) == ("3.0.0", "3.0.0")
 
 
+def test_resolve_matches_release_suffix_but_not_beta() -> None:
+    source = DownloadSource.UPTODOWN
+    fake = _FakeScraper(source, versions=["2026.09.30-beta", "2026.09.09-release"])
+    manager = _manager(source, fake)
+
+    assert manager.resolve("soundcloud", source, compatible=["2026.09.09"]) == (
+        "2026.09.09-release",
+        "2026.09.09-release",
+    )
+
+
 def test_resolve_no_overlap_raises() -> None:
     source = DownloadSource.APKPURE
     manager = _manager(source, _FakeScraper(source, versions=["3.0.0", "2.0.0"]))

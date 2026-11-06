@@ -122,6 +122,9 @@ _VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
 # shortcut: caps the extra release-page requests per lookup, raise it if compatible versions sit deeper than this.
 _MAX_UNLISTED_PROBES = 8
 
+# shortcut: caps uploads-listing pages fetched per lookup, raise if a compatible release sits deeper than this.
+_MAX_UPLOADS_PAGES = 5
+
 
 def _version_key(version: str) -> tuple[int, ...]:
     return tuple(int(part) for part in re.findall(r"\d+", version))
@@ -266,6 +269,8 @@ class APKMirror(ScraperBase):
     def __init__(self) -> None:
         super().__init__(DownloadSource.APKMIRROR)
         self._browser: ChallengeBrowser | None = None
+        # Uploads pages by (pkg_name, page); None marks a failed fetch so probes do not repeat the retry backoff.
+        self._uploads_cache: dict[tuple[str, int], list[tuple[str, str]] | None] = {}
 
     async def _get_text(self, url: str, use_cache: bool = True) -> str:
         """Page HTML, falling back to a real browser when Cloudflare challenges plain HTTP.
@@ -315,6 +320,15 @@ class APKMirror(ScraperBase):
             if rank == 0:
                 break
         return best_url
+
+    def _variant_or_self(self, release_html: str, config: SearchConfig, release_url: str) -> str | None:
+        """Variant URL for a release page; a single-variant release has no table, so the page itself is the variant."""
+        variant = self._search_variant(release_html, config)
+        if variant is not None:
+            return variant
+        if not _parse_rows(LexborHTMLParser(release_html)) and self._find_download_link(release_html) is not None:
+            return release_url
+        return None
 
     def _find_download_link(self, variant_page_html: str) -> str | None:
         # Real class is "accent_bg btn btn-flat downloadButton sSo" -- the
@@ -385,27 +399,73 @@ class APKMirror(ScraperBase):
             releases.append((link.text(strip=True), f"{self.BASE_URL}{href}"))
         return releases
 
+    async def _list_uploads(self, pkg_name: str, page: int) -> list[tuple[str, str]]:
+        """List one page of an app's uploads as ``(display_text, release_url)`` pairs.
+
+        Unlike the app page this keeps the real URLs of releases published under an older slug
+        (APKMirror renamed SoundCloud's mid-history), which a guessed URL cannot reproduce.
+        """
+        category = pkg_name.rstrip("/").rpartition("/")[2]
+        url = f"{self.BASE_URL}/uploads/page/{page}/?appcategory={category}"
+        tree = LexborHTMLParser(await self._get_text(url))
+        releases: list[tuple[str, str]] = []
+        app_path = f"/apk/{pkg_name.strip('/')}/"
+        for link in tree.css("#primary a.fontBlack[href*='-release/']"):
+            href = link.attrs.get("href")
+            # Only this app's rows: the slug is a guess, and a version number alone could match another app.
+            if href and href.startswith(app_path):
+                releases.append((link.text(strip=True), f"{self.BASE_URL}{href}"))
+        return releases
+
+    async def _find_in_uploads(self, pkg_name: str, version: str) -> str | None:
+        """Real release URL for ``version`` from the uploads pages, or ``None`` if not found."""
+        wanted = _version_key(version)
+        # Page 1 already lists ~30 releases, three times what the app page shows.
+        for page in range(1, _MAX_UPLOADS_PAGES + 1):
+            if (pkg_name, page) not in self._uploads_cache:
+                try:
+                    self._uploads_cache[pkg_name, page] = await self._list_uploads(pkg_name, page)
+                except Exception:
+                    self._uploads_cache[pkg_name, page] = None
+            rows = self._uploads_cache[pkg_name, page]
+            if rows is None:
+                return None
+            stable: list[tuple[int, ...]] = []
+            for text, url in rows:
+                match = _VERSION_RE.search(text)
+                if match is None or _is_prerelease(text, match):
+                    continue
+                if _version_key(match.group()) == wanted:
+                    return url
+                stable.append(_version_key(match.group()))
+            # Uploads are in date order, so hotfixes on an old branch can interleave; stop only when the
+            # whole page is older than the wanted version.
+            if not stable or max(stable) < wanted:
+                return None
+        return None
+
     async def _unlisted_release(
-        self, releases: list[tuple[str, str]], version: str, config: SearchConfig
+        self, pkg_name: str, releases: list[tuple[str, str]], version: str, config: SearchConfig
     ) -> tuple[str, str] | None:
         """Fetch a release missing from the app page; returns ``(release_url, variant_url)``.
 
-        The app page lists only the ~10 newest releases, but older ones stay
-        reachable at the same slug pattern. A missing page raises ``RuntimeError``,
-        and a page without variant rows is not a release, so both mean "not there".
+        The app page lists only the ~10 newest releases, but older ones stay reachable: first by their
+        real URL from the uploads pages (which survives slug renames), then by guessing the slug. A missing
+        page raises ``RuntimeError``, and a page with neither variant rows nor a download button is not a
+        release, so both mean "not there".
         """
-        release_url = _guess_release_url(releases, version)
+        release_url = await self._find_in_uploads(pkg_name, version) or _guess_release_url(releases, version)
         if release_url is None:
             return None
         try:
             release_html = await self._get_text(release_url, False)
         except RuntimeError:
             return None
-        variant_url = self._search_variant(release_html, config)
+        variant_url = self._variant_or_self(release_html, config, release_url)
         return (release_url, variant_url) if variant_url else None
 
     async def _probe_unlisted(
-        self, releases: list[tuple[str, str]], compatible: list[str], config: SearchConfig, dpi: str
+        self, pkg_name: str, releases: list[tuple[str, str]], compatible: list[str], config: SearchConfig, dpi: str
     ) -> VersionInfo | None:
         """Newest patch-compatible version older than everything the app page lists, if it exists."""
         listed = [_version_key(m.group()) for text, _ in releases if (m := _VERSION_RE.search(text))]
@@ -413,7 +473,7 @@ class APKMirror(ScraperBase):
             return None
         older = sorted((v for v in compatible if _version_key(v) < min(listed)), key=_version_key, reverse=True)
         for version in older[:_MAX_UNLISTED_PROBES]:
-            found = await self._unlisted_release(releases, version, config)
+            found = await self._unlisted_release(pkg_name, releases, version, config)
             if found:
                 release_url, variant_url = found
                 return VersionInfo(
@@ -478,7 +538,7 @@ class APKMirror(ScraperBase):
                 # enumerating the rest (e.g. a rate limit from fetching many
                 # release pages back-to-back).
                 continue
-            download_url = self._search_variant(release_html, config)
+            download_url = self._variant_or_self(release_html, config, release_url)
             if download_url:
                 results.append(
                     VersionInfo(
@@ -489,7 +549,7 @@ class APKMirror(ScraperBase):
                     )
                 )
         if compatible and not any(r.version in compatible for r in results):
-            probed = await self._probe_unlisted(releases, compatible, config, dpi)
+            probed = await self._probe_unlisted(pkg_name, releases, compatible, config, dpi)
             if probed:
                 results.append(probed)
         return results
@@ -536,10 +596,10 @@ class APKMirror(ScraperBase):
                     if exclude_alpha_beta and _is_prerelease(display_text, version_match):
                         continue
                     release_html = await self._get_text(release_url, False)
-                    download_url = self._search_variant(release_html, config)
+                    download_url = self._variant_or_self(release_html, config, release_url)
                     break
                 else:
-                    found = await self._unlisted_release(releases, version, config)
+                    found = await self._unlisted_release(pkg_name, releases, version, config)
                     download_url = found[1] if found else None
                 if download_url is None:
                     return DownloadResult(
