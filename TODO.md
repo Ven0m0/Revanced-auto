@@ -1,1 +1,1 @@
-youtube and youtube music should ne named YT and YT Music as the app names. analyze the patch exports and remove the custom branding again. Extract and read @morphe.zip . It contains the working yt patch selection and crash logs of the yt apk from the latest release.
+show the patch selection in the releases as a textblock which is collapsed by default to improve readability
