@@ -20,10 +20,12 @@ from scripts.builder.app_processor import (
     AppProcessor,
     Architecture,
     BuildResult,
+    BuildSummary,
     DownloadSource,
     _derive_scraper_pkg_name,
     _is_morphe_patches_source,
     _resolve_github_release_asset,
+    _write_build_log,
 )
 from scripts.builder.cli_profiles import (
     ADOBO_CLI,
@@ -1087,3 +1089,16 @@ class TestCompatibleFallback:
         with pytest.raises(RuntimeError, match="Failed to resolve version"):
             processor._resolve_version(ctx)
         assert resolver.resolve.call_count == 2
+
+
+def test_write_build_log_collapses_patch_list(tmp_path: Path) -> None:
+    """The patch list is wrapped in a collapsed <details> block, with blank lines so GitHub renders the list."""
+    ok = BuildResult("YouTube", "rvx", "20.0", "arm64-v8a", tmp_path, success=True, changelog=["Patch A", "Patch B"])
+    bare = BuildResult("Reddit", "rvx", "1.0", "universal", tmp_path, success=True)
+    out = tmp_path / "build.md"
+
+    _write_build_log(BuildSummary(total=2, succeeded=[ok, bare], failed=[]), out)
+
+    text = out.read_text(encoding="utf-8")
+    assert "<details>\n<summary>Patches (2)</summary>\n\n- Patch A\n- Patch B\n\n</details>" in text
+    assert "<details" not in text.split("### Reddit")[1]

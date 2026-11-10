@@ -1286,7 +1286,12 @@ def _write_build_log(summary: BuildSummary, path: Path | None = None) -> None:
     lines: list[str] = []
     for result in summary.succeeded:
         lines.append(f"### {result.app_name} ({result.brand}) {result.version} - {result.arch}")
-        lines.extend(f"- {patch}" for patch in result.changelog)
+        if result.changelog:
+            # Collapsed by default so long patch lists don't bury the release notes; the blank lines are
+            # required for GitHub to render the markdown list inside <details>.
+            lines.extend(["<details>", f"<summary>Patches ({len(result.changelog)})</summary>", ""])
+            lines.extend(f"- {patch}" for patch in result.changelog)
+            lines.extend(["", "</details>"])
         lines.append("")
 
     if summary.failed:
