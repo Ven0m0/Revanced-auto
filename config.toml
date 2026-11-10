@@ -265,7 +265,6 @@ patches = [
   "Channel search",
   "Check watch history domain name resolution",
   "Copy text",
-  "Custom branding",
   "Disable Shorts resuming on startup",
   "Disable auto feed refresh",
   "Disable continue watching prompt",
@@ -359,9 +358,6 @@ patches = [
   "Video buffer preload",
 ]
 
-[YouTube-Morphed.patch-options."Custom branding"]
-customName = "\"YT\""
-
 [YouTube-Morphed.patch-options."Hide Shorts components"]
 hideShortsAppShortcut = "true"
 
@@ -375,7 +371,7 @@ lightThemeColor = "\"in-app\""
 # YouTube Music Morphed (default Morphe build).
 [Music-Morphed]
 enabled = true
-app-name = "YT-Music"
+app-name = "YT Music"
 patches-source = ["BlazeFTL/FTL-Patches", "MorpheApp/morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
@@ -394,7 +390,6 @@ patches = [
   "Change miniplayer color",
   "Check watch history domain name resolution",
   "Crossfade",
-  "Custom branding",
   "Disable dislike redirection",
   "Downloads",
   "Enable exclusive audio playback",
@@ -429,9 +424,6 @@ targetDensity = "\"xxhdpi\""
 
 [Music-Morphed.patch-options."Remove Languages"]
 keepLanguages = "[\"en\",\"en-rIN\"]"
-
-[Music-Morphed.patch-options."Custom branding"]
-customName = "\"YT Music\""
 
 # Reddit Morphed. Selection exported from Morphe Manager (morphe_Morphe_Patches_frontpage-2026-10-30-024910.json and
 # morphe_kveld9_Patches_frontpage-2026-10-30-024930.json).
