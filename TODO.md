@@ -1,1 +1,1 @@
-show the patch selection in the releases as a textblock which is collapsed by default to improve readability
+always use the latest recommended version for brave. the current latest version is 1.99.55 for example
