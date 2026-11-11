@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, ClassVar
+from urllib.parse import urlparse
 
 import httpx
 
@@ -583,6 +584,12 @@ def req(
         client.close()
 
 
+def _is_github_host(url: str) -> bool:
+    """True for github.com and its subdomains (api.github.com); keeps the token away from other hosts."""
+    host = urlparse(url).hostname or ""
+    return host == "github.com" or host.endswith(".github.com")
+
+
 def gh_req(
     url: str,
     output: str | Path | None = None,
@@ -605,7 +612,7 @@ def gh_req(
     cfg = config or HttpClientConfig()
     token = cfg.github_token or os.environ.get("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json"}
-    if token:
+    if token and _is_github_host(url):
         headers["Authorization"] = f"Bearer {token}"
 
     client = HttpClient(cfg)
@@ -636,7 +643,7 @@ def gh_dl(
     cfg = config or HttpClientConfig()
     token = cfg.github_token or os.environ.get("GITHUB_TOKEN")
     headers = {"Accept": "application/octet-stream"}
-    if token:
+    if token and _is_github_host(url):
         headers["Authorization"] = f"Bearer {token}"
 
     return download_with_lock(url, asset_path, config=cfg, headers=headers, sha256=sha256)

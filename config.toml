@@ -33,14 +33,16 @@ patches-source = "MorpheApp/morphe-patches"
 # - Morphe (default): MorpheApp/morphe-patches
 # - Adobo: jkennethcarino/adobo
 # - BlazeFTL (universal APK-size/ads/analytics cleanup): BlazeFTL/FTL-Patches
-# - Metra TikTok Patches: icysymmetra/tiktok-patches-for-morphe
-# - Doom's Morphe Patches (Reddit, SD Maid, Google Photos): rushiranpise/morphe-patches
+# - Hushfeed (TikTok): SysAdminDoc/hushfeed
+# - Doom's Morphe Patches (Google Photos): rushiranpise/morphe-patches
 # - Brave and universal patches: dh6k/morphe-patches
 # - kveld9 (Brave, Discord cleanup): kveld9/kveld-morphe-patches
+# - kveld9 Extra (SD Maid): kveld9/kveld-extra-morphe-patches
 # - SoundCloud: kondratjev/morphe-patches
-# - Google Maps: bearinmindcat/morphe-patches
+# - Google Maps (microG): Dutch App Patches, a GitLab patches-bundle.json URL (see docs/CONFIG.md)
 # - Discord: VenusIsJaded/Venus-Patches, jrddupont/discord-patches
-# - Piko (Twitter/X, Instagram): crimera/piko
+# - Piko (Instagram): crimera/piko
+# - Piko NewX (X, Twitter): crimera/piko-newx
 # - External bundles aggregator: brosssh/revanced-external-bundles
 # patches-source accepts a list of the above to merge patches from multiple bundles.
 
@@ -52,14 +54,14 @@ patches-source = "MorpheApp/morphe-patches"
 # github-dlurl = "https://github.com/owner/repo", aptoide-dlurl, apkmonk-dlurl or uptodown-dlurl)
 # Per-app only: app-name, rv-brand, package-name, version, patches, exclude-patches, exclusive, patch-options
 # =============================================================================
-# TikTok. Selection exported from Morphe Manager (morphe_Metra_musically-2026-11-06-151228.json and
-# morphe_kveld9_Patches_musically-2026-11-06-151230.json).
+# TikTok. Hushfeed (SysAdminDoc/hushfeed) plus kveld9 cleanup patches. Selection exported from Morphe Manager
+# (morphe_manager_settings.json, 2026-11-11). No version pin: Hushfeed supports only the TikTok versions it lists,
+# and `auto` resolves one of them (the build never passes --force).
+# Hushfeed "Remove unused language packs" is left out: it makes TikTok patching fail. kveld9 handles the languages.
 [TikTok]
 enabled = true
 app-name = "TikTok"
-patches-source = ["icysymmetra/tiktok-patches-for-morphe", "kveld9/kveld-morphe-patches"]
-# The patch list was exported from Metra's pre-release; stable v0.8.1 ships only 42 patches with older names.
-patches-version = "dev"
+patches-source = ["SysAdminDoc/hushfeed", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://apkmirror.com/apk/tiktok-pte-ltd/tik-tok-including-musical-ly"
@@ -67,13 +69,14 @@ uptodown-dlurl = "https://tiktok.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.net/tiktok/com.zhiliaoapp.musically"
 exclusive = true
 patches = [
+  # Hushfeed
   "AMOLED dark theme",
+  "Account cleanup",
   "Advanced downloads",
   "Allow Duet and Stitch",
   "Allow screenshots and Circle to Search",
   "Always show publish date",
   "Always upload in HD",
-  "App lock",
   "Automatic video advance",
   "Block P2P video relay",
   "Block author button",
@@ -89,24 +92,23 @@ patches = [
   "Confirm feed interactions",
   "Copy bio and IDs",
   "Copy comments without username",
+  "Create stickers",
+  "Custom offline videos limit",
+  "Device privacy guard",
   "Disable login requirement",
   "Disable screen capture detection",
   "Disable telemetry",
   "Disable the long press quick share",
   "Disable the long press repost",
-  "Double-tap controls",
   "Downloads",
   "Drop the animated image cache",
   "Enable voice comments",
   "Expand activity list",
-  "Feature Gate Lab",
   "Feed filter",
   "Feed tab navigation",
-  "Feed text sizes",
   "Fit the video to the screen",
   "Fix Google login",
-  "Foldable split comment view",
-  "Force show Auto scroll",
+  "Freeze TikTok's experiments",
   "Ghost mode",
   "Hide CAPTCHA popups",
   "Hide already seen videos",
@@ -120,23 +122,27 @@ patches = [
   "Hide inbox items",
   "Hide inbox stories",
   "Hide profile shortcuts",
+  "Hide read receipts",
   "Hide search suggestions",
   "Hide suggested accounts",
   "Hide the launcher shortcuts",
-  "Hide the risk control CAPTCHA",
   "Hide video overlays",
   "In-app browser privacy guard",
   "Keep a streak going",
   "Keep playing in the background",
   "Keep pulled sounds",
+  "Keep recent stickers",
   "Keep the Favorites tab",
   "Keep the app language",
+  "Keep the next videos in full screen",
+  "Keep the screen's brightness in the camera",
   "Keep the screen's refresh rate",
+  "Keep unsent messages",
   "LIVE controls",
   "Lift text length limits",
   "Limit background traffic",
+  "Load all saved stickers",
   "Location access governor",
-  "Long-press controls",
   "Look like the store app",
   "Mute feed videos",
   "Not interested button",
@@ -148,34 +154,23 @@ patches = [
   "Playback speed",
   "Prefer H.264 playback",
   "Profile background",
-  "Remove Creator Tools",
-  "Remove Extra Files",
-  "Remove Extra Languages",
-  "Remove Extra Languages (Universal)",
+  "Remember clear display",
   "Remove LIVE extras",
-  "Remove Live Stream Files",
-  "Remove Tracking Libraries",
-  "Remove Unused Screen Sizes",
-  "Remove Voice Tools",
   "Remove avatar rings",
-  "Remove card scanner assets",
+  "Remove content credential and card scanner assets",
   "Remove creation tools",
+  "Remove voice tools",
+  "Report a newer phone to effects",
   "Resource and battery governor",
   "Resume videos after scrolling",
+  "SIM spoof",
   "Sanitize sharing links",
   "Settings",
   "Share sheet tools",
   "Show LIVE search",
-  "Show author region",
-  "Show commenter handle and region",
-  "Show engagement rate",
-  "Show exact counts",
   "Show follow status",
   "Show the progress bar",
   "Show the progress bar thumbnail",
-  "Shrink PNG Images",
-  "Shrink WebP Images",
-  "Silence System Logs",
   "Skip content warnings",
   "Skip first-launch setup",
   "Skip passkey sign-in",
@@ -189,26 +184,211 @@ patches = [
   "Stop video looping",
   "Story controls",
   "Subtitle tools",
-  "Swipe-left controls",
   "Translate comments",
   "Turn off haptics",
   "Turn off screen transitions",
   "Use non-personalized search",
-  "Use system font",
+  # kveld9
+  "Clean App Packaging",
+  "Remove Creator Tools",
+  "Remove Extra Files",
+  "Remove Extra Languages",
+  "Remove Live Stream Files",
+  "Remove Unused Screen Sizes",
+  "Remove Voice Tools",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
+  # kveld9 cleanup
+  "Remove Debug Info",
+  "Remove Tracking Libraries",
 ]
 
-[TikTok.patch-options."Custom Share Sheet"]
-hideQrCode = "true"
+[TikTok.patch-options."Advanced downloads"]
+download_sound_format = "\"opus\""
+download_unmetered_only = "true"
 
-[TikTok.patch-options."Feed Ads & Content Filter"]
-blockLiveStreams = "true"
-hideAiContent = "true"
-maxDurationSec = "300"
-maxLikes = "500"
-minViews = "1000"
+[TikTok.patch-options."Allow screenshots and Circle to Search"]
+allow_screen_capture = "true"
 
-[TikTok.patch-options."Remove unused language packs"]
-locales = "\"en\""
+[TikTok.patch-options."Block contact list access"]
+block_contact_list = "true"
+
+[TikTok.patch-options."Block popups"]
+hide_live_bubble = "true"
+hide_wind_down_screens = "true"
+
+[TikTok.patch-options."Comment tools"]
+comment_links = "true"
+comment_search = "true"
+comment_search_folded = "true"
+compact_comment_header = "true"
+hide_comment_search_suggestions = "true"
+hide_spam_comments = "true"
+show_poll_results = "true"
+
+[TikTok.patch-options."Device privacy guard"]
+block_advertising_id = "true"
+block_clipboard_reads = "true"
+hide_vpn = "true"
+
+[TikTok.patch-options."Disable telemetry"]
+disable_analytics = "true"
+
+[TikTok.patch-options."Disable the long press quick share"]
+disable_long_press_quick_share = "true"
+
+[TikTok.patch-options."Disable the long press repost"]
+disable_long_press_repost = "true"
+
+[TikTok.patch-options."Downloads"]
+download_unmetered_only = "true"
+
+[TikTok.patch-options."Drop the animated image cache"]
+drop_animated_image_cache = "true"
+
+[TikTok.patch-options."Enable voice comments"]
+enable_voice_comments = "true"
+
+[TikTok.patch-options."Feed filter"]
+hide_ai_cast = "true"
+hide_ai_generated = "true"
+hide_live = "true"
+hide_live_replays = "true"
+hide_paid_partnership = "true"
+hide_promotional_music = "true"
+hide_search_shop = "true"
+hide_shop = "true"
+hide_story = "true"
+hide_subscriber_only = "true"
+hide_unpersonalized_for_you = "true"
+live_hide_gaming = "true"
+live_hide_shopping = "true"
+live_hide_sponsored = "true"
+live_hide_verified = "true"
+max_video_seconds = "360"
+min_max_likes = "\"100-9223372036854775807\""
+min_max_views = "\"1000-9223372036854775807\""
+min_video_seconds = "10"
+region_never_from = "\"\""
+
+[TikTok.patch-options."Hide CAPTCHA popups"]
+hide_browsing_captcha_popups = "true"
+
+[TikTok.patch-options."Hide already seen videos"]
+hide_seen_videos = "true"
+local_watch_history = "true"
+
+[TikTok.patch-options."Hide comment popup ads"]
+hide_comment_eggs = "true"
+
+[TikTok.patch-options."Hide comment typing suggestions"]
+hide_comment_quick_reactions = "true"
+
+[TikTok.patch-options."Hide feed LIVE button"]
+disable_feed_sidebar_swipe = "false"
+hide_feed_sidebar_button = "true"
+hide_live_entrance = "true"
+
+[TikTok.patch-options."Hide floating promotions"]
+hide_homepage_coin = "true"
+hide_profile_rewards_shortcut = "true"
+
+[TikTok.patch-options."Hide inbox items"]
+hide_chat_ai_replies = "true"
+hide_inbox_shop = "false"
+
+[TikTok.patch-options."Hide profile shortcuts"]
+hide_profile_menu_balance = "true"
+
+[TikTok.patch-options."Hide suggested accounts"]
+hide_inbox_suggested_accounts = "true"
+
+[TikTok.patch-options."Hide the launcher shortcuts"]
+hide_launcher_shortcuts = "true"
+
+[TikTok.patch-options."Hide video overlays"]
+hide_following_live_row = "true"
+
+[TikTok.patch-options."In-app browser privacy guard"]
+block_webview_js_interfaces = "true"
+
+[TikTok.patch-options."Lift text length limits"]
+lift_length_limits = "true"
+
+[TikTok.patch-options."Limit background traffic"]
+limit_background_traffic = "true"
+skipPushSetup = "true"
+
+[TikTok.patch-options."Notification controls"]
+hide_follower_notifications = "true"
+hide_message_streaks = "true"
+hide_streak_popups = "true"
+turn_off_push_notifications = "true"
+
+[TikTok.patch-options."Play SDR instead of HDR"]
+play_sdr = "true"
+
+[TikTok.patch-options."Playback quality"]
+playback_quality = "\"1080\""
+playback_quality_metered = "\"720\""
+
+[TikTok.patch-options."Playback speed"]
+remember_playback_speed = "false"
+
+[TikTok.patch-options."Profile background"]
+profile_background = "true"
+
+[TikTok.patch-options."Remember clear display"]
+remember_clear_display_on_scroll = "false"
+
+[TikTok.patch-options."Remove avatar rings"]
+hide_live_ring = "true"
+hide_story_rings = "true"
+open_story_over_live = "true"
+
+[TikTok.patch-options."Resource and battery governor"]
+block_motion_sensors = "true"
+stop_benchmark_runs = "true"
+
+[TikTok.patch-options."Resume videos after scrolling"]
+resume_video_after_scroll = "false"
+
+[TikTok.patch-options."Sanitize sharing links"]
+custom_share_domain = "\"hq.d.tnktok.com\""
+
+[TikTok.patch-options."Share sheet tools"]
+hide_share_contacts = "true"
+
+[TikTok.patch-options."Skip content warnings"]
+hide_check_your_sources = "true"
+hide_sensitive_warnings = "true"
+hide_unverified_notices = "true"
+
+[TikTok.patch-options."Skip passkey sign-in"]
+skip_passkey_sign_in = "true"
+
+[TikTok.patch-options."Skip the splash ad"]
+skip_splash_ad = "true"
+
+[TikTok.patch-options."Skip update checks"]
+skip_update_checks = "true"
+
+[TikTok.patch-options."Stop on-device AI profiling"]
+stop_ai_profiling = "true"
+
+[TikTok.patch-options."Translate comments"]
+comment_batch_translation = "true"
+comment_translate_button = "true"
+dm_translation_preview = "false"
+dont_auto_translate_languages = "\"en, de\""
+show_translation_settings = "true"
+
+[TikTok.patch-options."Turn off haptics"]
+turn_off_haptics = "true"
+
+[TikTok.patch-options."Turn off screen transitions"]
+turn_off_screen_transitions = "true"
 
 [TikTok.patch-options."Shrink WebP Images"]
 stripIcc = "true"
@@ -358,6 +538,9 @@ patches = [
   "Video buffer preload",
 ]
 
+[YouTube-Morphed.patch-options."Block Trackers (Universal)"]
+disableAdStartupInitializers = "true"
+
 [YouTube-Morphed.patch-options."Hide Shorts components"]
 hideShortsAppShortcut = "true"
 
@@ -372,7 +555,7 @@ lightThemeColor = "\"in-app\""
 [Music-Morphed]
 enabled = true
 app-name = "YT Music"
-patches-source = ["BlazeFTL/FTL-Patches", "MorpheApp/morphe-patches"]
+patches-source = ["BlazeFTL/FTL-Patches", "MorpheApp/morphe-patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 uptodown-dlurl = "https://youtube-music.en.uptodown.com/android"
@@ -381,11 +564,15 @@ archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.a
 apkpure-dlurl = "https://apkpure.net/youtube-music/com.google.android.apps.youtube.music"
 exclusive = true
 patches = [
+  "APK Junk Cleanup",
   "Png Optimizer",
+  "Remove Ads",
   "Remove Analytics",
   "Remove Duplicate Graphics",
   "Remove Languages",
-  "Android Auto",
+  # "Bypass certificate checks" and "Hide filter bar" come from the Manager export but are not in Morphe Patches
+  # v2.2.0 or v2.2.0-dev.5 yet; the build only warns about them until a release ships them.
+  "Bypass certificate checks",
   "Change header",
   "Change miniplayer color",
   "Check watch history domain name resolution",
@@ -399,6 +586,7 @@ patches = [
   "GmsCore support",
   "Hide ads",
   "Hide buttons",
+  "Hide filter bar",
   "Hide flyout menu components",
   "Hide layout components",
   "Hide music action buttons",
@@ -417,16 +605,28 @@ patches = [
   "Spoof video streams",
   "Theme",
   "Third-party lyrics",
+  # kveld9 cleanup
+  "Clean App Packaging",
+  "Remove Debug Info",
+  "Remove Tracking Libraries",
+  "Shrink WebP Images",
+  "Silence System Logs",
 ]
 
+# BlazeFTL "APK Junk Cleanup" splitByArch from the export is left out: the bundle (v1.43.7.4) no longer has that
+# option (it now has stripLibs/keepAbi, both off by default), so the defaults apply.
 [Music-Morphed.patch-options."Remove Duplicate Graphics"]
 targetDensity = "\"xxhdpi\""
 
 [Music-Morphed.patch-options."Remove Languages"]
-keepLanguages = "[\"en\",\"en-rIN\"]"
+keepLanguages = "[\"en\"]"
+
+[Music-Morphed.patch-options."Shrink WebP Images"]
+stripIcc = "true"
 
 # Reddit Morphed. Selection exported from Morphe Manager (morphe_Morphe_Patches_frontpage-2026-10-30-024910.json and
 # morphe_kveld9_Patches_frontpage-2026-10-30-024930.json).
+
 [Reddit-Morphed]
 enabled = true
 app-name = "Reddit"
@@ -474,6 +674,9 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
+  # kveld9 cleanup
+  "Remove Debug Info",
+  "Remove Tracking Libraries",
 ]
 
 [Reddit-Morphed.patch-options."Custom branding name for Reddit"]
@@ -487,47 +690,179 @@ stripIcc = "true"
 # Disabled: Piko v3.10.0 supports only 447.0.0.55.81, which the APKMirror scraper cannot reach (first listing page only).
 enabled = false
 app-name = "Instagram"
-patches-source = "crimera/piko"
+patches-source = ["crimera/piko", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Piko"
 apkmirror-dlurl = "https://apkmirror.com/apk/instagram/instagram-instagram/"
 # APKMirror URLs carry no package id, so list-versions and the stock signature check need it spelled out.
 package-name = "com.instagram.android"
-patches = ["Theme"]
+patches = [
+  "Theme",
+  "Clean App Packaging",
+  "Remove Debug Info",
+  "Remove Extra Languages (Universal)",
+  "Remove Tracking Libraries",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
+]
 
 [Instagram-Piko.patch-options."Theme"]
 amoled = "true"
 
-# Twitter Piko (classic logo and name)
-[Twitter-Piko]
-# Disabled: Piko v3.10.0 supports only 12.19.1-release.0, which the scrapers cannot reach (newest 12.37.2 is used instead).
-enabled = false
-app-name = "Twitter"
-patches-source = "crimera/piko"
-cli-source = "MorpheApp/morphe-cli"
-rv-brand = "Piko"
-uptodown-dlurl = "https://twitter.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
-package-name = "com.twitter.android"
-# Off by default in the bundle. uni-apks also enables "Browse tweet object", which Piko v3.10.0 does not have.
-patches = ["Bring back twitter", "Dynamic color"]
+[Instagram-Piko.patch-options."Shrink WebP Images"]
+stripIcc = "true"
 
-# X Piko (same stock APK as Twitter, new logo and name)
-[X-Piko]
-# Disabled for the same reason as Twitter-Piko.
-enabled = false
-app-name = "X"
-patches-source = "crimera/piko"
+# Twitter Piko (classic logo and name). Same piko-newx bundle and patch list as X-Piko plus "Restore Twitter branding".
+# crimera/piko v3.10.0 supports only 12.19.1-release.0, which the scrapers cannot reach, so it is no longer used here.
+# Both sections patch com.twitter.android; install only one of the two builds.
+
+[Twitter-Piko]
+enabled = true
+app-name = "Twitter"
+patches-source = ["crimera/piko-newx", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Piko"
 uptodown-dlurl = "https://twitter.en.uptodown.com/android"
 apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
 package-name = "com.twitter.android"
-patches = ["Dynamic color"]
+patches = [
+  "NewX: Clone",
+  "NewX: Custom sharing domain",
+  "NewX: Customize drawer items",
+  "NewX: Customize inline actions",
+  "NewX: Customize media menu items",
+  "NewX: Customize navigation bar",
+  "NewX: Customize post menu items",
+  "NewX: Customize profile tabs",
+  "NewX: Customize timeline tabs",
+  "NewX: Disable automatic timeline refresh",
+  "NewX: Disable blur effects",
+  "NewX: Disable video player scrolling",
+  "NewX: Enable quality-of-life feature flags",
+  "NewX: Feature switch overrides",
+  "NewX: Filter For You by topic",
+  "NewX: Filter posts by keyword",
+  "NewX: Gallery profile Photos tab",
+  "NewX: Hide AI-generated posts",
+  "NewX: Hide Discover more",
+  "NewX: Hide Spaces bar",
+  "NewX: Hide compose button",
+  "NewX: Hide new posts pill",
+  "NewX: Hide post author actions",
+  "NewX: Hide post reply bar",
+  "NewX: Hide posts by verified account type",
+  "NewX: Hide premium upsell",
+  "NewX: Hide timeline tabs bar",
+  "NewX: Hide who to follow",
+  "NewX: Inline download button",
+  "NewX: Open canonical URLs",
+  "NewX: Permanent share links",
+  "NewX: Redirect downloads to chosen folder",
+  "NewX: Remove ads",
+  "NewX: Remove share tracking parameters",
+  "NewX: Restore Twitter branding",
+  "NewX: Restore pinned home tab",
+  "NewX: Restore timeline position",
+  "NewX: Set default media tab",
+  "NewX: Set default profile post sorting",
+  "NewX: Set default reply sorting",
+  "NewX: Show poll results",
+  "NewX: Show sensitive media",
+  "NewX: Theme",
+  "NewX: Translator",
+  "NewX: Unlock color customization",
+  "NewX: Unlock downloads",
+  "Clean App Packaging",
+  "Remove Debug Info",
+  "Remove Extra Languages (Universal)",
+  "Remove Tracking Libraries",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
+]
+
+[Twitter-Piko.patch-options."Shrink WebP Images"]
+stripIcc = "true"
+
+# X Piko (same stock APK as Twitter, new logo and name). crimera/piko-newx v3.75.0 targets com.twitter.android
+# 12.38.1 to 12.41.0-prod.01 (APKM) and runs on the Morphe CLI. Selection exported from Morphe Manager (2026-11-11).
+
+[X-Piko]
+enabled = true
+app-name = "X"
+patches-source = ["crimera/piko-newx", "kveld9/kveld-morphe-patches"]
+cli-source = "MorpheApp/morphe-cli"
+rv-brand = "Piko"
+uptodown-dlurl = "https://twitter.en.uptodown.com/android"
+apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
+package-name = "com.twitter.android"
+patches = [
+  "NewX: Clone",
+  "NewX: Custom sharing domain",
+  "NewX: Customize drawer items",
+  "NewX: Customize inline actions",
+  "NewX: Customize media menu items",
+  "NewX: Customize navigation bar",
+  "NewX: Customize post menu items",
+  "NewX: Customize profile tabs",
+  "NewX: Customize timeline tabs",
+  "NewX: Disable automatic timeline refresh",
+  "NewX: Disable blur effects",
+  "NewX: Disable video player scrolling",
+  "NewX: Enable quality-of-life feature flags",
+  "NewX: Feature switch overrides",
+  "NewX: Filter For You by topic",
+  "NewX: Filter posts by keyword",
+  "NewX: Gallery profile Photos tab",
+  "NewX: Hide AI-generated posts",
+  "NewX: Hide Discover more",
+  "NewX: Hide Spaces bar",
+  "NewX: Hide compose button",
+  "NewX: Hide new posts pill",
+  "NewX: Hide post author actions",
+  "NewX: Hide post reply bar",
+  "NewX: Hide posts by verified account type",
+  "NewX: Hide premium upsell",
+  "NewX: Hide timeline tabs bar",
+  "NewX: Hide who to follow",
+  "NewX: Inline download button",
+  "NewX: Open canonical URLs",
+  "NewX: Permanent share links",
+  "NewX: Redirect downloads to chosen folder",
+  "NewX: Remove ads",
+  "NewX: Remove share tracking parameters",
+  "NewX: Restore pinned home tab",
+  "NewX: Restore timeline position",
+  "NewX: Set default media tab",
+  "NewX: Set default profile post sorting",
+  "NewX: Set default reply sorting",
+  "NewX: Show poll results",
+  "NewX: Show sensitive media",
+  "NewX: Theme",
+  "NewX: Translator",
+  "NewX: Unlock color customization",
+  "NewX: Unlock downloads",
+  # kveld9 cleanup
+  "Clean App Packaging",
+  "Remove Debug Info",
+  "Remove Extra Languages (Universal)",
+  "Remove Tracking Libraries",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
+]
+
+[X-Piko.patch-options."Shrink WebP Images"]
+stripIcc = "true"
 
 # Brave (stable). The stock APK comes straight from Brave's GitHub releases; the asset name at the
 # end of github-dlurl selects the arm64 Monochrome build (only repo + asset name are used, the
 # version still comes from patch compatibility). Opt-in: not previously a build target.
+
 [Brave]
 enabled = true
 app-name = "Brave"
@@ -576,27 +911,39 @@ stripIcc = "true"
 [Brave.patch-options."Silence System Logs"]
 logLevel = "\"all\""
 
-# SD Maid 2/SE. Opt-in: not previously a build target.
+# SD Maid 2/SE. kveld9 Extra "Unlock Pro" targets only the FOSS build (eu.darken.sdmse 2.2.2-rc0), which is published
+# only as a GitHub release asset on d4rken-org/sdmaid-se, so the stock APK comes from there.
 [SDMaid]
 enabled = true
 app-name = "SDMaid"
-version = "2.0.3"
-patches-source = ["rushiranpise/morphe-patches", "BlazeFTL/FTL-Patches"]
+patches-source = ["kveld9/kveld-extra-morphe-patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
-apkmirror-dlurl = "https://apkmirror.com/apk/darken/sd-maid-2-se-system-cleaner"
+github-dlurl = "https://github.com/d4rken-org/sdmaid-se"
+# GitHub URLs carry no package id, so list-versions needs it spelled out.
+package-name = "eu.darken.sdmse"
 exclusive = true
 patches = [
-  "APK Junk Cleanup",
-  "Png Optimizer",
   "Unlock Pro",
+  "Clean App Packaging",
+  "Remove Debug Info",
+  "Remove Extra Languages (Universal)",
+  "Remove Tracking Libraries",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
 ]
 
+[SDMaid.patch-options."Shrink WebP Images"]
+stripIcc = "true"
+
 # SoundCloud. Selection exported from Morphe Manager (morphe_Kondratjev_Patches_android-2026-10-25-160121.json).
+
 [SoundCloud]
 enabled = true
 app-name = "SoundCloud"
-patches-source = "kondratjev/morphe-patches"
+patches-source = ["kondratjev/morphe-patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/soundcloud/soundcloud-soundcloud/"
@@ -609,25 +956,43 @@ patches = [
   "Disable analytics",
   "Disable consent popup",
   "Enable SoundCloud Go",
+  # kveld9 cleanup
+  "Clean App Packaging",
+  "Remove Debug Info",
+  "Remove Extra Languages (Universal)",
+  "Remove Tracking Libraries",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
 ]
 
-# Google Maps. Selection exported from Morphe Manager (morphe_bearinmind_patches_microg-2026-11-06-151225.json).
+[SoundCloud.patch-options."Shrink WebP Images"]
+stripIcc = "true"
+
+# Google Maps, microG build. Selection exported from Morphe Manager (morphe_manager_settings.json, 2026-11-11).
+# "Change package name" renames the app to org.ungoogled.android.apps.maps.microg; microG-RE is required on the device.
+# The Dutch App Patches bundle is a GitLab patches-bundle.json URL; it targets one Maps version, which `auto` follows.
+# The export names "Native navigation for Gearslip and Android Auto"; bundle 1.60.0 renamed it "... for any Android Auto host".
+
 [GoogleMaps]
 enabled = true
 app-name = "GoogleMaps"
-# Pinned to the only Maps version bearinmindcat/morphe-patches targets (google-maps-26-36-04-973607363-release on APKMirror).
-version = "26.36.04.973607363"
-patches-source = "bearinmindcat/morphe-patches"
+patches-source = [
+  "https://gitlab.com/johninnld/nl-morphe-patches/-/raw/main/patches-bundle.json",
+  "kveld9/kveld-morphe-patches",
+]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/maps/"
 apkpure-dlurl = "https://apkpure.net/maps-navigate-explore/com.google.android.apps.maps"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.maps"
 uptodown-dlurl = "https://google-maps.en.uptodown.com/android"
-# APKMirror URLs carry no package id, so list-versions needs it spelled out.
+# APKMirror URLs carry no package id, so list-versions needs it spelled out (the stock package, not the renamed one).
 package-name = "com.google.android.apps.maps"
 exclusive = true
 patches = [
+  # Dutch App Patches
   "Account sheet cleanup",
   "Add microG-RE support",
   "Any media app",
@@ -638,23 +1003,41 @@ patches = [
   "Change app name",
   "Change package name",
   "Customization screen",
-  "Follow playing media",
   "Hide ads and clutter",
   "Legacy icon",
   "Location provider toggle",
+  "Native navigation for any Android Auto host",
   "Offline saved places",
   "Power saving mode",
   "Remove permissions",
   "Remove sign-in prompts",
   "Remove telemetry",
-  "Speed cameras",
-  "Speeding chime",
   "Trim account menu",
   "Zoom controls in navigation",
+  # kveld9
+  "Clean App Packaging",
+  "Remove Extra Languages (Universal)",
+  "Remove Unused Screen Sizes",
+  "Shrink PNG Images",
+  "Shrink WebP Images",
+  "Silence System Logs",
+  # kveld9 cleanup
+  "Remove Debug Info",
+  "Remove Tracking Libraries",
 ]
+
+[GoogleMaps.patch-options."Change app name"]
+appIcon = "\"original\""
+appName = "\"GMaps\""
 
 [GoogleMaps.patch-options."Location provider toggle"]
 useFusedProvider = "true"
+
+[GoogleMaps.patch-options."Remove Extra Languages (Universal)"]
+locales = "\"en, de\""
+
+[GoogleMaps.patch-options."Shrink WebP Images"]
+stripIcc = "true"
 
 # Pinterest. Selection exported from Morphe Manager (morphe_browzomje_Patches_pinterest-2026-11-06-151218.json and
 # morphe_kveld9_Patches_pinterest-2026-11-06-151221.json). browzomje targets Pinterest 14.23.0-14.43.0.
@@ -712,6 +1095,8 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
+  # kveld9 cleanup
+  "Remove Debug Info",
 ]
 
 [Pinterest.patch-options."Shrink WebP Images"]
@@ -825,6 +1210,8 @@ patches = [
   "Silence System Logs",
   # jrddupont
   "Pin app to built-in bundle",
+  # kveld9 cleanup
+  "Remove Debug Info",
 ]
 
 [Discord.patch-options."Custom branding"]

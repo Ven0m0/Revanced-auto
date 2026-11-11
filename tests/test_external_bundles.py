@@ -10,9 +10,11 @@ import pytest
 
 from scripts.scrapers.external_bundles import (
     BundleEntry,
+    is_bundle_url_source,
     is_external_bundles_source,
     parse_bundle_selector,
     resolve_bundle,
+    resolve_bundle_url,
 )
 
 
@@ -88,3 +90,23 @@ class TestResolveBundle:
             pytest.raises(RuntimeError, match="no download_url"),
         ):
             resolve_bundle("x", "latest")
+
+
+class TestBundleUrl:
+    def test_url_sources_recognized(self) -> None:
+        assert is_bundle_url_source("https://gitlab.com/o/r/-/raw/main/patches-bundle.json") is True
+        assert is_bundle_url_source("MorpheApp/morphe-patches") is False
+
+    def test_manifest_is_resolved(self) -> None:
+        manifest = '{"version": "v1.2", "download_url": "https://gitlab.com/o/r/-/raw/main/p.mpp"}'
+        with patch("scripts.utils.network.req", return_value=manifest):
+            entry = resolve_bundle_url("https://gitlab.com/o/r/-/raw/main/patches-bundle.json")
+        assert entry.version == "v1.2"
+        assert entry.download_url == "https://gitlab.com/o/r/-/raw/main/p.mpp"
+
+    def test_manifest_without_download_url_raises(self) -> None:
+        with (
+            patch("scripts.utils.network.req", return_value='{"version": "v1"}'),
+            pytest.raises(RuntimeError, match="download_url"),
+        ):
+            resolve_bundle_url("https://gitlab.com/o/r/-/raw/main/patches-bundle.json")

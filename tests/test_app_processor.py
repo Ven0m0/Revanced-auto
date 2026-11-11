@@ -10,7 +10,7 @@ import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -33,6 +33,7 @@ from scripts.builder.cli_profiles import (
     CLIProfileType,
 )
 from scripts.builder.config import AppConfig, GlobalConfig
+from scripts.scrapers.external_bundles import BundleEntry
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -683,6 +684,24 @@ class TestEnsurePrebuilts:
         _cli, patches = self._processor()._ensure_prebuilts(ctx)
 
         assert patches[0].name == "a-morphe-patches-v4.mpp"
+
+    def test_bundle_url_source_resolves_through_manifest(self, tmp_path: Path, fake_github: dict[str, Any]) -> None:
+        self._seed(fake_github)
+        manifest = "https://gitlab.com/johninnld/nl-morphe-patches/-/raw/main/patches-bundle.json"
+        entry = BundleEntry(
+            bundle_type=manifest, version="v1.2", download_url="https://gitlab.com/x/-/raw/main/patches-1.2.mpp"
+        )
+        ctx = self._context(tmp_path, [manifest, "a/morphe-patches"])
+
+        with patch("scripts.scrapers.external_bundles.resolve_bundle_url", return_value=entry) as resolve:
+            _cli, patches = self._processor()._ensure_prebuilts(ctx)
+
+        resolve.assert_called_once_with(manifest)
+        assert [p.name for p in patches] == [
+            "bundle-gitlab-com-johninnld-nl-morphe-patches---raw-main-patches-bundle-json-v1.2.mpp",
+            "a-morphe-patches-v5.mpp",
+        ]
+        assert any(url == entry.download_url for _path, url in fake_github["downloads"])
 
 
 class TestResolveVersion:

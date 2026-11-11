@@ -18,7 +18,7 @@ import orjson
 
 from scripts.builder.app_processor import _resolve_github_release_asset
 from scripts.lib.matrix import builds_in_ci
-from scripts.scrapers.external_bundles import is_external_bundles_source
+from scripts.scrapers.external_bundles import is_bundle_url_source, is_external_bundles_source, resolve_bundle_url
 
 STATE_FILE: Final[Path] = Path(".github/last_built_versions.json")
 
@@ -141,6 +141,9 @@ def resolve_patches_tags(config: dict[str, object]) -> VersionMap:
     for src, version in sorted(pairs):
         # shortcut: external-bundles sources are not tracked, resolve_bundle() would cover them if config uses any
         if is_external_bundles_source(src):
+            continue
+        if is_bundle_url_source(src):
+            tags[f"patches_tag_{src}@{version}"] = resolve_bundle_url(src).version
             continue
         tags[f"patches_tag_{src}@{version}"] = _resolve_github_release_asset(src, "mpp", "rvp", version=version)[2]
     return tags

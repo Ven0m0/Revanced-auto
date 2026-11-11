@@ -186,6 +186,23 @@ class TestHelperFunctions:
         assert "Authorization" in captured_headers
         assert "ghp_test" in captured_headers["Authorization"]
 
+    def test_gh_req_withholds_token_from_other_hosts(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
+        with patch("scripts.utils.network.HttpClient") as mock_cls:
+            mock_cls.return_value.get.return_value = ""
+            gh_req("https://gitlab.com/o/r/-/raw/main/patches-bundle.json")
+
+        assert "Authorization" not in mock_cls.return_value.get.call_args.kwargs["headers"]
+
+    def test_gh_dl_withholds_token_from_other_hosts(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
+        with patch("scripts.utils.network.download_with_lock", return_value=True) as mock_dl:
+            gh_dl(tmp_path / "a.mpp", "https://gitlab.com/o/r/-/raw/main/a.mpp")
+            assert "Authorization" not in mock_dl.call_args.kwargs["headers"]
+
+            gh_dl(tmp_path / "b.mpp", "https://api.github.com/repos/o/r/releases/assets/1")
+            assert mock_dl.call_args.kwargs["headers"]["Authorization"] == "Bearer ghp_test"
+
     def test_gh_dl_calls_download_with_lock(self, tmp_path: Path) -> None:
         output = tmp_path / "cli.jar"
         with patch("scripts.utils.network.download_with_lock", return_value=True) as mock_dl:

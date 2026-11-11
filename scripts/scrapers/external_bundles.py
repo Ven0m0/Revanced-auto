@@ -43,6 +43,30 @@ def is_external_bundles_source(source: str) -> bool:
     return source == EXTERNAL_BUNDLES_REPO_SLUG or source.startswith(EXTERNAL_BUNDLES_URL_PREFIX)
 
 
+def is_bundle_url_source(source: str) -> bool:
+    """Return True if ``source`` is the URL of a Morphe ``patches-bundle.json`` manifest."""
+    return source.startswith("https://")
+
+
+def resolve_bundle_url(source: str) -> BundleEntry:
+    """Read a ``patches-bundle.json`` manifest (any host) and return its ``version`` and ``download_url``.
+
+    The manifest points at exactly one release, so ``patches-version`` has no effect on these sources.
+    """
+    from scripts.utils.network import req
+
+    raw = req(source)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"bundle manifest {source} is not JSON: {e}") from e
+
+    download_url = data.get("download_url") if isinstance(data, dict) else None
+    if not isinstance(download_url, str) or not download_url:
+        raise RuntimeError(f"bundle manifest {source} has no download_url")
+    return BundleEntry(bundle_type=source, version=str(data.get("version", "")), download_url=download_url)
+
+
 def parse_bundle_selector(source: str) -> str | None:
     """Extract the bundle_type selector from an ``external-bundles:<type>`` string.
 

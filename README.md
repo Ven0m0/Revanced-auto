@@ -148,7 +148,7 @@ Per-app settings worth knowing:
 - `version` — `auto` (default) picks the newest version compatible with the patches, `latest` the newest store version, `beta` the newest including beta/alpha, or pin an exact version
 - `patches-source`, `cli-source`, `arch` — override the global values
 
-The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-Morphed`, `Brave`, `SDMaid`, `SoundCloud`, `GoogleMaps`, and `Discord`. `GooglePhotos`, `Instagram-Piko`, `Twitter-Piko` and `X-Piko` are included as disabled examples; flip `enabled = true` to use them. The Piko sections are disabled because Piko supports only one old app version each that the scrapers cannot reach.
+The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-Morphed`, `Brave`, `SDMaid`, `SoundCloud`, `GoogleMaps`, `Discord` and `X-Piko`. `X-Piko` is enabled too (crimera/piko-newx). `GooglePhotos`, `Instagram-Piko` and `Twitter-Piko` are included as disabled examples; flip `enabled = true` to use them. The Instagram and Twitter Piko sections are disabled because Piko supports only one old app version each that the scrapers cannot reach.
 
 ### Patch sources
 
@@ -156,7 +156,8 @@ The sample config enables `TikTok`, `YouTube-Morphed`, `Music-Morphed`, `Reddit-
 
 - **Morphe (default)** — `MorpheApp/morphe-patches` + `MorpheApp/morphe-cli`.
 - **Adobo** — `jkennethcarino/adobo`, extra patches on top of Morphe.
-- **Piko** (Twitter/X, Instagram) — `crimera/piko`.
+- **Piko** (Instagram, Twitter) — `crimera/piko`; **Piko NewX** (X) — `crimera/piko-newx`.
+- **Bundle URL** — an `https://` link to a `patches-bundle.json` (for example GitLab-hosted Dutch App Patches) is accepted as a `patches-source`.
 - **External bundles** — `brosssh/revanced-external-bundles` resolves a patch JAR via the community aggregator's GraphQL API (https://revanced-external-bundles.brosssh.com). Use `external-bundles:<bundle_type>` to pin a specific bundle type; the bare repo slug falls back to selecting by the app's package id.
 
 Config docs and generator:

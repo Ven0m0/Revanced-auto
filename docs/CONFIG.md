@@ -18,7 +18,7 @@ An enabled app needs at least one `*-dlurl`. Everything else is optional.
 | `parallel-jobs` | `0` | Concurrent builds. `0` means the built-in default of 2. |
 | `arch` | `all` | Default architecture for apps without their own. See [Architecture](#architecture). |
 | `riplib` | `true` | Strip native libraries of other ABIs. |
-| `patches-source` | `MorpheApp/morphe-patches` | Patch bundle(s): one `owner/repo`, or a list that is merged. |
+| `patches-source` | `MorpheApp/morphe-patches` | Patch bundle(s): one `owner/repo`, an `https://` URL of a `patches-bundle.json` (any host, e.g. GitLab; it names one release, so `patches-version` is ignored), or a list that is merged. |
 | `cli-source` | `MorpheApp/morphe-cli` | Patcher CLI repo. |
 | `patches-version` / `cli-version` | `latest` | `latest`, `dev`, or a release tag. |
 | `cli-profile` | `auto` | CLI flag style: `auto`, `morphe-cli`, `adobo-cli`. `auto` reads the jar's `--help`. |

@@ -12,15 +12,17 @@ entries win on duplicate patch names. All bundles below run on the Morphe CLI (`
 | [`MorpheApp/morphe-patches`](https://github.com/MorpheApp/morphe-patches) | Default bundle: YouTube, YouTube Music, Reddit. Site: <https://morphe-patches.software> |
 | [`jkennethcarino/adobo`](https://github.com/jkennethcarino/adobo) | Extra YouTube and Reddit patches |
 | [`BlazeFTL/FTL-Patches`](https://github.com/BlazeFTL/FTL-Patches) | Universal APK-size, ads and analytics cleanup |
-| [`icysymmetra/tiktok-patches-for-morphe`](https://github.com/icysymmetra/tiktok-patches-for-morphe) | TikTok |
-| [`rushiranpise/morphe-patches`](https://github.com/rushiranpise/morphe-patches) | Reddit, SD Maid |
+| [`SysAdminDoc/hushfeed`](https://github.com/SysAdminDoc/hushfeed) | TikTok |
+| [`rushiranpise/morphe-patches`](https://github.com/rushiranpise/morphe-patches) | Google Photos |
 | [`dh6k/morphe-patches`](https://github.com/dh6k/morphe-patches) | Brave and universal patches |
 | [`kveld9/kveld-morphe-patches`](https://github.com/kveld9/kveld-morphe-patches) | Brave and Discord size/privacy cleanup |
+| [`kveld9/kveld-extra-morphe-patches`](https://github.com/kveld9/kveld-extra-morphe-patches) | SD Maid (Unlock Pro) |
 | [`kondratjev/morphe-patches`](https://github.com/kondratjev/morphe-patches) | SoundCloud |
-| [`bearinmindcat/morphe-patches`](https://github.com/bearinmindcat/morphe-patches) | Google Maps |
+| [Dutch App Patches](https://gitlab.com/johninnld/nl-morphe-patches) (`patches-bundle.json` URL) | Google Maps (microG build) |
 | [`VenusIsJaded/Venus-Patches`](https://github.com/VenusIsJaded/Venus-Patches) | Discord client mods |
 | [`jrddupont/discord-patches`](https://github.com/jrddupont/discord-patches) | Discord |
-| [`crimera/piko`](https://github.com/crimera/piko) | X / Twitter and Instagram sections |
+| [`crimera/piko-newx`](https://github.com/crimera/piko-newx) | X |
+| [`crimera/piko`](https://github.com/crimera/piko) | Twitter and Instagram sections |
 
 ## External bundles aggregator
 

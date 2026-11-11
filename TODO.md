@@ -1,5 +1,0 @@
-- always use the latest recommended version for brave. the current latest version is 1.99.55 for example
-- use versiom 47.4.3 for tiktok
-- https://github.com/crimera/piko-newx for x
-- I want to migrate tiktok over to https://github.com/SysAdminDoc/hushfeed patches
-- read the exports in @patches.zip and update the patch selections

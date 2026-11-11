@@ -134,7 +134,7 @@
       "allowIdChange": true
     },
     {
-      "id": "com.google.android.apps.maps",
+      "id": "org.ungoogled.android.apps.maps.microg",
       "url": "https://github.com/Ven0m0/Revanced-auto",
       "author": "Ven0m0",
       "name": "Google Maps",

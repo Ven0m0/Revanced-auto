@@ -913,9 +913,11 @@ class AppProcessor:
         )
 
         from scripts.scrapers.external_bundles import (
+            is_bundle_url_source,
             is_external_bundles_source,
             parse_bundle_selector,
             resolve_bundle,
+            resolve_bundle_url,
         )
 
         patches_jars: list[Path] = []
@@ -929,6 +931,14 @@ class AppProcessor:
                 patches_url = entry.download_url
                 suffix = Path(urllib.parse.urlparse(patches_url).path).suffix or f".{ext}"
                 name = f"external-{selector}-{entry.version}{suffix}".replace("/", "-")
+            elif is_bundle_url_source(patches_src):
+                # A bundle manifest points at one release, so patches-version does not apply here.
+                entry = resolve_bundle_url(patches_src)
+                patches_url = entry.download_url
+                suffix = Path(urllib.parse.urlparse(patches_url).path).suffix or f".{ext}"
+                parsed = urllib.parse.urlparse(patches_src)
+                slug = "".join(c if c.isalnum() else "-" for c in f"{parsed.hostname}{parsed.path}")
+                name = f"bundle-{slug}-{entry.version}{suffix}"
             else:
                 fallback_ext = "rvp" if is_morphe else "mpp"
                 asset_name, patches_url, tag = _resolve_github_release_asset(
