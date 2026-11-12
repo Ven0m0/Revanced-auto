@@ -863,7 +863,7 @@ stripIcc = "true"
 # SoundCloud. Selection exported from Morphe Manager (morphe_Kondratjev_Patches_android-2026-10-25-160121.json).
 
 [SoundCloud]
-enabled = true
+enabled = false
 app-name = "SoundCloud"
 patches-source = ["kondratjev/morphe-patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
