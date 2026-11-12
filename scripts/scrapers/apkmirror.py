@@ -213,7 +213,6 @@ def merge_apkm_splits(temp_dir: Path, bundle_path: Path, output_path: Path) -> b
         raise RuntimeError(msg)
 
     mzip_path = Path(f"{bundle_path}.mzip")
-    zip_path = bundle_path.with_suffix(".zip")
     try:
         try:
             subprocess.run(
@@ -237,29 +236,13 @@ def merge_apkm_splits(temp_dir: Path, bundle_path: Path, output_path: Path) -> b
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"APKEditor failed: {e.stderr}") from e
 
-        _restore_uncompressed(mzip_path, zip_path)
-        shutil.move(str(zip_path), str(output_path))
+        # Keep APKEditor's per-entry compression: Morphe preserves it, and the manifest sets extractNativeLibs=true.
+        zipfile.ZipFile(mzip_path).close()  # fail early on a corrupt merge
+        shutil.move(str(mzip_path), str(output_path))
     finally:
         # Clean temp artifacts on failure too, so a broken merge never leaves partial files behind.
-        zip_path.unlink(missing_ok=True)
         mzip_path.unlink(missing_ok=True)
     return True
-
-
-def _restore_uncompressed(source: Path, dest: Path) -> None:
-    """Rewrite ``source`` into ``dest`` with every entry stored uncompressed (what ``zip -0`` did).
-
-    Done in-process so merging needs no zip/unzip binaries, which Windows lacks.
-    """
-    with zipfile.ZipFile(source) as src, zipfile.ZipFile(dest, "w", zipfile.ZIP_STORED) as dst:
-        for info in src.infolist():
-            if info.is_dir():
-                continue
-            out_info = zipfile.ZipInfo(info.filename, info.date_time)
-            out_info.compress_type = zipfile.ZIP_STORED
-            out_info.external_attr = info.external_attr
-            with src.open(info) as reader, dst.open(out_info, "w") as writer:
-                shutil.copyfileobj(reader, writer)
 
 
 class APKMirror(ScraperBase):

@@ -1,4 +1,4 @@
-"""Tests for scripts/scrapers/apkmirror.py merge_apkm_splits (in-process re-zip and temp-file cleanup)."""
+"""Tests for scripts/scrapers/apkmirror.py merge_apkm_splits (output kept as-is and temp-file cleanup)."""
 
 # ruff: noqa: S101
 
@@ -17,8 +17,9 @@ def _write_mzip(path: Path) -> None:
     """Build what APKEditor emits: a compressed zip that also holds a directory entry."""
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("AndroidManifest.xml", b"manifest" * 100)
-        zf.writestr("res/", b"")
         zf.writestr("res/raw/a.bin", b"payload" * 100)
+        zf.writestr("resources.arsc", b"arsc" * 100, compress_type=zipfile.ZIP_STORED)
+        zf.writestr("lib/arm64-v8a/liba.so", b"elf" * 100)
 
 
 def _setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, java_fails: bool = False, mzip: bool = True) -> Path:
@@ -48,16 +49,21 @@ def _leftovers(bundle: Path) -> list[Path]:
     return [p for p in candidates if p.exists()]
 
 
-def test_merge_stores_every_entry_uncompressed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_merge_keeps_apkeditor_output_as_is(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bundle = _setup(tmp_path, monkeypatch)
     out = tmp_path / "out.apk"
+    expected = tmp_path / "expected.zip"
+    _write_mzip(expected)
 
     assert apkmirror.merge_apkm_splits(tmp_path, bundle, out) is True
 
-    with zipfile.ZipFile(out) as zf:
-        assert sorted(zf.namelist()) == ["AndroidManifest.xml", "res/raw/a.bin"]
-        assert {i.compress_type for i in zf.infolist()} == {zipfile.ZIP_STORED}
-        assert zf.read("res/raw/a.bin") == b"payload" * 100
+    with zipfile.ZipFile(out) as got, zipfile.ZipFile(expected) as want:
+        assert [(i.filename, i.compress_type) for i in got.infolist()] == [
+            (i.filename, i.compress_type) for i in want.infolist()
+        ]
+        assert {n: got.read(n) for n in got.namelist()} == {n: want.read(n) for n in want.namelist()}
+        assert got.getinfo("resources.arsc").compress_type == zipfile.ZIP_STORED
+        assert got.getinfo("res/raw/a.bin").compress_type == zipfile.ZIP_DEFLATED
     assert _leftovers(bundle) == []
 
 
