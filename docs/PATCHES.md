@@ -21,8 +21,6 @@ entries win on duplicate patch names. All bundles below run on the Morphe CLI (`
 | [Dutch App Patches](https://gitlab.com/johninnld/nl-morphe-patches) (`patches-bundle.json` URL) | Google Maps (microG build) |
 | [`VenusIsJaded/Venus-Patches`](https://github.com/VenusIsJaded/Venus-Patches) | Discord client mods |
 | [`jrddupont/discord-patches`](https://github.com/jrddupont/discord-patches) | Discord |
-| [`crimera/piko-newx`](https://github.com/crimera/piko-newx) | X |
-| [`crimera/piko`](https://github.com/crimera/piko) | Twitter and Instagram sections |
 
 ## External bundles aggregator
 

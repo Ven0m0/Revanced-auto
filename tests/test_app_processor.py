@@ -381,7 +381,6 @@ class TestIsMorphePatchesSource:
             ("wchill/patcheddit", True),
             ("ReVanced/revanced-patches", False),
             ("anddea/revanced-patches", False),
-            ("crimera/piko", False),
         ],
     )
     def test_is_morphe_patches_source(self, repo: str, *, expected: bool) -> None:

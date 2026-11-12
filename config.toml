@@ -41,8 +41,6 @@ patches-source = "MorpheApp/morphe-patches"
 # - SoundCloud: kondratjev/morphe-patches
 # - Google Maps (microG): Dutch App Patches, a GitLab patches-bundle.json URL (see docs/CONFIG.md)
 # - Discord: VenusIsJaded/Venus-Patches, jrddupont/discord-patches
-# - Piko (Instagram): crimera/piko
-# - Piko NewX (X, Twitter): crimera/piko-newx
 # - External bundles aggregator: brosssh/revanced-external-bundles
 # patches-source accepts a list of the above to merge patches from multiple bundles.
 
@@ -609,6 +607,7 @@ patches = [
   "Clean App Packaging",
   "Remove Debug Info",
   "Remove Tracking Libraries",
+  "Remove Unused Screen Sizes",
   "Shrink WebP Images",
   "Silence System Logs",
 ]
@@ -683,180 +682,6 @@ patches = [
 appName = "\"Reddit Morphe\""
 
 [Reddit-Morphed.patch-options."Shrink WebP Images"]
-stripIcc = "true"
-
-# Instagram Piko. Patch names and the "amoled" option verified against crimera/piko v3.10.0 list-patches.
-[Instagram-Piko]
-# Disabled: Piko v3.10.0 supports only 447.0.0.55.81, which the APKMirror scraper cannot reach (first listing page only).
-enabled = false
-app-name = "Instagram"
-patches-source = ["crimera/piko", "kveld9/kveld-morphe-patches"]
-cli-source = "MorpheApp/morphe-cli"
-rv-brand = "Piko"
-apkmirror-dlurl = "https://apkmirror.com/apk/instagram/instagram-instagram/"
-# APKMirror URLs carry no package id, so list-versions and the stock signature check need it spelled out.
-package-name = "com.instagram.android"
-patches = [
-  "Theme",
-  "Clean App Packaging",
-  "Remove Debug Info",
-  "Remove Extra Languages (Universal)",
-  "Remove Tracking Libraries",
-  "Remove Unused Screen Sizes",
-  "Shrink PNG Images",
-  "Shrink WebP Images",
-  "Silence System Logs",
-]
-
-[Instagram-Piko.patch-options."Theme"]
-amoled = "true"
-
-[Instagram-Piko.patch-options."Shrink WebP Images"]
-stripIcc = "true"
-
-# Twitter Piko (classic logo and name). Same piko-newx bundle and patch list as X-Piko plus "Restore Twitter branding".
-# crimera/piko v3.10.0 supports only 12.19.1-release.0, which the scrapers cannot reach, so it is no longer used here.
-# Both sections patch com.twitter.android; install only one of the two builds.
-
-[Twitter-Piko]
-enabled = true
-app-name = "Twitter"
-patches-source = ["crimera/piko-newx", "kveld9/kveld-morphe-patches"]
-cli-source = "MorpheApp/morphe-cli"
-rv-brand = "Piko"
-uptodown-dlurl = "https://twitter.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
-package-name = "com.twitter.android"
-patches = [
-  "NewX: Clone",
-  "NewX: Custom sharing domain",
-  "NewX: Customize drawer items",
-  "NewX: Customize inline actions",
-  "NewX: Customize media menu items",
-  "NewX: Customize navigation bar",
-  "NewX: Customize post menu items",
-  "NewX: Customize profile tabs",
-  "NewX: Customize timeline tabs",
-  "NewX: Disable automatic timeline refresh",
-  "NewX: Disable blur effects",
-  "NewX: Disable video player scrolling",
-  "NewX: Enable quality-of-life feature flags",
-  "NewX: Feature switch overrides",
-  "NewX: Filter For You by topic",
-  "NewX: Filter posts by keyword",
-  "NewX: Gallery profile Photos tab",
-  "NewX: Hide AI-generated posts",
-  "NewX: Hide Discover more",
-  "NewX: Hide Spaces bar",
-  "NewX: Hide compose button",
-  "NewX: Hide new posts pill",
-  "NewX: Hide post author actions",
-  "NewX: Hide post reply bar",
-  "NewX: Hide posts by verified account type",
-  "NewX: Hide premium upsell",
-  "NewX: Hide timeline tabs bar",
-  "NewX: Hide who to follow",
-  "NewX: Inline download button",
-  "NewX: Open canonical URLs",
-  "NewX: Permanent share links",
-  "NewX: Redirect downloads to chosen folder",
-  "NewX: Remove ads",
-  "NewX: Remove share tracking parameters",
-  "NewX: Restore Twitter branding",
-  "NewX: Restore pinned home tab",
-  "NewX: Restore timeline position",
-  "NewX: Set default media tab",
-  "NewX: Set default profile post sorting",
-  "NewX: Set default reply sorting",
-  "NewX: Show poll results",
-  "NewX: Show sensitive media",
-  "NewX: Theme",
-  "NewX: Translator",
-  "NewX: Unlock color customization",
-  "NewX: Unlock downloads",
-  "Clean App Packaging",
-  "Remove Debug Info",
-  "Remove Extra Languages (Universal)",
-  "Remove Tracking Libraries",
-  "Remove Unused Screen Sizes",
-  "Shrink PNG Images",
-  "Shrink WebP Images",
-  "Silence System Logs",
-]
-
-[Twitter-Piko.patch-options."Shrink WebP Images"]
-stripIcc = "true"
-
-# X Piko (same stock APK as Twitter, new logo and name). crimera/piko-newx v3.75.0 targets com.twitter.android
-# 12.38.1 to 12.41.0-prod.01 (APKM) and runs on the Morphe CLI. Selection exported from Morphe Manager (2026-11-11).
-
-[X-Piko]
-enabled = true
-app-name = "X"
-patches-source = ["crimera/piko-newx", "kveld9/kveld-morphe-patches"]
-cli-source = "MorpheApp/morphe-cli"
-rv-brand = "Piko"
-uptodown-dlurl = "https://twitter.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
-package-name = "com.twitter.android"
-patches = [
-  "NewX: Clone",
-  "NewX: Custom sharing domain",
-  "NewX: Customize drawer items",
-  "NewX: Customize inline actions",
-  "NewX: Customize media menu items",
-  "NewX: Customize navigation bar",
-  "NewX: Customize post menu items",
-  "NewX: Customize profile tabs",
-  "NewX: Customize timeline tabs",
-  "NewX: Disable automatic timeline refresh",
-  "NewX: Disable blur effects",
-  "NewX: Disable video player scrolling",
-  "NewX: Enable quality-of-life feature flags",
-  "NewX: Feature switch overrides",
-  "NewX: Filter For You by topic",
-  "NewX: Filter posts by keyword",
-  "NewX: Gallery profile Photos tab",
-  "NewX: Hide AI-generated posts",
-  "NewX: Hide Discover more",
-  "NewX: Hide Spaces bar",
-  "NewX: Hide compose button",
-  "NewX: Hide new posts pill",
-  "NewX: Hide post author actions",
-  "NewX: Hide post reply bar",
-  "NewX: Hide posts by verified account type",
-  "NewX: Hide premium upsell",
-  "NewX: Hide timeline tabs bar",
-  "NewX: Hide who to follow",
-  "NewX: Inline download button",
-  "NewX: Open canonical URLs",
-  "NewX: Permanent share links",
-  "NewX: Redirect downloads to chosen folder",
-  "NewX: Remove ads",
-  "NewX: Remove share tracking parameters",
-  "NewX: Restore pinned home tab",
-  "NewX: Restore timeline position",
-  "NewX: Set default media tab",
-  "NewX: Set default profile post sorting",
-  "NewX: Set default reply sorting",
-  "NewX: Show poll results",
-  "NewX: Show sensitive media",
-  "NewX: Theme",
-  "NewX: Translator",
-  "NewX: Unlock color customization",
-  "NewX: Unlock downloads",
-  # kveld9 cleanup
-  "Clean App Packaging",
-  "Remove Debug Info",
-  "Remove Extra Languages (Universal)",
-  "Remove Tracking Libraries",
-  "Remove Unused Screen Sizes",
-  "Shrink PNG Images",
-  "Shrink WebP Images",
-  "Silence System Logs",
-]
-
-[X-Piko.patch-options."Shrink WebP Images"]
 stripIcc = "true"
 
 # Brave (stable). The stock APK comes straight from Brave's GitHub releases; the asset name at the
