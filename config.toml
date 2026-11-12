@@ -197,7 +197,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # kveld9 cleanup
   "Remove Debug Info",
   "Remove Tracking Libraries",
 ]
@@ -623,9 +622,6 @@ keepLanguages = "[\"en\"]"
 [Music-Morphed.patch-options."Shrink WebP Images"]
 stripIcc = "true"
 
-# Reddit Morphed. Selection exported from Morphe Manager (morphe_Morphe_Patches_frontpage-2026-10-30-024910.json and
-# morphe_kveld9_Patches_frontpage-2026-10-30-024930.json).
-
 [Reddit-Morphed]
 enabled = true
 app-name = "Reddit"
@@ -673,7 +669,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # kveld9 cleanup
   "Remove Debug Info",
   "Remove Tracking Libraries",
 ]
@@ -766,7 +761,7 @@ stripIcc = "true"
 # SoundCloud. Selection exported from Morphe Manager (morphe_Kondratjev_Patches_android-2026-10-25-160121.json).
 
 [SoundCloud]
-enabled = true
+enabled = false
 app-name = "SoundCloud"
 patches-source = ["kondratjev/morphe-patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
@@ -846,7 +841,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # kveld9 cleanup
   "Remove Debug Info",
   "Remove Tracking Libraries",
 ]
@@ -868,7 +862,7 @@ stripIcc = "true"
 # morphe_kveld9_Patches_pinterest-2026-11-06-151221.json). browzomje targets Pinterest 14.23.0-14.43.0.
 # No APKMirror URL: /apk/pinterest/pinterest/ answers plain HTTP with a Cloudflare challenge (403), as Discord does.
 [Pinterest]
-enabled = true
+enabled = false
 app-name = "Pinterest"
 # kveld9 goes last: later bundles win on duplicate names.
 patches-source = ["browzomje/browzomje-patches", "kveld9/kveld-morphe-patches"]
@@ -920,7 +914,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # kveld9 cleanup
   "Remove Debug Info",
 ]
 
@@ -932,7 +925,7 @@ stripIcc = "true"
 [Discord]
 enabled = true
 app-name = "Discord"
-patches-source = ["VenusIsJaded/Venus-Patches", "kveld9/kveld-morphe-patches", "jrddupont/discord-patches"]
+patches-source = ["VenusIsJaded/Venus-Patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 # Local-only: APKMirror shows GitHub runners an interactive "Verify you are human" check for Discord, and no
@@ -943,7 +936,7 @@ stock-apk = "stock/discord-350.8.apkm"
 # APKMirror URLs carry no package id, so list-versions needs it spelled out.
 package-name = "com.discord"
 # Pinned to the Discord version the patch bundles target; drop the pin to follow the compatible list again.
-version = "350.8"
+version = "351.11"
 exclusive = true
 patches = [
   # Venus Patches
@@ -1033,9 +1026,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # jrddupont
-  "Pin app to built-in bundle",
-  # kveld9 cleanup
   "Remove Debug Info",
 ]
 
