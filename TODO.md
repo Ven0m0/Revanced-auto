@@ -1,1 +1,1 @@
-remove crimera/piko and twitter, x patching does that already
+remove "BlazeFTL/FTL-Patches" fully. "kveld9/kveld-morphe-patches" replaces it entirely.
