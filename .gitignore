@@ -60,3 +60,4 @@ yarn.lock
 .serena/
 .codegraph/
 .codex/
+.headroom/
