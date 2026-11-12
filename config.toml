@@ -199,7 +199,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # kveld9 cleanup
   "Remove Debug Info",
   "Remove Tracking Libraries",
 ]
@@ -624,9 +623,6 @@ keepLanguages = "[\"en\"]"
 [Music-Morphed.patch-options."Shrink WebP Images"]
 stripIcc = "true"
 
-# Reddit Morphed. Selection exported from Morphe Manager (morphe_Morphe_Patches_frontpage-2026-10-30-024910.json and
-# morphe_kveld9_Patches_frontpage-2026-10-30-024930.json).
-
 [Reddit-Morphed]
 enabled = true
 app-name = "Reddit"
@@ -674,7 +670,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # kveld9 cleanup
   "Remove Debug Info",
   "Remove Tracking Libraries",
 ]
@@ -712,79 +707,6 @@ patches = [
 amoled = "true"
 
 [Instagram-Piko.patch-options."Shrink WebP Images"]
-stripIcc = "true"
-
-# Twitter Piko (classic logo and name). Same piko-newx bundle and patch list as X-Piko plus "Restore Twitter branding".
-# crimera/piko v3.10.0 supports only 12.19.1-release.0, which the scrapers cannot reach, so it is no longer used here.
-# Both sections patch com.twitter.android; install only one of the two builds.
-
-[Twitter-Piko]
-enabled = true
-app-name = "Twitter"
-patches-source = ["crimera/piko-newx", "kveld9/kveld-morphe-patches"]
-cli-source = "MorpheApp/morphe-cli"
-rv-brand = "Piko"
-uptodown-dlurl = "https://twitter.en.uptodown.com/android"
-apkmirror-dlurl = "https://apkmirror.com/apk/x-corp/twitter"
-package-name = "com.twitter.android"
-patches = [
-  "NewX: Clone",
-  "NewX: Custom sharing domain",
-  "NewX: Customize drawer items",
-  "NewX: Customize inline actions",
-  "NewX: Customize media menu items",
-  "NewX: Customize navigation bar",
-  "NewX: Customize post menu items",
-  "NewX: Customize profile tabs",
-  "NewX: Customize timeline tabs",
-  "NewX: Disable automatic timeline refresh",
-  "NewX: Disable blur effects",
-  "NewX: Disable video player scrolling",
-  "NewX: Enable quality-of-life feature flags",
-  "NewX: Feature switch overrides",
-  "NewX: Filter For You by topic",
-  "NewX: Filter posts by keyword",
-  "NewX: Gallery profile Photos tab",
-  "NewX: Hide AI-generated posts",
-  "NewX: Hide Discover more",
-  "NewX: Hide Spaces bar",
-  "NewX: Hide compose button",
-  "NewX: Hide new posts pill",
-  "NewX: Hide post author actions",
-  "NewX: Hide post reply bar",
-  "NewX: Hide posts by verified account type",
-  "NewX: Hide premium upsell",
-  "NewX: Hide timeline tabs bar",
-  "NewX: Hide who to follow",
-  "NewX: Inline download button",
-  "NewX: Open canonical URLs",
-  "NewX: Permanent share links",
-  "NewX: Redirect downloads to chosen folder",
-  "NewX: Remove ads",
-  "NewX: Remove share tracking parameters",
-  "NewX: Restore Twitter branding",
-  "NewX: Restore pinned home tab",
-  "NewX: Restore timeline position",
-  "NewX: Set default media tab",
-  "NewX: Set default profile post sorting",
-  "NewX: Set default reply sorting",
-  "NewX: Show poll results",
-  "NewX: Show sensitive media",
-  "NewX: Theme",
-  "NewX: Translator",
-  "NewX: Unlock color customization",
-  "NewX: Unlock downloads",
-  "Clean App Packaging",
-  "Remove Debug Info",
-  "Remove Extra Languages (Universal)",
-  "Remove Tracking Libraries",
-  "Remove Unused Screen Sizes",
-  "Shrink PNG Images",
-  "Shrink WebP Images",
-  "Silence System Logs",
-]
-
-[Twitter-Piko.patch-options."Shrink WebP Images"]
 stripIcc = "true"
 
 # X Piko (same stock APK as Twitter, new logo and name). crimera/piko-newx v3.75.0 targets com.twitter.android
@@ -1021,7 +943,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # kveld9 cleanup
   "Remove Debug Info",
   "Remove Tracking Libraries",
 ]
@@ -1043,7 +964,7 @@ stripIcc = "true"
 # morphe_kveld9_Patches_pinterest-2026-11-06-151221.json). browzomje targets Pinterest 14.23.0-14.43.0.
 # No APKMirror URL: /apk/pinterest/pinterest/ answers plain HTTP with a Cloudflare challenge (403), as Discord does.
 [Pinterest]
-enabled = true
+enabled = false
 app-name = "Pinterest"
 # kveld9 goes last: later bundles win on duplicate names.
 patches-source = ["browzomje/browzomje-patches", "kveld9/kveld-morphe-patches"]
@@ -1095,7 +1016,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # kveld9 cleanup
   "Remove Debug Info",
 ]
 
@@ -1107,7 +1027,7 @@ stripIcc = "true"
 [Discord]
 enabled = true
 app-name = "Discord"
-patches-source = ["VenusIsJaded/Venus-Patches", "kveld9/kveld-morphe-patches", "jrddupont/discord-patches"]
+patches-source = ["VenusIsJaded/Venus-Patches", "kveld9/kveld-morphe-patches"]
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 # Local-only: APKMirror shows GitHub runners an interactive "Verify you are human" check for Discord, and no
@@ -1118,7 +1038,7 @@ stock-apk = "stock/discord-350.8.apkm"
 # APKMirror URLs carry no package id, so list-versions needs it spelled out.
 package-name = "com.discord"
 # Pinned to the Discord version the patch bundles target; drop the pin to follow the compatible list again.
-version = "350.8"
+version = "351.11"
 exclusive = true
 patches = [
   # Venus Patches
@@ -1208,9 +1128,6 @@ patches = [
   "Shrink PNG Images",
   "Shrink WebP Images",
   "Silence System Logs",
-  # jrddupont
-  "Pin app to built-in bundle",
-  # kveld9 cleanup
   "Remove Debug Info",
 ]
 
