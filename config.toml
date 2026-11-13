@@ -688,6 +688,10 @@ enabled = true
 app-name = "Brave"
 # kveld9 goes last: later bundles win on duplicate names, and both bundles ship "Brave Origin".
 patches-source = ["dh6k/morphe-patches", "kveld9/kveld-morphe-patches"]
+# Brave has no pinned "version", so it follows the patches (auto). kveld9 only bumps its Brave
+# target on the experimental channel (v2.11.0-experimental.12 supports 1.99.57; stable v2.10.1 is
+# still on 1.98.63), hence "dev" so the newest supported Brave is always the one built.
+patches-version = "dev"
 cli-source = "MorpheApp/morphe-cli"
 rv-brand = "Morphe"
 github-dlurl = "https://github.com/brave/brave-browser/releases/latest/download/BraveMonoarm64.apk"
