@@ -28,7 +28,7 @@
   "patches_tag_SysAdminDoc/hushfeed@latest": "v0.82.0",
   "patches_tag_bennytsai1234/youtube-thread-ripper@latest": "v0.3.1",
   "patches_tag_dh6k/morphe-patches@latest": "v1.9.0",
-  "patches_tag_https://gitlab.com/johninnld/nl-morphe-patches/-/raw/main/patches-bundle.json@latest": "1.76.0",
+  "patches_tag_https://gitlab.com/johninnld/nl-morphe-patches/-/raw/main/patches-bundle.json@latest": "1.79.0",
   "patches_tag_kveld9/kveld-extra-morphe-patches@latest": "v1.31.0",
   "patches_tag_kveld9/kveld-morphe-patches@latest": "v2.10.1"
 }
