@@ -118,6 +118,21 @@ jobs:
       - name: Run Biome
         run: bunx --bun biome check --reporter=github .
         continue-on-error: true
+  validate-obtainium:
+    name: Obtainium export
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Validate obtainium-rvx.json
+        run: |
+          set -euo pipefail
+          jq -e '.apps | type == "array" and length > 0' obtainium-rvx.json >/dev/null
+          bad=$(jq -r '.apps[] | select((.id // "") == "" or (.name // "") == "" or ((.url // "") | startswith("https://") | not)) | .name // "?"' obtainium-rvx.json)
+          if [[ -n "$bad" ]]; then echo "::error file=obtainium-rvx.json::apps missing id, name or https url: $bad"; exit 1; fi
+          dupes=$(jq -r '[.apps[].id] | group_by(.) | map(select(length > 1) | .[0]) | .[]' obtainium-rvx.json)
+          if [[ -n "$dupes" ]]; then echo "::error file=obtainium-rvx.json::duplicate app ids: $dupes"; exit 1; fi
   lint-summary:
     name: Lint Summary
     runs-on: ubuntu-slim
