@@ -55,7 +55,8 @@ patches-source = "MorpheApp/morphe-patches"
 # TikTok. Hushfeed (SysAdminDoc/hushfeed) plus kveld9 cleanup patches. Selection exported from Morphe Manager
 # (morphe_manager_settings.json, 2026-11-11). No version pin: Hushfeed supports only the TikTok versions it lists,
 # and `auto` resolves one of them (the build never passes --force).
-# Hushfeed "Remove unused language packs" is left out: it makes TikTok patching fail. kveld9 handles the languages.
+# Hushfeed "Remove unused language packs" and "Remove content credential and card scanner assets" are left out: they
+# collide with kveld9's "Remove Extra Languages" / "Remove Extra Files" and make patching fail.
 [TikTok]
 enabled = true
 app-name = "TikTok"
@@ -155,7 +156,6 @@ patches = [
   "Remember clear display",
   "Remove LIVE extras",
   "Remove avatar rings",
-  "Remove content credential and card scanner assets",
   "Remove creation tools",
   "Remove voice tools",
   "Report a newer phone to effects",
