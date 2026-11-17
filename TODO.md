@@ -1,1 +1,2 @@
-check if implementing https://github.com/Villoh/goopdl would be useful for downloading apks
+- [ ] check if implementing https://github.com/Villoh/goopdl would be useful for downloading apks
+- [ ] Remove/fix the patch Patch "Remove content credential and card scanner assets" since it breaks tiktok patching "https://github.com/Ven0m0/Revanced-auto/releases/tag/26.11.17-124"
