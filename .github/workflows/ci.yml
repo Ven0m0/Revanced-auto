@@ -32,7 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.3.3
+        uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
@@ -54,7 +54,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.3.3
+        uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
@@ -92,7 +92,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.3.3
+        uses: astral-sh/setup-uv@v10.4.0
       - name: Install Tombi
         run: uv tool install tombi
       - name: Ensure uv tool bin is on PATH
@@ -166,7 +166,7 @@ jobs:
         with:
           fetch-depth: 1
       - name: Install mise-managed toolchain (Java, Python, uv)
-        uses: jdx/mise-action@v5.2.10
+        uses: jdx/mise-action@v5.3.0
         with:
           install: true
           cache: true
