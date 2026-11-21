@@ -23,7 +23,7 @@
   "app_googlemaps_patches_source": "https://gitlab.com/johninnld/nl-morphe-patches/-/raw/main/patches-bundle.json,kveld9/kveld-morphe-patches",
   "app_googlemaps_cli_source": "MorpheApp/morphe-cli",
   "app_googlemaps_version": "auto",
-  "patches_tag_BlazeFTL/FTL-Patches@latest": "v1.43.7.4",
+  "patches_tag_BlazeFTL/FTL-Patches@latest": "v1.43.7.5",
   "patches_tag_MorpheApp/morphe-patches@latest": "v2.3.0",
   "patches_tag_SysAdminDoc/hushfeed@latest": "v0.83.0",
   "patches_tag_bennytsai1234/youtube-thread-ripper@latest": "v0.3.1",
